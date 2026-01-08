@@ -19,9 +19,9 @@ async function startEvolution() {
         for (const doc of snapshot.docs) {
             await client.query('INSERT INTO neurons (data) VALUES ($1)', [JSON.stringify(doc.data())]);
         }
-        console.log('🔥 GOA Evolution: Neon Sync Success!');
+        console.log('🔥 GOA: Neon Sync Done!');
     } catch (err) {
-        console.error('❌ Error:', err);
+        console.error(err);
     } finally {
         await client.end();
     }
