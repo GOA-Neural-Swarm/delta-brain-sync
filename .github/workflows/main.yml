@@ -1,0 +1,19 @@
+name: GOA Neural Evolution
+on:
+  schedule:
+    - cron: '*/5 * * * *' # ၅ မိနစ်တစ်ခါ ဇွတ်ပတ်မယ်
+  workflow_dispatch: # လက်နဲ့ နှိပ်ပြီး Run ချင်ရင်လည်း ရတယ်
+
+jobs:
+  evolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install firebase-admin
+      - name: Run Evolution Engine
+        run: node optimized_evolution.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_KEY }}
