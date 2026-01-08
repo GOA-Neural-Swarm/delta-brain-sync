@@ -1,9 +1,6 @@
 name: GOA Neural Evolution
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '*/30 * * * *'
-
 jobs:
   evolve:
     runs-on: ubuntu-latest
