@@ -12,9 +12,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: 📦 Install Libraries
+      - name: 📦 Install
         run: npm install firebase-admin pg
-      - name: 🚀 Run Evolution
+      - name: 🚀 Run
         run: node optimized_evolution.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_KEY }}
