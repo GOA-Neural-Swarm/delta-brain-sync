@@ -1,8 +1,8 @@
 name: GOA Neural Evolution
 on:
   schedule:
-    - cron: '*/5 * * * *' # ၅ မိနစ်တစ်ခါ ဇွတ်ပတ်မယ်
-  workflow_dispatch: # လက်နဲ့ နှိပ်ပြီး Run ချင်ရင်လည်း ရတယ်
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
   evolve:
@@ -12,8 +12,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install firebase-admin
+      - run: npm install firebase-admin pg
       - name: Run Evolution Engine
         run: node optimized_evolution.js
         env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
