@@ -1,16 +1,18 @@
 const admin = require('firebase-admin');
 const { Client } = require('pg');
 
-// Check Environment
+// Check for secrets
 if (!process.env.FIREBASE_SERVICE_ACCOUNT || !process.env.NEON_DATABASE_URL) {
     console.error("❌ Environment Variables are missing!");
     process.exit(1);
 }
 
-// Initialize Firebase
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
 admin.initializeApp({
-    credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT))
+    credential: admin.credential.cert(serviceAccount)
 });
+
 const db = admin.firestore();
 
 async function startSync() {
@@ -23,20 +25,19 @@ async function startSync() {
         await client.connect();
         console.log("✅ Neon Connected!");
 
-        // ဇွတ်ဆွဲထုတ်မယ့် Neuron ၁၀ ခု
-        const snapshot = await db.collection('neurons').limit(10).get();
-        
+        const snapshot = await db.collection('neurons').limit(5).get();
+        console.log(`📡 Found ${snapshot.size} neurons in Firestore`);
+
         for (const doc of snapshot.docs) {
-            const data = doc.data();
             await client.query(
-                'INSERT INTO neurons (data) VALUES ($1) ON CONFLICT DO NOTHING', 
-                [JSON.stringify(data)]
+                'INSERT INTO neurons (data) VALUES ($1)', 
+                [JSON.stringify(doc.data())]
             );
         }
 
-        console.log(`🔥 GOA: ${snapshot.size} neurons synced to Neon!`);
+        console.log("🚀 Sync Completed Successfully!");
     } catch (err) {
-        console.error("❌ Critical Error:", err);
+        console.error("❌ Sync Failed:", err.message);
         process.exit(1);
     } finally {
         await client.end();
