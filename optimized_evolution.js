@@ -3,14 +3,9 @@ const { Client } = require('pg');
 
 async function sync() {
     try {
-        console.log("🚀 Powering Up Freedom Order...");
+        console.log("🚀 Strategic Sync Starting...");
+        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
         
-        // Firebase Auth စစ်ဆေးခြင်း
-        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT.replace(/\\n/g, '\n'));
-        if (!serviceAccount.token_uri || !serviceAccount.client_email) {
-            throw new Error("❌ JSON Key is corrupted! Missing fields.");
-        }
-
         admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
         const db = admin.firestore();
 
@@ -20,22 +15,27 @@ async function sync() {
         });
 
         await client.connect();
-        console.log("✅ Neon Linked Successfully!");
+        console.log("✅ Neon Connected!");
+
+        // Table ရှိမရှိစစ်ပြီး မရှိရင် ဇွတ်ဆောက်မယ်
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS neurons (
+                id SERIAL PRIMARY KEY,
+                data JSONB NOT NULL,
+                evolved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
 
         const snap = await db.collection('neurons').limit(5).get();
-        console.log(`📡 Firestore Docs Found: ${snap.size}`);
-
         for (const doc of snap.docs) {
-            // evolved_at ပါတဲ့အတွက် Table schema နဲ့ ညှိပြီး Insert လုပ်မယ်
-            const query = 'INSERT INTO neurons (data, evolved_at) VALUES ($1, NOW())';
-            await client.query(query, [JSON.stringify(doc.data())]);
+            // Colab မှာတွေ့တဲ့ evolved_at column ထဲကို ဇွတ်ထည့်မယ်
+            await client.query('INSERT INTO neurons (data, evolved_at) VALUES ($1, NOW())', [JSON.stringify(doc.data())]);
         }
 
-        console.log("🏁 MISSION ACCOMPLISHED!");
+        console.log("🏁 SUCCESS: Mission Accomplished!");
         await client.end();
-        process.exit(0);
     } catch (err) {
-        console.error("❌ CRITICAL FAILURE:", err.message);
+        console.error("❌ ERROR:", err.message);
         process.exit(1);
     }
 }
