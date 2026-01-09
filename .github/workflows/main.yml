@@ -1,6 +1,7 @@
 - name: Run Evolve Script
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          NEON_URL: ${{ secrets.NEON_URL }} # Neon URL လည်း secret ထဲမှာ ရှိရမယ်
-        run: python evolve.py
-        
+  env:
+    FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+  run: |
+    npm install firebase-admin pg
+    node optimized_evolution.js
