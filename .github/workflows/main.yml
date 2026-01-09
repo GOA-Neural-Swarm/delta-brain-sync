@@ -1,4 +1,4 @@
-name: Firebase Neon Sync
+name: Neural Evolution Sync
 
 on:
   push:
@@ -6,24 +6,25 @@ on:
   workflow_dispatch:
 
 jobs:
-  sync_data:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          node-version: '20'
+          python-version: '3.9'
 
-      - name: Install Dependencies
-        run: npm install firebase-admin pg
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install firebase-admin psycopg2-binary
 
       - name: Run Evolution Script
-        # --- ဒီမှာ env: စပြီ မအေလိုး ---
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_KEY }}
           NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
-        # --- ဒီမှာ env: ဆုံးပြီ ---
-        run: node optimized_evolution.js
+        run: python evolve.py
+        
