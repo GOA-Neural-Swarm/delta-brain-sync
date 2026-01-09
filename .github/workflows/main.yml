@@ -1,22 +1,34 @@
-name: GOA Neural Evolution
+name: GOA Neural Evolution Combo
+
 on:
-  workflow_dispatch:
   schedule:
     - cron: '*/30 * * * *'
+  workflow_dispatch:
 
 jobs:
   evolve:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          node-version: '20'
-      - name: 📦 Install
-        run: npm install firebase-admin pg
-      - name: 🚀 Run Evolution
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm install firebase-admin pg @supabase/supabase-client
+
+      - name: Sync Firestore to Neon
         run: node optimized_evolution.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_KEY }}
-          NEON_DATABASE_URL: 'postgresql://neondb_owner:npg_QUqg12MzNxnI@ep-long-sound-ahsjjrnk-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require'
-          
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+
+      - name: Delta Sync Neon to Supabase
+        run: node delta_sync.js
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
