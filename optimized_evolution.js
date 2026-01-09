@@ -6,7 +6,7 @@ async function sync() {
         console.log("🚀 Powering Up Freedom Order...");
         
         // Firebase Auth စစ်ဆေးခြင်း
-        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT.replace(/\\n/g, '\n'));
         if (!serviceAccount.token_uri || !serviceAccount.client_email) {
             throw new Error("❌ JSON Key is corrupted! Missing fields.");
         }
