@@ -1,30 +1,6 @@
-name: GOA Neural Evolution Master Loop
-
-on:
-  schedule:
-    - cron: '*/30 * * * *'
-  workflow_dispatch:
-
-jobs:
-  evolve:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Install Dependencies
-        run: npm install firebase-admin pg @supabase/supabase-js
-
-      - name: Delta Brain Sync
-        run: node delta_sync.js
+- name: Run Evolve Script
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          
+          NEON_URL: ${{ secrets.NEON_URL }} # Neon URL လည်း secret ထဲမှာ ရှိရမယ်
+        run: python evolve.py
+        
