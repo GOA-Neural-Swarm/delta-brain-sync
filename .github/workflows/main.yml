@@ -1,20 +1,5 @@
-name: GOA Neural Evolution
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '*/30 * * * *'
-jobs:
-  evolve:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: 📦 Install
-        run: npm install firebase-admin pg
-      - name: 🚀 Run
-        run: node optimized_evolution.js
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_KEY }}
-          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+    - cron: '*/15 * * * *'  # ၁၅ မိနစ်တစ်ခါ ဇွတ်မောင်းမယ်
+  push:
+    branches: [ main ]
