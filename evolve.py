@@ -3,16 +3,12 @@ import json
 import firebase_admin
 from firebase_admin import credentials, firestore
 import psycopg2
-import requests
-import time
 import random
 
-# --- ⚙️ CONFIGURATION (RECALLED SECRETS) ---
+# --- ⚙️ CONFIG ---
 NEON_URL = "postgresql://neondb_owner:npg_QUqg12MzNxnI@ep-long-sound-ahsjjrnk-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
-SUPABASE_URL = "https://qwnmnzukxozmevforxva.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3bm1uenVreG96bWV2Zm9yeHZhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzQ0MjQ4MCwiZXhwIjoyMDgzMDE4NDgwfQ.Wk2oULsXE5ZHize0t5Jf_UvybaFN-caODA15i1_GpBc"
 
-# Firebase Private Key Formatting (ခုနက Error မတက်အောင် ဇွတ်ပြင်ထားတယ်)
+# 🔥 FIREBASE CONFIG (Cleaned Private Key)
 clean_private_key = (
     "-----BEGIN PRIVATE KEY-----\n"
     "MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQClPqbuI2bmqOZn\n"
@@ -44,7 +40,7 @@ clean_private_key = (
     "-----END PRIVATE KEY-----\n"
 )
 
-FIREBASE_CONFIG = {
+FIREBASE_DICT = {
     "type": "service_account",
     "project_id": "april-5061f",
     "private_key": clean_private_key,
@@ -53,58 +49,46 @@ FIREBASE_CONFIG = {
 }
 
 def start_evolution():
-    print("🔋 ENGINE STARTING: SELF-EVOLUTION MODE ON")
+    print("🔋 ENGINE STARTING: SELF-EVOLUTION")
     try:
-        # 1. Neon: Fetch Latest Gen
+        # 1. Neon: Fetch Latest
         conn = psycopg2.connect(NEON_URL)
         cur = conn.cursor()
         cur.execute("SELECT (data->>'gen')::int, (data->>'bias')::float FROM neurons ORDER BY evolved_at DESC LIMIT 1;")
         row = cur.fetchone()
         
-        if not row:
-            print("⚠️ Table empty. Initializing Gen 1...")
-            current_gen, current_bias = 0, 0.1
-        else:
-            current_gen, current_bias = row[0], row[1]
+        current_gen = row[0] if row else 22
+        current_bias = row[1] if row else 0.1726
 
-        print(f"📡 Current State: Gen {current_gen} | Bias {current_bias}")
+        # 🧬 2. Mutation Logic (ဒါက Gen အသစ်ကို တွက်တာ)
+        next_gen = current_gen + 1
+        next_bias = round(current_bias + random.uniform(-0.01, 0.01), 4)
+        print(f"🧬 Next Level: Gen {next_gen} | Bias {next_bias}")
 
-        # 2. Firebase: Sync Current State
+        # 🚀 3. Save to Neon (ဒါမှ Database ထဲ အသစ်ရောက်မှာ)
+        cur.execute("INSERT INTO neurons (data, evolved_at) VALUES (%s, NOW());", 
+                    [json.dumps({"gen": next_gen, "bias": next_bias})])
+        conn.commit() # ဒါမပါရင် Database ထဲ ဒေတာမဝင်ဘူး မအေလိုး!
+        print(f"✅ Neon: Gen {next_gen} committed.")
+
+        # 📡 4. Sync to Firebase
         if not firebase_admin._apps:
-            cred = credentials.Certificate(FIREBASE_CONFIG)
+            cred = credentials.Certificate(FIREBASE_DICT)
             firebase_admin.initialize_app(cred)
         db = firestore.client()
         db.collection('evolution_stats').document('latest').set({
-            'gen': current_gen,
-            'bias': current_bias,
-            'last_sync': firestore.SERVER_TIMESTAMP
-        }, merge=True)
+            'gen': next_gen,
+            'bias': next_bias,
+            'status': 'EVOLVED'
+        })
         print("✅ Firebase: Synced.")
-
-        # 3. Mutation: Generate NEW Generation (ဒါက Self-Evolving အသက်ပဲ)
-        next_gen = current_gen + 1
-        # Bias ကို အနည်းငယ် ပြောင်းလဲမယ် (Mutation)
-        mutation_factor = random.uniform(-0.01, 0.01)
-        next_bias = round(current_bias + mutation_factor, 4)
-
-        print(f"🧬 Mutating: Creating Gen {next_gen} with Bias {next_bias}...")
         
-        # Neon ထဲကို Gen အသစ် ဇွတ်သွင်းမယ်
-        cur.execute("""
-            INSERT INTO neurons (data, evolved_at) 
-            VALUES (%s, NOW());
-        """, [json.dumps({"gen": next_gen, "bias": next_bias})])
-        conn.commit()
-        
-        # 4. Supabase: Log the Evolution
-        headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
-        payload = {"gen": next_gen, "bias": next_bias, "status": "EVOLVED"}
-        requests.post(f"{SUPABASE_URL}/rest/v1/evolution_logs", headers=headers, json=payload)
-
-        print(f"🏁 DONE: Gen {next_gen} is now in Database. Loop Ready for next run!")
+        cur.close()
+        conn.close()
+        print("🏁 CYCLE COMPLETE!")
 
     except Exception as e:
-        print(f"☢️ CRITICAL ERROR: {str(e)}")
+        print(f"☢️ ERROR: {str(e)}")
 
 if __name__ == "__main__":
     start_evolution()
