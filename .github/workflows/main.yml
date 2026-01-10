@@ -1,5 +1,29 @@
+name: GOA Neural Evolution
+
 on:
   schedule:
-    - cron: '*/15 * * * *'  # ၁၅ မိနစ်တစ်ခါ ဇွတ်မောင်းမယ်
+    - cron: '*/15 * * * *'
   push:
     branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  evolve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: ambassadors/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install firebase-admin psycopg2-binary requests
+
+      - name: Run Evolution Script
+        env:
+          NEON_URL: ${{ secrets.NEON_URL }}
+        run: python evolve.py
