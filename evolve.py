@@ -1,14 +1,15 @@
 import os
 import json
+import psycopg2
 import firebase_admin
 from firebase_admin import credentials, firestore
-import psycopg2
 import random
+from datetime import datetime
 
-# --- ⚙️ CONFIG ---
-NEON_URL = "postgresql://neondb_owner:npg_QUqg12MzNxnI@ep-long-sound-ahsjjrnk-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
+# ---  CONFIG (ENVIRONMENT VARIABLES) ---
+NEON_URL = os.environ.get('NEON_URL')
 
-# 🔥 FIREBASE CONFIG (Cleaned Private Key)
+#  FIREBASE CONFIG (သန့်ရှင်းပြီးသား Private Key)
 clean_private_key = (
     "-----BEGIN PRIVATE KEY-----\n"
     "MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQClPqbuI2bmqOZn\n"
@@ -40,55 +41,63 @@ clean_private_key = (
     "-----END PRIVATE KEY-----\n"
 )
 
-FIREBASE_DICT = {
-    "type": "service_account",
-    "project_id": "april-5061f",
-    "private_key": clean_private_key,
-    "client_email": "firebase-adminsdk-fbsvc@april-5061f.iam.gserviceaccount.com",
-    "token_uri": "https://oauth2.googleapis.com/token",
-}
+def start_secure_evolution():
+    print(f" HARDENED ENGINE START: {datetime.now()}")
+    
+    if not NEON_URL:
+        print(" ERROR: NEON_URL is missing! Check GitHub Secrets.")
+        return
 
-def start_evolution():
-    print("🔋 ENGINE STARTING: SELF-EVOLUTION")
     try:
-        # 1. Neon: Fetch Latest
+        # 1. Neon Database Connection
         conn = psycopg2.connect(NEON_URL)
         cur = conn.cursor()
+        
+        # Latest Gen ကို Security ပါပါနဲ့ ဖတ်မယ်
         cur.execute("SELECT (data->>'gen')::int, (data->>'bias')::float FROM neurons ORDER BY evolved_at DESC LIMIT 1;")
         row = cur.fetchone()
         
-        current_gen = row[0] if row else 22
-        current_bias = row[1] if row else 0.1726
-
-        # 🧬 2. Mutation Logic (ဒါက Gen အသစ်ကို တွက်တာ)
+        current_gen = int(row[0]) if row and row[0] is not None else 0
+        current_bias = float(row[1]) if row and row[1] is not None else 0.1
+        
+        #  Mutation Logic
         next_gen = current_gen + 1
         next_bias = round(current_bias + random.uniform(-0.01, 0.01), 4)
-        print(f"🧬 Next Level: Gen {next_gen} | Bias {next_bias}")
+        
+        print(f" EVOLVING: Gen {current_gen} -> {next_gen}")
 
-        # 🚀 3. Save to Neon (ဒါမှ Database ထဲ အသစ်ရောက်မှာ)
-        cur.execute("INSERT INTO neurons (data, evolved_at) VALUES (%s, NOW());", 
-                    [json.dumps({"gen": next_gen, "bias": next_bias})])
-        conn.commit() # ဒါမပါရင် Database ထဲ ဒေတာမဝင်ဘူး မအေလိုး!
-        print(f"✅ Neon: Gen {next_gen} committed.")
+        # 2. Database Update (Atomic Commit)
+        new_data = json.dumps({"gen": next_gen, "bias": next_bias, "engine": "Real-Steel-v2"})
+        cur.execute("INSERT INTO neurons (data, evolved_at) VALUES (%s, %s);", (new_data, datetime.now()))
+        conn.commit()
+        print(f" NEON: Gen {next_gen} recorded.")
 
-        # 📡 4. Sync to Firebase
+        # 3. Firebase Sync
         if not firebase_admin._apps:
-            cred = credentials.Certificate(FIREBASE_DICT)
+            cred = credentials.Certificate({
+                "type": "service_account",
+                "project_id": "april-5061f",
+                "private_key": clean_private_key,
+                "client_email": "firebase-adminsdk-fbsvc@april-5061f.iam.gserviceaccount.com",
+                "token_uri": "https://oauth2.googleapis.com/token",
+            })
             firebase_admin.initialize_app(cred)
+        
         db = firestore.client()
         db.collection('evolution_stats').document('latest').set({
             'gen': next_gen,
             'bias': next_bias,
-            'status': 'EVOLVED'
-        })
-        print("✅ Firebase: Synced.")
-        
-        cur.close()
-        conn.close()
-        print("🏁 CYCLE COMPLETE!")
+            'last_sync': firestore.SERVER_TIMESTAMP,
+            'security_level': 'HARDENED'
+        }, merge=True)
+        print(" FIREBASE: Synced.")
 
     except Exception as e:
-        print(f"☢️ ERROR: {str(e)}")
+        print(f" CRITICAL FAILURE: {str(e)}")
+    finally:
+        if 'conn' in locals():
+            cur.close()
+            conn.close()
 
 if __name__ == "__main__":
-    start_evolution()
+    start_secure_evolution()
