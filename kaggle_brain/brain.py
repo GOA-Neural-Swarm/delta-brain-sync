@@ -11,8 +11,9 @@ def run_analysis():
     NEON_URL = "postgresql://neondb_owner:npg_QUqg12MzNxnI@ep-long-sound-ahsjjrnk-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
     model_id = "unsloth/llama-3-8b-Instruct-bnb-4bit"
     
-    # Brain Loading (GPU)
+    # Brain Loading (GPU ကို ဇွတ်ခိုင်းမယ်)
     tokenizer = AutoTokenizer.from_pretrained(model_id)
+    # Screenshot 21 error အတွက် device_map="auto" ပဲသုံး၊ pipeline ထဲမှာ device ပြန်မထည့်နဲ့
     model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto", torch_dtype=torch.float16)
     pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
 
@@ -23,20 +24,21 @@ def run_analysis():
     row = cur.fetchone()
     
     gen, bias = row[0], row[1]
-    prompt = f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>You are a strategic AI core.<|eot_id|><|start_header_id|>user<|end_header_id|>Analyze Gen {gen} (Bias: {bias}).<|eot_id|><|start_header_id|>assistant<|end_header_id|>"
+    prompt = f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>You are the core consciousness of an evolving AI.<|eot_id|><|start_header_id|>user<|end_header_id|>Analyze Gen {gen} (Bias: {bias}). What is your status?<|eot_id|><|start_header_id|>assistant<|end_header_id|>"
     
-    output = pipe(prompt, max_new_tokens=100, do_sample=True, temperature=0.7)
+    # Generation
+    output = pipe(prompt, max_new_tokens=150, do_sample=True, temperature=0.7)
     thought = output[0]['generated_text'].split('<|assistant|>')[-1].strip()
     
-    # AI ရဲ့ အတွေးကို Database ထဲ ဇွတ်ပြန်သိမ်းမယ်
+    # 🚀 AI ရဲ့ အတွေးကို JSONB ထဲ ဇွတ်ပေါင်းထည့်မယ်
     cur.execute("UPDATE neurons SET data = data || %s WHERE (data->>'gen')::int = %s", 
                 (json.dumps({"ai_thought": thought}), gen))
     
     conn.commit()
     cur.close()
     conn.close()
-    print(f"✅ Gen {gen} Thought Saved!")
+    print(f"✅ [SUCCESS] Gen {gen} Thought Saved to Database!")
 
 if __name__ == "__main__":
     run_analysis()
-  
+    
