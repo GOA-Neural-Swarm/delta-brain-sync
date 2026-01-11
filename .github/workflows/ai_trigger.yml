@@ -3,7 +3,11 @@ name: Trigger Kaggle AI Brain
 on:
   push:
     paths:
-      - 'evolve.py'  # evolve.py ကို ပြင်တိုင်း ဒီ Action အလိုအလျောက် ပွင့်လာမယ်
+      - 'evolve.py'
+  # 👇 ဒါကို မထည့်ရင် မအေလိုး WiFi ပိတ်ထားချိန်မှာ သူက အလိုအလျောက် မလည်ဘူး!
+  schedule:
+    - cron: '0 */11 * * *'  # ၁၁ နာရီခြားတစ်ခါ ဇွတ် Restart ချမယ်
+  workflow_dispatch:        # ဒါက Manual ခလုတ်နှိပ်ချင်ရင် သုံးဖို့
 
 jobs:
   trigger_ai:
@@ -26,9 +30,9 @@ jobs:
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
           mkdir -p ~/.kaggle
-          # Secrets ထဲက Username နဲ့ Key ကို သုံးပြီး kaggle.json ဆောက်မယ်
           echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
           
-          # kaggle_brain folder ထဲက ကုဒ်တွေကို Kaggle ဆီ ဇွတ်တွန်းပို့မယ်
+          # kaggle_brain folder ထဲမှာ metadata.json နဲ့ brain.py ရှိဖို့လိုတယ်နော်
           kaggle kernels push -p ./kaggle_brain
+          
