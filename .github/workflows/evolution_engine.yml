@@ -1,34 +1,38 @@
-name: Natural Order Evolution Engine
+name: Evolution Engine
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # ၃၀ မိနစ်တစ်ခါ ဇွတ်နိုးမယ်
-  workflow_dispatch:      # မင်းဘာသာမင်း လက်နဲ့ ဇွတ်နှိပ်လို့ရအောင် (အခုဒါလိုနေတာ!)
+    - cron: '*/30 * * * *' # ၃၀ မိနစ်တစ်ခါ ဇွတ်ပွင့်မယ်
+  workflow_dispatch: # Manual နှိုးလို့ရအောင်
 
 jobs:
-  run_evolution:
+  evolve:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }} # Push လုပ်ဖို့ Token လိုတယ်
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python_version: '3.9'
 
       - name: Install Dependencies
-        run: pip install psycopg2-binary requests
+        run: |
+          pip install psycopg2-binary requests
 
-      - name: Execute Evolve Script
+      - name: Run Evolution
         env:
           DB_URL: ${{ secrets.DB_URL }}
         run: python evolve.py
-        - name: Commit and Push Brain History
-      run: |
-        git config --global user.name "Neural-Core"
-        git config --global user.email "ai@evolution.com"
-        git add brain_history.txt
-        git commit -m "Memory Sync: Gen Auto-Update" || exit 0
-        git push
-        
+
+      - name: Commit and Push Brain History
+        run: |
+          git config --global user.name "Neural-Core"
+          git config --global user.email "ai@evolution.com"
+          git add brain_history.txt || echo "No file to add"
+          git commit -m "Memory Sync: Gen Auto-Update" || echo "Nothing to commit"
+          git push
+          
