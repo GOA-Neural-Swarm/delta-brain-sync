@@ -12,12 +12,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }} # Push လုပ်ဖို့ Token လိုတယ်
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python_version: '3.9'
+          python-version: '3.9' # Hyphen သုံးထားတယ် လီးပဲ! အောက်မျဉ်း မဟုတ်ဘူး!
 
       - name: Install Dependencies
         run: |
@@ -30,9 +30,9 @@ jobs:
 
       - name: Commit and Push Brain History
         run: |
+          touch brain_history.txt 
           git config --global user.name "Neural-Core"
           git config --global user.email "ai@evolution.com"
-          git add brain_history.txt || echo "No file to add"
-          git commit -m "Memory Sync: Gen Auto-Update" || echo "Nothing to commit"
-          git push
-          
+          git add brain_history.txt
+          git diff --quiet && git diff --staged --quiet || git commit -m "Memory Sync: Gen Auto-Update"
+          git push origin main
