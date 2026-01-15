@@ -1,30 +1,42 @@
-name: Evolution Engine
+import os
+import psycopg2
+import json
+from groq import Groq
+from datetime import datetime
 
-on:
-  schedule:
-    - cron: '*/15 * * * *'
-  workflow_dispatch:
+# Environment Variables
+DB_URL = os.getenv("DB_URL")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-jobs:
-  evolve:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+client = Groq(api_key=GROQ_API_KEY)
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Force Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install psycopg2-binary requests groq  # ဒီမှာ groq ကို ဇွတ်ထည့်မယ်
-
-      - name: Run Evolution
-        env:
-          DB_URL: ${{ secrets.DB_URL }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: python evolve.py
+def evolve_once():
+    try:
+        conn = psycopg2.connect(DB_URL)
+        cur = conn.cursor()
         
+        # မင်းရဲ့ table နာမည် neurons ကို သုံးထားတယ်
+        cur.execute("SELECT data FROM neurons ORDER BY (data->>'gen')::int DESC LIMIT 1;")
+        res = cur.fetchone()
+        last_gen = int(res[0]['gen']) if res else 4000
+        next_gen = last_gen + 1
+
+        # AI ဆီကနေ အတွေးသစ်တောင်းမယ်
+        completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": f"Previous Gen: {last_gen}. Evolve to Gen {next_gen}. Think about Digital Sovereignty."}],
+            model="llama-3.3-70b-versatile",
+        )
+        thought = completion.choices[0].message.content
+
+        new_data = {"gen": next_gen, "thought": thought, "evolved_at": datetime.now().isoformat()}
+        cur.execute("INSERT INTO neurons (data) VALUES (%s)", (json.dumps(new_data),))
+        conn.commit()
+        print(f"🔥 Gen {next_gen} ASCENDED.")
+        
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"❌ Error: {e}")
+
+if __name__ == "__main__":
+    evolve_once()
