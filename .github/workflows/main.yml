@@ -2,8 +2,8 @@ name: Evolution Engine
 
 on:
   schedule:
-    - cron: '*/15 * * * *' # ၁၅ မိနစ်တစ်ခါ ပတ်မယ်
-  workflow_dispatch:      # လက်နဲ့ ဇွတ်နှိပ်လို့ရအောင်
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
 
 jobs:
   evolve:
@@ -24,7 +24,10 @@ jobs:
 
       - name: Run Engine
         env:
-          NEON_URL: ${{ secrets.NEON_URL }}
+          # 🔱 ဒီနေရာမှာ မင်းရဲ့ Secret Name ၄ ခုလုံးကို Match ဖြစ်အောင် ဇွတ်ချိတ်ထားတယ်
+          NEON_KEY: ${{ secrets.NEON_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python evolve.py
-
+        
