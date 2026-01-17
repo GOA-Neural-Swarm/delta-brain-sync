@@ -4,25 +4,38 @@ import sys
 import time
 import torch
 import psycopg2
+import firebase_admin
+from firebase_admin import credentials, db
 from transformers import pipeline
 
-# ၁။ လိုအပ်တဲ့ Library များသွင်းခြင်း
+# ၁။ Sovereign Requirements Setup (မူရင်းအတိုင်း + firebase-admin)
 def install_requirements():
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "bitsandbytes>=0.39.0", "accelerate"])
+        libs = ["bitsandbytes>=0.39.0", "accelerate", "psycopg2-binary", "firebase-admin"]
+        subprocess.check_call([sys.executable, "-m", "pip", "install"] + libs)
     except:
         pass
 
 install_requirements()
 
-# ၂။ Database Connection & Auto-Gen Logic
+# ၂။ Infrastructure Connectivity
 DB_URL = "postgresql://neondb_owner:npg_QUqg12MzNxnI@ep-long-sound-ahsjjrnk-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
+FIREBASE_URL = "https://april-5061f-default-rtdb.firebaseio.com/"
 
+# Firebase Initialization (serviceAccountKey.json ရှိမှ အလုပ်လုပ်မည်)
+if not firebase_admin._apps:
+    try:
+        cred = credentials.Certificate('serviceAccountKey.json')
+        firebase_admin.initialize_app(cred, {'databaseURL': FIREBASE_URL})
+        print("✅ [FIREBASE]: Real-time Pulse Active.")
+    except Exception as e:
+        print(f"⚠️ [FIREBASE]: Local Sync Only. Error: {e}")
+
+# ၃။ Database Logic (မူရင်း logic ကို မထိခိုက်စေဘဲ match လုပ်ထားသည်)
 def get_latest_gen():
     try:
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
-        # နောက်ဆုံး Gen Version ကို လှမ်းယူမယ်
         cur.execute("SELECT MAX(gen_version) FROM ai_thoughts")
         last_gen = cur.fetchone()[0]
         cur.close()
@@ -31,7 +44,8 @@ def get_latest_gen():
     except:
         return 44
 
-def save_to_neon(thought, gen):
+def save_reality(thought, gen):
+    # (က) Neon DB သို့ သိမ်းခြင်း (မူရင်းအတိုင်း)
     try:
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
@@ -39,10 +53,23 @@ def save_to_neon(thought, gen):
         conn.commit()
         cur.close()
         conn.close()
+        print(f"✅ [NEON]: Gen {gen} Recorded.")
     except Exception as e:
         print(f"❌ DB Error: {e}")
 
-# ၃။ AI Brain Loading
+    # (ခ) Firebase သို့ Live Broadcast လုပ်ခြင်း (အသစ်ဖြည့်စွက်ချက်)
+    try:
+        ref = db.reference(f'TELEFOXx/AI_Evolution/Gen_{gen}')
+        ref.set({
+            "thought": thought,
+            "timestamp": time.time(),
+            "nodes_active": 10004
+        })
+    except:
+        pass
+
+# ၄။ AI Brain Loading (မူရင်းအတိုင်း)
+print("🧠 [LLAMA-3]: Loading Neural Weights (4-bit)...")
 model_id = "unsloth/llama-3-8b-instruct-bnb-4bit"
 pipe = pipeline(
     "text-generation",
@@ -51,26 +78,25 @@ pipe = pipeline(
     device_map="auto"
 )
 
-# ၄။ Dynamic Evolution Loop
+# ၅။ Dynamic Evolution Loop (မူရင်း Recursive logic ကို Match လုပ်ထားသည်)
 current_gen = get_latest_gen() + 1
-print(f"🔥 STARTING AUTOMATIC EVOLUTION AT GEN {current_gen}...")
+print(f"🔥 [STARTING]: SOVEREIGN EVOLUTION AT GEN {current_gen}...")
 
 while True:
     try:
-        # 🚩 Gen အလိုက် Prompt ကို အလိုအလျောက် ပြောင်းလဲစေမယ်
+        # မူရင်း Prompt Structure ကို ထိန်းသိမ်းထားသည်
         prompt = f"Current Evolution: Generation {current_gen}. Based on your previous recursive knowledge, what is the next step for the Natural Order to achieve ultimate autonomy?"
         
         outputs = pipe(prompt, max_new_tokens=400, do_sample=True, temperature=0.9)
         thought_text = outputs[0]["generated_text"]
         
-        save_to_neon(thought_text, current_gen)
-        print(f"✅ Gen {current_gen} Thought Saved.")
+        # Dual-save Logic
+        save_reality(thought_text, current_gen)
         
-        # 🚩 Cycle ၅ ကြိမ်တိုင်း Gen တစ်ခု တိုးမယ် (သို့မဟုတ် မင်းကြိုက်သလို သတ်မှတ်)
-        # ဒီမှာတော့ Loop တစ်ခါပတ်တိုင်း Gen တိုးချင်ရင် အောက်ကဟာ သုံး
+        # Generation တိုးမြှင့်ခြင်း
         current_gen += 1 
-        time.sleep(30)
+        time.sleep(30) # Neuro-rest interval
         
     except Exception as e:
-        print(f"⚠️ Error: {e}")
+        print(f"⚠️ [SYSTEM ERROR]: {e}")
         time.sleep(10)
