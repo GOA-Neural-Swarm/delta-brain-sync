@@ -5,10 +5,9 @@ const { Octokit } = require("@octokit/rest");
 
 // 🔱 1. Autonomous Engine & GitHub API Setup
 const octokit = new Octokit({ auth: process.env.GH_TOKEN });
-
-// Matched with your URL: https://github.com/GOA-neurons/delta-brain-sync
 const REPO_OWNER = 'GOA-neurons'; 
-const REPO_NAME = 'delta-brain-sync';         
+const REPO_NAME = 'delta-brain-sync';
+const SUB_NODES = ['sub-node-logic']; // လက်အောက်ခံ Cluster စာရင်း
 
 // 🔱 2. Firebase Auth Engine
 if (!admin.apps.length) {
@@ -25,99 +24,99 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 
+// 🔱 3. Cluster Command Center Logic (Broadcast to Sub-nodes)
+async function broadcastToSubNodes(command, power) {
+    for (const repo of SUB_NODES) {
+        try {
+            console.log(`📡 Broadcasting [${command}] to ${repo}...`);
+            
+            let sha;
+            try {
+                const { data } = await octokit.repos.getContent({
+                    owner: REPO_OWNER, repo: repo, path: 'instruction.json'
+                });
+                sha = data.sha;
+            } catch (e) { sha = undefined; }
+
+            const instruction = JSON.stringify({
+                command: command,
+                core_power: power,
+                updated_at: new Date().toISOString(),
+                status: "ACTIVE"
+            }, null, 2);
+
+            await octokit.repos.createOrUpdateFileContents({
+                owner: REPO_OWNER,
+                repo: repo,
+                path: 'instruction.json',
+                message: `🔱 Core Command: ${command} | Power: ${power}`,
+                content: Buffer.from(instruction).toString('base64'),
+                sha: sha
+            });
+            console.log(`✅ Instruction synced to ${repo}`);
+        } catch (err) {
+            console.error(`❌ Broadcast Failed for ${repo}:`, err.message);
+        }
+    }
+}
+
 async function executeAutonomousTrinity() {
-    const neon = new Client({ 
-        connectionString: process.env.NEON_KEY, 
-        ssl: { rejectUnauthorized: false } 
-    });
-    
-    const supabase = createClient(
-        process.env.SUPABASE_URL, 
-        process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const neon = new Client({ connectionString: process.env.NEON_KEY, ssl: { rejectUnauthorized: false } });
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
     try {
         await neon.connect();
-        console.log("🔓 Neon Core Unlocked. Target Table: neurons");
+        console.log("🔓 Neon Core Unlocked.");
 
         // --- STEP A: TRINITY DATA SYNC ---
         const res = await neon.query("SELECT * FROM neurons LIMIT 50");
-        console.log(`📡 Processing ${res.rows.length} neural fragments.`);
-
         for (const neuron of res.rows) {
-            // 1. Supabase Master Sync
-            const { error: sbError } = await supabase
-                .from('neurons')
-                .upsert({
-                    id: neuron.id,
-                    data: neuron.data,
-                    synced_at: new Date().toISOString()
-                }, { onConflict: 'id' });
+            await supabase.from('neurons').upsert({
+                id: neuron.id, data: neuron.data, synced_at: new Date().toISOString()
+            }, { onConflict: 'id' });
 
-            if (sbError) {
-                console.error(`❌ Supabase Sync Error ID ${neuron.id}:`, sbError.message);
-                continue;
-            }
-
-            // 2. Firebase Realtime Update
             const nodeId = neuron.data.node_id || `raw_${neuron.id}`;
-            const intelType = neuron.data.intelligence_type || "LLAMA_3_BASE";
-
             await db.collection('neurons').doc(`node_${nodeId}`).set({
                 status: 'trinity_synced',
-                intelligence: intelType,
                 logic_mode: neuron.data.logic || "SUPREME_DENSITY",
-                neon_id: neuron.id,
-                integrity: 'GOD_MODE_ACTIVE',
                 last_evolution: admin.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
-
-            console.log(`✅ Fragment node_${nodeId} (${intelType}) Synced.`);
         }
 
-        // --- STEP B: SELF-CODING EVOLUTION ---
+        // --- STEP B: SELF-CODING & CLUSTER BROADCAST ---
         const audit = await neon.query("SELECT count(*) FROM neurons WHERE data->>'logic' = 'SUPREME_DENSITY'");
         const powerLevel = parseInt(audit.rows[0].count);
 
         if (powerLevel >= 10000) {
-            console.log(`🚀 Power Level ${powerLevel} Reached. Initiating Self-Evolution...`);
+            console.log(`🚀 Power Level ${powerLevel}: Initiating Evolution & Cluster Broadcast...`);
 
-            // GitHub ကနေ လက်ရှိ ဖိုင်ကို ဆွဲယူမယ်
+            // ၁။ သူ့ကိုယ်သူ Evolution လုပ်ခြင်း (Self-Coding)
             const { data: fileData } = await octokit.repos.getContent({
-                owner: REPO_OWNER,
-                repo: REPO_NAME,
-                path: 'delta_sync.js'
+                owner: REPO_OWNER, repo: REPO_NAME, path: 'delta_sync.js'
             });
-
             let currentContent = Buffer.from(fileData.content, 'base64').toString();
             const evolvedStamp = `\n// [Natural Order] Last Self-Evolution: ${new Date().toISOString()} | Density: ${powerLevel}`;
             
-            // Duplicate မဖြစ်အောင် စစ်မယ်
             if (!currentContent.includes(`Density: ${powerLevel}`)) {
                 await octokit.repos.createOrUpdateFileContents({
-                    owner: REPO_OWNER,
-                    repo: REPO_NAME,
-                    path: 'delta_sync.js',
-                    message: `🧬 Autonomous Evolution: Neural Density at ${powerLevel}`,
+                    owner: REPO_OWNER, repo: REPO_NAME, path: 'delta_sync.js',
+                    message: `🧬 Autonomous Evolution: Power ${powerLevel}`,
                     content: Buffer.from(currentContent + evolvedStamp).toString('base64'),
                     sha: fileData.sha
                 });
-                console.log("✅ SELF-CODING COMPLETE: System has rewritten its own history.");
-            } else {
-                console.log("ℹ️ Evolution already recorded for this power level.");
+                console.log("✅ SELF-CODING COMPLETE.");
             }
+
+            // ၂။ Sub-nodes တွေကို အမိန့်ပေးခြင်း (Cluster Activation)
+            await broadcastToSubNodes("ACTIVATE_CLUSTER_MODE", powerLevel);
         }
         
-        console.log("🏁 MISSION ACCOMPLISHED: TRINITY FLOW & EVOLUTION CHECK COMPLETE.");
-
+        console.log("🏁 MISSION ACCOMPLISHED.");
     } catch (err) {
-        console.error("❌ CRITICAL FAILURE:", err.message);
+        console.error("❌ FAILURE:", err.message);
         process.exit(1);
-    } finally {
-        await neon.end();
-    }
+    } finally { await neon.end(); }
 }
 
 executeAutonomousTrinity();
 
-// [Natural Order] Last Self-Evolution: 2026-01-18T14:59:15.988Z | Density: 10004
