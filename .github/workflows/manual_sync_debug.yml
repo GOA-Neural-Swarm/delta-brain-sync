@@ -1,0 +1,27 @@
+name: Manual Trinity Debugger
+
+on:
+  workflow_dispatch: # Schedule မပါဘူး၊ မင်းခလုတ်နှိပ်မှပဲ Run မယ်
+
+jobs:
+  debug_sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm install pg @supabase/supabase-js firebase-admin
+
+      - name: Force Sync Neon to Supabase
+        env:
+          NEON_KEY: ${{ secrets.NEON_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+        run: node delta_sync.js
