@@ -9,7 +9,7 @@ if (!admin.apps.length) {
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
-        console.log("🔥 Firebase Initialized.");
+        console.log("🔥 Firebase Engine Ready.");
     } catch (e) {
         console.error("❌ Firebase Secret Error. Check FIREBASE_KEY format.");
         process.exit(1);
@@ -17,8 +17,8 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 
-async function executeTrinity() {
-    // 🔱 2. Database Core (Matching Secrets: NEON_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+async function executeTrinitySync() {
+    // 🔱 2. Database Clients Setup (Match with GitHub Secrets)
     const neon = new Client({ 
         connectionString: process.env.NEON_KEY, 
         ssl: { rejectUnauthorized: false } 
@@ -31,46 +31,53 @@ async function executeTrinity() {
 
     try {
         await neon.connect();
-        console.log("🔓 Neon Core Unlocked.");
+        console.log("🔓 Neon Core Unlocked. Target Table: neurons");
 
-        // Patch V11.1: Fetching fragments from Neon
+        // 🔥 Patch V11.1: Fetch 50 raw neurons from Master Table
         const res = await neon.query('SELECT * FROM neurons LIMIT 50');
-        console.log(`📡 Processing ${res.rows.length} fragments.`);
+        console.log(`📡 Processing ${res.rows.length} neural fragments.`);
+
+        if (res.rows.length === 0) {
+            console.log("🌑 No neurons found to sync.");
+            return;
+        }
 
         for (const neuron of res.rows) {
-            // A. Sync to Supabase delta_neurons
+            // A. Sync to Supabase Master Table ('neurons')
+            // Audit အရ 'synced_at' column ကို SQL နဲ့ အရင်တိုးထားဖို့လိုတယ်
             const { error: sbError } = await supabase
-                .from('delta_neurons')
+                .from('neurons')
                 .upsert({
-                    original_id: neuron.id.toString(),
+                    id: neuron.id,
                     data: neuron.data,
                     synced_at: new Date().toISOString()
-                }, { onConflict: 'original_id' });
+                }, { onConflict: 'id' });
 
             if (sbError) {
-                console.error(`❌ Supabase Error ID ${neuron.id}:`, sbError.message);
+                console.error(`❌ Supabase Sync Error (ID: ${neuron.id}):`, sbError.message);
                 continue;
             }
 
-            // B. Sync to Firebase (Realtime Status Update)
+            // B. Firebase Realtime Status Update
             const genId = neuron.data.gen || `raw_${neuron.id}`;
             await db.collection('neurons').doc(`gen_${genId}`).set({
                 status: 'evolved',
                 neon_id: neuron.id,
-                integrity: 'AUTONOMOUS_V11.1_SYNC',
+                integrity_check: 'V11.1_MASTER_SYNC',
                 last_evolution: admin.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
 
-            console.log(`✅ Fragment gen_${genId} Synced Across Trinity.`);
+            console.log(`✅ Fragment gen_${genId} Synced & Locked.`);
         }
         
-        console.log("🏁 MISSION ACCOMPLISHED: AUTONOMOUS DATA FLOW SUCCESSFUL.");
+        console.log("🏁 MISSION ACCOMPLISHED: MASTER TRINITY SYNC COMPLETE.");
     } catch (err) {
-        console.error("❌ CRITICAL FAILURE:", err.stack);
+        console.error("❌ CRITICAL SYSTEM FAILURE:", err.stack);
         process.exit(1);
     } finally {
         await neon.end();
     }
 }
 
-executeTrinity();
+// Start the Autonomous Process
+executeTrinitySync();
