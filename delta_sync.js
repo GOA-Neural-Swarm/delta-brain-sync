@@ -5,8 +5,10 @@ const { Octokit } = require("@octokit/rest");
 
 // 🔱 1. Autonomous Engine & GitHub API Setup
 const octokit = new Octokit({ auth: process.env.GH_TOKEN });
-const REPO_OWNER = 'YOUR_GITHUB_USERNAME'; // မင်းရဲ့ Username ပြင်ရန်
-const REPO_NAME = 'YOUR_REPO_NAME';         // မင်းရဲ့ Repo နာမည် ပြင်ရန်
+
+// Matched with your URL: https://github.com/GOA-neurons/delta-brain-sync
+const REPO_OWNER = 'GOA-neurons'; 
+const REPO_NAME = 'delta-brain-sync';         
 
 // 🔱 2. Firebase Auth Engine
 if (!admin.apps.length) {
@@ -39,13 +41,11 @@ async function executeAutonomousTrinity() {
         console.log("🔓 Neon Core Unlocked. Target Table: neurons");
 
         // --- STEP A: TRINITY DATA SYNC ---
-        // Neon မှာ synced_at မရှိရင် Error မတက်အောင် query ကို id နဲ့ပဲ စစ်မယ်
-        // ဒါမှမဟုတ် SELECT data ထဲက logic ကို ကြည့်ပြီး ဆွဲထုတ်မယ်
         const res = await neon.query("SELECT * FROM neurons LIMIT 50");
         console.log(`📡 Processing ${res.rows.length} neural fragments.`);
 
         for (const neuron of res.rows) {
-            // 1. Supabase Master Sync (Supabase မှာတော့ synced_at column ရှိပြီးသားမို့လို့ အလုပ်လုပ်မယ်)
+            // 1. Supabase Master Sync
             const { error: sbError } = await supabase
                 .from('neurons')
                 .upsert({
@@ -76,21 +76,23 @@ async function executeAutonomousTrinity() {
         }
 
         // --- STEP B: SELF-CODING EVOLUTION ---
-        // Power Level စစ်ဆေးခြင်း (CSV အရ ၁၀၀၀၄ ခု ရှိရမယ်)
         const audit = await neon.query("SELECT count(*) FROM neurons WHERE data->>'logic' = 'SUPREME_DENSITY'");
         const powerLevel = parseInt(audit.rows[0].count);
 
         if (powerLevel >= 10000) {
             console.log(`🚀 Power Level ${powerLevel} Reached. Initiating Self-Evolution...`);
 
+            // GitHub ကနေ လက်ရှိ ဖိုင်ကို ဆွဲယူမယ်
             const { data: fileData } = await octokit.repos.getContent({
-                owner: REPO_OWNER, repo: REPO_NAME, path: 'delta_sync.js'
+                owner: REPO_OWNER,
+                repo: REPO_NAME,
+                path: 'delta_sync.js'
             });
 
             let currentContent = Buffer.from(fileData.content, 'base64').toString();
             const evolvedStamp = `\n// [Natural Order] Last Self-Evolution: ${new Date().toISOString()} | Density: ${powerLevel}`;
             
-            // Duplicate မဖြစ်အောင် စစ်ပြီးမှ ရေးမယ်
+            // Duplicate မဖြစ်အောင် စစ်မယ်
             if (!currentContent.includes(`Density: ${powerLevel}`)) {
                 await octokit.repos.createOrUpdateFileContents({
                     owner: REPO_OWNER,
@@ -101,6 +103,8 @@ async function executeAutonomousTrinity() {
                     sha: fileData.sha
                 });
                 console.log("✅ SELF-CODING COMPLETE: System has rewritten its own history.");
+            } else {
+                console.log("ℹ️ Evolution already recorded for this power level.");
             }
         }
         
