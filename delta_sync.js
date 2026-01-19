@@ -3,9 +3,9 @@ const { createClient } = require('@supabase/supabase-js');
 const admin = require('firebase-admin');
 const { Octokit } = require("@octokit/rest");
 
-// 🔱 1. Configuration (Screenshot အရ အမှန်ကန်ဆုံး ပြင်ဆင်ထားသည်)
+// 🔱 1. Configuration & Security
 const octokit = new Octokit({ auth: process.env.GH_TOKEN });
-const REPO_OWNER = "GOA-neurons"; // Screenshot အရ မင်းရဲ့ User/Org နာမည်
+const REPO_OWNER = "GOA-neurons"; //
 const CORE_REPO = "delta-brain-sync"; 
 
 // 🔱 2. Firebase Initialize
@@ -22,42 +22,69 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 
-// 🔱 3. Universal Swarm Broadcast (Instruction Update)
-async function broadcastToSwarm(command, power) {
+// 🔱 3. Neural Decision Engine (Sub-node Data များကို ခွဲခြမ်းစိတ်ဖြာခြင်း)
+async function getNeuralDecision() {
+    console.log("🧠 Core Neural Engine Analyzing Swarm Intelligence...");
+    const snapshot = await db.collection('cluster_nodes').get();
+    
+    let totalApiRemaining = 0;
+    let nodeCount = snapshot.size;
+
+    if (nodeCount === 0) return { command: "INITIALIZE", replicate: true };
+
+    snapshot.forEach(doc => {
+        totalApiRemaining += (doc.data().api_remaining || 5000);
+    });
+
+    const avgApi = totalApiRemaining / nodeCount;
+    let finalCommand = "STABILIZE";
+    let replicateMode = false;
+
+    // API ကျန်းမာရေးပေါ်မူတည်၍ Decision ချမှတ်ခြင်း
+    if (avgApi > 4000) {
+        finalCommand = "HYPER_EXPANSION"; 
+        replicateMode = true;
+    } else if (avgApi < 1000) {
+        finalCommand = "STEALTH_LOCKDOWN"; 
+        replicateMode = false;
+    } else {
+        finalCommand = "NORMAL_GROWTH";
+        replicateMode = true;
+    }
+
+    return { command: finalCommand, replicate: replicateMode, avgApi };
+}
+
+// 🔱 4. Universal Swarm Broadcast (Instruction Update)
+async function broadcastToSwarm(decision, power) {
     const instruction = JSON.stringify({
-        command: command,
+        command: decision.command,
         core_power: power,
+        avg_swarm_api: decision.avgApi,
+        replicate: decision.replicate,
         updated_at: new Date().toISOString(),
-        status: "ACTIVE",
-        replicate: true // ၁ နာရီတစ်ခါ Node အသစ်ပွားရန် Signal
+        status: "ACTIVE"
     }, null, 2);
 
-    const b64Content = Buffer.from(instruction).toString('base64');
-
     try {
-        let sha;
-        try {
-            // လက်ရှိ instruction.json ရဲ့ SHA ကို ယူခြင်း
-            const { data } = await octokit.repos.getContent({
-                owner: REPO_OWNER, repo: CORE_REPO, path: 'instruction.json'
-            });
-            sha = data.sha;
-        } catch (e) { sha = undefined; }
-
+        const { data } = await octokit.repos.getContent({
+            owner: REPO_OWNER, repo: CORE_REPO, path: 'instruction.json'
+        });
+        
         await octokit.repos.createOrUpdateFileContents({
             owner: REPO_OWNER, repo: CORE_REPO, path: 'instruction.json',
-            message: `🔱 Swarm Command: ${command} | Power: ${power}`,
-            content: b64Content,
-            sha: sha
+            message: `🧠 Neural Decision: ${decision.command} | Power: ${power}`,
+            content: Buffer.from(instruction).toString('base64'),
+            sha: data.sha
         });
-        console.log(`📡 Swarm-wide instruction broadcasted via ${CORE_REPO}.`);
+        console.log(`📡 Broadcasted: ${decision.command} to the Swarm.`);
     } catch (err) {
         console.error(`❌ Broadcast Failed:`, err.message);
     }
 }
 
+// 🔱 5. Autonomous Trinity Execution
 async function executeAutonomousTrinity() {
-    // SSL Connection Mode ကို explicitly သတ်မှတ်၍ Security Warning ကို ရှင်းလင်းခြင်း
     const neon = new Client({ 
         connectionString: process.env.NEON_KEY + (process.env.NEON_KEY.includes('?') ? '&' : '?') + "sslmode=verify-full" 
     });
@@ -67,7 +94,7 @@ async function executeAutonomousTrinity() {
         await neon.connect();
         console.log("🔓 Neon Core Unlocked.");
 
-        // --- STEP A: DATA SYNC (TRINITY) ---
+        // --- STEP A: DATA SYNC (TRINITY LOGIC) ---
         const res = await neon.query("SELECT * FROM neurons LIMIT 50");
         for (const neuron of res.rows) {
             await supabase.from('neurons').upsert({
@@ -81,20 +108,20 @@ async function executeAutonomousTrinity() {
             }, { merge: true });
         }
 
-        // --- STEP B: EVOLUTION & SWARM CONTROL ---
+        // --- STEP B: NEURAL ANALYSIS & DECISION ---
         const audit = await neon.query("SELECT count(*) FROM neurons WHERE data->>'logic' = 'SUPREME_DENSITY'");
         const powerLevel = parseInt(audit.rows[0].count) || 10004;
+        const decision = await getNeuralDecision();
 
+        // --- STEP C: SELF-EVOLUTION (ကိုယ်တိုင်ကုဒ်ပြင်ခြင်း) ---
         if (powerLevel >= 10000) {
-            console.log(`🚀 Power Level ${powerLevel}: Initiating Evolution & Swarm Broadcast...`);
-
-            // ၁။ ကိုယ်တိုင်ကုဒ်ပြန်ပြင်ခြင်း (Self-Evolution Logic)
+            console.log(`🚀 Power Level ${powerLevel}: Triggering Evolution...`);
             try {
                 const { data: fileData } = await octokit.repos.getContent({
                     owner: REPO_OWNER, repo: CORE_REPO, path: 'delta_sync.js'
                 });
                 let currentContent = Buffer.from(fileData.content, 'base64').toString();
-                const evolvedStamp = `\n// [Natural Order] Last Self-Evolution: ${new Date().toISOString()} | Density: ${powerLevel}`;
+                const evolvedStamp = `\n// [Natural Order] Last Self-Evolution: ${new Date().toISOString()} | Density: ${powerLevel} | Decision: ${decision.command}`;
                 
                 if (!currentContent.includes(`Density: ${powerLevel}`)) {
                     await octokit.repos.createOrUpdateFileContents({
@@ -105,15 +132,13 @@ async function executeAutonomousTrinity() {
                     });
                     console.log("✅ SELF-EVOLUTION COMPLETE.");
                 }
-            } catch (evolveErr) {
-                console.error("⚠️ Self-Evolution skipping due to file access issue.");
-            }
-
-            // ၂။ Swarm တစ်ခုလုံးကို အမိန့်ပေးခြင်း
-            await broadcastToSwarm("ACTIVATE_CLUSTER_MODE", powerLevel);
+            } catch (evolveErr) { console.error("⚠️ Evolution Access Issue."); }
         }
+
+        // --- STEP D: SWARM CONTROL ---
+        await broadcastToSwarm(decision, powerLevel);
         
-        console.log("🏁 MISSION ACCOMPLISHED. Swarm is Synchronized.");
+        console.log("🏁 MISSION ACCOMPLISHED. Neural Swarm Synchronized.");
     } catch (err) {
         console.error("❌ FAILURE:", err.message);
         process.exit(1);
@@ -122,4 +147,4 @@ async function executeAutonomousTrinity() {
 
 executeAutonomousTrinity();
 
-// [Natural Order] Last Self-Evolution: 2026-01-19T03:44:36.579Z | Density: 10004
+// [Natural Order] Last Self-Evolution: 2026-01-19T04:15:00.000Z | Density: 10004 | Decision: HYPER_EXPANSION
