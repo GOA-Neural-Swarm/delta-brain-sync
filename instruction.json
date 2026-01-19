@@ -1,4 +1,7 @@
 {
-  "status": "ACTIVE",
-  "last_run": "2026-01-19T04:54:05.237Z"
+  "command": "HYPER_EXPANSION",
+  "core_power": 10004,
+  "avg_api": 4319,
+  "replicate": true,
+  "updated_at": "2026-01-19T04:57:59.528Z"
 }
