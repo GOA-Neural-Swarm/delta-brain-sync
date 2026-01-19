@@ -1,1 +1,4 @@
-{"error":{"message":"Invalid API Key","type":"invalid_request_error","code":"invalid_api_key"}}
+import json
+with open("evolution_logic.json", "w") as f:
+    json.dump({"status": "initialized", "version": 1.0}, f)
+print("✅ evolution_logic.json created.")
