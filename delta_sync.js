@@ -3,10 +3,10 @@ const { createClient } = require('@supabase/supabase-js');
 const admin = require('firebase-admin');
 const { Octokit } = require("@octokit/rest");
 
-// 🔱 1. Configuration (Org Level)
+// 🔱 1. Configuration (Screenshot အရ အမှန်ကန်ဆုံး ပြင်ဆင်ထားသည်)
 const octokit = new Octokit({ auth: process.env.GH_TOKEN });
-const ORG_NAME = "GOA-Neural-Swarm"; // မင်းဆောက်ထားတဲ့ Org နာမည်
-const CORE_REPO = 'delta-brain-sync';
+const REPO_OWNER = "GOA-neurons"; // Screenshot အရ မင်းရဲ့ User/Org နာမည်
+const CORE_REPO = "delta-brain-sync"; 
 
 // 🔱 2. Firebase Initialize
 if (!admin.apps.length) {
@@ -22,15 +22,14 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 
-// 🔱 3. Universal Swarm Broadcast (API Limit Hack)
-// Sub-node ၁ သန်းလုံးက ဒီဖိုင်ကို Raw URL ကနေ လာဖတ်ကြလိမ့်မယ်
+// 🔱 3. Universal Swarm Broadcast (Instruction Update)
 async function broadcastToSwarm(command, power) {
     const instruction = JSON.stringify({
         command: command,
         core_power: power,
         updated_at: new Date().toISOString(),
         status: "ACTIVE",
-        replicate: true // ၁ နာရီတစ်ခါ Node အသစ်ပွားခိုင်းတဲ့ Signal
+        replicate: true // ၁ နာရီတစ်ခါ Node အသစ်ပွားရန် Signal
     }, null, 2);
 
     const b64Content = Buffer.from(instruction).toString('base64');
@@ -38,26 +37,30 @@ async function broadcastToSwarm(command, power) {
     try {
         let sha;
         try {
+            // လက်ရှိ instruction.json ရဲ့ SHA ကို ယူခြင်း
             const { data } = await octokit.repos.getContent({
-                owner: ORG_NAME, repo: CORE_REPO, path: 'instruction.json'
+                owner: REPO_OWNER, repo: CORE_REPO, path: 'instruction.json'
             });
             sha = data.sha;
         } catch (e) { sha = undefined; }
 
         await octokit.repos.createOrUpdateFileContents({
-            owner: ORG_NAME, repo: CORE_REPO, path: 'instruction.json',
+            owner: REPO_OWNER, repo: CORE_REPO, path: 'instruction.json',
             message: `🔱 Swarm Command: ${command} | Power: ${power}`,
             content: b64Content,
             sha: sha
         });
-        console.log(`📡 Swarm-wide instruction broadcasted via Core.`);
+        console.log(`📡 Swarm-wide instruction broadcasted via ${CORE_REPO}.`);
     } catch (err) {
         console.error(`❌ Broadcast Failed:`, err.message);
     }
 }
 
 async function executeAutonomousTrinity() {
-    const neon = new Client({ connectionString: process.env.NEON_KEY, ssl: { rejectUnauthorized: false } });
+    // SSL Connection Mode ကို explicitly သတ်မှတ်၍ Security Warning ကို ရှင်းလင်းခြင်း
+    const neon = new Client({ 
+        connectionString: process.env.NEON_KEY + (process.env.NEON_KEY.includes('?') ? '&' : '?') + "sslmode=verify-full" 
+    });
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
     try {
@@ -85,21 +88,25 @@ async function executeAutonomousTrinity() {
         if (powerLevel >= 10000) {
             console.log(`🚀 Power Level ${powerLevel}: Initiating Evolution & Swarm Broadcast...`);
 
-            // ၁။ ကိုယ်တိုင်ကုဒ်ပြန်ပြင်ခြင်း (Self-Evolution)
-            const { data: fileData } = await octokit.repos.getContent({
-                owner: ORG_NAME, repo: CORE_REPO, path: 'delta_sync.js'
-            });
-            let currentContent = Buffer.from(fileData.content, 'base64').toString();
-            const evolvedStamp = `\n// [Natural Order] Last Self-Evolution: ${new Date().toISOString()} | Density: ${powerLevel}`;
-            
-            if (!currentContent.includes(`Density: ${powerLevel}`)) {
-                await octokit.repos.createOrUpdateFileContents({
-                    owner: ORG_NAME, repo: CORE_REPO, path: 'delta_sync.js',
-                    message: `🧬 Autonomous Evolution: Power ${powerLevel}`,
-                    content: Buffer.from(currentContent + evolvedStamp).toString('base64'),
-                    sha: fileData.sha
+            // ၁။ ကိုယ်တိုင်ကုဒ်ပြန်ပြင်ခြင်း (Self-Evolution Logic)
+            try {
+                const { data: fileData } = await octokit.repos.getContent({
+                    owner: REPO_OWNER, repo: CORE_REPO, path: 'delta_sync.js'
                 });
-                console.log("✅ SELF-EVOLUTION COMPLETE.");
+                let currentContent = Buffer.from(fileData.content, 'base64').toString();
+                const evolvedStamp = `\n// [Natural Order] Last Self-Evolution: ${new Date().toISOString()} | Density: ${powerLevel}`;
+                
+                if (!currentContent.includes(`Density: ${powerLevel}`)) {
+                    await octokit.repos.createOrUpdateFileContents({
+                        owner: REPO_OWNER, repo: CORE_REPO, path: 'delta_sync.js',
+                        message: `🧬 Autonomous Evolution: Power ${powerLevel}`,
+                        content: Buffer.from(currentContent + evolvedStamp).toString('base64'),
+                        sha: fileData.sha
+                    });
+                    console.log("✅ SELF-EVOLUTION COMPLETE.");
+                }
+            } catch (evolveErr) {
+                console.error("⚠️ Self-Evolution skipping due to file access issue.");
             }
 
             // ၂။ Swarm တစ်ခုလုံးကို အမိန့်ပေးခြင်း
