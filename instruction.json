@@ -1,7 +1,8 @@
 {
-  "command": "ACTIVATE_CLUSTER_MODE",
+  "command": "HYPER_EXPANSION",
   "core_power": 10004,
-  "updated_at": "2026-01-19T03:58:46.605Z",
-  "status": "ACTIVE",
-  "replicate": true
+  "avg_swarm_api": 5000,
+  "replicate": true,
+  "updated_at": "2026-01-19T04:19:57.203Z",
+  "status": "ACTIVE"
 }
