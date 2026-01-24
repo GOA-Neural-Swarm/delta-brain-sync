@@ -1,0 +1,36 @@
+name: Sync to Hugging Face
+on:
+  push:
+    branches: [main] # Main branch ထဲ ကုဒ်ဝင်တာနဲ့ အလုပ်လုပ်မယ်
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: true # Large files ရှိရင်လည်း အိုကေအောင်
+
+      # ၁။ ကုဒ်တွေကို Hugging Face Space ဆီ အရင်ပို့မယ်
+      - name: Push Code to HF
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: git push --force https://TELEFOXX:$HF_TOKEN@huggingface.co/spaces/TELEFOXX/GOA main
+
+      # ၂။ Secrets တွေကို HF ရဲ့ Environment Variables ထဲ အလိုအလျောက် သွားထည့်ပေးမယ်
+      - name: Sync Secrets to HF
+        run: |
+          curl -X POST https://huggingface.co/api/spaces/TELEFOXX/GOA/variables \
+            -H "Authorization: Bearer ${{ secrets.HF_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "variables": [
+                {"key": "DATABASE_URL", "value": "${{ secrets.DATABASE_URL }}"},
+                {"key": "SUPABASE_URL", "value": "${{ secrets.SUPABASE_URL }}"},
+                {"key": "SUPABASE_KEY", "value": "${{ secrets.SUPABASE_KEY }}"},
+                {"key": "GROQ_API_KEY", "value": "${{ secrets.GROQ_API_KEY }}"},
+                {"key": "FIREBASE_CONFIG", "value": "${{ secrets.FIREBASE_CONFIG }}"}
+              ]
+            }'
+            
