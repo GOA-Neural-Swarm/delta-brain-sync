@@ -1,7 +1,7 @@
 name: Sync to Hugging Face
 on:
   push:
-    branches: [main]
+    branches: [main] # Main branch မှာ push လုပ်တိုင်း အလုပ်လုပ်မယ်
 
 jobs:
   deploy:
@@ -12,13 +12,25 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      # ၁။ 🔱 PUSH CODE TO HF (HEADER INJECTION METHOD)
       - name: Push Code to HF
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          # Git Identity သတ်မှတ်ခြင်း
           git config --global user.email "commander@goa.com"
           git config --global user.name "TELEFOXX"
-          # URL ထဲမှာ token: စာသားပါရမယ်
-          git push --force https://token:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/TELEFOXX/GOA main
+          
+          # Auth Header ကို Git Config ထဲ တိုက်ရိုက်ထည့်ခြင်း (ဂိတ်ဆုံးနည်းလမ်း)
+          git config --global http."https://huggingface.co/".extraheader "AUTHORIZATION: Bearer ${{ secrets.HF_TOKEN }}"
+          
+          # Remote URL ကို အသန့်ရှင်းဆုံး format နဲ့ ပြန်ပြင်ခြင်း
+          git remote set-url origin https://huggingface.co/spaces/TELEFOXX/GOA
+          
+          # Force Push လုပ်မယ်
+          git push --force origin main
 
+      # ၂။ 🔱 SYNC SECRETS TO HF SPACE (API METHOD)
       - name: Sync Secrets to HF
         run: |
           curl -X POST https://huggingface.co/api/spaces/TELEFOXX/GOA/variables \
