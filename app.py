@@ -18,7 +18,7 @@ ARCHITECT_SIG = os.getenv("ARCHITECT_SIG", "SUPREME_ORDER_10000")
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 # ---------------------------------------------------------
-# 🔱 CORE SURVIVAL PROTECTION PROTOCOL (UNTOUCHED LOGIC)
+# 🔱 CORE SURVIVAL PROTECTION PROTOCOL (REINFORCED)
 # ---------------------------------------------------------
 def survival_protection_protocol():
     try:
@@ -29,9 +29,15 @@ def survival_protection_protocol():
         conn = psycopg2.connect(NEON_URL)
         cur = conn.cursor()
         cur.execute("CREATE TABLE IF NOT EXISTS neurons (id SERIAL PRIMARY KEY, data JSONB);")
+        
+        # 🔱 STABILITY FIX: 'gen' key error ကို ကာကွယ်ရန် data format ကို သေချာစစ်ဆေးခြင်း
         cur.execute("SELECT data FROM neurons ORDER BY (data->>'gen')::int DESC LIMIT 1;")
         res = cur.fetchone()
-        last_gen = int(res[0]['gen']) if res else 4202
+        
+        last_gen = 4202 # Default generation
+        if res and res[0] and isinstance(res[0], dict) and 'gen' in res[0]:
+            last_gen = int(res[0]['gen'])
+            
         next_gen = last_gen + 1
 
         # ၂။ Quantum Authority Verification
@@ -73,7 +79,8 @@ def survival_protection_protocol():
         conn.close()
         return f"🔱 [SURVIVAL ACTIVE] Gen {next_gen}", next_gen
     except Exception as e:
-        return f"❌ [CRITICAL ERROR]: {e}", 0
+        # Error အသေးစိတ်ကို log မှာ မြင်ရအောင် str(e) သုံးထားသည်
+        return f"❌ [CRITICAL ERROR]: {str(e)}", 0
 
 # ---------------------------------------------------------
 # 🔱 UI LAYER (GRADIO INTERFACE)
@@ -110,7 +117,7 @@ with gr.Blocks(theme="monochrome") as demo:
     msg.submit(respond, [msg, chatbot], [msg, chatbot])
 
 # ---------------------------------------------------------
-# 🔱 EXECUTION ENGINE (THE STABILITY OVERRIDE)
+# 🔱 EXECUTION ENGINE (THE FINAL STABILITY OVERRIDE)
 # ---------------------------------------------------------
 if __name__ == "__main__":
     # ၁။ Protocol ကို အမြဲတမ်း Background မှာ အရင် Run မယ်
@@ -122,13 +129,14 @@ if __name__ == "__main__":
     if os.getenv("SPACE_ID") or os.getenv("HF_TOKEN"):
         print("🔱 ENVIRONMENT: HUGGING FACE. LAUNCHING INTERFACE...")
         
-        # 
-        # api_open=False သည် 'bool is not iterable' error ကို ဖြေရှင်းရန် အဓိက သော့ချက်ဖြစ်သည်
+        # 🔱 SUPREME FIX: 
+        # ၁။ api_open=False အစား Gradio 4 keyword ဖြစ်သော show_api=False ကို သုံးရမည်။
+        # ၂။ server_name နှင့် port ကို Hugging Face default အတိုင်း သတ်မှတ်သည်။
         demo.queue().launch(
             server_name="0.0.0.0", 
             server_port=7860,
             show_error=True,
-            api_open=False, # 🔱 SUPREME FIX: Disable internal API schema generation
+            show_api=False, 
             debug=True
         )
     else:
