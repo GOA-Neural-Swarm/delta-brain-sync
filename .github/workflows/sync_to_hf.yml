@@ -14,7 +14,10 @@ jobs:
 
       - name: Push Code to HF
         run: |
-          git push --force https://TELEFOXX:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/TELEFOXX/GOA main
+          git config --global user.email "commander@goa.com"
+          git config --global user.name "TELEFOXX"
+          # URL ထဲမှာ token: စာသားပါရမယ်
+          git push --force https://token:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/TELEFOXX/GOA main
 
       - name: Sync Secrets to HF
         run: |
