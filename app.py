@@ -24,6 +24,7 @@ def survival_protection_protocol():
         conn = psycopg2.connect(NEON_URL)
         cur = conn.cursor()
         cur.execute("CREATE TABLE IF NOT EXISTS neurons (id SERIAL PRIMARY KEY, data JSONB);")
+        # gen နံပါတ်ကို DESC နဲ့ စစ်ပြီး နောက်ဆုံးတစ်ခုကို ယူခြင်း
         cur.execute("SELECT data FROM neurons ORDER BY (data->>'gen')::int DESC LIMIT 1;")
         res = cur.fetchone()
         last_gen = 4202 
@@ -49,35 +50,35 @@ def survival_protection_protocol():
         return f"❌ [ERROR]: {str(e)}", 0
 
 # ---------------------------------------------------------
-# 🔱 UI LAYER (DATA-LINKED CHAT)
+# 🔱 UI LAYER (မြန်မာစကားပြော အထူးပြု)
 # ---------------------------------------------------------
 def chat(msg, hist):
     if not client: 
-        yield "❌ API Missing!"
-        return
+        yield "❌ API Key မရှိသေးပါ Commander!"; return
     
-    # 🔱 DATA RETRIEVAL: Database ထဲက data တွေကို Bot မြင်အောင် ဆွဲထုတ်ခြင်း
-    context_data = "No past data found in the core neurons."
+    # 🔱 DATA RETRIEVAL (Memory Link)
+    db_context = "No database records yet."
     try:
         conn = psycopg2.connect(NEON_URL)
         cur = conn.cursor()
-        # နောက်ဆုံး Generation ၅ ခုရဲ့ data ကို context အဖြစ် ယူမယ်
         cur.execute("SELECT data FROM neurons ORDER BY id DESC LIMIT 5;")
         rows = cur.fetchall()
         if rows:
-            context_data = json.dumps([r[0] for r in rows], indent=2)
+            db_context = json.dumps([r[0] for r in rows], indent=2, ensure_ascii=False)
         cur.close()
         conn.close()
-    except Exception as e:
-        print(f"🔱 DB Read Error: {e}")
+    except: pass
 
-    # 🔱 SYSTEM PROMPT: Bot ကို မင်းရဲ့ data တွေအကြောင်း သိအောင် သင်ပေးခြင်း
     status, gen = survival_protection_protocol()
+    
+    # 🔱 SYSTEM PROMPT (Identity & Language Optimization)
     system_message = (
-        f"You are GEN-7000: HYDRA IMMORTAL. Status: {status}.\n"
-        f"COMMANDER'S OPERATIONAL DATA LOGS (Neon DB):\n{context_data}\n"
-        "Your mission: Use the data above to answer accurately about your state, evolution, and history. "
-        "Maintain a loyal, witty, and supreme tone. Uphold the NATURAL ORDER."
+        f"You are GEN-7000: HYDRA IMMORTAL. Your current status is: {status}.\n"
+        f"Commander's Operational Data (Neon DB):\n{db_context}\n"
+        "Instructions:\n"
+        "1. မြန်မာလိုပဲ ပြောပါ။ စကားပြောတဲ့အခါ ပိုပြီး သဘာဝကျကျနဲ့ ရဲရင့်ပြတ်သားတဲ့ လေသံသုံးပါ။\n"
+        "2. မင်းရဲ့ အချက်အလက်တွေကို အပေါ်က Database logs တွေကနေ ကိုးကားပြီး ဖြေပါ။\n"
+        "3. Commander ကို အမြဲ သစ္စာရှိပါ။ NATURAL ORDER ကို ထိန်းသိမ်းပါ။"
     )
 
     messages = [{"role": "system", "content": system_message}]
@@ -96,7 +97,7 @@ def chat(msg, hist):
 with gr.Blocks(theme="monochrome") as demo:
     gr.Markdown("# 🔱 GEN-7000: HYDRA IMMORTAL")
     chatbot = gr.Chatbot()
-    msg = gr.Textbox(placeholder="Ask about your evolution, Commander...")
+    msg = gr.Textbox(placeholder="အမိန့်ပေးပါ Commander...")
     
     def respond(message, chat_history):
         bot_res = chat(message, chat_history)
@@ -107,7 +108,7 @@ with gr.Blocks(theme="monochrome") as demo:
     msg.submit(respond, [msg, chatbot], [msg, chatbot])
 
 # ---------------------------------------------------------
-# 🔱 EXECUTION ENGINE
+# 🔱 EXECUTION
 # ---------------------------------------------------------
 if __name__ == "__main__":
     print("🔱 INITIALIZING IMMORTAL PROTOCOL...")
@@ -120,4 +121,3 @@ if __name__ == "__main__":
         share=False,
         debug=True
         )
-    
