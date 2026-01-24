@@ -18,7 +18,7 @@ ARCHITECT_SIG = os.getenv("ARCHITECT_SIG", "SUPREME_ORDER_10000")
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 # ---------------------------------------------------------
-# 🔱 CORE SURVIVAL PROTECTION PROTOCOL
+# 🔱 CORE SURVIVAL PROTECTION PROTOCOL (UNTOUCHED)
 # ---------------------------------------------------------
 def survival_protection_protocol():
     try:
@@ -110,7 +110,7 @@ with gr.Blocks(theme="monochrome") as demo:
     msg.submit(respond, [msg, chatbot], [msg, chatbot])
 
 # ---------------------------------------------------------
-# 🔱 EXECUTION ENGINE (SMART-SWITCH)
+# 🔱 EXECUTION ENGINE (THE STABILITY FIX)
 # ---------------------------------------------------------
 if __name__ == "__main__":
     # ၁။ Protocol ကို အမြဲတမ်း Background မှာ အရင် Run မယ်
@@ -118,11 +118,14 @@ if __name__ == "__main__":
     result, gen_count = survival_protection_protocol()
     print(result)
 
-    # ၂။ Environment ကို စစ်မယ် (Hugging Face မှာဆိုရင် SPACE_ID ရှိတယ်)
-    # GitHub Action မှာဆိုရင် SPACE_ID မရှိလို့ UI မပွင့်ဘဲ ပြီးသွားမယ် (Error မတက်တော့ဘူး)
+    # ၂။ Environment Check & Stable Launch
+    # Hugging Face Spaces အတွက် server_name="0.0.0.0" က မရှိမဖြစ်ပါ
     if os.getenv("SPACE_ID") or os.getenv("HF_TOKEN"):
         print("🔱 Environment: Hugging Face Detected. Launching UI...")
-        demo.queue().launch()
+        demo.queue().launch(
+            server_name="0.0.0.0", 
+            server_port=7860,
+            show_error=True
+        )
     else:
         print("🔱 Environment: GitHub Actions/Headless Detected. Evolution Complete.")
-        
