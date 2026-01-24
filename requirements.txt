@@ -1,5 +1,7 @@
 groq
-gradio>=4.0.0
+gradio==4.44.1
+huggingface_hub==0.24.0
 psycopg2-binary
 requests
 python-dotenv
+sentence-transformers
