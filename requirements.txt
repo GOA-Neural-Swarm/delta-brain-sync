@@ -1,8 +1,9 @@
 groq
-gradio
+gradio==4.44.1
 psycopg2-binary
 sentence-transformers
 supabase
 firebase-admin
 numpy
 python-dotenv
+requests
