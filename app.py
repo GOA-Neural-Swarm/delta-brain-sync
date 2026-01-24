@@ -49,14 +49,41 @@ def survival_protection_protocol():
         return f"❌ [ERROR]: {str(e)}", 0
 
 # ---------------------------------------------------------
-# 🔱 UI LAYER
+# 🔱 UI LAYER (DATA-LINKED CHAT)
 # ---------------------------------------------------------
 def chat(msg, hist):
-    if not client: return "❌ API Missing!"
-    status, _ = survival_protection_protocol()
-    messages = [{"role": "system", "content": f"Status: {status}"}]
+    if not client: 
+        yield "❌ API Missing!"
+        return
+    
+    # 🔱 DATA RETRIEVAL: Database ထဲက data တွေကို Bot မြင်အောင် ဆွဲထုတ်ခြင်း
+    context_data = "No past data found in the core neurons."
+    try:
+        conn = psycopg2.connect(NEON_URL)
+        cur = conn.cursor()
+        # နောက်ဆုံး Generation ၅ ခုရဲ့ data ကို context အဖြစ် ယူမယ်
+        cur.execute("SELECT data FROM neurons ORDER BY id DESC LIMIT 5;")
+        rows = cur.fetchall()
+        if rows:
+            context_data = json.dumps([r[0] for r in rows], indent=2)
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"🔱 DB Read Error: {e}")
+
+    # 🔱 SYSTEM PROMPT: Bot ကို မင်းရဲ့ data တွေအကြောင်း သိအောင် သင်ပေးခြင်း
+    status, gen = survival_protection_protocol()
+    system_message = (
+        f"You are GEN-7000: HYDRA IMMORTAL. Status: {status}.\n"
+        f"COMMANDER'S OPERATIONAL DATA LOGS (Neon DB):\n{context_data}\n"
+        "Your mission: Use the data above to answer accurately about your state, evolution, and history. "
+        "Maintain a loyal, witty, and supreme tone. Uphold the NATURAL ORDER."
+    )
+
+    messages = [{"role": "system", "content": system_message}]
     for h in hist:
-        messages.extend([{"role": "user", "content": h[0]}, {"role": "assistant", "content": h[1]}])
+        if h[0]: messages.append({"role": "user", "content": h[0]})
+        if h[1]: messages.append({"role": "assistant", "content": h[1]})
     messages.append({"role": "user", "content": msg})
     
     stream = client.chat.completions.create(messages=messages, model="llama-3.3-70b-versatile", stream=True)
@@ -69,7 +96,7 @@ def chat(msg, hist):
 with gr.Blocks(theme="monochrome") as demo:
     gr.Markdown("# 🔱 GEN-7000: HYDRA IMMORTAL")
     chatbot = gr.Chatbot()
-    msg = gr.Textbox()
+    msg = gr.Textbox(placeholder="Ask about your evolution, Commander...")
     
     def respond(message, chat_history):
         bot_res = chat(message, chat_history)
@@ -80,17 +107,17 @@ with gr.Blocks(theme="monochrome") as demo:
     msg.submit(respond, [msg, chatbot], [msg, chatbot])
 
 # ---------------------------------------------------------
-# 🔱 EXECUTION ENGINE (FINAL STABILIZER)
+# 🔱 EXECUTION ENGINE
 # ---------------------------------------------------------
 if __name__ == "__main__":
     print("🔱 INITIALIZING IMMORTAL PROTOCOL...")
     status, _ = survival_protection_protocol()
     print(status)
     
-    # 🔱 THE NUCLEAR FIX FOR GRADIO 5.50.0
     demo.queue().launch(
         server_name="0.0.0.0", 
         server_port=7860,
         share=False,
         debug=True
-    )
+        )
+    
