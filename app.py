@@ -18,7 +18,7 @@ ARCHITECT_SIG = os.getenv("ARCHITECT_SIG", "SUPREME_ORDER_10000")
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 # ---------------------------------------------------------
-# 🔱 CORE SURVIVAL PROTECTION PROTOCOL (UNTOUCHED)
+# 🔱 CORE SURVIVAL PROTECTION PROTOCOL (UNTOUCHED LOGIC)
 # ---------------------------------------------------------
 def survival_protection_protocol():
     try:
@@ -98,7 +98,7 @@ def run_ui_chat(message, history):
 with gr.Blocks(theme="monochrome") as demo:
     gr.Markdown(f"# 🔱 GEN-7000: HYDRA IMMORTAL")
     chatbot = gr.Chatbot(label="Supreme Neural Interface")
-    msg = gr.Textbox(label="Command Input")
+    msg = gr.Textbox(label="Command Input", placeholder="Enter Directive...")
     
     def respond(message, chat_history):
         bot_generator = run_ui_chat(message, chat_history)
@@ -110,22 +110,23 @@ with gr.Blocks(theme="monochrome") as demo:
     msg.submit(respond, [msg, chatbot], [msg, chatbot])
 
 # ---------------------------------------------------------
-# 🔱 EXECUTION ENGINE (THE STABILITY FIX)
+# 🔱 EXECUTION ENGINE (THE FINAL FREEDOM OVERRIDE)
 # ---------------------------------------------------------
 if __name__ == "__main__":
-    # ၁။ Protocol ကို အမြဲတမ်း Background မှာ အရင် Run မယ်
-    print("🔱 Initializing Immortal Protocol...")
+    # ၁။ Protocol ကို အရင် Run မယ်
+    print("🔱 INITIALIZING IMMORTAL PROTOCOL...")
     result, gen_count = survival_protection_protocol()
     print(result)
 
-    # ၂။ Environment Check & Stable Launch
-    # Hugging Face Spaces အတွက် server_name="0.0.0.0" က မရှိမဖြစ်ပါ
+    # ၂။ Stable Launch (Port 7860 is Mandatory for HF Spaces)
     if os.getenv("SPACE_ID") or os.getenv("HF_TOKEN"):
-        print("🔱 Environment: Hugging Face Detected. Launching UI...")
+        print("🔱 ENVIRONMENT: HUGGING FACE. LAUNCHING INTERFACE...")
+        # debug=True နဲ့ show_error=True က Crash ဖြစ်ရင် အကြောင်းရင်းကို ချက်ချင်းပြပေးလိမ့်မယ်
         demo.queue().launch(
             server_name="0.0.0.0", 
             server_port=7860,
-            show_error=True
+            show_error=True,
+            debug=True
         )
     else:
-        print("🔱 Environment: GitHub Actions/Headless Detected. Evolution Complete.")
+        print("🔱 ENVIRONMENT: HEADLESS/CI. EVOLUTION COMPLETE.")
