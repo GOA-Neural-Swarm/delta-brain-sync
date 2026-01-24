@@ -1,7 +1,7 @@
 name: Sync to Hugging Face
 on:
   push:
-    branches: [main] # Main branch ထဲ ကုဒ်ဝင်တာနဲ့ အလုပ်လုပ်မယ်
+    branches: [main]
 
 jobs:
   deploy:
@@ -10,15 +10,14 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          lfs: true # Large files ရှိရင်လည်း အိုကေအောင်
+          lfs: true
 
-      # ၁။ ကုဒ်တွေကို Hugging Face Space ဆီ အရင်ပို့မယ်
       - name: Push Code to HF
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: git push --force https://TELEFOXX:$HF_TOKEN@huggingface.co/spaces/TELEFOXX/GOA main
+        run: |
+          git push --force https://TELEFOXX:$HF_TOKEN@huggingface.co/spaces/TELEFOXX/GOA main
 
-      # ၂။ Secrets တွေကို HF ရဲ့ Environment Variables ထဲ အလိုအလျောက် သွားထည့်ပေးမယ်
       - name: Sync Secrets to HF
         run: |
           curl -X POST https://huggingface.co/api/spaces/TELEFOXX/GOA/variables \
