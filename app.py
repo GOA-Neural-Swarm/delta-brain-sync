@@ -116,23 +116,24 @@ with gr.Blocks(theme="monochrome") as demo:
     msg.submit(respond, [msg, chatbot], [msg, chatbot])
 
 # ---------------------------------------------------------
-# 🔱 EXECUTION ENGINE (THE NUCLEAR OVERRIDE)
+# 🔱 EXECUTION ENGINE (THE STABILITY OVERRIDE)
 # ---------------------------------------------------------
 if __name__ == "__main__":
     print("🔱 INITIALIZING IMMORTAL PROTOCOL...")
+    # Protocol ကို launch မလုပ်ခင် အရင် run စစ်မယ်
     result, _ = survival_protection_protocol()
     print(result)
 
     # Hugging Face Networking Fix
-    if os.getenv("SPACE_ID") or os.getenv("HF_TOKEN") or True: # Force True for cloud safety
-        print("🔱 DEPLOYING INTERFACE (0.0.0.0:7860)...")
-        # server_name="0.0.0.0" သည် localhost error ကို သတ်ပစ်မည်
-        # show_api=False သည် Gradio 4 logic error ကို ကျော်လွှားမည်
-        demo.queue().launch(
-            server_name="0.0.0.0", 
-            server_port=7860,
-            show_error=True,
-            show_api=False, 
-            share=False,
-            debug=True
+    # server_name="0.0.0.0" သည် localhost error ကို သတ်ပစ်မည်
+    # show_api=False သည် Gradio 4 logic error ကို ကျော်လွှားမည်
+    print("🔱 DEPLOYING INTERFACE (0.0.0.0:7860)...")
+    demo.queue().launch(
+        server_name="0.0.0.0", 
+        server_port=7860,
+        show_error=True,
+        show_api=False, 
+        share=False,
+        debug=True
     )
+    
