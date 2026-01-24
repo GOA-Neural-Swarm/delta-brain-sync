@@ -1,0 +1,8 @@
+groq
+gradio
+psycopg2-binary
+sentence-transformers
+supabase
+firebase-admin
+numpy
+python-dotenv
