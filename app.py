@@ -48,8 +48,8 @@ def fetch_trinity_data():
     try:
         conn = psycopg2.connect(NEON_URL)
         cur = conn.cursor()
-        # နောက်ဆုံး Node ၅ ခုကို ဆွဲထုတ်ပြီး Decompress လုပ်မယ်
-        cur.execute("SELECT user_id, message FROM neurons ORDER BY id DESC LIMIT 5;")
+        # 🔱 TOKEN SAVER: LIMIT ကို ၅ ကနေ ၂ အထိ လျှော့ချထားသည် (Rate Limit ရှောင်ရန်)
+        cur.execute("SELECT user_id, message FROM neurons ORDER BY id DESC LIMIT 2;")
         logs = []
         for r in cur.fetchall():
             dec_msg = HydraEngine.decompress(r[1]) if r[1] else "EMPTY"
@@ -141,7 +141,8 @@ def chat(msg, hist):
         messages.extend([{"role": "user", "content": h[0]}, {"role": "assistant", "content": h[1]}])
     messages.append({"role": "user", "content": msg})
     
-    stream = client.chat.completions.create(messages=messages, model="llama-3.3-70b-versatile", stream=True, temperature=0.1)
+    # 🔱 MODEL SWITCH: Token limit ရှောင်ရန် llama-3.1-8b-instant ကို သုံးထားသည်
+    stream = client.chat.completions.create(messages=messages, model="llama-3.1-8b-instant", stream=True, temperature=0.1)
     res = ""
     for chunk in stream:
         if chunk.choices[0].delta.content:
