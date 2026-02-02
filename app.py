@@ -1,4 +1,5 @@
 import os
+import sys
 import zlib
 import base64
 import json
@@ -149,11 +150,11 @@ def chat(msg, hist):
             res += chunk.choices[0].delta.content
             yield res
 
-# 🔱 UI SETUP
-with gr.Blocks(theme="monochrome") as demo:
+# 🔱 UI SETUP (Warning Fixed by moving theme to launch)
+with gr.Blocks() as demo:
     gr.Markdown("# 🔱 HYDRA GEN-7000: ULTRA-LOGICAL")
     chatbot = gr.Chatbot()
-    msg = gr.Textbox(placeholder="Input logic command...")
+    msg_input = gr.Textbox(placeholder="Input logic command...")
     
     def respond(message, chat_history):
         bot_res = chat(message, chat_history)
@@ -161,8 +162,23 @@ with gr.Blocks(theme="monochrome") as demo:
         for r in bot_res:
             chat_history[-1] = (message, r)
             yield "", chat_history
-    msg.submit(respond, [msg, chatbot], [msg, chatbot])
+    msg_input.submit(respond, [msg_input, chatbot], [msg_input, chatbot])
 
+# ---------------------------------------------------------
+# 🔱 STRATEGIC EXECUTION CONTROL (HEADLESS SYNC)
+# ---------------------------------------------------------
 if __name__ == "__main__":
-    demo.queue().launch(server_name="0.0.0.0", server_port=7860)
-    
+    # Check if we are running in GitHub Actions to avoid hanging
+    if os.getenv("HEADLESS_MODE") == "true":
+        print("🔱 [HEADLESS MODE] INITIATING NEURAL EVOLUTION...")
+        
+        # Run the core logic once
+        evolution_result = survival_protection_protocol()
+        print(f"PULSE: {evolution_result}")
+        
+        print("✅ MISSION COMPLETE. EXITING FOR GREEN LIGHT STATUS.")
+        sys.exit(0) # 🔱 Exit with success to turn GitHub Action GREEN
+    else:
+        # Normal User Interface Mode
+        print("🚀 STARTING UI MODE...")
+        demo.queue().launch(server_name="0.0.0.0", server_port=7860, theme="monochrome")
