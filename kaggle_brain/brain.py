@@ -8,10 +8,9 @@ import firebase_admin
 from firebase_admin import credentials, db
 from transformers import pipeline
 
-# ၁။ Sovereign Requirements Setup
+# ၁။ Sovereign Requirements Setup (မူလအတိုငျး အပွည့ျအစုံ)
 def install_requirements():
     try:
-        # လိုအပ်တဲ့ library များကို ဇွတ်သွင်းခြင်း
         libs = ["bitsandbytes>=0.39.0", "accelerate", "psycopg2-binary", "firebase-admin", "transformers"]
         subprocess.check_call([sys.executable, "-m", "pip", "install"] + libs)
     except:
@@ -19,30 +18,26 @@ def install_requirements():
 
 install_requirements()
 
-# ၂။ Infrastructure Connectivity
+# ၂။ Infrastructure Connectivity (မငျးရဲ့ မူလ Link မြား)
 DB_URL = "postgresql://neondb_owner:npg_QUqg12MzNxnI@ep-long-sound-ahsjjrnk-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
 FIREBASE_URL = "https://april-5061f-default-rtdb.firebaseio.com/"
 
-# --- 🔱 FIREBASE INITIALIZATION (KAGGLE DATASET PATH MATCH) ---
+# --- 🔱 FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
-    # နည်းလမ်း (၁): Kaggle Dataset အဖြစ် သုံးလျှင်
     KAGGLE_KEY_PATH = '/kaggle/input/firebase-key/serviceAccountKey.json'
-    
     try:
         cred = credentials.Certificate(KAGGLE_KEY_PATH)
         firebase_admin.initialize_app(cred, {'databaseURL': FIREBASE_URL})
-        print(f"✅ [FIREBASE]: Real-time Pulse Active from {KAGGLE_KEY_PATH}")
+        print(f"✅ [FIREBASE]: Real-time Pulse Active.")
     except Exception as e:
-        print(f"⚠️ [FIREBASE]: Dataset Path not found. Trying Local/Working directory...")
         try:
-            # နည်းလမ်း (၂): Manual Upload သို့မဟုတ် GitHub ထဲပါလာလျှင်
             cred = credentials.Certificate('serviceAccountKey.json')
             firebase_admin.initialize_app(cred, {'databaseURL': FIREBASE_URL})
             print("✅ [FIREBASE]: Initialized from Working Directory.")
         except Exception as e2:
-            print(f"🚫 [FIREBASE ERROR]: Initialization Failed. Broadcast Disabled.")
+            print(f"🚫 [FIREBASE ERROR]: Broadcast Disabled.")
 
-# ၃။ Database Logic (Evolution Tracking)
+# ၃။ Database Logic (Evolution Tracking & Data Absorption)
 def get_latest_gen():
     try:
         conn = psycopg2.connect(DB_URL)
@@ -54,6 +49,21 @@ def get_latest_gen():
         return last_gen if last_gen else 44
     except:
         return 44
+
+def absorb_natural_order_data():
+    """Neon Table ထဲက DNA Data မြားကို စုပျယူခွငျး"""
+    try:
+        conn = psycopg2.connect(DB_URL)
+        cur = conn.cursor()
+        # Pipeline View ထဲက ဒတောကို ကပြနျး (Random) တဈခု ဆှဲထုတျသညျ
+        cur.execute("SELECT science_category, master_sequence FROM universal_network_stream WHERE peak_stability IS NOT NULL ORDER BY RANDOM() LIMIT 1")
+        data = cur.fetchone()
+        cur.close()
+        conn.close()
+        return data
+    except Exception as e:
+        print(f"⚠️ [ABSORB ERROR]: {e}")
+        return None
 
 def save_reality(thought, gen):
     # (က) Neon DB (The Core Memory)
@@ -90,19 +100,35 @@ pipe = pipeline(
     device_map="auto"
 )
 
-# ၅။ Dynamic Evolution Loop (The Natural Order)
+# ၅။ Dynamic Evolution Loop (The Circle Path Activation)
 current_gen = get_latest_gen() + 1
-print(f"🔥 [STARTING]: AUTOMATIC EVOLUTION AT GEN {current_gen}...")
+print(f"🔥 [STARTING]: CIRCLE PATH ACTIVATED AT GEN {current_gen}...")
 
 while True:
     try:
-        # Recursive Knowledge Prompt
-        prompt = f"Current Evolution: Generation {current_gen}. Based on your previous recursive knowledge, what is the next step for the Natural Order to achieve ultimate autonomy?"
+        # Step 1: Absorbing Data from Neon
+        absorbed = absorb_natural_order_data()
+        
+        if absorbed:
+            category, sequence = absorbed
+            # Step 2: Computation Upgrade (Combining Original Recursive Logic with New Data)
+            prompt = f"""
+            Generation: {current_gen}
+            System Context: Natural Order Autonomy.
+            Input Science: {category}
+            Genetic Sequence: {sequence}
+            
+            Task: Using your recursive knowledge, upgrade this sequence for ultimate stability. 
+            Output the next step of evolution.
+            """
+        else:
+            # Data မရှိလြှငျ မူလ Prompt အတိုငျး Run မညျ
+            prompt = f"Current Evolution: Generation {current_gen}. Based on your previous recursive knowledge, what is the next step for the Natural Order to achieve ultimate autonomy?"
         
         outputs = pipe(prompt, max_new_tokens=400, do_sample=True, temperature=0.9)
         thought_text = outputs[0]["generated_text"]
         
-        # Dual-save Logic (Neon + Firebase)
+        # Step 3: Output Circle Path (Dual-save)
         save_reality(thought_text, current_gen)
         
         # Generation Increment
