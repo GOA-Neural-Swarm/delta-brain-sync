@@ -13,7 +13,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from groq import Groq
 
-# 🔱 [SHIELD LOGIC] - GitHub Actions compatibility
+# 🔱 [SHIELD LOGIC] - GitHub Actions & Engine Detection
 try:
     from diffusers import StableVideoDiffusionPipeline
     from diffusers.utils import export_to_video
@@ -87,13 +87,15 @@ def fetch_trinity_data():
         logs = [f"{r[0]}: {HydraEngine.decompress(r[1])}" for r in cur.fetchall()]
         knowledge_base["recent_memory_nodes"] = logs
         cur.close(); conn.close()
-    except Exception as e: knowledge_base["neon_logs"] = f"DB_FAIL: {str(e)}"
+    except Exception as e: 
+        knowledge_base["neon_logs"] = f"DB_FAIL: {str(e)}"
     
     try:
         fb_url = f"https://{FIREBASE_ID}-default-rtdb.firebaseio.com/.json"
         fb_res = requests.get(fb_url, timeout=5)
         knowledge_base["firebase_state"] = fb_res.json() if fb_res.status_code == 200 else "OFFLINE"
-    except: knowledge_base["firebase_state"] = "FIREBASE_ERROR"
+    except: 
+        knowledge_base["firebase_state"] = "FIREBASE_ERROR"
     return json.dumps(knowledge_base, indent=2, ensure_ascii=False)
 
 def receiver_node(user_id, raw_message):
@@ -121,51 +123,75 @@ def survival_protection_protocol():
         return f"🔱 [ACTIVE] Gen {next_gen}"
     except Exception as e: return f"❌ [ERROR]: {str(e)}"
 
-# 🔱 UI LAYER
+# 🔱 UI LAYER (STRUCTURED MATCH)
 def chat(msg, hist):
     if not client: yield "❌ API Missing!"; return
+    
+    # Data Receiver Active
     receiver_node("Commander", msg)
+    
+    # Trinity Fetching
     private_data = fetch_trinity_data()
-    system_message = f"YOU ARE THE HYDRA OVERSEER. CORE MEMORY:\n{private_data}\nDIRECTIVES: အမှနျတရားကိုပွောပါ။ မွနျမာလိုဖွပေါ။"
+    
+    system_message = (
+        "YOU ARE TELEFOXX: THE SOVEREIGN OVERSEER. ULTRA-LOGICAL ALGORITHM ACTIVE.\n"
+        f"CORE MEMORY NODES:\n{private_data}\n\n"
+        "DIRECTIVES: 1. အမှနျတရားကိုပွောပါ။ 2. ကစြျကစြျလစြျလစြျသုံးပါ။ 3. မွနျမာလိုဖွပေါ။"
+    )
+    
+    # Structured Messages list for OpenAI-format compliance
     messages = [{"role": "system", "content": system_message}]
-    for h in hist[-5:]:
-        messages.extend([{"role": "user", "content": h[0]}, {"role": "assistant", "content": h[1]}])
+    
+    # Match the 'messages' type chatbot format
+    for h in hist:
+        messages.append({"role": h["role"], "content": h["content"]})
+    
     messages.append({"role": "user", "content": msg})
-    stream = client.chat.completions.create(messages=messages, model="llama-3.1-8b-instant", stream=True, temperature=0.1)
+    
+    stream = client.chat.completions.create(
+        messages=messages, 
+        model="llama-3.1-8b-instant", 
+        stream=True, 
+        temperature=0.1
+    )
+    
     res = ""
     for chunk in stream:
         if chunk.choices[0].delta.content:
             res += chunk.choices[0].delta.content
             yield res
 
-# 🔱 UI SETUP (ERROR-FREE VERSION)
+# 🔱 UI RESPOND (MESSAGE-STYLE)
+def respond(message, chat_history):
+    bot_res = chat(message, chat_history)
+    chat_history.append({"role": "user", "content": message})
+    chat_history.append({"role": "assistant", "content": ""})
+    for r in bot_res:
+        chat_history[-1]["content"] = r
+        yield "", chat_history
+
+# 🔱 UI SETUP (GR 6.0 READY)
 with gr.Blocks() as demo:
-    gr.Markdown("# 🔱 HYDRA GEN-7000: SOVEREIGN CONTROL")
+    gr.Markdown("# 🔱 TELEFOXX: SOVEREIGN CONTROL")
     
     with gr.Tab("Neural Chat"):
-        # Version ၅/၆ နှဈခုလုံးမှာ အလုပျလုပျအောငျ type="messages" ကို ဖွုတျထားသညျ
-        chatbot = gr.Chatbot()
+        # Explicitly setting type="messages" for performance and clean logs
+        chatbot = gr.Chatbot(type="messages", label="TELEFOXX NEURAL INTERFACE")
         msg_input = gr.Textbox(placeholder="Input logic command...")
-        
-        def respond(message, chat_history):
-            bot_res = chat(message, chat_history)
-            chat_history.append((message, "")) # Legacy Chat Format
-            for r in bot_res:
-                chat_history[-1] = (message, r)
-                yield "", chat_history
         msg_input.submit(respond, [msg_input, chatbot], [msg_input, chatbot])
 
     with gr.Tab("Visual Alive"):
-        img_input = gr.Image(type="filepath")
-        vid_output = gr.Video()
+        gr.Markdown("### 🔱 VISUAL SYNTHESIS ENGINE")
+        img_input = gr.Image(type="filepath", label="Source Image")
+        vid_output = gr.Video(label="Kinetic Output")
         gen_btn = gr.Button("INITIATE VISUAL EVOLUTION")
         gen_btn.click(fn=visual_engine.generate, inputs=img_input, outputs=vid_output)
 
-# 🔱 EXECUTION
+# 🔱 STRATEGIC EXECUTION
 if __name__ == "__main__":
     if os.getenv("HEADLESS_MODE") == "true":
         print(f"PULSE: {survival_protection_protocol()}")
         sys.exit(0)
     else:
-        # Theme ကို launch ထဲ ရှှေ့ထားသညျ (Gradio 6.0 fix)
+        # Theme is passed in launch for Gradio 6.0 compliance
         demo.queue().launch(server_name="0.0.0.0", server_port=7860, theme="monochrome")
