@@ -12,10 +12,21 @@ import uuid
 from datetime import datetime
 from dotenv import load_dotenv
 from groq import Groq
-from diffusers import StableVideoDiffusionPipeline, DiffusionPipeline, DPMSolverMultistepScheduler
-from diffusers.utils import export_to_video
 from PIL import Image
 import io
+
+# 🔱 [SUPREME SHIELD LOGIC] - OMNI-ENVIRONMENT COMPATIBILITY
+HAS_VIDEO_ENGINE = False
+try:
+    from diffusers import StableVideoDiffusionPipeline, DiffusionPipeline, DPMSolverMultistepScheduler
+    from diffusers.utils import export_to_video
+    # Library ရှိရုံတင်မကဘဲ GPU (CUDA) ရှိမရှိပါ စစ်ဆေးသည်
+    if torch.cuda.is_available():
+        HAS_VIDEO_ENGINE = True
+    else:
+        print("⚠️ GPU NOT DETECTED - VIDEO ENGINE DISABLED (CHAT-ONLY MODE FOR CI/CD)")
+except ImportError:
+    print("⚠️ VIDEO LIBRARIES MISSING - RUNNING IN CHAT-ONLY MODE")
 
 # 🔱 ENVIRONMENT & KEYS
 load_dotenv()
@@ -40,7 +51,7 @@ class HydraEngine:
             return zlib.decompress(decoded_bytes).decode('utf-8')
         except: return compressed_text
 
-# 🔱 ၂။ DUAL KINETIC ENGINE (SVD + ZEROSCOPE FUSION)
+# 🔱 ၂။ DUAL KINETIC ENGINE (SHIELDED SVD + ZEROSCOPE FUSION)
 class VisualKineticEngine:
     def __init__(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -48,6 +59,7 @@ class VisualKineticEngine:
         self.fusion_pipe = None
 
     def load_svd(self):
+        if not HAS_VIDEO_ENGINE: return
         if self.svd_pipe is None and self.device == "cuda":
             print("🔱 LOADING SVD ENGINE...")
             self.svd_pipe = StableVideoDiffusionPipeline.from_pretrained(
@@ -57,6 +69,7 @@ class VisualKineticEngine:
             self.svd_pipe.enable_model_cpu_offload()
 
     def load_fusion(self):
+        if not HAS_VIDEO_ENGINE: return
         if self.fusion_pipe is None and self.device == "cuda":
             print("🔱 LOADING ZEROSCOPE FUSION ENGINE...")
             self.fusion_pipe = DiffusionPipeline.from_pretrained(
@@ -65,9 +78,8 @@ class VisualKineticEngine:
             self.fusion_pipe.scheduler = DPMSolverMultistepScheduler.from_config(self.fusion_pipe.scheduler.config)
             self.fusion_pipe.enable_model_cpu_offload()
     
-    # 🔱 Legacy Image-to-Video Logic
     def generate_image_to_vid(self, image_path):
-        if self.device != "cuda": return None
+        if not HAS_VIDEO_ENGINE: return "❌ GPU/ENGINE NOT AVAILABLE"
         self.load_svd()
         image = Image.open(image_path).convert("RGB").resize((1024, 576))
         generator = torch.manual_seed(42)
@@ -76,12 +88,10 @@ class VisualKineticEngine:
         export_to_video(frames, output_path, fps=7)
         return output_path
 
-    # 🔱 New Neon-Driven Text-to-Video Logic
     def generate_fusion_vid(self, user_prompt):
-        if self.device != "cuda": return None, "❌ GPU REQUIRED"
+        if not HAS_VIDEO_ENGINE: return None, "❌ GPU/ENGINE NOT AVAILABLE"
         self.load_fusion()
         
-        # Neon Data Mining
         neon_context = "cybernetic evolution"
         try:
             conn = psycopg2.connect(NEON_URL)
@@ -150,7 +160,7 @@ def survival_protection_protocol():
 def chat(msg, hist):
     receiver_node("Commander", msg)
     private_data = fetch_trinity_data()
-    system_message = f"YOU ARE TELEFOXX OVERSEER. DATA:\n{private_data}\nDIRECTIVES: မှနမြာလိုဖှပေါ။"
+    system_message = f"YOU ARE TELEFOXX OVERSEER. DATA:\n{private_data}\nDIRECTIVES: မြန်မာလိုဖြေပါ။"
     messages = [{"role": "system", "content": system_message}]
     for h in hist:
         messages.append({"role": h["role"], "content": h["content"]})
@@ -181,6 +191,8 @@ with gr.Blocks(theme="monochrome") as demo:
 
     with gr.Tab("Kinetic Fusion (Neon)"):
         gr.Markdown("### 🔱 TEXT-TO-ALIVE (NEON DATA SYNC)")
+        if not HAS_VIDEO_ENGINE:
+            gr.Warning("⚠️ Video Engine is currently offline (GPU Required). Chat remains active.")
         t2v_input = gr.Textbox(label="Prompt", placeholder="e.g. cyber fox in data stream")
         t2v_output = gr.Video()
         t2v_status = gr.Textbox(label="Context Source")
