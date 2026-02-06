@@ -1,8 +1,8 @@
 name: GOA Neural Evolution & Trinity Sync
 on:
   schedule:
-    - cron: '*/10 * * * *'  # 🔱 ၁၀ မိနစ်တစ်ခါ Neural Evolution လုပ်မည်
-  workflow_dispatch:        # 🔱 Manual Run လို့ရအောင်
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
 
 jobs:
   evolve_and_sync:
@@ -24,8 +24,8 @@ jobs:
       - name: Install Python Dependencies
         run: |
           pip install --upgrade pip
-          # 🔱 UI မပါဘဲ run မှာမို့လို့ လိုအပ်တဲ့ dependencies တွေကိုပဲ အဓိကတင်မယ်
-          pip install psycopg2-binary requests groq sentence-transformers gradio python-dotenv
+          # 🔱 Gradio ကို Version 5 မှာပဲ Lock ချထားလိုက်မယ် (Error မတက်အောင်)
+          pip install psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv
 
       - name: Install Node.js Dependencies
         run: npm install 
@@ -38,7 +38,7 @@ jobs:
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          HEADLESS_MODE: "true" # 🔱 app.py ကို အလိုအလျောက် ပိတ်စေမည့် အမိန့်
+          HEADLESS_MODE: "true"
         run: python app.py
 
       - name: Step 2 - Run Trinity Sync Engine
