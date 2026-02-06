@@ -13,3 +13,5 @@ transformers
 opencv-python
 Pillow
 python-multipart
+safetensors
+ftfy
