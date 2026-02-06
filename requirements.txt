@@ -5,3 +5,11 @@ requests
 python-dotenv
 sentence-transformers
 numpy
+diffusers
+torch
+torchvision
+accelerate
+transformers
+opencv-python
+Pillow
+python-multipart
