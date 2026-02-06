@@ -24,7 +24,7 @@ FIREBASE_ID = os.getenv("FIREBASE_KEY")
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # ---------------------------------------------------------
-# 🔱 VISUAL KINETIC ENGINE (ကိုယျပိုငျ VIDEO GEN)
+# 🔱 VISUAL KINETIC ENGINE (ကိုယ်ပိုင် VIDEO GEN)
 # ---------------------------------------------------------
 class VisualKineticEngine:
     def __init__(self):
@@ -56,7 +56,7 @@ class VisualKineticEngine:
 visual_engine = VisualKineticEngine()
 
 # ---------------------------------------------------------
-# 🔱 HYDRA COMPRESSION & DB LOGIC (မငျးရဲ့ Code ကို ထိနျးသိမျးထားသညျ)
+# 🔱 HYDRA COMPRESSION & DB LOGIC (မင်းရဲ့ Code ကို ထိန်းသိမ်းထားသည်)
 # ---------------------------------------------------------
 class HydraEngine:
     @staticmethod
@@ -71,7 +71,7 @@ class HydraEngine:
             return zlib.decompress(base64.b64decode(compressed_text)).decode('utf-8')
         except: return compressed_text
 
-# ... [fetch_trinity_data နှင့ျ receiver_node logic မြား မငျးပေးထားသည့ျအတိုငျး ဆကျရှိနမေညျ] ...
+# ... [fetch_trinity_data နှင့် receiver_node logic များ မင်းပေးထားသည့်အတိုင်း ဆက်ရှိနေမည်] ...
 
 # ---------------------------------------------------------
 # 🔱 UI LAYER (CHRONOS CHAT + VISUAL ALIVE)
@@ -91,7 +91,7 @@ with gr.Blocks(theme="monochrome") as demo:
         gen_btn.click(fn=visual_engine.generate, inputs=img_input, outputs=vid_output)
 
     def respond(message, chat_history):
-        # မငျးရဲ့ chat logic ကို ဒီမှာ ပွနျထည့ျပါ
+        # မင်းရဲ့ chat logic ကို ဒီမှာ ပြန်ထည့်ပါ
         pass
 
     msg_input.submit(respond, [msg_input, chatbot], [msg_input, chatbot])
