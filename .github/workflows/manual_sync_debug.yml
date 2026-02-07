@@ -25,5 +25,6 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
         run: node delta_sync.js
         
