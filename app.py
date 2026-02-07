@@ -1,21 +1,17 @@
 import os
-import sys
 import zlib
 import base64
-import json
 import psycopg2
-import requests
 import gradio as gr
-from datetime import datetime
 from dotenv import load_dotenv
 from groq import Groq
 
-# 🔱 ENVIRONMENT
+# 🔱 ENVIRONMENT INITIALIZATION
 load_dotenv()
 NEON_URL = os.getenv("DATABASE_URL")
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# 🔱 HYDRA ENGINE (DATA INTEGRITY)
+# 🔱 ၁။ HYDRA ENGINE (DATA INTEGRITY)
 class HydraEngine:
     @staticmethod
     def compress(text):
@@ -28,22 +24,33 @@ class HydraEngine:
             return zlib.decompress(base64.b64decode(compressed_text)).decode('utf-8')
         except: return str(compressed_text)
 
-# 🔱 NEON RAG SYSTEM
+# 🔱 ၂။ NEON RAG SYSTEM (DATA RETRIEVAL)
 def fetch_trinity_data():
     try:
         conn = psycopg2.connect(NEON_URL, connect_timeout=5)
         cur = conn.cursor()
-        cur.execute("SELECT user_id, message FROM neurons WHERE user_id != 'SYSTEM_CORE' ORDER BY id DESC LIMIT 2;")
+        cur.execute("SELECT user_id, message FROM neurons WHERE user_id != 'SYSTEM_CORE' ORDER BY id DESC LIMIT 3;")
         rows = cur.fetchall()
         cur.close(); conn.close()
         if rows:
             return " | ".join([f"{r[0]}: {HydraEngine.decompress(r[1])}" for r in rows])
-        return "Matrix Initialized"
-    except: return "DB Standby"
+        return "New Matrix"
+    except: return "Standby"
 
+def receiver_node(user_id, raw_message):
+    try:
+        compressed_msg = HydraEngine.compress(raw_message)
+        conn = psycopg2.connect(NEON_URL)
+        cur = conn.cursor()
+        cur.execute("INSERT INTO neurons (user_id, message, evolved_at) VALUES (%s, %s, NOW())", (user_id, compressed_msg))
+        conn.commit(); cur.close(); conn.close()
+    except: pass
+
+# 🔱 ၃။ NEURAL CHAT ENGINE
 def chat(msg, hist):
+    receiver_node("Commander", msg)
     context = fetch_trinity_data()
-    system_message = f"CONTEXT: {context}\nRole: TelefoxX Overseer. Reply in Burmese."
+    system_message = f"CONTEXT: {context}\nRole: TelefoxX Overseer. Reply in Burmese concisely."
     
     messages = [{"role": "system", "content": system_message}]
     for h in hist[-3:]:
@@ -60,7 +67,7 @@ def chat(msg, hist):
                 res += chunk.choices[0].delta.content
                 yield res
     except Exception as e:
-        yield f"🔱 System Busy: {str(e)}"
+        yield f"🔱 Error: {str(e)}"
 
 def respond(message, chat_history):
     chat_history.append({"role": "user", "content": message})
@@ -69,13 +76,13 @@ def respond(message, chat_history):
         chat_history[-1]["content"] = r
         yield "", chat_history
 
-# 🔱 UI SETUP (Warning-Free & Clean)
+# 🔱 ၄။ UI SETUP (CLEAN & FAST)
 with gr.Blocks() as demo:
-    gr.Markdown("# 🔱 TELEFOXX: RAPID MATRIX")
+    gr.Markdown("# 🔱 TELEFOXX: NEURAL STREAM")
     chatbot = gr.Chatbot(type="messages", allow_tags=False)
     msg_input = gr.Textbox(placeholder="အမိန့်ပေးပါ Commander...")
     msg_input.submit(respond, [msg_input, chatbot], [msg_input, chatbot])
 
-# 🔱 LAUNCH WITHOUT THEME (To bypass Gradio bugs)
+# 🔱 ၅။ LAUNCH
 if __name__ == "__main__":
     demo.queue().launch(server_name="0.0.0.0", server_port=7860)
