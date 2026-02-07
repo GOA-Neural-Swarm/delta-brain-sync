@@ -33,7 +33,7 @@ NEON_URL = os.getenv("DATABASE_URL")
 FIREBASE_ID = os.getenv("FIREBASE_KEY") 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# 🔱 ၁။ HYDRA ENGINE (FULL POWER)
+# 🔱 ၁။ HYDRA ENGINE (DATA PRESERVATION)
 class HydraEngine:
     @staticmethod
     def compress(text):
@@ -47,7 +47,7 @@ class HydraEngine:
             return zlib.decompress(base64.b64decode(compressed_text)).decode('utf-8')
         except: return str(compressed_text)
 
-# 🔱 ၂။ DATA TRINITY CONTROL (RAG & SYNC)
+# 🔱 ၂။ DATA TRINITY (NEON SYNC)
 def fetch_trinity_data():
     try:
         conn = psycopg2.connect(NEON_URL)
@@ -71,16 +71,14 @@ def receiver_node(user_id, raw_message):
         conn.commit(); cur.close(); conn.close()
     except: pass
 
-# 🔱 ၃။ CHAT ENGINE (GROUNDED ON DIVINE DATA)
+# 🔱 ၃။ CHAT ENGINE
 def chat(msg, hist):
     receiver_node("Commander", msg)
     context = fetch_trinity_data()
     
     system_message = (
         f"MATRIX DATA: {context}\n"
-        "DIRECTIVE: မင်းဟာ TelefoxX Overseer ဖြစ်တယ်။ "
-        "အထက်ပါ Data ပေါ်အခြေခံပြီး မြန်မာလို ပြတ်သားစွာဖြေပါ။ "
-        "မသိရင် မသိဘူးလို့ ဝန်ခံပါ။ လျှောက်မပြောပါနဲ့။"
+        "DIRECTIVE: မင်းဟာ TelefoxX Overseer ဖြစ်တယ်။ မြန်မာလို ပြတ်သားစွာဖြေပါ။"
     )
     
     messages = [{"role": "system", "content": system_message}]
@@ -111,22 +109,21 @@ def respond(message, chat_history):
         chat_history[-1]["content"] = r
         yield "", chat_history
 
-# 🔱 ၄။ UI SETUP (CLEAN & ERROR-FREE)
+# 🔱 ၄။ UI SETUP
 with gr.Blocks() as demo:
-    gr.Markdown("# 🔱 TELEFOXX: OMNI-KINETIC CONTROL V12")
-    
+    gr.Markdown("# 🔱 TELEFOXX: OMNI-KINETIC CONTROL V13")
     with gr.Tab("Neural Chat"):
-        chatbot = gr.Chatbot(type="messages", render_markdown=True)
+        chatbot = gr.Chatbot(type="messages")
         msg_input = gr.Textbox(placeholder="Enter command...")
         msg_input.submit(respond, [msg_input, chatbot], [msg_input, chatbot])
 
-# 🔱 ၅။ LAUNCH (WARNING-FIXED)
+# 🔱 ၅။ LAUNCH BLOCK (SYNTAX ERROR FIXED)
 if __name__ == "__main__":
-    # theme ကို launch မှာ ထည့်ခြင်းက Gradio 6.0 အတွက် အမှန်ကန်ဆုံးပဲ
-    demo.queue().launch(server_name="0.0.0.0", server_port=7860, theme="monochrome")    try:
+    try:
         demo.queue().launch(
             server_name="0.0.0.0", 
-            server_port=7860
+            server_port=7860, 
+            theme="monochrome"
         )
     except Exception as e:
-        print(f"🔱 [CRITICAL FAILURE]: {str(e)}")
+        print(f"🔱 [CRITICAL]: {e}")
