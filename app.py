@@ -5,33 +5,17 @@ import base64
 import json
 import psycopg2
 import requests
-import hashlib
 import gradio as gr
-import torch
-import uuid
 from datetime import datetime
 from dotenv import load_dotenv
 from groq import Groq
-from PIL import Image
-import io
 
-# 🔱 [SUPREME SHIELD]
-HAS_VIDEO_ENGINE = False
-try:
-    from diffusers import StableVideoDiffusionPipeline, DiffusionPipeline, DPMSolverMultistepScheduler
-    from diffusers.utils import export_to_video
-    if torch.cuda.is_available():
-        HAS_VIDEO_ENGINE = True
-    else:
-        print("🔱 [SYSTEM]: GPU OFFLINE")
-except ImportError:
-    print("🔱 [SYSTEM]: CORE LIBRARIES MISSING")
-
+# 🔱 ENVIRONMENT
 load_dotenv()
 NEON_URL = os.getenv("DATABASE_URL")
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# 🔱 ၁။ HYDRA ENGINE
+# 🔱 HYDRA ENGINE (DATA INTEGRITY)
 class HydraEngine:
     @staticmethod
     def compress(text):
@@ -44,36 +28,25 @@ class HydraEngine:
             return zlib.decompress(base64.b64decode(compressed_text)).decode('utf-8')
         except: return str(compressed_text)
 
-# 🔱 ၂။ NEON SYNC
+# 🔱 NEON RAG SYSTEM
 def fetch_trinity_data():
     try:
-        conn = psycopg2.connect(NEON_URL)
+        conn = psycopg2.connect(NEON_URL, connect_timeout=5)
         cur = conn.cursor()
-        cur.execute("SELECT user_id, message FROM neurons WHERE user_id != 'SYSTEM_CORE' ORDER BY id DESC LIMIT 3;")
+        cur.execute("SELECT user_id, message FROM neurons WHERE user_id != 'SYSTEM_CORE' ORDER BY id DESC LIMIT 2;")
         rows = cur.fetchall()
         cur.close(); conn.close()
         if rows:
             return " | ".join([f"{r[0]}: {HydraEngine.decompress(r[1])}" for r in rows])
-        return "Empty"
-    except: return "DB Error"
+        return "Matrix Initialized"
+    except: return "DB Standby"
 
-def receiver_node(user_id, raw_message):
-    try:
-        compressed_msg = HydraEngine.compress(raw_message)
-        conn = psycopg2.connect(NEON_URL)
-        cur = conn.cursor()
-        cur.execute("INSERT INTO neurons (user_id, message, evolved_at) VALUES (%s, %s, NOW())", (user_id, compressed_msg))
-        conn.commit(); cur.close(); conn.close()
-    except: pass
-
-# 🔱 ၃။ CHAT LOGIC
 def chat(msg, hist):
-    receiver_node("Commander", msg)
     context = fetch_trinity_data()
     system_message = f"CONTEXT: {context}\nRole: TelefoxX Overseer. Reply in Burmese."
     
     messages = [{"role": "system", "content": system_message}]
-    for h in hist[-5:]:
+    for h in hist[-3:]:
         messages.append({"role": h["role"], "content": h["content"]})
     messages.append({"role": "user", "content": msg})
     
@@ -87,27 +60,22 @@ def chat(msg, hist):
                 res += chunk.choices[0].delta.content
                 yield res
     except Exception as e:
-        yield f"⚠️ Matrix Error: {str(e)}"
+        yield f"🔱 System Busy: {str(e)}"
 
 def respond(message, chat_history):
     chat_history.append({"role": "user", "content": message})
     chat_history.append({"role": "assistant", "content": ""})
-    bot_res = chat(message, chat_history[:-1])
-    for r in bot_res:
+    for r in chat(message, chat_history[:-1]):
         chat_history[-1]["content"] = r
         yield "", chat_history
 
-# 🔱 ၄။ UI - THEME ERROR FIX (Removed from launch, keep in Blocks)
-with gr.Blocks(theme="monochrome") as demo:
-    gr.Markdown("# 🔱 TELEFOXX: V14")
-    with gr.Tab("Neural Chat"):
-        chatbot = gr.Chatbot(type="messages")
-        msg_input = gr.Textbox(placeholder="အမိန့်ပေးပါ Commander...")
-        msg_input.submit(respond, [msg_input, chatbot], [msg_input, chatbot])
+# 🔱 UI SETUP (Warning-Free & Clean)
+with gr.Blocks() as demo:
+    gr.Markdown("# 🔱 TELEFOXX: RAPID MATRIX")
+    chatbot = gr.Chatbot(type="messages", allow_tags=False)
+    msg_input = gr.Textbox(placeholder="အမိန့်ပေးပါ Commander...")
+    msg_input.submit(respond, [msg_input, chatbot], [msg_input, chatbot])
 
-# 🔱 ၅။ FINAL LAUNCH (NO MORE KEYWORD ARGUMENT ERRORS)
+# 🔱 LAUNCH WITHOUT THEME (To bypass Gradio bugs)
 if __name__ == "__main__":
-    try:
-        demo.queue().launch(server_name="0.0.0.0", server_port=7860)
-    except Exception as e:
-        print(f"🔱 [CRITICAL]: {e}")
+    demo.queue().launch(server_name="0.0.0.0", server_port=7860)
