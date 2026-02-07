@@ -3,6 +3,12 @@ name: Manual Trinity Debugger
 on:
   workflow_dispatch: # မင်းကိုယ်တိုင် ခလုတ်နှိပ်မှ Run မယ်
 
+# 🛠 အရေးကြီးဆုံးအပိုင်း - GitHub ကို ဖိုင်တွေ ရေးခွင့် (Write Permission) ပေးလိုက်တာပါ
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
   debug_sync:
     runs-on: ubuntu-latest
@@ -20,11 +26,15 @@ jobs:
 
       - name: Force Sync Neon to Supabase
         env:
+          # Database & Firebase Keys
           NEON_KEY: ${{ secrets.NEON_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+          
+          # GitHub Authentication (PAT သို့မဟုတ် GITHUB_TOKEN)
+          # 'GH_TOKEN' နဲ့ 'GITHUB_TOKEN' နှစ်မျိုးလုံးကို delta_sync.js က ခေါ်သုံးနိုင်အောင် ထည့်ပေးထားပါတယ်
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
         run: node delta_sync.js
-        
