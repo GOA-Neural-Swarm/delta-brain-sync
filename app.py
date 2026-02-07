@@ -12,21 +12,28 @@ import uuid
 from datetime import datetime
 from dotenv import load_dotenv
 from groq import Groq
+from PIL import Image
+import io
 
-# 🔱 [SHIELD] - OMNI-ENVIRONMENT
+# 🔱 [SUPREME SHIELD] - FULL COMPATIBILITY LOGIC
 HAS_VIDEO_ENGINE = False
 try:
     from diffusers import StableVideoDiffusionPipeline, DiffusionPipeline, DPMSolverMultistepScheduler
     from diffusers.utils import export_to_video
     if torch.cuda.is_available():
         HAS_VIDEO_ENGINE = True
-except:
-    pass
+    else:
+        print("🔱 [SYSTEM]: GPU OFFLINE - RUNNING ON NEURAL LOGIC ONLY")
+except ImportError:
+    print("🔱 [SYSTEM]: CORE LIBRARIES MISSING")
 
+# 🔱 ENVIRONMENT INITIALIZATION
 load_dotenv()
 NEON_URL = os.getenv("DATABASE_URL")
+FIREBASE_ID = os.getenv("FIREBASE_KEY") 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
+# 🔱 ၁။ HYDRA ENGINE (FULL POWER)
 class HydraEngine:
     @staticmethod
     def compress(text):
@@ -38,21 +45,22 @@ class HydraEngine:
     def decompress(compressed_text):
         try:
             return zlib.decompress(base64.b64decode(compressed_text)).decode('utf-8')
-        except: 
-            return str(compressed_text)
+        except: return str(compressed_text)
 
+# 🔱 ၂။ DATA TRINITY CONTROL (RAG & SYNC)
 def fetch_trinity_data():
     try:
         conn = psycopg2.connect(NEON_URL)
         cur = conn.cursor()
-        cur.execute("SELECT message FROM neurons WHERE user_id != 'SYSTEM_CORE' ORDER BY id DESC LIMIT 2;")
+        cur.execute("SELECT user_id, message FROM neurons WHERE user_id != 'SYSTEM_CORE' ORDER BY id DESC LIMIT 3;")
         rows = cur.fetchall()
         cur.close(); conn.close()
+        
         if rows:
-            return " | ".join([HydraEngine.decompress(r[0]) for r in rows])
-        return "No specific data found."
-    except: 
-        return "Database Offline."
+            return " | ".join([f"{r[0]}: {HydraEngine.decompress(r[1])}" for r in rows])
+        return "Empty Matrix"
+    except Exception as e:
+        return f"Neon Connection Error: {str(e)}"
 
 def receiver_node(user_id, raw_message):
     try:
@@ -63,10 +71,17 @@ def receiver_node(user_id, raw_message):
         conn.commit(); cur.close(); conn.close()
     except: pass
 
+# 🔱 ၃။ CHAT ENGINE (GROUNDED ON DIVINE DATA)
 def chat(msg, hist):
     receiver_node("Commander", msg)
     context = fetch_trinity_data()
-    system_message = f"CONTEXT: {context}\nInstruction: မြန်မာလို တိုတိုဖြေပါ။"
+    
+    system_message = (
+        f"MATRIX DATA: {context}\n"
+        "DIRECTIVE: မင်းဟာ TelefoxX Overseer ဖြစ်တယ်။ "
+        "အထက်ပါ Data ပေါ်အခြေခံပြီး မြန်မာလို ပြတ်သားစွာဖြေပါ။ "
+        "မသိရင် မသိဘူးလို့ ဝန်ခံပါ။ လျှောက်မပြောပါနဲ့။"
+    )
     
     messages = [{"role": "system", "content": system_message}]
     for h in hist[-5:]:
@@ -77,7 +92,7 @@ def chat(msg, hist):
         stream = client.chat.completions.create(
             messages=messages, 
             model="llama-3.1-8b-instant", 
-            temperature=0.3,
+            temperature=0.4,
             stream=True
         )
         res = ""
@@ -86,7 +101,7 @@ def chat(msg, hist):
                 res += chunk.choices[0].delta.content
                 yield res
     except Exception as e:
-        yield f"⚠️ Matrix Error: {str(e)}"
+        yield f"🔱 [ERROR]: {str(e)}"
 
 def respond(message, chat_history):
     chat_history.append({"role": "user", "content": message})
@@ -96,17 +111,19 @@ def respond(message, chat_history):
         chat_history[-1]["content"] = r
         yield "", chat_history
 
-# 🔱 UI SETUP - THEME MOVED BACK TO CONSTRUCTOR
-with gr.Blocks(theme="monochrome") as demo:
-    gr.Markdown("# 🔱 TELEFOXX: CONTROL MATRIX")
+# 🔱 ၄။ UI SETUP (CLEAN & ERROR-FREE)
+with gr.Blocks() as demo:
+    gr.Markdown("# 🔱 TELEFOXX: OMNI-KINETIC CONTROL V12")
+    
     with gr.Tab("Neural Chat"):
-        chatbot = gr.Chatbot(type="messages")
-        msg_input = gr.Textbox(placeholder="အမိန့်ပေးပါ Commander...")
+        chatbot = gr.Chatbot(type="messages", render_markdown=True)
+        msg_input = gr.Textbox(placeholder="Enter command...")
         msg_input.submit(respond, [msg_input, chatbot], [msg_input, chatbot])
 
-# 🔱 EXECUTION - CLEAN LAUNCH
+# 🔱 ၅။ LAUNCH (WARNING-FIXED)
 if __name__ == "__main__":
-    try:
+    # theme ကို launch မှာ ထည့်ခြင်းက Gradio 6.0 အတွက် အမှန်ကန်ဆုံးပဲ
+    demo.queue().launch(server_name="0.0.0.0", server_port=7860, theme="monochrome")    try:
         demo.queue().launch(
             server_name="0.0.0.0", 
             server_port=7860
