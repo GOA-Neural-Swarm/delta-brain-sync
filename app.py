@@ -15,7 +15,7 @@ from groq import Groq
 from PIL import Image
 import io
 
-# 🔱 [SHIELD] - OMNI-ENVIRONMENT COMPATIBILITY
+# 🔱 [SHIELD] - OMNI-ENVIRONMENT
 HAS_VIDEO_ENGINE = False
 try:
     from diffusers import StableVideoDiffusionPipeline, DiffusionPipeline, DPMSolverMultistepScheduler
@@ -57,8 +57,8 @@ def fetch_trinity_data():
             context_list = [HydraEngine.decompress(r[0]) for r in rows]
             return " | ".join(context_list)
         return "No specific data found in Neon DB."
-    except Exception as e: 
-        return f"Database Error: {str(e)}"
+    except: 
+        return "Database Offline."
 
 def receiver_node(user_id, raw_message):
     try:
@@ -69,18 +69,15 @@ def receiver_node(user_id, raw_message):
         conn.commit(); cur.close(); conn.close()
     except: pass
 
-# 🔱 CHAT ENGINE (GROUNDED & CLEAN)
+# 🔱 CHAT ENGINE (GROUNDED)
 def chat(msg, hist):
     receiver_node("Commander", msg)
     context = fetch_trinity_data()
     
     system_message = (
-        f"CONTEXT FROM NEON DB: {context}\n\n"
-        "INSTRUCTION:\n"
-        "၁။ မင်းဟာ TelefoxX Overseer ဖြစ်တယ်။\n"
-        "၂။ Context ထဲမှာပါတဲ့ အချက်အလက်ကိုပဲ သုံးပြီး မြန်မာလိုဖြေပါ။\n"
-        "၃။ Context ထဲမှာ မပါရင် 'ကျွန်ုပ်၏ Data matrix ထဲတွင် ဤအချက်အလက် မရှိသေးပါ' ဟု ဖြေပါ။\n"
-        "၄။ စကားလုံးများကို ထပ်တလဲလဲ မပြောပါနဲ့။"
+        f"CONTEXT: {context}\n\n"
+        "INSTRUCTION: Context ထဲမှာပါတာကိုပဲ မြန်မာလို တိုတိုဖြေပါ။ "
+        "မပါရင် 'Data မရှိသေးပါ' ဟု ဖြေပါ။"
     )
     
     messages = [{"role": "system", "content": system_message}]
@@ -112,37 +109,21 @@ def respond(message, chat_history):
         chat_history[-1]["content"] = r
         yield "", chat_history
 
-# 🔱 UI SETUP (RESOLVING DEPRECATION WARNINGS)
-with gr.Blocks() as demo: # Removed theme from here
-    gr.Markdown("# 🔱 TELEFOXX: DATA-DRIVEN MATRIX")
+# 🔱 UI SETUP
+with gr.Blocks() as demo:
+    gr.Markdown("# 🔱 TELEFOXX: CONTROL MATRIX")
     with gr.Tab("Neural Chat"):
-        # Explicitly setting allow_tags to avoid Gradio 6.0 warning
-        chatbot = gr.Chatbot(type="messages", render_markdown=True)
+        chatbot = gr.Chatbot(type="messages")
         msg_input = gr.Textbox(placeholder="အမိန့်ပေးပါ Commander...")
         msg_input.submit(respond, [msg_input, chatbot], [msg_input, chatbot])
 
-# 🔱 EXECUTION (THEME DEPLOYED HERE)
+# 🔱 EXECUTION (SYNTAX FIXED)
 if __name__ == "__main__":
-    # Moved theme to launch() to fix DeprecationWarning
-    demo.queue().launch(server_name="0.0.0.0", server_port=7860, theme="monochrome")    except Exception as e:
-        yield f"⚠️ Matrix Error: {str(e)}"
-
-def respond(message, chat_history):
-    chat_history.append({"role": "user", "content": message})
-    chat_history.append({"role": "assistant", "content": ""})
-    # bot_res သို့ နောက်ဆုံး chat_history (assistant row မပါဘဲ) ပို့သည်
-    bot_res = chat(message, chat_history[:-1])
-    for r in bot_res:
-        chat_history[-1]["content"] = r
-        yield "", chat_history
-
-# 🔱 UI SETUP
-with gr.Blocks(theme="monochrome") as demo:
-    gr.Markdown("# 🔱 TELEFOXX: DATA-DRIVEN MATRIX")
-    with gr.Tab("Neural Chat"):
-        chatbot = gr.Chatbot(type="messages")
-        msg_input = gr.Textbox(placeholder="အမိန့်ပေးပါ Commander... (Data အပေါ်မှာပဲ အခြေခံပါလိမ့်မယ်)")
-        msg_input.submit(respond, [msg_input, chatbot], [msg_input, chatbot])
-
-if __name__ == "__main__":
-    demo.queue().launch(server_name="0.0.0.0", server_port=7860)
+    try:
+        demo.queue().launch(
+            server_name="0.0.0.0", 
+            server_port=7860, 
+            theme="monochrome"
+        )
+    except Exception as e:
+        print(f"🔱 [CRITICAL FAILURE]: {str(e)}")
