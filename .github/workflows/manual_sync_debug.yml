@@ -2,12 +2,21 @@ name: Manual Trinity Debugger
 
 on:
   workflow_dispatch: # မင်းကိုယ်တိုင် ခလုတ်နှိပ်မှ Run မယ်
+  schedule:
+    # ၆ နာရီခြား တစ်ခါ (တစ်နေ့ ၄ ကြိမ်) အလိုအလျောက် Sync လုပ်ပေးမယ်
+    # ဒါက GitHub Free Minutes ကို အလွန်အကျွံ မကုန်စေဘဲ Phase 3 ကို Live ဖြစ်စေပါတယ်
+    - cron: '0 */6 * * *'
 
 # 🛠 အရေးကြီးဆုံးအပိုင်း - GitHub ကို ဖိုင်တွေ ရေးခွင့် (Write Permission) ပေးလိုက်တာပါ
 permissions:
   contents: write
   pages: write
   id-token: write
+
+# တစ်ပြိုင်တည်း Workflow တွေ အများကြီးတက်ပြီး Limit မကျော်အောင် ထိန်းပေးတဲ့ အပိုင်း
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   debug_sync:
