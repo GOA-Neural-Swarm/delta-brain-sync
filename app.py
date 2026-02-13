@@ -48,7 +48,7 @@ def universal_hyper_ingest(limit=50):
             })
         df = pd.DataFrame(records)
         df.to_sql('genesis_pipeline', engine, if_exists='append', index=False)
-        return f"✅ Successfully Synced {len(records)} Records."
+        return f"✅ Successfully Synced {len(records)} Records to Neon."
     except Exception as e:
         return f"❌ Pipeline Failed: {str(e)}"
 
@@ -78,7 +78,7 @@ def fetch_neon_context():
 
 def stream_logic(msg, hist):
     context = fetch_neon_context()
-    sys_msg = f"CONTEXT: {context}\nမင်းက TelefoxX Overseer ဖြစ်တယ်။"
+    sys_msg = f"CONTEXT: {context}\nမငျးက TelefoxX Overseer ဖွဈတယျ။"
     messages = [{"role": "system", "content": sys_msg}]
     for h in hist[-3:]: messages.append({"role": h['role'], "content": h['content']})
     messages.append({"role": "user", "content": msg})
@@ -95,7 +95,7 @@ with gr.Blocks(theme="monochrome") as demo:
     gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE")
     with gr.Tab("Omni-Overseer"):
         chatbot = gr.Chatbot(type="messages")
-        msg_input = gr.Textbox(placeholder="အမိန့်ပေးပါ Commander...")
+        msg_input = gr.Textbox(placeholder="အမိန့ျပေးပါ Commander...")
         def chat_interface(message, history):
             history.append({"role": "user", "content": message})
             history.append({"role": "assistant", "content": ""})
