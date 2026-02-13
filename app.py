@@ -15,7 +15,7 @@ from groq import Groq
 load_dotenv()
 NEON_URL = "postgresql://neondb_owner:npg_QUqg12MzNxnI@ep-divine-river-ahpf8fzb-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-HF_TOKEN = os.getenv("HF_TOKEN") # ⚠️ ကျိန်းသေပေါက် 'WRITE' role ရှိတဲ့ token ဖြစ်ရပါမယ်
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 engine = create_engine(NEON_URL)
@@ -30,14 +30,12 @@ class HydraEngine:
         try: return zlib.decompress(base64.b64decode(c)).decode('utf-8')
         except: return str(c)
 
-# 🔱 ၂။ THE PUMP: UNSTOPPABLE SCHEMA RESET
+# 🔱 ၂။ THE PUMP: UNSTOPPABLE SCHEMA RESET (ISOLATED TRANSACTIONS)
 def universal_hyper_ingest(limit=50):
     try:
         print("🛠️ [FORCE MODE] Scrubbing Existing Schema with Savepoints...")
-        
-        # Connection ကို Transaction သီးသန့်ခွဲပြီး Handle လုပ်မယ်
         with engine.connect() as conn:
-            # ၁။ View ကို သီးခြား Transaction တစ်ခုနဲ့ ဖျက်မယ်
+            # ၁။ View ကို သီးခြား Transaction နဲ့ ဖျက်မယ်
             with conn.begin():
                 try:
                     conn.execute(text("DROP VIEW IF EXISTS genesis_pipeline CASCADE;"))
@@ -45,7 +43,7 @@ def universal_hyper_ingest(limit=50):
                 except Exception as e:
                     print(f"Skipping View Drop: {e}")
 
-            # ၂။ Table ကို သီးခြား Transaction တစ်ခုနဲ့ ဖျက်မယ်
+            # ၂။ Table ကို သီးခြား Transaction နဲ့ ဖျက်မယ်
             with conn.begin():
                 try:
                     conn.execute(text("DROP TABLE IF EXISTS genesis_pipeline CASCADE;"))
@@ -92,21 +90,26 @@ def universal_hyper_ingest(limit=50):
     except Exception as e:
         return f"❌ Pipeline Crash: {str(e)}"
 
-# 🔱 ၃။ DIRECT SYNC WITH WRITE-ACCESS CHECK
+# 🔱 ၃။ DIRECT SYNC WITH FORCE OVERWRITE (NO-PR BYPASS)
 def sync_to_huggingface():
     if not HF_TOKEN: return
     try:
         api = HfApi()
+        print("🔱 Triggering Force Sync to Space Core...")
+        # create_pr=False ကို သုံးပြီး Main Branch ကို Direct Push လုပ်ခိုင်းတာပါ
         api.upload_folder(
             folder_path=".",
             repo_id="TELEFOXX/GOA",
             repo_type="space",
             token=HF_TOKEN,
+            commit_message="🔱 GOA OMNI-SYNC: NEURAL EXPANSION [FORCE PUSH]",
+            revision="main",
+            create_pr=False,
             ignore_patterns=[".git*", "__pycache__*"]
         )
         print("🔱 Space Sync Complete.")
     except Exception as e:
-        print(f"❌ HF Sync Forbidden: {e} \n💡 Tip: Check if HF_TOKEN has 'WRITE' role.")
+        print(f"❌ HF Sync Forbidden: {e} \n💡 Tip: Check if HF_TOKEN has 'WRITE' role and PR bypass is active.")
 
 # 🔱 ၄။ OMNI-OVERSEER CHAT LOGIC
 def fetch_neon_context():
