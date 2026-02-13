@@ -1,22 +1,39 @@
-name: GOA Data Pipeline (HF to Neon)
+name: GOA SUPREME PIPELINE
 on:
   schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
+    - cron: '0 * * * *' # တစ်နာရီ တစ်ခါ အလိုအလျောက် Run မည်
+  workflow_dispatch: # ကိုယ်တိုင် ခလုတ်နှိပ်ပြီး Run ချင်လျှင် သုံးရန်
 
 jobs:
-  sync_engine:
+  evolution_and_sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+        with:
+          fetch-depth: 0 # Git history အကုန်ယူရန် (Push လုပ်ရန် လိုအပ်သည်)
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      - name: Install
-        run: pip install datasets pandas sqlalchemy psycopg2-binary groq python-dotenv gradio
-      - name: Run Evolution
+
+      - name: Install Dependencies
+        run: |
+          pip install datasets pandas sqlalchemy psycopg2-binary groq python-dotenv gradio==4.44.1
+
+      - name: Run Neon Data Ingestion
         env:
           NEON_KEY: ${{ secrets.NEON_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           HEADLESS_MODE: "true"
         run: python app.py
+
+      - name: Push to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.email "commander@goa.com"
+          git config --global user.name "TELEFOXX"
+          # Hugging Face remote ကို သတ်မှတ်ပြီး Force Push လုပ်ခြင်း
+          git remote add hf https://TELEFOXX:$HF_TOKEN@huggingface.co/spaces/TELEFOXX/GOA || true
+          git push hf main --force
