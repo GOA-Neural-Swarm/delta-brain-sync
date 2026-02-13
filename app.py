@@ -2,7 +2,6 @@ import os
 import sys
 import zlib
 import base64
-import psycopg2
 import pandas as pd
 import gradio as gr
 from sqlalchemy import create_engine, text
@@ -11,12 +10,13 @@ from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
 
-# 🔱 ၁။ SYSTEM INITIALIZATION
+# 🔱 ၁။ SYSTEM INITIALIZATION (Workflow & Environment Matched)
 load_dotenv()
-# NEON URL ကို ပိုမိုတည်ငြိမ်အောင် စစ်ဆေးမှုများထည့်သွင်းထားသည်
-NEON_URL = "postgresql://neondb_owner:npg_QUqg12MzNxnI@ep-divine-river-ahpf8fzb-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-HF_TOKEN = os.getenv("HF_TOKEN")
+
+# Workflow ထဲက NEON_KEY ကို ဦးစားပေးယူပြီး URL အဖြစ် သတ်မှတ်သည်
+NEON_URL = os.environ.get("NEON_KEY") or "postgresql://neondb_owner:npg_QUqg12MzNxnI@ep-divine-river-ahpf8fzb-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+HF_TOKEN = os.environ.get("HF_TOKEN")
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 engine = create_engine(NEON_URL)
@@ -31,13 +31,11 @@ class HydraEngine:
         try: return zlib.decompress(base64.b64decode(c)).decode('utf-8')
         except: return str(c)
 
-# 🔱 ၂။ THE PUMP: UNSTOPPABLE SCHEMA RESET & EXPANSION
-# limit ကို default ၁၀၀၀ အထိ မြှင့်တင်ထားသည်
+# 🔱 ၂။ THE PUMP: 1000-NODE TRINITY PREP
 def universal_hyper_ingest(limit=1000):
     try:
-        print("🛠️ [FORCE MODE] Scrubbing Existing Schema...")
+        print("🛠️ [FORCE MODE] Scrubbing Schema for Trinity Sync...")
         with engine.connect() as conn:
-            # Table နှင့် View အားလုံးကို Cascade ဖြင့် တစ်ခါတည်း ရှင်းလင်းခြင်း
             with conn.begin():
                 try:
                     conn.execute(text("DROP TABLE IF EXISTS genesis_pipeline CASCADE;"))
@@ -46,7 +44,6 @@ def universal_hyper_ingest(limit=1000):
                 except Exception as e:
                     print(f"Bypassing cleanup error: {e}")
 
-            # Genesis Table ကို ပြန်လည်တည်ဆောက်ခြင်း
             with conn.begin():
                 print("🏗️ Rebuilding Genesis Core Table...")
                 conn.execute(text("""
@@ -79,43 +76,40 @@ def universal_hyper_ingest(limit=1000):
                 df.to_sql('genesis_pipeline', conn, if_exists='append', index=False)
             
             with engine.connect() as conn:
-                # ၅၀ အပိတ်ကို ကျော်ဖြတ်ပြီး နောက်ဆုံး count ကို ယူခြင်း
                 count = conn.execute(text("SELECT count(*) FROM genesis_pipeline")).scalar()
-                return f"✅ SUCCESS: NEON COUNT IS {count} (Expansion Complete)"
+                return f"✅ SUCCESS: NEON COUNT IS {count} (Expansion Ready for Sync)"
         return "⚠️ Fetch Fail."
     except Exception as e:
         return f"❌ Pipeline Crash: {str(e)}"
 
-# 🔱 ၃။ DIRECT SYNC WITH WRITE-ACCESS VALIDATION
+# 🔱 ၃။ DIRECT SYNC (Security Validated for WRITE access)
 def sync_to_huggingface():
+    # Environment မှ Token ကို တိုက်ရိုက်စစ်ဆေးသည်
     if not HF_TOKEN: 
-        print("❌ No HF_TOKEN found.")
+        print("❌ No HF_TOKEN found in Environment Secrets.")
         return
     try:
         api = HfApi()
         print("🔱 Triggering Force Sync to Space Core...")
-        # Direct push to main branch
         api.upload_folder(
             folder_path=".",
             repo_id="TELEFOXX/GOA",
             repo_type="space",
             token=HF_TOKEN,
-            commit_message="🔱 GOA OMNI-SYNC: NEURAL EXPANSION [NO LIMIT MODE]",
+            commit_message="🔱 GOA TRINITY-SYNC: NEURAL EVOLUTION [EXPANDED]",
             revision="main",
             create_pr=False,
             ignore_patterns=[".git*", "__pycache__*"]
         )
         print("🔱 Space Sync Complete.")
     except Exception as e:
-        # Write Role မရှိပါက တက်လာမည့် Error message
         print(f"❌ HF Sync Forbidden: {e}")
-        print("💡 Commander, please ensure HF_TOKEN has 'WRITE' permission at settings/tokens.")
+        print("💡 Tip: Ensure HF_TOKEN is in Repository Secrets (not just Org) and has WRITE role.")
 
-# 🔱 ၄။ OMNI-OVERSEER CHAT LOGIC (Using DESC Order)
+# 🔱 ၄။ OMNI-OVERSEER CHAT LOGIC (DESC Order Matched)
 def fetch_neon_context():
     try:
         with engine.connect() as conn:
-            # ၅၀ အပိတ်မရှိစေရန် ORDER BY ဖြင့် နောက်ဆုံးဒေတာကို ဆွဲယူခြင်း
             query = text("SELECT science_domain, detail FROM genesis_pipeline ORDER BY id DESC LIMIT 5")
             rows = conn.execute(query).fetchall()
             return " | ".join([f"[{r[0]}]: {HydraEngine.decompress(r[1])}" for r in rows])
@@ -139,7 +133,7 @@ def stream_logic(msg, hist):
 
 # 🔱 ၅။ UI SETUP
 with gr.Blocks(theme="monochrome") as demo:
-    gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE (V2.0)")
+    gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE (V2.1)")
     chatbot = gr.Chatbot()
     msg_input = gr.Textbox(placeholder="အမိန့်ပေးပါ Commander...")
     
@@ -150,16 +144,17 @@ with gr.Blocks(theme="monochrome") as demo:
             yield h
             
     msg_input.submit(user, [msg_input, chatbot], [msg_input, chatbot], queue=False).then(bot, chatbot, chatbot)
-    # Trigger Expansion ကို နှိပ်လျှင် Limit ၁၀၀၀ ဖြင့် Run မည်
     gr.Button("🚀 Trigger 1000-Node Expansion").click(lambda: universal_hyper_ingest(1000), [], gr.Textbox())
 
-# 🔱 ၆။ EXECUTION
+# 🔱 ၆။ EXECUTION (Workflow Step 1)
 if __name__ == "__main__":
-    if os.getenv("HEADLESS_MODE") == "true":
-        # Headless Mode (GitHub Actions) တွင် ၅၀ အစား ၁၀၀၀ သို့ပြောင်းလဲထားသည်
+    # GitHub Actions တွင် HEADLESS_MODE ကို သုံး၍ အလိုအလျောက် Run စေသည်
+    if os.environ.get("HEADLESS_MODE") == "true":
+        print("🧬 Trinity Step 1: Ingesting Data...")
         print(universal_hyper_ingest(limit=1000))
+        print("🚀 Trinity Step 2: Syncing to Space...")
         sync_to_huggingface()
         sys.exit(0)
     else:
-        # Local သို့မဟုတ် Space တွင် Run ပါက Gradio Launch မည်
+        # Local သို့မဟုတ် Space တွင် UI Launch သည်
         demo.launch(server_name="0.0.0.0", server_port=7860)
