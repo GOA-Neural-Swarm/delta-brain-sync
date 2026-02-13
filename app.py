@@ -9,7 +9,7 @@ from groq import Groq
 from datasets import load_dataset
 from sqlalchemy import create_engine
 
-# 🔱 CORE INITIALIZATION
+# 🔱 ၁။ CORE INITIALIZATION
 load_dotenv()
 NEON_URL = os.getenv("NEON_KEY") or os.getenv("DATABASE_URL")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -30,41 +30,40 @@ class HydraEngine:
         except:
             return str(c)
 
-# 🔱 DATABASE & DATA PIPELINE
+# 🔱 ၂။ DATABASE & DATA PIPELINE (UPDATED FOR PARQUET)
 def universal_hyper_ingest(limit=50):
     if not engine: return "❌ Database Connection Missing"
     try:
-        print("🚀 Fetching Science Data from Hugging Face...")
-        ds = load_dataset("arxiv_dataset", split='train', streaming=True, trust_remote_code=True)
+        print("🚀 Fetching ArXiv Science Data (Parquet Mode)...")
+        # 🔱 Fix: trust_remote_code ကို ဖြုတ်ပြီး standard loading သုံးခြင်း
+        ds = load_dataset("arxiv_dataset", "full", split='train', streaming=True)
+        
         records = []
         for i, entry in enumerate(ds):
             if i >= limit: break
+            
+            # Abstract ကို HydraEngine ဖြင့် Encode လုပ်မည်
+            abstract = entry.get('abstract', '')
             records.append({
                 'science_domain': 'Global_Expansion',
                 'title': entry.get('title'),
-                'detail': HydraEngine.compress(entry.get('abstract', '')),
+                'detail': HydraEngine.compress(abstract),
                 'energy_stability': -500.0,
                 'master_sequence': entry.get('categories')
             })
+            print(f"📥 Buffered: {entry.get('title')[:30]}...")
+            
+        if not records:
+            return "⚠️ No records fetched. Check dataset availability."
+
         df = pd.DataFrame(records)
         df.to_sql('genesis_pipeline', engine, if_exists='append', index=False)
-        return f"✅ Successfully Synced {len(records)} Records to Neon."
+        return f"✅ SUCCESS: {len(records)} Science Theories Ingested to Neon."
+        
     except Exception as e:
         return f"❌ Pipeline Failed: {str(e)}"
 
-def update_neural_record(record_id, new_message):
-    try:
-        compressed_msg = HydraEngine.compress(new_message)
-        conn = psycopg2.connect(NEON_URL)
-        cur = conn.cursor()
-        cur.execute("UPDATE neurons SET message = %s WHERE id = %s", (compressed_msg, int(record_id)))
-        conn.commit()
-        cur.close(); conn.close()
-        return f"🔱 Record {record_id} Optimized."
-    except Exception as e:
-        return f"❌ Update Failed: {str(e)}"
-
-# 🔱 CHAT LOGIC
+# 🔱 ၃။ CHAT & NEURAL LOGIC (REMAIN SAME)
 def fetch_neon_context():
     try:
         conn = psycopg2.connect(NEON_URL, connect_timeout=5)
@@ -74,13 +73,12 @@ def fetch_neon_context():
         cur.close(); conn.close()
         return " | ".join([f"[{r[0]}]: {HydraEngine.decompress(r[1])}" for r in rows]) if rows else "Directive Active"
     except:
-        return "Sync Standby"
+        return "Offline Mode"
 
 def stream_logic(msg, hist):
     context = fetch_neon_context()
-    sys_msg = f"CONTEXT: {context}\nမင်းက TelefoxX Overseer ဖြစ်တယ်။"
+    sys_msg = f"CONTEXT: {context}\nမင်းက TelefoxX Overseer ဖြစ်တယ်။ မြန်မာလိုပဲ ဖြေပါ။"
     messages = [{"role": "system", "content": sys_msg}]
-    # Gradio 4 syntax compatibility
     for h in hist: 
         messages.append({"role": "user", "content": h[0]})
         messages.append({"role": "assistant", "content": h[1]})
@@ -93,39 +91,31 @@ def stream_logic(msg, hist):
             ans += chunk.choices[0].delta.content
             yield ans
 
-# 🔱 GRADIO UI
+# 🔱 ၄။ UI SETUP
 with gr.Blocks() as demo:
     gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE")
     with gr.Tab("Omni-Overseer"):
         chatbot = gr.Chatbot()
         msg_input = gr.Textbox(placeholder="အမိန့်ပေးပါ Commander...")
-        
         def user(user_message, history):
             return "", history + [[user_message, None]]
-
         def bot(history):
             user_message = history[-1][0]
             history[-1][1] = ""
             for character in stream_logic(user_message, history[:-1]):
                 history[-1][1] = character
                 yield history
-
-        msg_input.submit(user, [msg_input, chatbot], [msg_input, chatbot], queue=False).then(
-            bot, chatbot, chatbot
-        )
+        msg_input.submit(user, [msg_input, chatbot], [msg_input, chatbot], queue=False).then(bot, chatbot, chatbot)
 
     with gr.Tab("Core Config"):
-        target_id = gr.Number(label="Neural ID")
-        update_val = gr.Textbox(label="New Data")
-        gr.Button("Rewrite").click(update_neural_record, [target_id, update_val], gr.Textbox())
-        gr.Button("🚀 Ingest HF Data").click(universal_hyper_ingest, [], gr.Textbox())
+        gr.Button("🚀 Force Manual Expansion").click(universal_hyper_ingest, [], gr.Textbox())
 
-# 🔱 EXECUTION CONTROL
+# 🔱 ၅။ EXECUTION CONTROL
 if __name__ == "__main__":
     if os.getenv("HEADLESS_MODE") == "true":
-        print("🔱 RUNNING IN DATA-PUMP MODE...")
-        print(universal_hyper_ingest(limit=50))
+        print("🔱 DATA-PUMP MODE ACTIVE...")
+        result = universal_hyper_ingest(limit=50)
+        print(result)
         os._exit(0)
     else:
-        # Theme ကို launch ထဲမှာပဲ ထည့်လိုက်ပါတယ် (Gradio Warning ကျော်ရန်)
         demo.launch(server_name="0.0.0.0", server_port=7860, theme="monochrome")
