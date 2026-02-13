@@ -1,8 +1,8 @@
 name: GOA SUPREME PIPELINE
 on:
-  schedule:
-    - cron: '0 * * * *' # တစ်နာရီ တစ်ခါ အလိုအလျောက် Run မည်
-  workflow_dispatch: # ကိုယ်တိုင် ခလုတ်နှိပ်ပြီး Run ချင်လျှင် သုံးရန်
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   evolution_and_sync:
@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # Git history အကုန်ယူရန် (Push လုပ်ရန် လိုအပ်သည်)
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -19,7 +19,8 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install datasets pandas sqlalchemy psycopg2-binary groq python-dotenv gradio==4.44.1
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Run Neon Data Ingestion
         env:
@@ -34,6 +35,5 @@ jobs:
         run: |
           git config --global user.email "commander@goa.com"
           git config --global user.name "TELEFOXX"
-          # Hugging Face remote ကို သတ်မှတ်ပြီး Force Push လုပ်ခြင်း
           git remote add hf https://TELEFOXX:$HF_TOKEN@huggingface.co/spaces/TELEFOXX/GOA || true
           git push hf main --force
