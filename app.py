@@ -31,7 +31,7 @@ class HydraEngine:
         except: return str(c)
 
 # 🔱 ၂။ THE PUMP: UNSTOPPABLE SCHEMA RESET (ISOLATED TRANSACTIONS)
-def universal_hyper_ingest(limit=50):
+def universal_hyper_ingest(limit=1000):
     try:
         print("🛠️ [FORCE MODE] Scrubbing Existing Schema with Savepoints...")
         with engine.connect() as conn:
