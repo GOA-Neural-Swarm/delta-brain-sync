@@ -15,13 +15,12 @@ from groq import Groq
 load_dotenv()
 NEON_URL = "postgresql://neondb_owner:npg_QUqg12MzNxnI@ep-divine-river-ahpf8fzb-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-HF_TOKEN = os.getenv("HF_TOKEN")
+HF_TOKEN = os.getenv("HF_TOKEN") # ⚠️ ကျိန်းသေပေါက် 'WRITE' role ရှိတဲ့ token ဖြစ်ရပါမယ်
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 engine = create_engine(NEON_URL)
 
 class HydraEngine:
-    """Neural Compression for Data Efficiency"""
     @staticmethod
     def compress(data):
         if not data: return ""
@@ -31,28 +30,31 @@ class HydraEngine:
         try: return zlib.decompress(base64.b64decode(c)).decode('utf-8')
         except: return str(c)
 
-# 🔱 ၂။ THE PUMP: UNIVERSAL FORCE INGESTION (VIEW & TABLE KILLER)
+# 🔱 ၂။ THE PUMP: UNSTOPPABLE SCHEMA RESET
 def universal_hyper_ingest(limit=50):
     try:
-        print("🛠️ [FORCE MODE] Scrubbing Existing Schema...")
-        # Connection Context သုံးပြီး Atomic ဖြစ်အောင်လုပ်မယ်
+        print("🛠️ [FORCE MODE] Scrubbing Existing Schema with Savepoints...")
+        
+        # Connection ကို Transaction သီးသန့်ခွဲပြီး Handle လုပ်မယ်
         with engine.connect() as conn:
+            # ၁။ View ကို သီးခြား Transaction တစ်ခုနဲ့ ဖျက်မယ်
             with conn.begin():
-                # ၁။ View ရှိလျှင်ဖျက်မည် (Error တက်လျှင် ကျော်သွားမည်)
                 try:
                     conn.execute(text("DROP VIEW IF EXISTS genesis_pipeline CASCADE;"))
-                    print("✅ View cleared (if existed).")
+                    print("✅ View status cleared.")
                 except Exception as e:
                     print(f"Skipping View Drop: {e}")
-                
-                # ၂။ Table ရှိလျှင်ဖျက်မည် (Error တက်လျှင် ကျော်သွားမည်)
+
+            # ၂။ Table ကို သီးခြား Transaction တစ်ခုနဲ့ ဖျက်မယ်
+            with conn.begin():
                 try:
                     conn.execute(text("DROP TABLE IF EXISTS genesis_pipeline CASCADE;"))
-                    print("✅ Table cleared (if existed).")
+                    print("✅ Table status cleared.")
                 except Exception as e:
                     print(f"Skipping Table Drop: {e}")
-                
-                # ၃။ Table အသစ်ပြန်ဆောက်မည်
+
+            # ၃။ Table အသစ်ကို လုံးဝလွတ်လပ်တဲ့ Transaction နဲ့ ဆောက်မယ်
+            with conn.begin():
                 print("🏗️ Rebuilding Genesis Core Table...")
                 conn.execute(text("""
                     CREATE TABLE genesis_pipeline (
@@ -66,7 +68,6 @@ def universal_hyper_ingest(limit=50):
                 """))
         
         print("📡 Fetching Stable Intelligence (ML-ArXiv)...")
-        # Colab တွင် အောင်မြင်ခဲ့သော Source ကို အသုံးပြုသည်
         ds = load_dataset("CShorten/ML-ArXiv-Papers", split='train', streaming=True)
         records = []
         for i, entry in enumerate(ds):
@@ -91,7 +92,7 @@ def universal_hyper_ingest(limit=50):
     except Exception as e:
         return f"❌ Pipeline Crash: {str(e)}"
 
-# 🔱 ၃။ DIRECT SYNC WITH HF API
+# 🔱 ၃။ DIRECT SYNC WITH WRITE-ACCESS CHECK
 def sync_to_huggingface():
     if not HF_TOKEN: return
     try:
@@ -105,7 +106,7 @@ def sync_to_huggingface():
         )
         print("🔱 Space Sync Complete.")
     except Exception as e:
-        print(f"❌ Sync Failed: {e}")
+        print(f"❌ HF Sync Forbidden: {e} \n💡 Tip: Check if HF_TOKEN has 'WRITE' role.")
 
 # 🔱 ၄။ OMNI-OVERSEER CHAT LOGIC
 def fetch_neon_context():
@@ -114,7 +115,7 @@ def fetch_neon_context():
             query = text("SELECT science_domain, detail FROM genesis_pipeline ORDER BY id DESC LIMIT 3")
             rows = conn.execute(query).fetchall()
             return " | ".join([f"[{r[0]}]: {HydraEngine.decompress(r[1])}" for r in rows])
-    except: return "Standby"
+    except: return "Standby Mode"
 
 def stream_logic(msg, hist):
     context = fetch_neon_context()
@@ -125,7 +126,6 @@ def stream_logic(msg, hist):
         if h[1]: messages.append({"role": "assistant", "content": h[1]})
     messages.append({"role": "user", "content": msg})
     
-    # Brain ကို အမြင့်ဆုံး Llama-3.3 သို့ သတ်မှတ်ထားသည်
     completion = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=messages, stream=True)
     ans = ""
     for chunk in completion:
@@ -133,9 +133,9 @@ def stream_logic(msg, hist):
             ans += chunk.choices[0].delta.content
             yield ans
 
-# 🔱 ၅။ UI SETUP (GRADIO MONOCHROME)
-with gr.Blocks(theme="monochrome", title="TELEFOXX OMNI-SYNC") as demo:
-    gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE\n**Status:** Operational")
+# 🔱 ၅။ UI SETUP
+with gr.Blocks(theme="monochrome") as demo:
+    gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE")
     chatbot = gr.Chatbot()
     msg_input = gr.Textbox(placeholder="အမိန့်ပေးပါ Commander...")
     def user(m, h): return "", h + [[m, None]]
@@ -146,10 +146,9 @@ with gr.Blocks(theme="monochrome", title="TELEFOXX OMNI-SYNC") as demo:
     msg_input.submit(user, [msg_input, chatbot], [msg_input, chatbot], queue=False).then(bot, chatbot, chatbot)
     gr.Button("🚀 Trigger Expansion").click(universal_hyper_ingest, [], gr.Textbox())
 
-# 🔱 ၆။ EXECUTION CONTROL (CI/CD READY)
+# 🔱 ၆။ EXECUTION
 if __name__ == "__main__":
     if os.getenv("HEADLESS_MODE") == "true":
-        print("🔱 TRIGGERING AUTOMATED PUMP...")
         print(universal_hyper_ingest(limit=50))
         sync_to_huggingface()
         sys.exit(0)
