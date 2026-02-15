@@ -1,28 +1,88 @@
-name: GOA SUPREME PIPELINE
+name: GOA SUPREME PIPELINE (SOVEREIGN MODE)
+
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+    paths:
+      - 'kaggle_brain/**'
+      - 'app.py'
+  schedule:
+    - cron: '*/30 * * * *'  # ၃၀ မိနဈတဈခါ Evolution & Sync လုပျမညျ
+  workflow_dispatch:        # Manual နှိုးရနျ ခလုတျ
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  evolution_and_sync:
+  evolution_and_trinity_sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: 🔱 Step 1 - Checkout Sovereign Code
+        uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: 🔱 Step 2 - Environment Setup (Python & Node)
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Install Dependencies
+      - name: 🔱 Step 3 - Install Multi-Engine Dependencies
         run: |
-          pip install datasets pandas sqlalchemy psycopg2-binary groq python-dotenv gradio==4.44.1 huggingface_hub==0.24.0
+          python -m pip install --upgrade pip
+          pip install datasets pandas sqlalchemy psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv huggingface_hub diffusers transformers accelerate safetensors Pillow kaggle
+          npm install pg @supabase/supabase-js firebase-admin
 
-      - name: Run Neon Data Ingestion & HF Sync
+      - name: 🔱 Step 4 - Trigger Kaggle AI Brain (Autonomous Push)
         env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          mkdir -p ~/.kaggle
+          echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+          if [ -d "kaggle_brain" ]; then
+            kaggle kernels push -p ./kaggle_brain
+          fi
+
+      - name: 🔱 Step 5 - Run Evolution Engine (Self-Coding & Ingestion)
+        timeout-minutes: 10
+        env:
+          DATABASE_URL: ${{ secrets.NEON_KEY }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_URL: ${{ github.repository }}
           HEADLESS_MODE: "true"
         run: python app.py
+
+      - name: 🔱 Step 6 - Run Delta Sync (Neon to Supabase/Firebase)
+        env:
+          NEON_KEY: ${{ secrets.NEON_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f "delta_sync.js" ]; then
+            node delta_sync.js
+          fi
+
+      - name: 🔱 Step 7 - Commit & Push Neural Evolution
+        run: |
+          git config --global user.name 'TelefoxX-Overseer'
+          git config --global user.email 'overseer@telefoxx.ai'
+          git add .
+          git commit -m "🔱 Neural Evolution: Phase 4.8 Autonomous Sync Completed" || echo "No changes to evolve."
+          git push origin main
