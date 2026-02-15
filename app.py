@@ -1,3 +1,4 @@
+```python
 import os
 import sys
 import zlib
@@ -168,14 +169,32 @@ def stream_logic(msg, hist):
             yield ans
 
 cyberpunk_css = """
-body { background-color: #050505; color: #00ff41; font-family: 'Courier New', Courier, monospace; }
-.gradio-container { border: 2px solid #ff00ff !important; box-shadow: 0 0 20px #ff00ff; border-radius: 0px !important; }
-button { background: linear-gradient(90deg, #ff00ff, #00ffff) !important; color: black !important; font-weight: bold !important; border-radius: 0px !important; }
-footer { display: none !important; }
+body { 
+    background-color: #050505; 
+    color: #00ff41; 
+    font-family: 'Courier New', Courier, monospace; 
+    font-size: 16px;
+}
+.gradio-container { 
+    border: 2px solid #ff00ff !important; 
+    box-shadow: 0 0 20px #ff00ff; 
+    border-radius: 0px !important; 
+    padding: 20px;
+}
+button { 
+    background: linear-gradient(90deg, #ff00ff, #00ffff) !important; 
+    color: black !important; 
+    font-weight: bold !important; 
+    border-radius: 0px !important; 
+    padding: 10px 20px;
+}
+footer { 
+    display: none !important; 
+}
 """
 
 with gr.Blocks(css=cyberpunk_css, theme=gr.themes.Monochrome()) as demo:
-    gr.Markdown("# TELEFOXX OMNI-SYNC CORE V6.0")
+    gr.Markdown("# **TELEFOXX OMNI-SYNC CORE V6.0**")
     
     with gr.Tab("NEURAL INTERFACE"):
         chatbot = gr.Chatbot(label="Overseer Feed", height=500)
@@ -214,3 +233,4 @@ if __name__ == "__main__":
         asyncio.run(headless())
     else:
         demo.launch(server_name="0.0.0.0", server_port=7860)
+```
