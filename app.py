@@ -1,3 +1,4 @@
+```python
 import os
 import sys
 import zlib
@@ -170,7 +171,7 @@ def stream_logic(msg, hist):
             yield ans
 
 # 🔱 ၇။ CYBERPUNK UI SETUP
-with gr.Blocks(theme="monochrome") as demo:
+with gr.Blocks(theme="cyberpunk") as demo:
     gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE (V5.2)")
     
     with gr.Tab("Neural Chat"):
@@ -207,3 +208,4 @@ if __name__ == "__main__":
         sys.exit(0)
     else:
         demo.launch(server_name="0.0.0.0", server_port=7860)
+```
