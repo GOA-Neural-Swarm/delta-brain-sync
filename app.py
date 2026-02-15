@@ -212,5 +212,14 @@ class TelefoxXOverseer:
         return demo
 
 if __name__ == "__main__":
-    if os.environ.get("HEADLESS_MODE"):
+    if os.environ.get("HEADLESS_MODE") == "true":
+    async def run_all(): # ✅ Space 4 ခု ခုနျပေးရပါမယျ
+        await universal_hyper_ingest()
+        if await trigger_self_evolution():
+            await git_sovereign_push()
+        await sync_to_huggingface()
+    asyncio.run(run_all())
+else:
+    demo.launch(server_name="0.0.0.0", server_port=7860, css=cyberpunk_css, theme=gr.themes.Monochrome())
+    
         
