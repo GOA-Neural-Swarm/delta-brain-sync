@@ -28,3 +28,8 @@ safetensors
 opencv-python
 Pillow
 ftfy
+
+# --- 🛰️ AUTONOMOUS SYNC & SUPABASE (COMMANDER'S ADD-ONS) ---
+supabase
+httpx
+asyncio
