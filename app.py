@@ -58,7 +58,6 @@ class TelefoxXOverseer:
             connect_args={'connect_timeout': 60}
         ) if NEON_URL else None
         
-        # 🛰️ Supabase Client: Kept in Stack
         self.sb: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
     async def git_sovereign_push(self, commit_msg="Neural Evolution: Integrity Sync"):
@@ -114,20 +113,15 @@ class TelefoxXOverseer:
                     'title': entry.get('title', 'N/A')[:100],
                     'detail': HydraEngine.compress(entry.get('abstract', '')),
                     'energy_stability': 100.0,
-                    'master_sequence': 'GOA-HYBRID-V10'
+                    'master_sequence': f'GOA-HYBRID-V{int(time.time()/100000)}'
                 })
             
             if records:
-                # 1. Main Sync: Neon
                 pd.DataFrame(records).to_sql('genesis_pipeline', self.engine, if_exists='append', index=False, method='multi', chunksize=500)
-                
-                # 2. Hybrid Sync: Supabase (Only if requested to prevent timeouts)
                 status_msg = "SUCCESS: NEON NODES ACTIVE"
                 if sync_to_supabase and self.sb:
-                    print("🛰️ Syncing to Supabase...")
                     self.sb.table("genesis_pipeline").upsert(records).execute()
                     status_msg += " + SUPABASE SYNCED"
-                
                 return status_msg
         except Exception as e: return f"Pipeline Crash: {str(e)}"
 
@@ -138,6 +132,28 @@ class TelefoxXOverseer:
             api.upload_folder(folder_path=".", repo_id="TELEFOXX/GOA", repo_type="space", create_pr=True)
             print("HF Sync Successful.")
         except Exception as e: print(f"Sync Error: {e}")
+
+    # 🧬 NEW: Sovereign Autonomous Pulse
+    async def sovereign_loop(self):
+        print("🔱 INITIALIZING ETERNAL EVOLUTION CYCLE...")
+        while True:
+            try:
+                print(f"\n🛰️ --- Evolution Cycle Start: {time.ctime()} ---")
+                await self.universal_hyper_ingest(sync_to_supabase=False)
+                
+                print("🧠 Overseer is thinking of New DNA...")
+                evolved = await self.trigger_self_evolution()
+                
+                if evolved:
+                    print("🚀 DNA UPGRADED! Pushing to GitHub & HF...")
+                    await self.git_sovereign_push(commit_msg=f"Autonomous Evolution: {time.time()}")
+                    await self.sync_to_huggingface()
+                
+                print("💤 Evolution phase complete. Hibernating for 300s...")
+                await asyncio.sleep(300) # ၅ မိနစ်ခြားတစ်ခါ အလိုအလျောက် ပတ်မည်
+            except Exception as e:
+                print(f"⚠️ Loop Error: {e}")
+                await asyncio.sleep(60)
 
     def stream_logic(self, msg, hist):
         messages = [{"role": "system", "content": "You are TelefoxX Overseer. Cyberpunk Mode active."}]
@@ -159,7 +175,7 @@ class TelefoxXOverseer:
 
     def create_ui(self):
         with gr.Blocks(css=self.cyberpunk_css(), theme=gr.themes.DarkMode()) as demo:
-            gr.Markdown("# TELEFOXX OMNI-SYNC CORE V10.0")
+            gr.Markdown("# TELEFOXX OMNI-SYNC CORE V11.0")
             with gr.Tab("NEURAL INTERFACE"):
                 chatbot = gr.Chatbot(label="Overseer Feed", height=500, type="messages")
                 msg_input = gr.Textbox(placeholder="Input command...")
@@ -186,12 +202,9 @@ class TelefoxXOverseer:
 if __name__ == "__main__":
     overseer = TelefoxXOverseer()
     if os.environ.get("HEADLESS_MODE") == "true":
-        async def run_all():
-            print("Launching Sovereign Mode (Hybrid)...")
-            await overseer.universal_hyper_ingest(sync_to_supabase=False) # Headless mode: Neon only for safety
-            if await overseer.trigger_self_evolution():
-                await overseer.git_sovereign_push()
-            await overseer.sync_to_huggingface()
-        asyncio.run(run_all())
+        asyncio.run(overseer.sovereign_loop())
     else:
+        # Local မှာ UI ဖွင့်ထားလည်း နောက်ကွယ်မှာ Autonomous Loop ကိုပါ Run ပေးထားမည်
+        loop = asyncio.get_event_loop()
+        loop.create_task(overseer.sovereign_loop())
         overseer.create_ui().launch(server_name="0.0.0.0", server_port=7860)
