@@ -79,10 +79,4 @@ jobs:
             node delta_sync.js
           fi
 
-      - name: 🔱 Step 7 - Commit & Push Neural Evolution
-        run: |
-          git config --global user.name 'TelefoxX-Overseer'
-          git config --global user.email 'overseer@telefoxx.ai'
-          git add .
-          git commit -m "🔱 Neural Evolution: Phase 4.8 Autonomous Sync Completed" || echo "No changes to evolve."
-          git push origin main
+      
