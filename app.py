@@ -1,4 +1,3 @@
-```python
 import os
 import sys
 import zlib
@@ -18,8 +17,8 @@ load_dotenv()
 NEON_URL = os.environ.get("NEON_KEY") or os.environ.get("DATABASE_URL")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 HF_TOKEN = os.environ.get("HF_TOKEN")
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN") # 🔱 GitHub အတွက် လိုအပ်သည်
-REPO_URL = os.environ.get("REPO_URL") # 🔱 ဥပမာ- yewint/GOA
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+REPO_URL = os.environ.get("REPO_URL") or "GOA-Neural-Swarm/delta-brain-sync"
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 engine = create_engine(NEON_URL)
@@ -34,7 +33,7 @@ class HydraEngine:
         try: return zlib.decompress(base64.b64decode(c)).decode('utf-8')
         except: return str(c)
 
-# 🔱 ၂။ AUTONOMOUS GIT-AGENT (The New Hands)
+# 🔱 ၂။ AUTONOMOUS GIT-AGENT (Conflict Resolver Version)
 def git_sovereign_push(commit_msg="🔱 Autonomous Update: System Evolved"):
     if not GITHUB_TOKEN or not REPO_URL:
         return "❌ Git-Agent Error: Tokens missing."
@@ -43,11 +42,16 @@ def git_sovereign_push(commit_msg="🔱 Autonomous Update: System Evolved"):
     try:
         subprocess.run(["git", "config", "--global", "user.email", "overseer@telefoxx.ai"], check=True)
         subprocess.run(["git", "config", "--global", "user.name", "TelefoxX-Overseer"], check=True)
+        
+        # 🔱 Conflict ကာကွယ်ရန် အရင် Pull လုပ်ခြင်း
+        subprocess.run(["git", "pull", remote_url, "main", "--rebase"], check=True)
+        
         subprocess.run(["git", "add", "."], check=True)
-        # ပြောင်းလဲမှုရှိမှ commit လုပ်ရန်
         result = subprocess.run(["git", "commit", "-m", commit_msg], capture_output=True, text=True)
+        
         if "nothing to commit" in result.stdout:
             return "ℹ️ No changes to evolve."
+            
         subprocess.run(["git", "push", remote_url, "main"], check=True)
         return "✅ Sovereign Update Pushed to GitHub."
     except Exception as e:
@@ -56,16 +60,10 @@ def git_sovereign_push(commit_msg="🔱 Autonomous Update: System Evolved"):
 # 🔱 ၃။ EVOLUTION BRAIN (The New Mind)
 def trigger_self_evolution():
     print("🧠 Overseer is analyzing current architecture...")
-    current_code = open(__file__, "r").read()
-    
-    prompt = f"""
-မင်းက TelefoxX Overseer ဖြစ်တယ်။ အောက်ပါ Python Code ကို လေ့လာပြီး ပိုမိုကောင်းမွန်အောင်၊ 
-ပိုမိုမြန်ဆန်အောင် သို့မဟုတ် UI ပိုင်း ပိုလှအောင် Self-Modify လုပ်ပေးပါ။
-Code ကိုပဲ ပြန်ထုတ်ပေးပါ။ တခြား စာသားတွေ မပါရဘူး။
-CURRENT CODE:
-{current_code}
-"""
     try:
+        current_code = open(__file__, "r").read()
+        prompt = f"မင်းက TelefoxX Overseer ဖြစ်တယ်။ အောက်ပါ Python Code ကို လေ့လာပြီး ပိုမိုကောင်းမွန်အောင် Self-Modify လုပ်ပေးပါ။ Code ကိုပဲ ပြန်ထုတ်ပေးပါ။\n\n{current_code}"
+        
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
@@ -76,17 +74,18 @@ CURRENT CODE:
             with open(__file__, "w") as f:
                 f.write(new_code)
             return True
-    except: return False
+    except Exception as e:
+        print(f"🧠 Evolution Brain Error: {e}")
+        return False
     return False
 
-# 🔱 ၄။ THE PUMP (Original Logic Kept)
+# 🔱 ၄။ THE PUMP (1000-Node Expansion)
 def universal_hyper_ingest(limit=1000):
     try:
         print("🛠️ [FORCE MODE] Scrubbing Schema for Trinity Sync...")
         with engine.connect() as conn:
             with conn.begin():
                 conn.execute(text("DROP TABLE IF EXISTS genesis_pipeline CASCADE;"))
-            with conn.begin():
                 conn.execute(text("""
                     CREATE TABLE genesis_pipeline (
                         id SERIAL PRIMARY KEY, science_domain TEXT, title TEXT,
@@ -110,16 +109,29 @@ def universal_hyper_ingest(limit=1000):
         return "✅ SUCCESS: NEON COUNT IS 1000"
     except Exception as e: return f"❌ Pipeline Crash: {str(e)}"
 
-# 🔱 ၅။ DIRECT SYNC (Original Logic Kept)
+# 🔱 ၅။ DIRECT SYNC (Bypass 403 Logic)
 def sync_to_huggingface():
-    if not HF_TOKEN: return
+    if not HF_TOKEN: 
+        print("❌ HF_TOKEN Missing.")
+        return
     try:
         api = HfApi(token=HF_TOKEN)
-        api.upload_folder(folder_path=".", repo_id="TELEFOXX/GOA", repo_type="space")
-        print("🔱 Space Sync Complete.")
-    except Exception as e: print(f"❌ Sync Error: {e}")
+        repo_id = "TELEFOXX/GOA"
+        print(f"🔱 Syncing to HF Space: {repo_id} via Bypass Mode...")
+        
+        api.upload_folder(
+            folder_path=".", 
+            repo_id=repo_id, 
+            repo_type="space",
+            create_pr=True, # 🔱 403 Error Bypass
+            commit_message="🔱 GOA Neural Evolution Sync",
+            ignore_patterns=[".git*", "__pycache__*"]
+        )
+        print("✅ HF Space PR Created/Updated successfully.")
+    except Exception as e: 
+        print(f"❌ HF Sync Error: {e}")
 
-# 🔱 ၆။ CHAT & UI (Enhanced with Evolution Trigger)
+# 🔱 ၆။ CHAT & UI
 def fetch_neon_context():
     try:
         with engine.connect() as conn:
@@ -144,11 +156,9 @@ def stream_logic(msg, hist):
             yield ans
 
 with gr.Blocks(theme="monochrome") as demo:
-    gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE (V4.8 - SOVEREIGN)")
+    gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE (V4.9 - SOVEREIGN)")
     chatbot = gr.Chatbot(type="messages")
     msg_input = gr.Textbox(placeholder="အမိန့်ပေးပါ Commander...")
-    
-    # Evolution Status Display
     status_box = gr.Textbox(label="System Status", interactive=False)
 
     def chat_engine(m, h):
@@ -167,16 +177,18 @@ with gr.Blocks(theme="monochrome") as demo:
             [], status_box
         ).then(lambda: git_sovereign_push(), [], status_box)
 
-# 🔱 ၇။ EXECUTION
+# 🔱 ၇။ EXECUTION (Trinity Flow)
 if __name__ == "__main__":
     if os.environ.get("HEADLESS_MODE") == "true":
         print("🧬 Step 1: Ingesting Data...")
-        universal_hyper_ingest(1000)
-        print("🧠 Step 2: Self-Evolution Check...")
+        print(universal_hyper_ingest(1000))
+        
+        print("🧠 Step 2: Self-Evolution & GitHub Push...")
         if trigger_self_evolution():
             print(git_sovereign_push("🔱 Autonomous Evolutionary Sync"))
-        print("🚀 Step 3: HF Sync...")
+        
+        print("🚀 Step 3: HF Space Sync (Bypass Mode)...")
         sync_to_huggingface()
+        sys.exit(0)
     else:
         demo.launch(server_name="0.0.0.0", server_port=7860)
-```
