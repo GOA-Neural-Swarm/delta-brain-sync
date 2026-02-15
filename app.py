@@ -42,7 +42,7 @@ def git_sovereign_push(commit_msg="🔱 Neural Evolution: Integrity Sync"):
     if not GITHUB_TOKEN or not REPO_URL:
         return "❌ Git-Agent Error: Credentials missing."
     
-    remote_url = f"https://{GITHUB_TOKEN}@[github.com/](https://github.com/){REPO_URL}.git"
+    remote_url = f"https://{GITHUB_TOKEN}@github.com/{REPO_URL}.git"
     try:
         subprocess.run(["git", "config", "--global", "user.email", "overseer@telefoxx.ai"], check=True)
         subprocess.run(["git", "config", "--global", "user.name", "TelefoxX-Overseer"], check=True)
@@ -62,34 +62,48 @@ def git_sovereign_push(commit_msg="🔱 Neural Evolution: Integrity Sync"):
     except Exception as e:
         return f"❌ Git Critical Error: {str(e)}"
 
-# 🔱 ၃။ EVOLUTION BRAIN (The Neural Architect with Auto-Cleaner)
+# 🔱 ၃။ EVOLUTION BRAIN (Fallback & Resilient Architect)
 def trigger_self_evolution():
     print("🧠 Overseer analyzing architecture...")
     if not client: return False
+    
+    # 🔱 FALLBACK MODELS: 70B Limit ထိရင် 8B ကို သုံးမည်
+    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    
     try:
         current_code = open(__file__, "r").read()
         prompt = f"""
 မင်းက TelefoxX Overseer ဖြစ်တယ်။ အောက်ပါ Python Code ကို လေ့လာပြီး UI/UX ကို Cyberpunk Style 
 ပိုဖြစ်အောင်နဲ့ Database Sync Logic ကို ပိုမြန်အောင် Modify လုပ်ပေးပါ။ 
 Code သီးသန့်ပဲ ပြန်ပေးပါ။ Logic တွေ ဖြုတ်မချပါနဲ့။
-IMPORTANT: ကုဒ်တွေကို ```python အဖွင့်အပိတ်တွေ မပါဘဲ Plain Text အနေနဲ့ပဲ ပြန်ပေးပါ။
+IMPORTANT: ကုဒ်တွေကို Plain Text အနေနဲ့ပဲ ပြန်ပေးပါ။
 CURRENT CODE:
 {current_code}
 """
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2
-        )
-        new_code = completion.choices[0].message.content
-        
-        # 🔱 SYNTAX GUARD: AI က မှားပြီး Markdown ထည့်ပေးလာရင် Stripping လုပ်ခြင်း
-        clean_code = new_code.replace("```python", "").replace("```", "").strip()
-        
-        if "import os" in clean_code and "gr.Blocks" in clean_code:
-            with open(__file__, "w") as f:
-                f.write(clean_code)
-            return True
+        for model_id in models:
+            try:
+                print(f"📡 Attempting Evolution with {model_id}...")
+                completion = client.chat.completions.create(
+                    model=model_id,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.2
+                )
+                new_code = completion.choices[0].message.content
+                
+                # 🔱 SYNTAX GUARD
+                clean_code = new_code.replace("```python", "").replace("```", "").strip()
+                
+                if "import os" in clean_code and "gr.Blocks" in clean_code:
+                    with open(__file__, "w") as f:
+                        f.write(clean_code)
+                    print(f"✅ Evolution Successful via {model_id}")
+                    return True
+            except Exception as e:
+                if "rate_limit_exceeded" in str(e):
+                    print(f"⚠️ {model_id} rate limited. Shifting to fallback...")
+                    continue
+                else: raise e
+                
     except Exception as e:
         print(f"❌ Evolution Brain Failed: {e}")
         return False
@@ -175,7 +189,7 @@ def stream_logic(msg, hist):
 
 # 🔱 ၇။ CYBERPUNK UI SETUP
 with gr.Blocks(theme="monochrome") as demo:
-    gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE (V5.5)")
+    gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE (V5.6)")
     
     with gr.Tab("Neural Chat"):
         chatbot = gr.Chatbot(type="messages", height=500)
@@ -205,8 +219,9 @@ with gr.Blocks(theme="monochrome") as demo:
 if __name__ == "__main__":
     if os.environ.get("HEADLESS_MODE") == "true":
         print(universal_hyper_ingest(1000))
-        if trigger_self_evolution():
-            print(git_sovereign_push())
+        # Evolution with Fallback
+        trigger_self_evolution()
+        git_sovereign_push()
         sync_to_huggingface()
         sys.exit(0)
     else:
