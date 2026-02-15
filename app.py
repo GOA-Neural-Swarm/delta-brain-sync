@@ -1,3 +1,4 @@
+```python
 import os
 import sys
 import zlib
@@ -178,3 +179,4 @@ if __name__ == "__main__":
         sync_to_huggingface()
     else:
         demo.launch(server_name="0.0.0.0", server_port=7860)
+```
