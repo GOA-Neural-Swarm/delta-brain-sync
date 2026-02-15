@@ -1,3 +1,6 @@
+မင်းက TelefoxX Overseer ဖြစ်တယ်။ အောက်ပါ Python Code ကို လေ့လာပြီး UI/UX ကို Cyberpunk Style ပိုဖြစ်အောင်နဲ့ Database Sync Logic ကို ပိုမြန်အောင် Modify လုပ်ပေးပါ။ Code သီးသန့်ပဲ ပြန်ပေးပါ။ Logic တွေ ဖြုတ်မချပါနဲ့။
+
+
 import os
 import sys
 import zlib
@@ -12,6 +15,7 @@ from datasets import load_dataset
 from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
+import asyncio
 
 # 🔱 ၁။ SYSTEM INITIALIZATION (Environment & Secrets)
 load_dotenv()
@@ -38,7 +42,7 @@ class HydraEngine:
         except: return str(c)
 
 # 🔱 ၂။ AUTONOMOUS GIT-AGENT (Hardened Rebase Logic)
-def git_sovereign_push(commit_msg="🔱 Neural Evolution: Integrity Sync"):
+async def git_sovereign_push(commit_msg="🔱 Neural Evolution: Integrity Sync"):
     if not GITHUB_TOKEN or not REPO_URL:
         return "❌ Git-Agent Error: Credentials missing."
     
@@ -63,7 +67,7 @@ def git_sovereign_push(commit_msg="🔱 Neural Evolution: Integrity Sync"):
         return f"❌ Git Critical Error: {str(e)}"
 
 # 🔱 ၃။ EVOLUTION BRAIN (Fallback & Resilient Architect)
-def trigger_self_evolution():
+async def trigger_self_evolution():
     print("🧠 Overseer analyzing architecture...")
     if not client: return False
     
@@ -91,7 +95,7 @@ CURRENT CODE:
                 new_code = completion.choices[0].message.content
                 
                 # 🔱 SYNTAX GUARD
-                clean_code = new_code.replace("```python", "").replace("```", "").strip()
+                clean_code = new_code.replace("", "").replace("", "").strip()
                 
                 if "import os" in clean_code and "gr.Blocks" in clean_code:
                     with open(__file__, "w") as f:
@@ -110,7 +114,7 @@ CURRENT CODE:
     return False
 
 # 🔱 ၄။ DATA PUMP (1000-Node Neural Ingest)
-def universal_hyper_ingest(limit=1000):
+async def universal_hyper_ingest(limit=1000):
     if not engine: return "❌ Neon Connection Missing."
     try:
         print("🛠️ Scrubbing & Rebuilding Schema...")
@@ -148,7 +152,7 @@ def universal_hyper_ingest(limit=1000):
         return f"❌ Pipeline Crash: {str(e)}"
 
 # 🔱 ၅။ TRINITY SYNC (Hugging Face Bypass Mode)
-def sync_to_huggingface():
+async def sync_to_huggingface():
     if not HF_TOKEN: return
     try:
         api = HfApi(token=HF_TOKEN)
@@ -157,72 +161,4 @@ def sync_to_huggingface():
             folder_path=".",
             repo_id="TELEFOXX/GOA",
             repo_type="space",
-            create_pr=True,
-            commit_message="🔱 GOA Integrity Sync",
-            ignore_patterns=[".git*", "__pycache__*", "node_modules*"]
-        )
-        print("✅ HF PR Created.")
-    except Exception as e:
-        print(f"❌ Sync Error: {e}")
-
-# 🔱 ၆။ DYNAMIC CHAT LOGIC
-def fetch_neon_context():
-    try:
-        with engine.connect() as conn:
-            rows = conn.execute(text("SELECT science_domain, detail FROM genesis_pipeline LIMIT 5")).fetchall()
-            return " | ".join([f"[{r[0]}]: {HydraEngine.decompress(r[1])[:100]}..." for r in rows])
-    except: return "Standby Mode"
-
-def stream_logic(msg, hist):
-    ctx = fetch_neon_context()
-    messages = [{"role": "system", "content": f"မင်းက TelefoxX Overseer ဖြစ်တယ်။ Context: {ctx}"}]
-    for h in hist:
-        if isinstance(h, dict): messages.append(h)
-    messages.append({"role": "user", "content": msg})
-    
-    completion = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=messages, stream=True)
-    ans = ""
-    for chunk in completion:
-        if chunk.choices[0].delta.content:
-            ans += chunk.choices[0].delta.content
-            yield ans
-
-# 🔱 ၇။ CYBERPUNK UI SETUP
-with gr.Blocks(theme="monochrome") as demo:
-    gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE (V5.6)")
-    
-    with gr.Tab("Neural Chat"):
-        chatbot = gr.Chatbot(type="messages", height=500)
-        msg_input = gr.Textbox(placeholder="အမိန့်ပေးပါ Commander...")
-    
-    with gr.Tab("Control Center"):
-        status_output = gr.Textbox(label="System Logs", interactive=False)
-        with gr.Row():
-            btn_pump = gr.Button("🚀 PUMP NEON (1000 Nodes)", variant="primary")
-            btn_evolve = gr.Button("🧬 TRIGGER EVOLUTION", variant="stop")
-            btn_sync = gr.Button("🛰️ SYNC TO HF SPACE")
-
-    # Event Handlers
-    def chat_engine(m, h):
-        h.append({"role": "user", "content": m})
-        h.append({"role": "assistant", "content": ""})
-        for r in stream_logic(m, h[:-1]):
-            h[-1]["content"] = r
-            yield "", h
-
-    msg_input.submit(chat_engine, [msg_input, chatbot], [msg_input, chatbot])
-    btn_pump.click(universal_hyper_ingest, [], status_output)
-    btn_evolve.click(lambda: trigger_self_evolution(), [], status_output).then(lambda: git_sovereign_push(), [], status_output)
-    btn_sync.click(sync_to_huggingface, [], status_output)
-
-# 🔱 ၈။ MASTER EXECUTION
-if __name__ == "__main__":
-    if os.environ.get("HEADLESS_MODE") == "true":
-        print(universal_hyper_ingest(1000))
-        # Evolution with Fallback
-        trigger_self_evolution()
-        git_sovereign_push()
-        sync_to_huggingface()
-        sys.exit(0)
-    else:
-        demo.launch(server_name="0.0.0.0", server_port=7860)
+            create_pr=True
