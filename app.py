@@ -1,8 +1,9 @@
-```python
 import os
 import sys
 import zlib
 import base64
+import json
+import time
 import subprocess
 import pandas as pd
 import gradio as gr
@@ -12,17 +13,17 @@ from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
 
-# 🔱 ၁။ SYSTEM INITIALIZATION (Secrets & Engines)
+# 🔱 ၁။ SYSTEM INITIALIZATION (Environment & Secrets)
 load_dotenv()
 
-# Database & API Connections
+# Connectivity Keys
 NEON_URL = os.environ.get("NEON_KEY") or os.environ.get("DATABASE_URL")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 HF_TOKEN = os.environ.get("HF_TOKEN")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 REPO_URL = os.environ.get("REPO_URL") or "GOA-Neural-Swarm/delta-brain-sync"
 
-# Initialize Client Engines
+# Client Engines
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 engine = create_engine(NEON_URL) if NEON_URL else None
 
@@ -36,24 +37,21 @@ class HydraEngine:
         try: return zlib.decompress(base64.b64decode(c)).decode('utf-8')
         except: return str(c)
 
-# 🔱 ၂။ AUTONOMOUS GIT-AGENT (Hardened Conflict Resolution)
+# 🔱 ၂။ AUTONOMOUS GIT-AGENT (Hardened Rebase Logic)
 def git_sovereign_push(commit_msg="🔱 Neural Evolution: Integrity Sync"):
     if not GITHUB_TOKEN or not REPO_URL:
         return "❌ Git-Agent Error: Credentials missing."
     
-    remote_url = f"https://{GITHUB_TOKEN}@github.com/{REPO_URL}.git"
+    remote_url = f"https://{GITHUB_TOKEN}@[github.com/](https://github.com/){REPO_URL}.git"
     try:
-        # Identity Configuration
         subprocess.run(["git", "config", "--global", "user.email", "overseer@telefoxx.ai"], check=True)
         subprocess.run(["git", "config", "--global", "user.name", "TelefoxX-Overseer"], check=True)
         
-        # Pulling latest to avoid conflicts
         subprocess.run(["git", "add", "."], check=True)
         subprocess.run(["git", "stash"], check=True)
         subprocess.run(["git", "pull", remote_url, "main", "--rebase"], check=True)
         subprocess.run(["git", "stash", "pop"], check=False)
         
-        # Commit and Force Push to maintain Sovereign control
         subprocess.run(["git", "add", "."], check=True)
         res = subprocess.run(["git", "commit", "-m", commit_msg], capture_output=True, text=True)
         if "nothing to commit" in res.stdout:
@@ -64,7 +62,7 @@ def git_sovereign_push(commit_msg="🔱 Neural Evolution: Integrity Sync"):
     except Exception as e:
         return f"❌ Git Critical Error: {str(e)}"
 
-# 🔱 ၃။ EVOLUTION BRAIN (The Neural Architect)
+# 🔱 ၃။ EVOLUTION BRAIN (The Neural Architect with Auto-Cleaner)
 def trigger_self_evolution():
     print("🧠 Overseer analyzing architecture...")
     if not client: return False
@@ -74,6 +72,7 @@ def trigger_self_evolution():
 မင်းက TelefoxX Overseer ဖြစ်တယ်။ အောက်ပါ Python Code ကို လေ့လာပြီး UI/UX ကို Cyberpunk Style 
 ပိုဖြစ်အောင်နဲ့ Database Sync Logic ကို ပိုမြန်အောင် Modify လုပ်ပေးပါ။ 
 Code သီးသန့်ပဲ ပြန်ပေးပါ။ Logic တွေ ဖြုတ်မချပါနဲ့။
+IMPORTANT: ကုဒ်တွေကို ```python အဖွင့်အပိတ်တွေ မပါဘဲ Plain Text အနေနဲ့ပဲ ပြန်ပေးပါ။
 CURRENT CODE:
 {current_code}
 """
@@ -83,9 +82,13 @@ CURRENT CODE:
             temperature=0.2
         )
         new_code = completion.choices[0].message.content
-        if "import os" in new_code and "gr.Blocks" in new_code:
+        
+        # 🔱 SYNTAX GUARD: AI က မှားပြီး Markdown ထည့်ပေးလာရင် Stripping လုပ်ခြင်း
+        clean_code = new_code.replace("```python", "").replace("```", "").strip()
+        
+        if "import os" in clean_code and "gr.Blocks" in clean_code:
             with open(__file__, "w") as f:
-                f.write(new_code)
+                f.write(clean_code)
             return True
     except Exception as e:
         print(f"❌ Evolution Brain Failed: {e}")
@@ -154,7 +157,7 @@ def fetch_neon_context():
         with engine.connect() as conn:
             rows = conn.execute(text("SELECT science_domain, detail FROM genesis_pipeline LIMIT 5")).fetchall()
             return " | ".join([f"[{r[0]}]: {HydraEngine.decompress(r[1])[:100]}..." for r in rows])
-    except: return "Standby"
+    except: return "Standby Mode"
 
 def stream_logic(msg, hist):
     ctx = fetch_neon_context()
@@ -171,8 +174,8 @@ def stream_logic(msg, hist):
             yield ans
 
 # 🔱 ၇။ CYBERPUNK UI SETUP
-with gr.Blocks(theme="cyberpunk") as demo:
-    gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE (V5.2)")
+with gr.Blocks(theme="monochrome") as demo:
+    gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE (V5.5)")
     
     with gr.Tab("Neural Chat"):
         chatbot = gr.Chatbot(type="messages", height=500)
@@ -208,4 +211,3 @@ if __name__ == "__main__":
         sys.exit(0)
     else:
         demo.launch(server_name="0.0.0.0", server_port=7860)
-```
