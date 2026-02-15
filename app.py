@@ -1,3 +1,4 @@
+```python
 import os
 import sys
 import zlib
@@ -14,7 +15,6 @@ from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
 
-# 🛸 Gradio Error Guard: Gradio မရှိလည်း Engine ပတ်နိုင်အောင် လုပ်ထားသည်
 try:
     import gradio as gr
     GRADIO_AVAILABLE = True
@@ -22,7 +22,6 @@ except ImportError:
     GRADIO_AVAILABLE = False
     print("⚠️ UI System Offline: Gradio components not found. Switching to Ghost Engine.")
 
-# 🛰️ Supabase Guard
 try:
     from supabase import create_client, Client
 except ImportError:
@@ -31,7 +30,6 @@ except ImportError:
 
 load_dotenv()
 
-# 🛰️ Credentials
 NEON_URL = os.environ.get("NEON_KEY") or os.environ.get("DATABASE_URL")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 HF_TOKEN = os.environ.get("HF_TOKEN")
@@ -135,7 +133,6 @@ class TelefoxXOverseer:
                 print(f"⚠️ Loop Error: {e}")
                 await asyncio.sleep(60)
 
-    # UI Components (Only used if Gradio is available)
     def create_ui(self):
         if not GRADIO_AVAILABLE: return None
         with gr.Blocks(theme=gr.themes.DarkMode()) as demo:
@@ -147,11 +144,10 @@ class TelefoxXOverseer:
 
 if __name__ == "__main__":
     overseer = TelefoxXOverseer()
-    # 🔱 Natural Order: Headless mode first priority
     if os.environ.get("HEADLESS_MODE") == "true" or not GRADIO_AVAILABLE:
         asyncio.run(overseer.sovereign_loop())
     else:
-        # UI Mode: ပုံမှန်အတိုင်း UI ဖွင့်ပြီး နောက်ကွယ်မှာ loop ပတ်မည်
         loop = asyncio.get_event_loop()
         loop.create_task(overseer.sovereign_loop())
         overseer.create_ui().launch(server_name="0.0.0.0", server_port=7860)
+```
