@@ -15,7 +15,6 @@ from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
 
-# 🔱 ၁။ SYSTEM INITIALIZATION
 load_dotenv()
 
 NEON_URL = os.environ.get("NEON_KEY") or os.environ.get("DATABASE_URL")
@@ -89,7 +88,7 @@ class TelefoxXOverseer:
                         temperature=0.1
                     )
                     new_code = completion.choices[0].message.content
-                    clean_code = new_code.replace("```python", "").replace("```", "").strip()
+                    clean_code = new_code.replace("", "").replace("", "").strip()
                     
                     if "import os" in clean_code and "gr.Blocks" in clean_code:
                         with open(__file__, "w") as f:
@@ -182,7 +181,7 @@ class TelefoxXOverseer:
 
     def create_ui(self):
         with gr.Blocks(css=self.cyberpunk_css(), theme=gr.themes.Monochrome()) as demo:
-            gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE V6.2")
+            gr.Markdown("# TELEFOXX OMNI-SYNC CORE V6.2")
             
             with gr.Tab("NEURAL INTERFACE"):
                 chatbot = gr.Chatbot(label="Overseer Feed", height=500, type="messages")
@@ -200,9 +199,9 @@ class TelefoxXOverseer:
             with gr.Tab("SYSTEM CONTROL"):
                 status = gr.Textbox(label="Mainframe Status")
                 with gr.Row():
-                    pump_btn = gr.Button("🚀 PUMP DATA")
-                    evolve_btn = gr.Button("🧬 TRIGGER EVOLUTION")
-                    sync_btn = gr.Button("🛰️ TRINITY SYNC")
+                    pump_btn = gr.Button("PUMP DATA")
+                    evolve_btn = gr.Button("TRIGGER EVOLUTION")
+                    sync_btn = gr.Button("TRINITY SYNC")
 
                 pump_btn.click(lambda: asyncio.run(self.universal_hyper_ingest()), [], status)
                 evolve_btn.click(lambda: asyncio.run(self.trigger_self_evolution()), [], status)
@@ -210,14 +209,12 @@ class TelefoxXOverseer:
 
         return demo
 
-# 🔱 ၈။ MASTER EXECUTION ENGINE
 if __name__ == "__main__":
     overseer = TelefoxXOverseer()
     
-    # ⚠️ အရေးကွီးသော Indentation ပွုပွငျမှုအပိုငျး
     if os.environ.get("HEADLESS_MODE") == "true":
         async def run_all():
-            print("🚀 Launching Headless Sovereign Mode...")
+            print("Launching Headless Sovereign Mode...")
             await overseer.universal_hyper_ingest()
             if await overseer.trigger_self_evolution():
                 await overseer.git_sovereign_push()
