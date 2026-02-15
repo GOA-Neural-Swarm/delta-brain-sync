@@ -212,4 +212,4 @@ class TelefoxXOverseer:
         return demo
 
 if __name__ == "__main__":
-    if os.environ.get("HEADLESS_MODE
+    if os.environ.get("HEADLESS_MODE"):
