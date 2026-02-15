@@ -147,7 +147,7 @@ class TelefoxXOverseer:
                 folder_path=".",
                 repo_id="TELEFOXX/GOA",
                 repo_type="space",
-                create_pr=False,
+                create_pr=True,
                 commit_message="GOA Integrity Sync",
                 ignore_patterns=[".git*", "__pycache__*", "node_modules*", "*.tmp"]
             )
