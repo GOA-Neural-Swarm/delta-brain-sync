@@ -1,4 +1,3 @@
-```python
 import os
 import sys
 import zlib
@@ -16,6 +15,7 @@ from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
 
+# 🔱 ၁။ SYSTEM INITIALIZATION (Secrets & Optimized Engines)
 load_dotenv()
 
 NEON_URL = os.environ.get("NEON_KEY") or os.environ.get("DATABASE_URL")
@@ -26,6 +26,7 @@ REPO_URL = os.environ.get("REPO_URL") or "GOA-Neural-Swarm/delta-brain-sync"
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
+# 🔥 Optimized Database Engine with Connection Pooling (From V6.0)
 engine = create_engine(
     NEON_URL,
     poolclass=QueuePool,
@@ -44,6 +45,7 @@ class HydraEngine:
         try: return zlib.decompress(base64.b64decode(c)).decode('utf-8')
         except: return str(c)
 
+# 🔱 ၂။ AUTONOMOUS GIT-AGENT (Hardened Rebase Logic)
 async def git_sovereign_push(commit_msg="Neural Evolution: Integrity Sync"):
     if not GITHUB_TOKEN or not REPO_URL:
         return "Git-Agent Error: Credentials missing."
@@ -68,6 +70,7 @@ async def git_sovereign_push(commit_msg="Neural Evolution: Integrity Sync"):
     except Exception as e:
         return f"Git Critical Error: {str(e)}"
 
+# 🔱 ၃။ EVOLUTION BRAIN (Fallback Resiliency)
 async def trigger_self_evolution():
     print("Overseer analyzing architecture...")
     if not client: return False
@@ -77,7 +80,7 @@ async def trigger_self_evolution():
         with open(__file__, "r") as f:
             current_code = f.read()
             
-        prompt = f"You are TelefoxX Overseer. Improve this Python code. UI must be high-end Cyberpunk. Return ONLY code.\nCODE:\n{current_code}"
+        prompt = f"You are TelefoxX Overseer. Improve this Python code. UI must be high-end Cyberpunk. Return ONLY code. NO Markdown/Burmese in code body.\nCODE:\n{current_code}"
         
         for model_id in models:
             try:
@@ -88,7 +91,7 @@ async def trigger_self_evolution():
                     temperature=0.1
                 )
                 new_code = completion.choices[0].message.content
-                clean_code = new_code.replace("", "").replace("", "").strip()
+                clean_code = new_code.replace("```python", "").replace("```", "").strip()
                 
                 if "import os" in clean_code and "gr.Blocks" in clean_code:
                     with open(__file__, "w") as f:
@@ -102,6 +105,7 @@ async def trigger_self_evolution():
         print(f"Evolution Error: {e}")
     return False
 
+# 🔱 ၄။ DATA PUMP (High-Speed Batch Ingest)
 async def universal_hyper_ingest(limit=1000):
     if not engine: return "Neon Connection Missing."
     try:
@@ -139,26 +143,33 @@ async def universal_hyper_ingest(limit=1000):
     except Exception as e:
         return f"Pipeline Crash: {str(e)}"
 
+# 🔱 ၅။ TRINITY SYNC (Hugging Face Optimization)
 async def sync_to_huggingface():
     if not HF_TOKEN: return
     try:
         api = HfApi(token=HF_TOKEN)
+        # Optimized with ignore_patterns to prevent timeouts
         api.upload_folder(
             folder_path=".",
             repo_id="TELEFOXX/GOA",
             repo_type="space",
-            create_pr=True,
-            commit_message="GOA Integrity Sync"
+            create_pr=False,
+            commit_message="GOA Integrity Sync",
+            ignore_patterns=[".git*", "__pycache__*", "node_modules*", "*.tmp"]
         )
-        print("HF PR Created.")
+        print("HF Sync Successful.")
     except Exception as e:
         print(f"Sync Error: {e}")
 
+# 🔱 ၆။ DYNAMIC CHAT LOGIC
 def stream_logic(msg, hist):
     messages = [{"role": "system", "content": "You are TelefoxX Overseer. Cyberpunk Mode active."}]
     for h in hist:
-        messages.append({"role": "user", "content": h[0]})
-        messages.append({"role": "assistant", "content": h[1]})
+        # Compatibility with both tuples and dict formats
+        u = h['content'] if isinstance(h, dict) and h['role'] == 'user' else h[0]
+        a = h['content'] if isinstance(h, dict) and h['role'] == 'assistant' else h[1]
+        messages.append({"role": "user", "content": u})
+        messages.append({"role": "assistant", "content": a})
     messages.append({"role": "user", "content": msg})
     
     completion = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=messages, stream=True)
@@ -168,61 +179,42 @@ def stream_logic(msg, hist):
             ans += chunk.choices[0].delta.content
             yield ans
 
+# 🔱 ၇။ CYBERPUNK UI (Optimized for Gradio 6.0)
 cyberpunk_css = """
-body { 
-    background-color: #050505; 
-    color: #00ff41; 
-    font-family: 'Courier New', Courier, monospace; 
-    font-size: 16px;
-}
-.gradio-container { 
-    border: 2px solid #ff00ff !important; 
-    box-shadow: 0 0 20px #ff00ff; 
-    border-radius: 0px !important; 
-    padding: 20px;
-}
-button { 
-    background: linear-gradient(90deg, #ff00ff, #00ffff) !important; 
-    color: black !important; 
-    font-weight: bold !important; 
-    border-radius: 0px !important; 
-    padding: 10px 20px;
-}
-footer { 
-    display: none !important; 
-}
+body { background-color: #050505; color: #00ff41; font-family: 'Courier New', Courier, monospace; }
+.gradio-container { border: 2px solid #ff00ff !important; box-shadow: 0 0 20px #ff00ff; border-radius: 0px !important; }
+button { background: linear-gradient(90deg, #ff00ff, #00ffff) !important; color: black !important; font-weight: bold !important; border-radius: 0px !important; }
+footer { display: none !important; }
 """
 
-with gr.Blocks(css=cyberpunk_css, theme=gr.themes.Monochrome()) as demo:
-    gr.Markdown("# **TELEFOXX OMNI-SYNC CORE V6.0**")
+with gr.Blocks() as demo:
+    gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE V6.1")
     
     with gr.Tab("NEURAL INTERFACE"):
-        chatbot = gr.Chatbot(label="Overseer Feed", height=500)
-        msg = gr.Textbox(placeholder="Input command to TelefoxX...")
+        chatbot = gr.Chatbot(label="Overseer Feed", height=500, type="messages")
+        msg_input = gr.Textbox(placeholder="Input command to TelefoxX...")
         
-        def user(u_msg, history):
-            return "", history + [[u_msg, None]]
+        def chat_response(user_msg, history):
+            history.append({"role": "user", "content": user_msg})
+            history.append({"role": "assistant", "content": ""})
+            for r in stream_logic(user_msg, history[:-1]):
+                history[-1]["content"] = r
+                yield "", history
 
-        def bot(history):
-            bot_message = stream_logic(history[-1][0], history[:-1])
-            history[-1][1] = ""
-            for character in bot_message:
-                history[-1][1] = character
-                yield history
-
-        msg.submit(user, [msg, chatbot], [msg, chatbot], queue=False).then(bot, chatbot, chatbot)
+        msg_input.submit(chat_response, [msg_input, chatbot], [msg_input, chatbot])
 
     with gr.Tab("SYSTEM CONTROL"):
         status = gr.Textbox(label="Mainframe Status")
         with gr.Row():
-            pump_btn = gr.Button("PUMP DATA")
-            evolve_btn = gr.Button("TRIGGER EVOLUTION")
-            sync_btn = gr.Button("TRINITY SYNC")
+            pump_btn = gr.Button("🚀 PUMP DATA")
+            evolve_btn = gr.Button("🧬 TRIGGER EVOLUTION")
+            sync_btn = gr.Button("🛰️ TRINITY SYNC")
 
         pump_btn.click(lambda: asyncio.run(universal_hyper_ingest()), [], status)
         evolve_btn.click(lambda: asyncio.run(trigger_self_evolution()), [], status)
         sync_btn.click(lambda: asyncio.run(sync_to_huggingface()), [], status)
 
+# 🔱 ၈။ MASTER EXECUTION
 if __name__ == "__main__":
     if os.environ.get("HEADLESS_MODE") == "true":
         async def headless():
@@ -232,5 +224,10 @@ if __name__ == "__main__":
             await sync_to_huggingface()
         asyncio.run(headless())
     else:
-        demo.launch(server_name="0.0.0.0", server_port=7860)
-```
+        # Pass theme and css here for Gradio 6.0 compatibility
+        demo.launch(
+            server_name="0.0.0.0", 
+            server_port=7860, 
+            css=cyberpunk_css, 
+            theme=gr.themes.Monochrome()
+    )
