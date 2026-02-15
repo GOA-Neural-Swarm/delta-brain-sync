@@ -15,6 +15,7 @@ from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
 
+# 🔱 ၁။ SYSTEM INITIALIZATION
 load_dotenv()
 
 NEON_URL = os.environ.get("NEON_KEY") or os.environ.get("DATABASE_URL")
@@ -88,7 +89,7 @@ class TelefoxXOverseer:
                         temperature=0.1
                     )
                     new_code = completion.choices[0].message.content
-                    clean_code = new_code.replace("", "").replace("", "").strip()
+                    clean_code = new_code.replace("```python", "").replace("```", "").strip()
                     
                     if "import os" in clean_code and "gr.Blocks" in clean_code:
                         with open(__file__, "w") as f:
@@ -119,7 +120,7 @@ class TelefoxXOverseer:
                             master_sequence TEXT
                         );
                     """))
-        
+            
             ds = load_dataset("CShorten/ML-ArXiv-Papers", split='train', streaming=True)
             records = []
             for i, entry in enumerate(ds):
@@ -131,7 +132,7 @@ class TelefoxXOverseer:
                     'energy_stability': 100.0,
                     'master_sequence': 'GOA-INTEGRITY'
                 })
-        
+            
             if records:
                 df = pd.DataFrame(records)
                 df.to_sql('genesis_pipeline', self.engine, if_exists='append', index=False, method='multi', chunksize=500)
@@ -143,7 +144,6 @@ class TelefoxXOverseer:
         if not HF_TOKEN: return
         try:
             api = HfApi(token=HF_TOKEN)
-            # Optimized with ignore_patterns to prevent timeouts
             api.upload_folder(
                 folder_path=".",
                 repo_id="TELEFOXX/GOA",
@@ -159,9 +159,8 @@ class TelefoxXOverseer:
     def stream_logic(self, msg, hist):
         messages = [{"role": "system", "content": "You are TelefoxX Overseer. Cyberpunk Mode active."}]
         for h in hist:
-            # Compatibility with both tuples and dict formats
-            u = h['content'] if isinstance(h, dict) and h['role'] == 'user' else h[0]
-            a = h['content'] if isinstance(h, dict) and h['role'] == 'assistant' else h[1]
+            u = h['content'] if isinstance(h, dict) else h[0]
+            a = h['content'] if isinstance(h, dict) else h[1]
             messages.append({"role": "user", "content": u})
             messages.append({"role": "assistant", "content": a})
         messages.append({"role": "user", "content": msg})
@@ -182,8 +181,8 @@ class TelefoxXOverseer:
         """
 
     def create_ui(self):
-        with gr.Blocks() as demo:
-            gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE V6.1")
+        with gr.Blocks(css=self.cyberpunk_css(), theme=gr.themes.Monochrome()) as demo:
+            gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE V6.2")
             
             with gr.Tab("NEURAL INTERFACE"):
                 chatbot = gr.Chatbot(label="Overseer Feed", height=500, type="messages")
@@ -211,15 +210,20 @@ class TelefoxXOverseer:
 
         return demo
 
+# 🔱 ၈။ MASTER EXECUTION ENGINE
 if __name__ == "__main__":
-    if os.environ.get("HEADLESS_MODE") == "true":
-    async def run_all(): # ✅ Space 4 ခု ခုနျပေးရပါမယျ
-        await universal_hyper_ingest()
-        if await trigger_self_evolution():
-            await git_sovereign_push()
-        await sync_to_huggingface()
-    asyncio.run(run_all())
-else:
-    demo.launch(server_name="0.0.0.0", server_port=7860, css=cyberpunk_css, theme=gr.themes.Monochrome())
+    overseer = TelefoxXOverseer()
     
+    # ⚠️ အရေးကွီးသော Indentation ပွုပွငျမှုအပိုငျး
+    if os.environ.get("HEADLESS_MODE") == "true":
+        async def run_all():
+            print("🚀 Launching Headless Sovereign Mode...")
+            await overseer.universal_hyper_ingest()
+            if await overseer.trigger_self_evolution():
+                await overseer.git_sovereign_push()
+            await overseer.sync_to_huggingface()
         
+        asyncio.run(run_all())
+    else:
+        app = overseer.create_ui()
+        app.launch(server_name="0.0.0.0", server_port=7860)
