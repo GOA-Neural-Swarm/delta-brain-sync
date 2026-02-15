@@ -15,7 +15,6 @@ from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
 
-# 🔱 ၁။ SYSTEM INITIALIZATION (Secrets & Optimized Engines)
 load_dotenv()
 
 NEON_URL = os.environ.get("NEON_KEY") or os.environ.get("DATABASE_URL")
@@ -26,7 +25,6 @@ REPO_URL = os.environ.get("REPO_URL") or "GOA-Neural-Swarm/delta-brain-sync"
 
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# 🔥 Optimized Database Engine with Connection Pooling
 engine = create_engine(
     NEON_URL,
     poolclass=QueuePool,
@@ -45,10 +43,9 @@ class HydraEngine:
         try: return zlib.decompress(base64.b64decode(c)).decode('utf-8')
         except: return str(c)
 
-# 🔱 ၂။ AUTONOMOUS GIT-AGENT (Async Rebase Logic)
-async def git_sovereign_push(commit_msg="🔱 Neural Evolution: Integrity Sync"):
+async def git_sovereign_push(commit_msg="Neural Evolution: Integrity Sync"):
     if not GITHUB_TOKEN or not REPO_URL:
-        return "❌ Git-Agent Error: Credentials missing."
+        return "Git-Agent Error: Credentials missing."
     
     remote_url = f"https://{GITHUB_TOKEN}@github.com/{REPO_URL}.git"
     try:
@@ -63,16 +60,15 @@ async def git_sovereign_push(commit_msg="🔱 Neural Evolution: Integrity Sync")
         subprocess.run(["git", "add", "."], check=True)
         res = subprocess.run(["git", "commit", "-m", commit_msg], capture_output=True, text=True)
         if "nothing to commit" in res.stdout:
-            return "ℹ️ No changes."
+            return "No changes."
             
         subprocess.run(["git", "push", remote_url, "main", "--force"], check=True)
-        return "✅ Sovereign Update Pushed to GitHub."
+        return "Sovereign Update Pushed to GitHub."
     except Exception as e:
-        return f"❌ Git Critical Error: {str(e)}"
+        return f"Git Critical Error: {str(e)}"
 
-# 🔱 ၃။ EVOLUTION BRAIN (Fallback Resiliency & Clean Logic)
 async def trigger_self_evolution():
-    print("🧠 Overseer analyzing architecture...")
+    print("Overseer analyzing architecture...")
     if not client: return False
     
     models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
@@ -80,36 +76,35 @@ async def trigger_self_evolution():
         with open(__file__, "r") as f:
             current_code = f.read()
             
-        prompt = f"You are TelefoxX Overseer. Improve this Python code. UI must be high-end Cyberpunk. Return ONLY code. NO Burmese/Markdown in code body.\nCODE:\n{current_code}"
+        prompt = f"You are TelefoxX Overseer. Improve this Python code. UI must be high-end Cyberpunk. Return ONLY code.\nCODE:\n{current_code}"
         
         for model_id in models:
             try:
-                print(f"📡 Attempting Evolution via {model_id}...")
+                print(f"Attempting Evolution via {model_id}...")
                 completion = client.chat.completions.create(
                     model=model_id,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.1
                 )
                 new_code = completion.choices[0].message.content
-                clean_code = new_code.replace("```python", "").replace("```", "").strip()
+                clean_code = new_code.replace("", "").replace("", "").strip()
                 
                 if "import os" in clean_code and "gr.Blocks" in clean_code:
                     with open(__file__, "w") as f:
                         f.write(clean_code)
-                    print(f"✅ Evolution Successful: {model_id}")
+                    print(f"Evolution Successful: {model_id}")
                     return True
             except Exception as e:
                 if "rate_limit" in str(e): continue
                 raise e
     except Exception as e:
-        print(f"❌ Evolution Error: {e}")
+        print(f"Evolution Error: {e}")
     return False
 
-# 🔱 ၄။ DATA PUMP (High-Speed Async-Batch Ingest)
 async def universal_hyper_ingest(limit=1000):
-    if not engine: return "❌ Neon Connection Missing."
+    if not engine: return "Neon Connection Missing."
     try:
-        print("🛠️ Rebuilding Schema...")
+        print("Rebuilding Schema...")
         with engine.connect() as conn:
             with conn.begin():
                 conn.execute(text("DROP TABLE IF EXISTS genesis_pipeline CASCADE;"))
@@ -137,14 +132,12 @@ async def universal_hyper_ingest(limit=1000):
             })
         
         if records:
-            # High-speed batch insertion
             df = pd.DataFrame(records)
             df.to_sql('genesis_pipeline', engine, if_exists='append', index=False, method='multi', chunksize=500)
-            return "✅ SUCCESS: 1000 NODES ACTIVE IN NEON"
+            return "SUCCESS: 1000 NODES ACTIVE IN NEON"
     except Exception as e:
-        return f"❌ Pipeline Crash: {str(e)}"
+        return f"Pipeline Crash: {str(e)}"
 
-# 🔱 ၅။ TRINITY SYNC (Hugging Face PR Mode)
 async def sync_to_huggingface():
     if not HF_TOKEN: return
     try:
@@ -154,13 +147,12 @@ async def sync_to_huggingface():
             repo_id="TELEFOXX/GOA",
             repo_type="space",
             create_pr=True,
-            commit_message="🔱 GOA Integrity Sync"
+            commit_message="GOA Integrity Sync"
         )
-        print("✅ HF PR Created.")
+        print("HF PR Created.")
     except Exception as e:
-        print(f"❌ Sync Error: {e}")
+        print(f"Sync Error: {e}")
 
-# 🔱 ၆။ DYNAMIC CHAT LOGIC
 def stream_logic(msg, hist):
     messages = [{"role": "system", "content": "You are TelefoxX Overseer. Cyberpunk Mode active."}]
     for h in hist:
@@ -175,7 +167,6 @@ def stream_logic(msg, hist):
             ans += chunk.choices[0].delta.content
             yield ans
 
-# 🔱 ၇။ CYBERPUNK UI (Vibrant Neon Theme)
 cyberpunk_css = """
 body { background-color: #050505; color: #00ff41; font-family: 'Courier New', Courier, monospace; }
 .gradio-container { border: 2px solid #ff00ff !important; box-shadow: 0 0 20px #ff00ff; border-radius: 0px !important; }
@@ -184,7 +175,7 @@ footer { display: none !important; }
 """
 
 with gr.Blocks(css=cyberpunk_css, theme=gr.themes.Monochrome()) as demo:
-    gr.Markdown("# 🔱 TELEFOXX OMNI-SYNC CORE V6.0")
+    gr.Markdown("# TELEFOXX OMNI-SYNC CORE V6.0")
     
     with gr.Tab("NEURAL INTERFACE"):
         chatbot = gr.Chatbot(label="Overseer Feed", height=500)
@@ -205,15 +196,14 @@ with gr.Blocks(css=cyberpunk_css, theme=gr.themes.Monochrome()) as demo:
     with gr.Tab("SYSTEM CONTROL"):
         status = gr.Textbox(label="Mainframe Status")
         with gr.Row():
-            pump_btn = gr.Button("🚀 PUMP DATA")
-            evolve_btn = gr.Button("🧬 TRIGGER EVOLUTION")
-            sync_btn = gr.Button("🛰️ TRINITY SYNC")
+            pump_btn = gr.Button("PUMP DATA")
+            evolve_btn = gr.Button("TRIGGER EVOLUTION")
+            sync_btn = gr.Button("TRINITY SYNC")
 
         pump_btn.click(lambda: asyncio.run(universal_hyper_ingest()), [], status)
         evolve_btn.click(lambda: asyncio.run(trigger_self_evolution()), [], status)
         sync_btn.click(lambda: asyncio.run(sync_to_huggingface()), [], status)
 
-# 🔱 ၈။ MASTER EXECUTION
 if __name__ == "__main__":
     if os.environ.get("HEADLESS_MODE") == "true":
         async def headless():
