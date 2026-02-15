@@ -1,3 +1,4 @@
+```python
 import os
 import sys
 import zlib
@@ -215,4 +216,17 @@ if __name__ == "__main__":
     if os.environ.get("HEADLESS_MODE") == "true":
         async def run_all():
             print("Launching Headless Sovereign Mode...")
+<<<<<<< Updated upstream
             await overseer.universal_hyper_ing
+=======
+            await overseer.universal_hyper_ingest()
+            if await overseer.trigger_self_evolution():
+                await overseer.git_sovereign_push()
+            await overseer.sync_to_huggingface()
+        
+        asyncio.run(run_all())
+    else:
+        app = overseer.create_ui()
+        app.launch(server_name="0.0.0.0", server_port=7860)
+```
+>>>>>>> Stashed changes
