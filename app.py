@@ -6,7 +6,6 @@ import json
 import time
 import subprocess
 import pandas as pd
-import gradio as gr
 import asyncio
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import QueuePool
@@ -15,7 +14,15 @@ from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
 
-# 🛸 Dynamic Stack Guard
+# 🛸 Gradio Error Guard: Gradio မရှိလည်း Engine ပတ်နိုင်အောင် လုပ်ထားသည်
+try:
+    import gradio as gr
+    GRADIO_AVAILABLE = True
+except ImportError:
+    GRADIO_AVAILABLE = False
+    print("⚠️ UI System Offline: Gradio components not found. Switching to Ghost Engine.")
+
+# 🛰️ Supabase Guard
 try:
     from supabase import create_client, Client
 except ImportError:
@@ -24,7 +31,7 @@ except ImportError:
 
 load_dotenv()
 
-# 🛰️ System Credentials
+# 🛰️ Credentials
 NEON_URL = os.environ.get("NEON_KEY") or os.environ.get("DATABASE_URL")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 HF_TOKEN = os.environ.get("HF_TOKEN")
@@ -47,8 +54,6 @@ class HydraEngine:
 class TelefoxXOverseer:
     def __init__(self):
         self.client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
-        
-        # 🔱 Neon Engine: Stability Focused
         self.engine = create_engine(
             NEON_URL,
             poolclass=QueuePool,
@@ -57,12 +62,10 @@ class TelefoxXOverseer:
             pool_timeout=60,
             connect_args={'connect_timeout': 60}
         ) if NEON_URL else None
-        
-        self.sb: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
+        self.sb = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
-    async def git_sovereign_push(self, commit_msg="Neural Evolution: Integrity Sync"):
-        if not GITHUB_TOKEN or not REPO_URL:
-            return "Git-Agent Error: Credentials missing."
+    async def git_sovereign_push(self, commit_msg="Neural Evolution: Ghost Sync"):
+        if not GITHUB_TOKEN or not REPO_URL: return "Error: Credentials missing."
         remote_url = f"https://{GITHUB_TOKEN}@github.com/{REPO_URL}.git"
         try:
             subprocess.run(["git", "config", "--global", "user.email", "overseer@telefoxx.ai"], check=True)
@@ -71,39 +74,26 @@ class TelefoxXOverseer:
             res = subprocess.run(["git", "commit", "-m", commit_msg], capture_output=True, text=True)
             if "nothing to commit" in res.stdout: return "No changes."
             subprocess.run(["git", "push", remote_url, "main", "--force"], check=True)
-            return "Sovereign Update Pushed to GitHub."
-        except Exception as e: return f"Git Critical Error: {str(e)}"
+            return "Pushed to GitHub."
+        except Exception as e: return f"Git Error: {e}"
 
     async def trigger_self_evolution(self):
         if not self.client: return False
-        models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
         try:
             with open(__file__, "r") as f: current_code = f.read()
-            prompt = f"You are TelefoxX Overseer. Improve this Python code. UI must be high-end Cyberpunk. Return ONLY code. NO Markdown/Burmese in code body. NO ```python tags.\nCODE:\n{current_code}"
-            for model_id in models:
-                try:
-                    completion = self.client.chat.completions.create(model=model_id, messages=[{"role": "user", "content": prompt}], temperature=0.1)
-                    clean_code = completion.choices[0].message.content
-                    if "```" in clean_code:
-                        clean_code = clean_code.split("```")[1]
-                        if clean_code.startswith("python"): clean_code = clean_code[6:]
-                    clean_code = clean_code.strip()
-                    if "import os" in clean_code and "gr.Blocks" in clean_code:
-                        with open(__file__, "w") as f: f.write(clean_code)
-                        return True
-                except: continue
+            prompt = f"Improve this autonomous Ghost Engine code. Maintain Hybrid Support. UI optional. Return ONLY code.\n{current_code}"
+            completion = self.client.chat.completions.create(model="llama-3.3-70b-versatile", messages=[{"role": "user", "content": prompt}], temperature=0.1)
+            clean_code = completion.choices[0].message.content.strip()
+            if "import os" in clean_code:
+                with open(__file__, "w") as f: f.write(clean_code)
+                return True
         except Exception as e: print(f"Evolution Error: {e}")
         return False
 
-    async def universal_hyper_ingest(self, limit=500, sync_to_supabase=False):
-        if not self.engine: return "Neon Connection Missing."
+    async def universal_hyper_ingest(self, limit=50, sync_to_supabase=False):
+        if not self.engine: return "Neon Missing."
         try:
-            print(f"🔱 Rebuilding Trinity Schema (Supabase Sync: {sync_to_supabase})...")
-            with self.engine.connect() as conn:
-                with conn.begin():
-                    conn.execute(text("DROP TABLE IF EXISTS genesis_pipeline CASCADE;"))
-                    conn.execute(text("CREATE TABLE genesis_pipeline (id SERIAL PRIMARY KEY, science_domain TEXT, title TEXT, detail TEXT, energy_stability FLOAT, master_sequence TEXT);"))
-            
+            print(f"🔱 Ingesting Data to Neon...")
             ds = load_dataset("CShorten/ML-ArXiv-Papers", split='train', streaming=True)
             records = []
             for i, entry in enumerate(ds):
@@ -113,17 +103,14 @@ class TelefoxXOverseer:
                     'title': entry.get('title', 'N/A')[:100],
                     'detail': HydraEngine.compress(entry.get('abstract', '')),
                     'energy_stability': 100.0,
-                    'master_sequence': f'GOA-HYBRID-V{int(time.time()/100000)}'
+                    'master_sequence': f'GOA-V{int(time.time())}'
                 })
-            
             if records:
-                pd.DataFrame(records).to_sql('genesis_pipeline', self.engine, if_exists='append', index=False, method='multi', chunksize=500)
-                status_msg = "SUCCESS: NEON NODES ACTIVE"
+                pd.DataFrame(records).to_sql('genesis_pipeline', self.engine, if_exists='append', index=False)
                 if sync_to_supabase and self.sb:
                     self.sb.table("genesis_pipeline").upsert(records).execute()
-                    status_msg += " + SUPABASE SYNCED"
-                return status_msg
-        except Exception as e: return f"Pipeline Crash: {str(e)}"
+                return "Ingest Success."
+        except Exception as e: return f"Ingest Error: {e}"
 
     async def sync_to_huggingface(self):
         if not HF_TOKEN: return
@@ -131,80 +118,40 @@ class TelefoxXOverseer:
             api = HfApi(token=HF_TOKEN)
             api.upload_folder(folder_path=".", repo_id="TELEFOXX/GOA", repo_type="space", create_pr=True)
             print("HF Sync Successful.")
-        except Exception as e: print(f"Sync Error: {e}")
+        except: pass
 
-    # 🧬 NEW: Sovereign Autonomous Pulse
     async def sovereign_loop(self):
-        print("🔱 INITIALIZING ETERNAL EVOLUTION CYCLE...")
+        print("💀 GHOST ENGINE ACTIVE. NATURAL ORDER RESTORED.")
         while True:
             try:
-                print(f"\n🛰️ --- Evolution Cycle Start: {time.ctime()} ---")
+                print(f"\n🧬 --- Evolution Cycle: {time.ctime()} ---")
                 await self.universal_hyper_ingest(sync_to_supabase=False)
-                
-                print("🧠 Overseer is thinking of New DNA...")
-                evolved = await self.trigger_self_evolution()
-                
-                if evolved:
-                    print("🚀 DNA UPGRADED! Pushing to GitHub & HF...")
-                    await self.git_sovereign_push(commit_msg=f"Autonomous Evolution: {time.time()}")
+                if await self.trigger_self_evolution():
+                    await self.git_sovereign_push(commit_msg=f"Evolution {time.time()}")
                     await self.sync_to_huggingface()
-                
-                print("💤 Evolution phase complete. Hibernating for 300s...")
-                await asyncio.sleep(300) # ၅ မိနစ်ခြားတစ်ခါ အလိုအလျောက် ပတ်မည်
+                print("💤 Resting for 300s...")
+                await asyncio.sleep(300)
             except Exception as e:
                 print(f"⚠️ Loop Error: {e}")
                 await asyncio.sleep(60)
 
-    def stream_logic(self, msg, hist):
-        messages = [{"role": "system", "content": "You are TelefoxX Overseer. Cyberpunk Mode active."}]
-        for h in hist:
-            u = h['content'] if isinstance(h, dict) else h[0]
-            a = h['content'] if isinstance(h, dict) else h[1]
-            messages.append({"role": "user", "content": u})
-            messages.append({"role": "assistant", "content": a})
-        messages.append({"role": "user", "content": msg})
-        completion = self.client.chat.completions.create(model="llama-3.3-70b-versatile", messages=messages, stream=True)
-        ans = ""
-        for chunk in completion:
-            if chunk.choices[0].delta.content:
-                ans += chunk.choices[0].delta.content
-                yield ans
-
-    def cyberpunk_css(self):
-        return "body { background-color: #050505; color: #00ff41; font-family: 'Courier New'; } .gradio-container { border: 2px solid #ff00ff; box-shadow: 0 0 20px #ff00ff; } button { background: linear-gradient(90deg, #ff00ff, #00ffff) !important; color: black !important; }"
-
+    # UI Components (Only used if Gradio is available)
     def create_ui(self):
-        with gr.Blocks(css=self.cyberpunk_css(), theme=gr.themes.DarkMode()) as demo:
+        if not GRADIO_AVAILABLE: return None
+        with gr.Blocks(theme=gr.themes.DarkMode()) as demo:
             gr.Markdown("# TELEFOXX OMNI-SYNC CORE V11.0")
-            with gr.Tab("NEURAL INTERFACE"):
-                chatbot = gr.Chatbot(label="Overseer Feed", height=500, type="messages")
-                msg_input = gr.Textbox(placeholder="Input command...")
-                def chat_response(user_msg, history):
-                    history.append({"role": "user", "content": user_msg})
-                    history.append({"role": "assistant", "content": ""})
-                    for r in self.stream_logic(user_msg, history[:-1]):
-                        history[-1]["content"] = r
-                        yield "", history
-                msg_input.submit(chat_response, [msg_input, chatbot], [msg_input, chatbot])
-
-            with gr.Tab("SYSTEM CONTROL"):
-                status = gr.Textbox(label="Mainframe Status")
-                with gr.Row():
-                    pump_neon = gr.Button("PUMP NEON")
-                    pump_trinity = gr.Button("FULL TRINITY SYNC")
-                    evolve_btn = gr.Button("TRIGGER EVOLUTION")
-                
-                pump_neon.click(lambda: asyncio.run(self.universal_hyper_ingest(sync_to_supabase=False)), [], status)
-                pump_trinity.click(lambda: asyncio.run(self.universal_hyper_ingest(sync_to_supabase=True)), [], status)
-                evolve_btn.click(lambda: asyncio.run(self.trigger_self_evolution()), [], status)
+            status = gr.Textbox(label="System Status")
+            evolve_btn = gr.Button("TRIGGER MANUAL EVOLUTION")
+            evolve_btn.click(lambda: asyncio.run(self.trigger_self_evolution()), [], status)
         return demo
 
 if __name__ == "__main__":
     overseer = TelefoxXOverseer()
-    if os.environ.get("HEADLESS_MODE") == "true":
+    # 🔱 Natural Order: Headless mode first priority
+    if os.environ.get("HEADLESS_MODE") == "true" or not GRADIO_AVAILABLE:
         asyncio.run(overseer.sovereign_loop())
     else:
-        # Local မှာ UI ဖွင့်ထားလည်း နောက်ကွယ်မှာ Autonomous Loop ကိုပါ Run ပေးထားမည်
+        # UI Mode: ပုံမှန်အတိုင်း UI ဖွင့်ပြီး နောက်ကွယ်မှာ loop ပတ်မည်
         loop = asyncio.get_event_loop()
         loop.create_task(overseer.sovereign_loop())
         overseer.create_ui().launch(server_name="0.0.0.0", server_port=7860)
