@@ -27,8 +27,8 @@ jobs:
 
       - name: Push to Kaggle
         env:
-          K_USER: ${{ secrets.KAGGLE_USERNAME }}
-          K_KEY: ${{ secrets.KAGGLE_KEY }}
+          KAGGLE_USER: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
           mkdir -p ~/.kaggle
           # JSON formatting ကို ပိုမိုစိတ်ချရတဲ့ single quote style နဲ့ ပြောင်းလဲထားပါတယ်
