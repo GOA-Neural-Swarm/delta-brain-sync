@@ -22,7 +22,7 @@ jobs:
 
       - name: Run sync script
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEON_URL: ${{ secrets.NEON_URL }}
         run: python sync_data.py
 
       - name: Commit and Push changes
