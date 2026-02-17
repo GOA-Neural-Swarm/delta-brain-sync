@@ -3,12 +3,12 @@ name: Trigger Kaggle AI Brain
 on:
   push:
     branches:
-      - main        # မင်းရဲ့ branch name က main ဖြစ်ရမယ်
+      - main
     paths:
-      - 'kaggle_brain/**' # kaggle_brain folder ထဲက ဘာပြင်ပြင် trigger ပေးမယ်
+      - 'kaggle_brain/**'
   schedule:
-    - cron: '0 */11 * * *' # ၁၁ နာရီခြား တစ်ခါ ဇွတ်နှိုးမယ်
-  workflow_dispatch:      # Manual ခလုတ်နှိပ်ပြီး နှိုးလို့လည်းရအောင် ထားပေးတယ်
+    - cron: '0 */11 * * *'
+  workflow_dispatch:
 
 jobs:
   trigger_ai:
@@ -27,12 +27,13 @@ jobs:
 
       - name: Push to Kaggle
         env:
-          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          K_USER: ${{ secrets.KAGGLE_USERNAME }}
+          K_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
           mkdir -p ~/.kaggle
-          echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
+          # JSON formatting ကို ပိုမိုစိတ်ချရတဲ့ single quote style နဲ့ ပြောင်းလဲထားပါတယ်
+          echo '{"username":"'"$K_USER"'","key":"'"$K_KEY"'"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
           
-          # kaggle_brain folder ထဲက ကုဒ်တွေကို Kaggle ဆီ ဇွတ်တွန်းပို့မယ်
+          # kaggle_brain folder ထဲက ကုဒ်တွေကို Kaggle ဆီ တွန်းပို့မယ်
           kaggle kernels push -p ./kaggle_brain
