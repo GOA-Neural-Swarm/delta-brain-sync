@@ -1,23 +1,34 @@
-import psycopg2
-import json
-import os
+name: AI Phase 6 Deployment
 
-# Neon Connection String ကို GitHub Secrets ကနေ ယူမယ်
-DATABASE_URL = os.environ['DATABASE_URL']
+on:
+  schedule:
+    - cron: '0 * * * *' # တစ်နာရီ တစ်ကြိမ် အလိုအလျောက် အလုပ်လုပ်မည်
+  workflow_dispatch:      # ကိုယ်တိုင် manually run ချင်လျှင်လည်း ရသည်
 
-def fetch_and_deploy():
-    conn = psycopg2.connect(DATABASE_URL)
-    cur = conn.cursor()
-    
-    # Phase 6 ရဲ့ နောက်ဆုံး ဒေတာကို ယူခြင်း
-    cur.execute("SELECT logic_data FROM intelligence_core WHERE module_name = 'Singularity Evolution Node';")
-    data = cur.fetchone()[0]
-    
-    # ဖိုင်အဖြစ် သိမ်းဆည်းခြင်း
-    with open('ai_status.json', 'w') as f:
-        json.dump(data, f, indent=4)
-        
-    conn.close()
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-if __name__ == "__main__":
-    fetch_and_deploy()
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install psycopg2-binary
+
+      - name: Run sync script
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python sync_data.py
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name 'AI-Evolution-Bot'
+          git config --global user.email 'bot@ai-evolution.com'
+          git add ai_status.json
+          git commit -m "Automated Update: Phase 6 Status" || exit 0
+          git push
