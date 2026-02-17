@@ -1,10 +1,12 @@
-# --- CRITICAL FIX: GRADIO COMPATIBILITY ---
+# --- DATABASE CONNECTIVITY (CRITICAL FOR NEON & POSTGRES) ---
+psycopg2-binary
+sqlalchemy
+
+# --- GRADIO COMPATIBILITY (CRITICAL FIX) ---
 huggingface_hub==0.24.0
 gradio==4.44.1
 
-# --- CORE CONNECTIVITY ---
-psycopg2-binary
-sqlalchemy
+# --- CORE CONNECTIVITY & UTILITIES ---
 python-dotenv
 python-multipart
 requests
