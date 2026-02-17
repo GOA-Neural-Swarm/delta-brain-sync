@@ -1,34 +1,37 @@
-name: AI Phase 6 Deployment
+name: AI Phase 6 Sync (Authenticated)
 
 on:
   schedule:
-    - cron: '0 * * * *' # တစ်နာရီ တစ်ကြိမ် အလိုအလျောက် အလုပ်လုပ်မည်
-  workflow_dispatch:      # ကိုယ်တိုင် manually run ချင်လျှင်လည်း ရသည်
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
-  build:
+  sync_job:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GH_TOKEN }} # ဤနရောတှငျ Secret ကို သုံးမညျ
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      - name: Install dependencies
-        run: pip install psycopg2-binary
+      - run: pip install -r requirements.txt
 
-      - name: Run sync script
+      - name: Run Script
         env:
           NEON_URL: ${{ secrets.NEON_URL }}
         run: python sync_data.py
 
-      - name: Commit and Push changes
+      - name: Auto Commit Results
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          git config --global user.name 'AI-Evolution-Bot'
-          git config --global user.email 'bot@ai-evolution.com'
+          # Token သုံးပွီး Remote URL ကို ပွနျပွငျခွငျး
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
+          git config --global user.name 'Sovereign-AI-Bot'
+          git config --global user.email 'bot@sovereign.ai'
           git add ai_status.json
-          git commit -m "Automated Update: Phase 6 Status" || exit 0
+          git commit -m "Phase 6 Data Sync: $(date)" || exit 0
           git push
