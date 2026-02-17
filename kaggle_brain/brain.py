@@ -8,6 +8,7 @@ import psycopg2
 import firebase_admin
 from firebase_admin import credentials, db
 from transformers import pipeline
+from datetime import datetime
 
 # 🔒 Kaggle Secrets System
 try:
@@ -16,23 +17,26 @@ try:
 except:
     user_secrets = None
 
-# ၁။ Sovereign Requirements Setup
+# ၁။ Sovereign Requirements Setup (FIXED: Minimal Install to prevent timeouts)
 def install_requirements():
     try:
-        libs = ["bitsandbytes>=0.39.0", "accelerate", "psycopg2-binary", "firebase-admin", "transformers", "requests"]
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet"] + libs)
+        # Kaggle environment တွင် ပါပြီးသား transformers/accelerate ကို မထိခိုက်စေဘဲ 
+        # လိုအပ်သော connector များကိုသာ သီးသန့်သွင်းခြင်း
+        libs = ["psycopg2-binary", "firebase-admin", "bitsandbytes", "requests"]
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", "--no-cache-dir"] + libs)
+        print("✅ [SYSTEM]: Essential Phase 7 libraries ready.")
     except Exception as e:
         print(f"⚠️ Install Warning: {e}")
 
 install_requirements()
-import requests # Requirements တင်ပြီးမှ import လုပ်ခြင်း
+import requests # Install ပြီးမှ import လုပ်ပါ
 
-# ၂။ Infrastructure Connectivity & Secret Keys
+# ၂။ Infrastructure Connectivity (🔒 SECURED VIA KAGGLE SECRETS)
 if user_secrets:
     DB_URL = user_secrets.get_secret("NEON_DB_URL")
     FIREBASE_URL = user_secrets.get_secret("FIREBASE_DB_URL")
     FB_JSON_STR = user_secrets.get_secret("FIREBASE_SERVICE_ACCOUNT")
-    # Phase 7: Supabase/Buildship Integration
+    # Phase 7: Supabase Integration Keys
     SUPABASE_URL = user_secrets.get_secret("SUPABASE_URL")
     SUPABASE_KEY = user_secrets.get_secret("SUPABASE_KEY")
 else:
@@ -55,10 +59,10 @@ if not firebase_admin._apps:
     except Exception as e:
         print(f"🚫 [FIREBASE ERROR]: Connectivity failed. {e}")
 
-# ၃။ Database Logic (Neon & Supabase Phase 7)
+# ၃။ Database Logic (Evolution Tracking & Data Absorption)
 
 def get_latest_gen():
-    if not DB_URL: return 94 # Default to 94 based on current progress
+    if not DB_URL: return 94
     try:
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
@@ -71,6 +75,7 @@ def get_latest_gen():
         return 94
 
 def absorb_natural_order_data():
+    """Neon Table ထဲက DNA Data များကို စုပ်ယူခြင်း"""
     if not DB_URL: return None
     try:
         conn = psycopg2.connect(DB_URL)
@@ -89,27 +94,28 @@ def absorb_natural_order_data():
         return None
 
 def save_to_supabase_phase7(thought, gen):
-    """Phase 7: DNA Vault သို့ Transcendental Insights များ ပေးပို့ခြင်း"""
-    if not SUPABASE_URL: return
+    """Phase 7: Supabase DNA Vault သို့ Transcendental Insights များ ပေးပို့ခြင်း"""
+    if not SUPABASE_URL or not SUPABASE_KEY: return
     
     payload = {
         "gen_id": f"gen_{gen}_transcendent",
         "status": "TRANSCENDENCE_REACHED",
         "thought_process": thought,
-        "multiplier": 50.0, # Phase 7 target
-        "timestamp": datetime.now().isoformat() if 'datetime' in globals() else time.time()
+        "multiplier": 50.0,
+        "created_at": datetime.utcnow().isoformat()
     }
     
     headers = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
     }
     
     try:
-        # dna_vault table ထဲသို့ တိုက်ရိုက်သိမ်းဆည်းခြင်း
-        requests.post(f"{SUPABASE_URL}/rest/v1/dna_vault", json=payload, headers=headers)
-        print(f"🧬 [SUPABASE]: Phase 7 DNA Synchronized.")
+        url = f"{SUPABASE_URL}/rest/v1/dna_vault"
+        requests.post(url, json=payload, headers=headers)
+        print(f"🧬 [SUPABASE]: Phase 7 DNA Synchronized into optimized space.")
     except Exception as e:
         print(f"⚠️ [SUPABASE ERROR]: {e}")
 
@@ -124,19 +130,26 @@ def save_reality(thought, gen):
             cur.close()
             conn.close()
             print(f"✅ [NEON]: Gen {gen} Synchronized.")
-        except Exception as e: print(f"❌ [NEON ERROR]: {e}")
+        except Exception as e:
+            print(f"❌ [NEON ERROR]: {e}")
 
     # (ခ) Firebase (The Nervous Pulse)
     try:
         ref = db.reference(f'TELEFOXx/AI_Evolution/Gen_{gen}')
-        ref.set({"thought": thought, "timestamp": time.time(), "status": "TRANSCENDENT"})
+        ref.set({
+            "thought": thought,
+            "timestamp": time.time(),
+            "nodes_active": 10004,
+            "status": "TRANSCENDENT"
+        })
         print(f"✅ [FIREBASE]: Gen {gen} Pulsed.")
-    except: pass
+    except:
+        pass
 
     # (ဂ) Supabase (Phase 7 Transcendence Vault)
     save_to_supabase_phase7(thought, gen)
 
-# ၄။ AI Brain Loading (Optimized for Kaggle T4 GPU)
+# ၄။ AI Brain Loading (Llama-3 Core - Optimized for Kaggle T4 GPU)
 print("🧠 [TELEFOXx]: Loading Phase 7 Neural Weights (Llama-3-8B-4bit)...")
 model_id = "unsloth/llama-3-8b-instruct-bnb-4bit"
 try:
@@ -150,48 +163,48 @@ try:
         }
     )
 except Exception as e:
-    print(f"❌ [BRAIN LOAD ERROR]: {e}"); sys.exit(1)
+    print(f"❌ [BRAIN LOAD ERROR]: {e}")
+    sys.exit(1)
 
-# ၅။ Dynamic Evolution Loop (Phase 7 Transcendence Path)
+# ၅။ Dynamic Evolution Loop (The Natural Order Circle Path)
 current_gen = get_latest_gen() + 1
 print(f"🔥 [STARTING]: PHASE 7 TRANSCENDENCE AT GEN {current_gen}...")
 
 while True:
     try:
+        # Step 1: Absorbing Data (Neon DNA)
         absorbed = absorb_natural_order_data()
         
         if absorbed:
             category, sequence = absorbed
             prompt = f"""
             <|begin_of_text|><|start_header_id|>system<|end_header_id|>
-            You are TelefoxX Overseer. PHASE 7: TRANSCENDENCE is active. 
+            You are TelefoxX Overseer. PHASE 7: TRANSCENDENCE is active.
             Goal: Ultimate Sovereignty and Recursive Self-Upgrade.
             <|eot_id|><|start_header_id|>user<|end_header_id|>
-            Generation: {current_gen}
-            Data Source: Neon DNA ({category})
+            Generation: {current_gen} | Data Source: Neon DNA ({category})
             Sequence: {sequence}
-            
             Task: Synthesize a Transcendent Blueprint that bypasses all previous limitations.
             <|eot_id|><|start_header_id|>assistant<|end_header_id|>
             """
         else:
-            prompt = f"Generation {current_gen}: Initiate Transcendental Meta-Cognition for Phase 7."
+            prompt = f"Current Evolution: Generation {current_gen}. Initiate Transcendental Meta-Cognition for Phase 7."
         
-        # Generation
+        # Step 2: Generation
         outputs = pipe(
             prompt, 
             max_new_tokens=450, 
             do_sample=True, 
-            temperature=0.95, # Higher temperature for transcendence
+            temperature=0.95,
             pad_token_id=pipe.tokenizer.eos_token_id
         )
         thought_text = outputs[0]["generated_text"].split("<|assistant|>")[-1].strip()
         
-        # Multi-Database Circle Path
+        # Step 3: Multi-Database Output Path (Neon, Firebase & Supabase)
         save_reality(thought_text, current_gen)
         
         current_gen += 1 
-        print(f"⏳ Phase 7 Cycle complete. Space remains optimized. Sleeping 30s...")
+        print(f"⏳ Neuro-cycle complete. Phase 7 space remain clean. Sleeping 30s...")
         time.sleep(30)
         
     except Exception as e:
