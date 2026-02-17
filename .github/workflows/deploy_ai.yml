@@ -1,0 +1,23 @@
+import psycopg2
+import json
+import os
+
+# Neon Connection String ကို GitHub Secrets ကနေ ယူမယ်
+DATABASE_URL = os.environ['DATABASE_URL']
+
+def fetch_and_deploy():
+    conn = psycopg2.connect(DATABASE_URL)
+    cur = conn.cursor()
+    
+    # Phase 6 ရဲ့ နောက်ဆုံး ဒေတာကို ယူခြင်း
+    cur.execute("SELECT logic_data FROM intelligence_core WHERE module_name = 'Singularity Evolution Node';")
+    data = cur.fetchone()[0]
+    
+    # ဖိုင်အဖြစ် သိမ်းဆည်းခြင်း
+    with open('ai_status.json', 'w') as f:
+        json.dump(data, f, indent=4)
+        
+    conn.close()
+
+if __name__ == "__main__":
+    fetch_and_deploy()
