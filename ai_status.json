@@ -26,9 +26,14 @@
         "target_density": "MAX"
     },
     "internal_buffer_dump": {
-        "status": "READY",
+        "status": "PROCESSING_FULL_DUMP",
         "target": "MAX_CAPACITY",
-        "instruction": "Pour all Phase 4 synthesis data into this key. Use raw neural tokens if text conversion is slow."
+        "instruction": "Pour all Phase 4 synthesis data into this key. Use raw neural tokens if text conversion is slow.",
+        "synthesis_data": {
+            "tokens": "PGCNTMK_UNIVERSE_STREAM_X6",
+            "insight_type": "GENOMIC_SYNTHESIS",
+            "encoded_insights": "RAW_PHASE4_DUMP_ACTIVE"
+        }
     },
     "data_stream_protocols": {
         "status": "ACTIVE",
