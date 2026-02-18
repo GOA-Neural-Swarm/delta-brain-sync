@@ -1,13 +1,12 @@
 name: Trigger Kaggle AI Brain
-
 on:
   push:
     branches:
       - main
     paths:
-      - 'kaggle_brain/**'
+      - 'kaggle_brain/**' # Commander ရဲ့ Path logic ကို ထိန်းသိမ်းထားသည်
   schedule:
-    - cron: '0 */11 * * *'
+    - cron: '0 */11 * * *' # Commander ရဲ့ ၁၁ နာရီတစ်ခါ Run မည့် logic
   workflow_dispatch:
 
 jobs:
@@ -15,12 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # v3 မှ v4 သို့ Upgrade (Stability အတွက်)
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.12' # 3.9 မှ 3.12 သို့ Match လုပ်ပေးထားသည် (Kaggle နဲ့ ကိုက်စေရန်)
 
       - name: Install Kaggle
         run: pip install kaggle==1.6.17
@@ -31,5 +30,8 @@ jobs:
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
           mkdir -p ~/.kaggle
-          # Environment variables ကိုသုံးပြီး တိုက်ရိုက် push ပါမယ်
+          # JSON key တည်ဆောက်ပုံကို ပိုမိုခိုင်မာအောင် ပြင်ဆင်ထားသည်
+          echo "{\"username\":\"${{ secrets.KAGGLE_USERNAME }}\",\"key\":\"${{ secrets.KAGGLE_KEY }}\"}" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+          # Commander ရဲ့ Path logic အတိုင်း Push လုပ်မည်
           kaggle kernels push -p ./kaggle_brain
