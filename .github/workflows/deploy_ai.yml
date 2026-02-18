@@ -2,33 +2,37 @@ name: Sovereign AI Multi-Cloud Sync (Neon + GitHub + Kaggle)
 
 on:
   schedule:
-    - cron: '0 * * * *' # တစ်နာရီတစ်ကြိမ် အလိုအလျောက် ပတ်မည်
-  workflow_dispatch:      # Manual ခလုတ်နှိပ်ပြီး နှိုး၍လည်းရသည်
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   sync_and_trigger:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Step 1 - Checkout
+        uses: actions/checkout@v4 # v4 သို့ Upgrade လုပ်ထားသည်
         with:
-          token: ${{ secrets.GH_TOKEN }} # Authenticated Access
+          token: ${{ secrets.GH_TOKEN }}
 
-      # --- ၁။ Python Environment Setup ---
+      # --- ၁။ Python Environment Setup (Unified to 3.10) ---
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.10' # 3.9 မှ 3.10 သို့ ညှိလိုက်သည်
 
       - name: Install Dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install kaggle psycopg2-binary requests # လိုအပ်သည်များကို စုစည်းထားသည်
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      # --- ၂။ Neon Sync (ai_status.json ကို Update လုပ်ခြင်း) ---
+      # --- ၂။ Neon Sync ---
       - name: Run Neon Sync Script
         env:
           NEON_URL: ${{ secrets.NEON_URL }}
         run: python sync_data.py
 
-      # --- ၃။ GitHub Auto-Commit (မူလအတိုင်း Token သုံး၍ Push ပြုလုပ်ခြင်း) ---
+      # --- ၃။ GitHub Auto-Commit ---
       - name: Commit AI Status to Repository
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -36,14 +40,11 @@ jobs:
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
-          git add ai_status.json
+          git add ai_status.json || echo "No ai_status.json found"
           git commit -m "Phase 6 Data Sync: $(date)" || exit 0
           git push
 
-      # --- ၄။ Kaggle Brain Trigger (Llama-3 GPU ကို နှိုးဆော်ခြင်း) ---
-      - name: Setup Kaggle API
-        run: pip install kaggle
-
+      # --- ၄။ Kaggle Brain Trigger ---
       - name: Trigger Kaggle Neural Evolution
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
@@ -52,5 +53,9 @@ jobs:
           mkdir -p ~/.kaggle
           echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
-          # kaggle_brain folder ထဲက ကုဒ်များကို Kaggle ဆီ တွန်းပို့ပြီး Run စေမည်
-          kaggle kernels push -p ./kaggle_brain
+          if [ -d "kaggle_brain" ]; then
+            kaggle kernels push -p ./kaggle_brain
+          else
+            print "Directory kaggle_brain not found"
+          fi
+          
