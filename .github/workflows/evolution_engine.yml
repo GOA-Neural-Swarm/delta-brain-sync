@@ -1,37 +1,58 @@
 name: GOA Neural Evolution & Trinity Sync
+
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/10 * * * *' # ၁၀ မိနစ်တစ်ကြိမ် Evolution & Sync လုပ်မည်
   workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   evolve_and_sync:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # v4 သို့ Upgrade လုပ်ထားသည်
+        with:
+          token: ${{ secrets.GH_TOKEN }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.10' # Universal Stable Version Lock
 
-      - name: Install Python Dependencies
+      - name: Install Dependencies (Python & Node)
         run: |
           python -m pip install --upgrade pip
-          pip install datasets pandas sqlalchemy psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv
-          pip install diffusers transformers accelerate safetensors Pillow
+          pip install datasets pandas sqlalchemy psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv diffusers transformers accelerate safetensors Pillow kaggle
+          npm install pg @supabase/supabase-js firebase-admin
 
-      - name: Install Node.js Dependencies
-        run: npm install 
+      - name: Step 1 - Trigger Kaggle AI Brain (Llama-3 GPU)
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          mkdir -p ~/.kaggle
+          echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+          if [ -d "kaggle_brain" ]; then
+            kaggle kernels push -p ./kaggle_brain
+          fi
 
-      - name: Step 1 - Run Evolution Engine
-        timeout-minutes: 5 # 🔱 အချိန်အကြာကြီး Hang မနေအောင် ကာကွယ်ခြင်း
+      - name: Step 2 - Run Evolution Engine (app.py)
+        timeout-minutes: 7 # Logic ပိုရှုပ်လာရင် မပြတ်သွားအောင် 7 min သို့ တိုးထားသည်
         env:
           DATABASE_URL: ${{ secrets.NEON_KEY }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
@@ -39,15 +60,19 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           HEADLESS_MODE: "true"
         run: python app.py
 
-      - name: Step 2 - Run Trinity Sync Engine
+      - name: Step 3 - Run Trinity Sync Engine (delta_sync.js)
         env:
           NEON_KEY: ${{ secrets.NEON_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: node delta_sync.js
+        run: |
+          if [ -f "delta_sync.js" ]; then
+            node delta_sync.js
+          fi
