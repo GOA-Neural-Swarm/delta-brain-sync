@@ -23,18 +23,13 @@ jobs:
           python-version: '3.9'
 
       - name: Install Kaggle
-        # Kaggle 2.0.0 bug ကို ရှောင်ဖို့ stable version (1.6.17) ကို သုံးထားပါတယ်
         run: pip install kaggle==1.6.17
 
       - name: Push to Kaggle
         env:
-          # Kaggle Tool က တိုက်ရိုက်ဖတ်နိုင်တဲ့ Variable နာမည်တွေကိုပဲ သုံးပါမယ်
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
-          # .kaggle folder ဆောက်ထားမယ် (JSON ဖိုင် manual ဆောက်စရာ မလိုတော့ပါ)
           mkdir -p ~/.kaggle
-          
-          # Kaggle command က env ထဲက KAGGLE_USERNAME နဲ့ KAGGLE_KEY ကို အလိုအလျောက် ယူသုံးသွားမှာပါ
-          # ဒါက Quote (") တွေကြောင့် စာသားလွဲမှားတဲ့ 401 Error ကို အထိရောက်ဆုံး ကာကွယ်ပေးနိုင်ပါတယ်
+          # Environment variables ကိုသုံးပြီး တိုက်ရိုက် push ပါမယ်
           kaggle kernels push -p ./kaggle_brain
