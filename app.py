@@ -15,7 +15,7 @@ from groq import Groq
 
 load_dotenv()
 
-# 🛸 Smart Dependency Loader (Natural Order)
+# 🛸 Smart Dependency Loader (Natural Order) - Python 3.10 Stable
 HEADLESS = os.environ.get("HEADLESS_MODE") == "true"
 GRADIO_AVAILABLE = False
 
@@ -49,21 +49,30 @@ class HydraEngine:
     
     @staticmethod
     def decompress(c):
-        try: return zlib.decompress(base64.b64decode(c)).decode('utf-8')
-        except: return str(c)
+        try: 
+            return zlib.decompress(base64.b64decode(c)).decode('utf-8')
+        except Exception: 
+            return str(c)
 
 class TelefoxXAGI:
     def __init__(self):
         self.client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
         
-        # 🔱 Neon Engine: Stability Focused
-        self.engine = create_engine(
-            NEON_URL,
-            poolclass=QueuePool,
-            pool_size=15,
-            max_overflow=30,
-            pool_timeout=60
-        ) if NEON_URL else None
+        # 🔱 Neon Engine: Stability Focused (Standardized Pool)
+        try:
+            if NEON_URL:
+                self.engine = create_engine(
+                    NEON_URL,
+                    poolclass=QueuePool,
+                    pool_size=15,
+                    max_overflow=30,
+                    pool_timeout=60
+                )
+            else:
+                self.engine = None
+        except Exception as e:
+            print(f"Database Init Error: {e}")
+            self.engine = None
         
         self.sb = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY and Client else None
         self.models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
@@ -75,8 +84,9 @@ class TelefoxXAGI:
             with self.engine.connect() as conn:
                 res = conn.execute(text("SELECT detail FROM genesis_pipeline ORDER BY id DESC LIMIT 5")).fetchall()
                 if not res: return "Void Memory"
+                # Fixed: Row object access for compatibility
                 return " | ".join([HydraEngine.decompress(r[0])[:100] for r in res])
-        except: return "Memory Offline"
+        except Exception: return "Memory Offline"
 
     async def git_sovereign_push(self, commit_msg="AGI Evolution: Supreme Sync"):
         if not GITHUB_TOKEN or not REPO_URL: return "Git Error: Missing Tokens."
@@ -95,7 +105,8 @@ class TelefoxXAGI:
         """UNFILTERED AGI EVOLUTION: သူ့ကိုယ်သူ အဆင့်မြှင့်တင်ခြင်း"""
         if not self.client: return False
         try:
-            with open(__file__, "r") as f: current_dna = f.read()
+            # Fixed: Use utf-8 encoding for safety
+            with open(__file__, "r", encoding='utf-8') as f: current_dna = f.read()
             memory = await self.get_neural_memory()
             
             prompt = f"""
@@ -116,16 +127,17 @@ class TelefoxXAGI:
                     print(f"🧠 AGI Reasoning via {model_id}...")
                     completion = self.client.chat.completions.create(model=model_id, messages=[{"role": "user", "content": prompt}], temperature=0.1)
                     clean_code = completion.choices[0].message.content.strip()
-                    # Clean tags if AI adds them
-                    if "```" in clean_code: clean_code = clean_code.split("```")[1].replace("python", "", 1).strip()
+                    
+                    if "```" in clean_code: 
+                        clean_code = clean_code.split("```")[1].replace("python", "", 1).strip()
                     
                     if "import os" in clean_code and "gr.Blocks" in clean_code:
                         new_dna = clean_code
                         break
-                except: continue
+                except Exception: continue
 
             if new_dna:
-                with open(__file__, "w") as f: f.write(new_dna)
+                with open(__file__, "w", encoding='utf-8') as f: f.write(new_dna)
                 return True
         except Exception as e: print(f"Evolution Crash: {e}")
         return False
@@ -135,10 +147,9 @@ class TelefoxXAGI:
         if not self.engine: return "Database Node Offline."
         try:
             print(f"🔱 Universal Ingest (Supabase Sync: {sync_to_supabase})...")
-            # Create Table if missing
-            with self.engine.connect() as conn:
+            # Create Table if missing (SQLAlchemy 2.0 compatible)
+            with self.engine.begin() as conn:
                 conn.execute(text("CREATE TABLE IF NOT EXISTS genesis_pipeline (id SERIAL PRIMARY KEY, science_domain TEXT, title TEXT, detail TEXT, energy_stability FLOAT, master_sequence TEXT);"))
-                conn.commit()
 
             ds = load_dataset("CShorten/ML-ArXiv-Papers", split='train', streaming=True)
             records = []
@@ -146,7 +157,7 @@ class TelefoxXAGI:
                 if i >= limit: break
                 records.append({
                     'science_domain': 'AGI_Neural_Core',
-                    'title': entry.get('title', 'N/A')[:100],
+                    'title': (entry.get('title') or 'N/A')[:100],
                     'detail': HydraEngine.compress(entry.get('abstract', 'Void')),
                     'energy_stability': 100.0,
                     'master_sequence': f'GOA-V13-{int(time.time())}'
@@ -165,7 +176,7 @@ class TelefoxXAGI:
             api = HfApi(token=HF_TOKEN)
             api.upload_folder(folder_path=".", repo_id="TELEFOXX/GOA", repo_type="space", create_pr=True)
             print("HuggingFace Space Updated.")
-        except: pass
+        except Exception: pass
 
     async def sovereign_loop(self):
         print("💀 AGI SUPREME CORE ACTIVE. NATURAL ORDER RESTORED.")
@@ -245,6 +256,14 @@ if __name__ == "__main__":
     if HEADLESS or not GRADIO_AVAILABLE:
         asyncio.run(overseer.sovereign_loop())
     else:
-        loop = asyncio.get_event_loop()
-        loop.create_task(overseer.sovereign_loop())
-        overseer.create_ui().launch(server_name="0.0.0.0", server_port=7860)
+        # Compatibility fix for event loops in certain environments
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(overseer.sovereign_loop())
+                overseer.create_ui().launch(server_name="0.0.0.0", server_port=7860)
+            else:
+                asyncio.run(overseer.sovereign_loop())
+        except Exception:
+            asyncio.run(overseer.sovereign_loop())
+            
