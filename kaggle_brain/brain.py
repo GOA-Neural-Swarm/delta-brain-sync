@@ -49,7 +49,7 @@ else:
 
 # GitHub Configuration
 REPO_OWNER = "yewinthetlwin"
-REPO_NAME = "YOUR_REPO_NAME"  # <--- Commander ၏ Repository အမည်ကို ဤနေရာတွင် ပြင်ဆင်ရန်
+REPO_NAME = "April-Sovereign-V2"  # <--- Commander ၏ Repository အမည်ကို ဤနေရာတွင် ပြင်ဆင်ရန်
 REPO_URL = f"github.com/{REPO_OWNER}/{REPO_NAME}"
 
 # --- 🔱 FIREBASE INITIALIZATION ---
