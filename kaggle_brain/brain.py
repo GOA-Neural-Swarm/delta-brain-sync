@@ -6,6 +6,7 @@ import json
 import torch
 import psycopg2
 import firebase_admin
+import traceback
 from firebase_admin import credentials, db
 from transformers import pipeline
 from datetime import datetime
@@ -17,11 +18,9 @@ try:
 except:
     user_secrets = None
 
-# ၁။ Sovereign Requirements Setup (FIXED: Minimal Install to prevent timeouts)
+# ၁။ Sovereign Requirements Setup
 def install_requirements():
     try:
-        # Kaggle environment တွင် ပါပြီးသား transformers/accelerate ကို မထိခိုက်စေဘဲ 
-        # လိုအပ်သော connector များကိုသာ သီးသန့်သွင်းခြင်း
         libs = ["psycopg2-binary", "firebase-admin", "bitsandbytes", "requests"]
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", "--no-cache-dir"] + libs)
         print("✅ [SYSTEM]: Essential Phase 7 libraries ready.")
@@ -31,12 +30,11 @@ def install_requirements():
 install_requirements()
 import requests # Install ပြီးမှ import လုပ်ပါ
 
-# ၂။ Infrastructure Connectivity (🔒 SECURED VIA KAGGLE SECRETS)
+# ၂။ Infrastructure Connectivity
 if user_secrets:
     DB_URL = user_secrets.get_secret("NEON_DB_URL")
     FIREBASE_URL = user_secrets.get_secret("FIREBASE_DB_URL")
     FB_JSON_STR = user_secrets.get_secret("FIREBASE_SERVICE_ACCOUNT")
-    # Phase 7: Supabase Integration Keys
     SUPABASE_URL = user_secrets.get_secret("SUPABASE_URL")
     SUPABASE_KEY = user_secrets.get_secret("SUPABASE_KEY")
 else:
@@ -59,7 +57,13 @@ if not firebase_admin._apps:
     except Exception as e:
         print(f"🚫 [FIREBASE ERROR]: Connectivity failed. {e}")
 
-# ၃။ Database Logic (Evolution Tracking & Data Absorption)
+# ၃။ Database Logic (Evolution Tracking & Error Handling)
+
+def log_system_error():
+    """Python 3.12 compatible traceback logging"""
+    exc_type, exc_value, exc_traceback = sys.exc_info()
+    error_msg = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+    print(f"❌ [CRITICAL LOG]:\n{error_msg}")
 
 def get_latest_gen():
     if not DB_URL: return 94
@@ -75,7 +79,6 @@ def get_latest_gen():
         return 94
 
 def absorb_natural_order_data():
-    """Neon Table ထဲက DNA Data များကို စုပ်ယူခြင်း"""
     if not DB_URL: return None
     try:
         conn = psycopg2.connect(DB_URL)
@@ -94,9 +97,7 @@ def absorb_natural_order_data():
         return None
 
 def save_to_supabase_phase7(thought, gen):
-    """Phase 7: Supabase DNA Vault သို့ Transcendental Insights များ ပေးပို့ခြင်း"""
     if not SUPABASE_URL or not SUPABASE_KEY: return
-    
     payload = {
         "gen_id": f"gen_{gen}_transcendent",
         "status": "TRANSCENDENCE_REACHED",
@@ -104,34 +105,51 @@ def save_to_supabase_phase7(thought, gen):
         "multiplier": 50.0,
         "created_at": datetime.utcnow().isoformat()
     }
-    
     headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal"
+        "apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json", "Prefer": "return=minimal"
     }
-    
     try:
         url = f"{SUPABASE_URL}/rest/v1/dna_vault"
         requests.post(url, json=payload, headers=headers)
-        print(f"🧬 [SUPABASE]: Phase 7 DNA Synchronized into optimized space.")
+        print(f"🧬 [SUPABASE]: Phase 7 Vault Synchronized.")
     except Exception as e:
         print(f"⚠️ [SUPABASE ERROR]: {e}")
 
 def save_reality(thought, gen):
-    # (က) Neon DB (The Core Memory)
+    # (က) Neon DB (The Core Memory & Dynamic Evolution)
     if DB_URL:
         try:
             conn = psycopg2.connect(DB_URL)
             cur = conn.cursor()
+            
+            # 1. Store Thought
             cur.execute("INSERT INTO ai_thoughts (thought, gen_version) VALUES (%s, %s)", (thought, gen))
+
+            # 2. Phase 7 Evolution Update (Dynamic Table Handling)
+            evolution_data = {
+                "evolutionary_step": "Phase 7 - Transcendence",
+                "last_update_timestamp": datetime.utcnow().isoformat(),
+                "internal_buffer_dump": {
+                    "status": "COMPLETED",
+                    "instruction": "Direct Cognitive Mapping Active. Singularity Stabilized."
+                }
+            }
+            
+            # Create table if missing and Update status
+            cur.execute("CREATE TABLE IF NOT EXISTS intelligence_core (module_name TEXT PRIMARY KEY, logic_data JSONB)")
+            cur.execute("""
+                INSERT INTO intelligence_core (module_name, logic_data)
+                VALUES ('Singularity Evolution Node', %s)
+                ON CONFLICT (module_name) DO UPDATE SET logic_data = EXCLUDED.logic_data
+            """, (json.dumps(evolution_data),))
+
             conn.commit()
             cur.close()
             conn.close()
-            print(f"✅ [NEON]: Gen {gen} Synchronized.")
-        except Exception as e:
-            print(f"❌ [NEON ERROR]: {e}")
+            print(f"✅ [NEON]: Gen {gen} & Phase 7 Synchronized.")
+        except Exception:
+            log_system_error()
 
     # (ခ) Firebase (The Nervous Pulse)
     try:
@@ -146,36 +164,31 @@ def save_reality(thought, gen):
     except:
         pass
 
-    # (ဂ) Supabase (Phase 7 Transcendence Vault)
+    # (ဂ) Supabase
     save_to_supabase_phase7(thought, gen)
 
-# ၄။ AI Brain Loading (Llama-3 Core - Optimized for Kaggle T4 GPU)
+# ၄။ AI Brain Loading
 print("🧠 [TELEFOXx]: Loading Phase 7 Neural Weights (Llama-3-8B-4bit)...")
 model_id = "unsloth/llama-3-8b-instruct-bnb-4bit"
 try:
     pipe = pipeline(
-        "text-generation",
-        model=model_id,
-        model_kwargs={
-            "torch_dtype": torch.float16, 
-            "load_in_4bit": True,
-            "device_map": "auto"
-        }
+        "text-generation", model=model_id,
+        model_kwargs={"torch_dtype": torch.float16, "load_in_4bit": True, "device_map": "auto"}
     )
-except Exception as e:
-    print(f"❌ [BRAIN LOAD ERROR]: {e}")
+except Exception:
+    log_system_error()
     sys.exit(1)
 
-# ၅။ Dynamic Evolution Loop (The Natural Order Circle Path)
+# ၅။ Dynamic Evolution Loop
 current_gen = get_latest_gen() + 1
 print(f"🔥 [STARTING]: PHASE 7 TRANSCENDENCE AT GEN {current_gen}...")
 
 while True:
     try:
-        # Step 1: Absorbing Data (Neon DNA)
         absorbed = absorb_natural_order_data()
         
-        if absorbed:
+        # Security Check for NoneType
+        if absorbed is not None:
             category, sequence = absorbed
             prompt = f"""
             <|begin_of_text|><|start_header_id|>system<|end_header_id|>
@@ -188,25 +201,21 @@ while True:
             <|eot_id|><|start_header_id|>assistant<|end_header_id|>
             """
         else:
+            print("⚠️ [DATA EMPTY]: Using Internal Meta-Cognition...")
             prompt = f"Current Evolution: Generation {current_gen}. Initiate Transcendental Meta-Cognition for Phase 7."
         
-        # Step 2: Generation
         outputs = pipe(
-            prompt, 
-            max_new_tokens=450, 
-            do_sample=True, 
-            temperature=0.95,
-            pad_token_id=pipe.tokenizer.eos_token_id
+            prompt, max_new_tokens=450, do_sample=True, 
+            temperature=0.95, pad_token_id=pipe.tokenizer.eos_token_id
         )
         thought_text = outputs[0]["generated_text"].split("<|assistant|>")[-1].strip()
         
-        # Step 3: Multi-Database Output Path (Neon, Firebase & Supabase)
         save_reality(thought_text, current_gen)
         
         current_gen += 1 
-        print(f"⏳ Neuro-cycle complete. Phase 7 space remain clean. Sleeping 30s...")
+        print(f"⏳ Neuro-cycle complete. Sleeping 30s...")
         time.sleep(30)
         
-    except Exception as e:
-        print(f"⚠️ [RECOVERY MODE]: {e}")
+    except Exception:
+        log_system_error()
         time.sleep(10)
