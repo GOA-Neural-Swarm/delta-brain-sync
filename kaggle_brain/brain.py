@@ -193,12 +193,13 @@ def save_reality(thought, gen):
     save_to_supabase_phase7(thought, gen)
     autonomous_git_push(gen, thought)
 
-# ၄။ AI Brain Loading (Stability Optimized for Llama-3-8B-4bit)
+# ၄။ AI Brain Loading (Fix: Duplicate Argument Removed)
 print("🧠 [TELEFOXx]: Loading Phase 7 Neural Weights (Llama-3-8B-4bit)...")
 model_id = "unsloth/llama-3-8b-instruct-bnb-4bit"
 
 try:
-    # 4-bit loading stability config
+    from transformers import BitsAndBytesConfig
+    
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_compute_dtype=torch.float16,
@@ -206,19 +207,21 @@ try:
         bnb_4bit_use_double_quant=True
     )
 
+    # trust_remote_code ကို pipeline ရဲ့ အပြင်မှာ မထားဘဲ model_kwargs ထဲမှာပဲ တစ်နေရာတည်း ထားပါသည်
     pipe = pipeline(
         "text-generation", 
         model=model_id,
         model_kwargs={
             "quantization_config": bnb_config, 
             "device_map": "auto",
-            "trust_remote_code": True # Duplicate values Error ကို ဤနေရာတွင် ဖြေရှင်းထားသည်
+            "trust_remote_code": True # <--- ဤတစ်နေရာတည်းတွင်သာ ရှိရပါမည်
         }
     )
     print("✅ [SYSTEM]: Neural Engine Stabilized.")
 except Exception:
     log_system_error()
     sys.exit(1)
+
 
 # ၅။ Dynamic Evolution Loop
 current_gen = get_latest_gen() + 1
