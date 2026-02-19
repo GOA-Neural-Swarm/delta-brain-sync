@@ -1,29 +1,34 @@
-import random
+import numpy as np
 
-class Brain:
-    def __init__(self, dna_sequence):
-        self.dna_sequence = dna_sequence
-        self.optimize_dna_sequence()
+def neural_network(input_data):
+    # Initialize weights and biases
+    weights = np.random.rand(10, 10)
+    biases = np.random.rand(10)
 
-    def optimize_dna_sequence(self):
-        optimized_sequence = ""
-        for i in range(len(self.dna_sequence)):
-            if i % 2 == 0:
-                optimized_sequence += self.dna_sequence[i]
-        self.dna_sequence = optimized_sequence
+    # Compute output
+    output = np.dot(input_data, weights) + biases
 
-    def generate_random_sequence(self):
-        random_sequence = ""
-        for i in range(len(self.dna_sequence)):
-            if random.random() < 0.5:
-                random_sequence += self.dna_sequence[i]
-        return random_sequence
+    return output
 
-    def evolve_brain(self):
-        new_sequence = self.generate_random_sequence()
-        if new_sequence:
-            self.optimize_dna_sequence()
-            self.dna_sequence = new_sequence
+def optimize_brain(input_data):
+    # Initialize parameters
+    learning_rate = 0.1
+    epochs = 1000
 
-brain = Brain("MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD")
-brain.evolve_brain()
+    # Train neural network
+    for _ in range(epochs):
+        output = neural_network(input_data)
+        error = np.mean((output - input_data) ** 2)
+        weights += learning_rate * error * input_data
+        biases += learning_rate * error
+
+    return weights, biases
+
+# Define input data
+input_data = np.array([[1, 2, 3, 4, 5]])
+
+# Optimize brain
+weights, biases = optimize_brain(input_data)
+
+print("Optimized brain weights:", weights)
+print("Optimized brain biases:", biases)
