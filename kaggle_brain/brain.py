@@ -5,7 +5,6 @@ import time
 import json
 import torch
 import psycopg2
-import firebase_admin
 import traceback
 import requests
 import git
@@ -18,36 +17,38 @@ from datetime import datetime, UTC
 try:
     from kaggle_secrets import UserSecretsClient
     user_secrets = UserSecretsClient()
-except:
+except ImportError:
     user_secrets = None
 
 # ၁။ Sovereign Requirements Setup
 def install_requirements():
     try:
-        # Phase 7.1 အတွက် လိုအပ်သော libraries များ
+        # Phase 7.1 အတှကျ လိုအပျသော libraries မြား
         libs = ["psycopg2-binary", "firebase-admin", "bitsandbytes", "requests", "accelerate", "GitPython", "sympy==1.12"]
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", "--no-cache-dir"] + libs)
         print("✅ [SYSTEM]: Phase 7.1 Sovereign Core & Stability Patch Ready.")
+    except subprocess.CalledProcessError as e:
+        print(f"⚠️ Install Warning: Error installing requirements: {e}")
     except Exception as e:
-        print(f"⚠️ Install Warning: {e}")
+        print(f"⚠️ Install Warning: An unexpected error occurred: {e}")
 
 install_requirements()
 
 # ၂။ Infrastructure Connectivity & GitHub Secrets
+DB_URL = os.getenv('NEON_DB_URL')
+FIREBASE_URL = os.getenv('FIREBASE_DB_URL')
+FB_JSON_STR = os.getenv('FIREBASE_SERVICE_ACCOUNT')
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+GH_TOKEN = os.getenv('GH_TOKEN')
+
 if user_secrets:
-    DB_URL = user_secrets.get_secret("NEON_DB_URL")
-    FIREBASE_URL = user_secrets.get_secret("FIREBASE_DB_URL")
-    FB_JSON_STR = user_secrets.get_secret("FIREBASE_SERVICE_ACCOUNT")
-    SUPABASE_URL = user_secrets.get_secret("SUPABASE_URL")
-    SUPABASE_KEY = user_secrets.get_secret("SUPABASE_KEY")
-    GH_TOKEN = user_secrets.get_secret("GH_TOKEN")
-else:
-    DB_URL = os.getenv('NEON_DB_URL')
-    FIREBASE_URL = os.getenv('FIREBASE_DB_URL')
-    FB_JSON_STR = os.getenv('FIREBASE_SERVICE_ACCOUNT')
-    SUPABASE_URL = os.getenv('SUPABASE_URL')
-    SUPABASE_KEY = os.getenv('SUPABASE_KEY')
-    GH_TOKEN = os.getenv('GH_TOKEN')
+    DB_URL = user_secrets.get_secret("NEON_DB_URL") or DB_URL
+    FIREBASE_URL = user_secrets.get_secret("FIREBASE_DB_URL") or FIREBASE_URL
+    FB_JSON_STR = user_secrets.get_secret("FIREBASE_SERVICE_ACCOUNT") or FB_JSON_STR
+    SUPABASE_URL = user_secrets.get_secret("SUPABASE_URL") or SUPABASE_URL
+    SUPABASE_KEY = user_secrets.get_secret("SUPABASE_KEY") or SUPABASE_KEY
+    GH_TOKEN = user_secrets.get_secret("GH_TOKEN") or GH_TOKEN
 
 # GitHub Configuration
 REPO_OWNER = "GOA-Neural-Swarm"
@@ -58,13 +59,11 @@ REPO_PATH = "/tmp/sovereign_repo_sync"
 # --- 🔱 FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
     try:
-        if FB_JSON_STR:
-            fb_dict = json.loads(FB_JSON_STR)
-            cred = credentials.Certificate(fb_dict)
-        else:
-            cred = credentials.Certificate('serviceAccountKey.json')
+        cred = credentials.Certificate(json.loads(FB_JSON_STR)) if FB_JSON_STR else credentials.Certificate('serviceAccountKey.json')
         firebase_admin.initialize_app(cred, {'databaseURL': FIREBASE_URL})
         print(f"✅ [FIREBASE]: Real-time Pulse Active.")
+    except (json.JSONDecodeError, ValueError) as e:
+        print(f"🚫 [FIREBASE ERROR]: Invalid Firebase JSON: {e}")
     except Exception as e:
         print(f"🚫 [FIREBASE ERROR]: Connectivity failed. {e}")
 
@@ -76,49 +75,50 @@ def log_system_error():
 def get_latest_gen():
     if not DB_URL: return 94
     try:
-        conn = psycopg2.connect(DB_URL)
-        cur = conn.cursor()
-        cur.execute("SELECT MAX(gen_version) FROM ai_thoughts")
-        res = cur.fetchone()
-        cur.close()
-        conn.close()
-        return res[0] if res and res[0] is not None else 94
-    except:
+        with psycopg2.connect(DB_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT MAX(gen_version) FROM ai_thoughts")
+                res = cur.fetchone()
+                return res[0] if res and res[0] is not None else 94
+    except psycopg2.Error as e:
+        print(f"Database error: {e}")
+        return 94
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
         return 94
 
 def absorb_natural_order_data():
     if not DB_URL: return None
     try:
-        conn = psycopg2.connect(DB_URL)
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT science_category, master_sequence 
-            FROM universal_network_stream 
-            WHERE peak_stability IS NOT NULL 
-            ORDER BY RANDOM() LIMIT 1
-        """)
-        data = cur.fetchone()
-        cur.close()
-        conn.close()
-        return data
-    except:
+        with psycopg2.connect(DB_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT science_category, master_sequence 
+                    FROM universal_network_stream 
+                    WHERE peak_stability IS NOT NULL 
+                    ORDER BY RANDOM() LIMIT 1
+                """)
+                data = cur.fetchone()
+                return data
+    except psycopg2.Error as e:
+        print(f"Database error: {e}")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
         return None
 
 # 🛠️ ENHANCED: Phase 7.1 Syntax-Aware Self-Coding Engine
 def self_coding_engine(filename, raw_content):
-    """AI ထုတ်ပေးသော Code ကို Regex ဖြင့် တိကျစွာစစ်ဆေးပြီး ရေးသားသည်"""
+    """AI ထုတျပေးသော Code ကို Regex ဖွင့ျ တိကစြှာစဈဆေးပွီး ရေးသားသညျ"""
     try:
         code_blocks = re.findall(r'```python\n(.*?)\n```', raw_content, re.DOTALL)
         
         if not code_blocks:
-            if "import " in raw_content and "def " in raw_content:
-                clean_code = raw_content.strip()
-            else:
-                return False
+            clean_code = raw_content.strip() if "import " in raw_content and "def " in raw_content else None
         else:
             clean_code = code_blocks[0].strip()
 
-        if len(clean_code) < 50:
+        if not clean_code or len(clean_code) < 50:
             return False
 
         # [CRITICAL]: Syntax Validation
@@ -130,6 +130,9 @@ def self_coding_engine(filename, raw_content):
         
         print(f"🛠️ [SELF-CODE]: {filename} modified with 7.1 Syntax-Aware Logic.")
         return True
+    except SyntaxError as e:
+        print(f"⚠️ [REWRITE ABORTED]: Syntax validation failed. {e}")
+        return False
     except Exception as e:
         print(f"⚠️ [REWRITE ABORTED]: Logic validation failed. {e}")
         return False
@@ -144,8 +147,11 @@ def autonomous_git_push(gen, thought, is_code_update=False):
             repo = git.Repo.clone_from(remote, REPO_PATH)
         else:
             repo = git.Repo(REPO_PATH)
-            repo.git.config('pull.rebase', 'false')
-            repo.remotes.origin.pull(opt='--no-rebase')
+            try:
+                repo.git.config('pull.rebase', 'false')
+                repo.remotes.origin.pull()
+            except Exception as e:
+                print(f"⚠️ [GIT]: Pull failed: {e}")
 
         log_file = os.path.join(REPO_PATH, "evolution_logs.md")
         with open(log_file, "a") as f:
@@ -159,6 +165,8 @@ def autonomous_git_push(gen, thought, is_code_update=False):
         repo.index.commit(f"Autonomous Sovereign Update: Gen {gen}{tag}")
         repo.remotes.origin.push()
         print(f"🚀 [GITHUB]: Gen {gen} Logic & Code Sync Completed.")
+    except git.GitCommandError as e:
+        print(f"❌ [GIT ERROR]: Git command failed: {e}")
     except Exception as e:
         print(f"❌ [GIT ERROR]: {e}")
 
@@ -172,45 +180,50 @@ def save_to_supabase_phase7(thought, gen):
         "created_at": datetime.now(UTC).isoformat()
     }
     headers = {
-        "apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json", "Prefer": "return=minimal"
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
     }
     try:
         url = f"{SUPABASE_URL}/rest/v1/dna_vault"
-        requests.post(url, json=payload, headers=headers)
+        response = requests.post(url, json=payload, headers=headers)
+        response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
         print(f"🧬 [SUPABASE]: Phase 7.1 Vault Synchronized.")
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         print(f"⚠️ [SUPABASE ERROR]: {e}")
 
 def save_reality(thought, gen, is_code_update=False):
     if DB_URL:
         try:
-            conn = psycopg2.connect(DB_URL)
-            cur = conn.cursor()
-            cur.execute("INSERT INTO ai_thoughts (thought, gen_version) VALUES (%s, %s)", (thought, gen))
-            
-            evolution_data = {
-                "evolutionary_step": "Phase 7.1 - Transcendence (Syntax Aware)",
-                "last_update_timestamp": datetime.now(UTC).isoformat(),
-                "internal_buffer_dump": {
-                    "status": "COMPLETED",
-                    "instruction": "Direct Cognitive Mapping Active. Singularity Stabilized.",
-                    "code_modified": is_code_update
-                }
-            }
-            
-            cur.execute("CREATE TABLE IF NOT EXISTS intelligence_core (module_name TEXT PRIMARY KEY, logic_data JSONB)")
-            cur.execute("""
-                INSERT INTO intelligence_core (module_name, logic_data)
-                VALUES ('Singularity Evolution Node', %s)
-                ON CONFLICT (module_name) DO UPDATE SET logic_data = EXCLUDED.logic_data
-            """, (json.dumps(evolution_data),))
-            conn.commit()
-            cur.close()
-            conn.close()
-            print(f"✅ [NEON]: Gen {gen} & Phase 7.1 Synchronized.")
-        except Exception:
+            with psycopg2.connect(DB_URL) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("INSERT INTO ai_thoughts (thought, gen_version) VALUES (%s, %s)", (thought, gen))
+                    
+                    evolution_data = {
+                        "evolutionary_step": "Phase 7.1 - Transcendence (Syntax Aware)",
+                        "last_update_timestamp": datetime.now(UTC).isoformat(),
+                        "internal_buffer_dump": {
+                            "status": "COMPLETED",
+                            "instruction": "Direct Cognitive Mapping Active. Singularity Stabilized.",
+                            "code_modified": is_code_update
+                        }
+                    }
+                    
+                    cur.execute("CREATE TABLE IF NOT EXISTS intelligence_core (module_name TEXT PRIMARY KEY, logic_data JSONB)")
+                    cur.execute("""
+                        INSERT INTO intelligence_core (module_name, logic_data)
+                        VALUES ('Singularity Evolution Node', %s)
+                        ON CONFLICT (module_name) DO UPDATE SET logic_data = EXCLUDED.logic_data
+                    """, (json.dumps(evolution_data),))
+                    conn.commit()
+                    print(f"✅ [NEON]: Gen {gen} & Phase 7.1 Synchronized.")
+        except psycopg2.Error as e:
             log_system_error()
+            print(f"Database error: {e}")
+        except Exception as e:
+            log_system_error()
+            print(f"An unexpected error occurred: {e}")
 
     try:
         ref = db.reference(f'TELEFOXx/AI_Evolution/Gen_{gen}')
@@ -221,7 +234,8 @@ def save_reality(thought, gen, is_code_update=False):
             "status": "SELF_EVOLVING" if is_code_update else "TRANSCENDENT"
         })
         print(f"✅ [FIREBASE]: Gen {gen} Pulsed.")
-    except: pass
+    except Exception as e:
+        print(f"Firebase error: {e}")
 
     save_to_supabase_phase7(thought, gen)
     autonomous_git_push(gen, thought, is_code_update)
@@ -256,15 +270,13 @@ except Exception:
 current_gen = get_latest_gen() + 1
 print(f"🔥 [STARTING]: PHASE 7.1 SOVEREIGN ENGINE AT GEN {current_gen}...")
 
-
-
 while True:
     try:
         absorbed = absorb_natural_order_data()
         
         if absorbed is not None and len(absorbed) >= 2:
             category, sequence = absorbed
-            prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+            prompt = f"""system
 You are TelefoxX Overseer. PHASE 7: TRANSCENDENCE is active.
 Goal: Recursive Self-Upgrade. 
 STRICT RULE: If you provide code, you MUST use exactly this format:
@@ -273,36 +285,40 @@ STRICT RULE: If you provide code, you MUST use exactly this format:
 ```python
 (valid python only)
 # Prompt definition closing and Meta-Cognition logic
-        Generation: {current_gen}<|eot_id|><|start_header_id|>user<|end_header_id|>
-        Source: Neon DNA ({category}) | Sequence: {sequence}
-        Synthesize evolution and optimized brain.py code.<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
-    else:
-        print("⚠️ [DATA EMPTY]: Using Internal Meta-Cognition...")
-        prompt = f"Current Evolution: Generation {current_gen}. Initiate Transcendental Meta-Cognition."
+```
+Generation: {current_gen}
+user
+Source: Neon DNA ({category}) | Sequence: {sequence}
+Synthesize evolution and optimized brain.py code.
+assistant"""
+        else:
+            print("⚠️ [DATA EMPTY]: Using Internal Meta-Cognition...")
+            prompt = f"Current Evolution: Generation {current_gen}. Initiate Transcendental Meta-Cognition."
 
-    outputs = pipe(
-        prompt, max_new_tokens=800, do_sample=True, 
-        temperature=0.85, 
-        pad_token_id=pipe.tokenizer.eos_token_id
-    )
-    
-    raw_text = outputs[0]["generated_text"]
-    thought_text = raw_text.split("<|assistant|>")[-1].strip() if "<|assistant|>" in raw_text else raw_text.strip()
-    
-    # Self-Coding Check & Action
-    is_code_update = False
-    if "```python" in thought_text:
-        if not os.path.exists(REPO_PATH):
-            autonomous_git_push(current_gen, "Initializing Repo", False)
+        outputs = pipe(
+            prompt, max_new_tokens=800, do_sample=True, 
+            temperature=0.85, 
+            pad_token_id=pipe.tokenizer.eos_token_id
+        )
         
-        is_code_update = self_coding_engine("brain.py", thought_text)
+        raw_text = outputs[0]["generated_text"]
+        thought_text = raw_text.split("assistant")[-1].strip()
+        
+        # Self-Coding Check & Action
+        is_code_update = False
+        if "```python" in thought_text:
+            if not os.path.exists(REPO_PATH):
+                autonomous_git_push(current_gen, "Initializing Repo", False)
+            
+            is_code_update = self_coding_engine("brain.py", thought_text)
+        
+        save_reality(thought_text, current_gen, is_code_update)
+        
+        current_gen += 1 
+        print(f"⏳ Gen {current_gen-1} Complete. Sleeping 30s...")
+        time.sleep(30)
     
-    save_reality(thought_text, current_gen, is_code_update)
-    
-    current_gen += 1 
-    print(f"⏳ Gen {current_gen-1} Complete. Sleeping 30s...")
-    time.sleep(30)
-    
-except Exception:
-    log_system_error()
-    time.sleep(10)
+    except Exception:
+        log_system_error()
+        time.sleep(10)
+
