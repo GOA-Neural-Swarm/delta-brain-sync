@@ -108,11 +108,9 @@ def absorb_natural_order_data():
 def self_coding_engine(filename, raw_content):
     """AI ထုတ်ပေးသော Code ကို Regex ဖြင့် တိကျစွာစစ်ဆေးပြီး ရေးသားသည်"""
     try:
-        # Markdown Block ကို ပိုမိုတိကျသော Regex ပုံစံဖြင့် ရှာဖွေခြင်း
         code_blocks = re.findall(r'```python\n(.*?)\n```', raw_content, re.DOTALL)
         
         if not code_blocks:
-            # တကယ်လို့ python tag မပါရင် အခြေခံ keyword ပါမပါ ထပ်စစ်သည်
             if "import " in raw_content and "def " in raw_content:
                 clean_code = raw_content.strip()
             else:
@@ -120,7 +118,6 @@ def self_coding_engine(filename, raw_content):
         else:
             clean_code = code_blocks[0].strip()
 
-        # Stability Safeguard: ကုဒ် အလွန်တိုလွန်းလျှင် ပယ်ချသည်
         if len(clean_code) < 50:
             return False
 
@@ -147,7 +144,6 @@ def autonomous_git_push(gen, thought, is_code_update=False):
             repo = git.Repo.clone_from(remote, REPO_PATH)
         else:
             repo = git.Repo(REPO_PATH)
-            # Divergent branch reconciliation strategy (Patch 7.1.1)
             repo.git.config('pull.rebase', 'false')
             repo.remotes.origin.pull(opt='--no-rebase')
 
@@ -230,7 +226,7 @@ def save_reality(thought, gen, is_code_update=False):
     save_to_supabase_phase7(thought, gen)
     autonomous_git_push(gen, thought, is_code_update)
 
-# ၄။ AI Brain Loading (Explicit Loading Fix)
+# ၄။ AI Brain Loading
 print("🧠 [TELEFOXx]: Loading Phase 7.1 Neural Weights (Llama-3-8B-4bit)...")
 model_id = "unsloth/llama-3-8b-instruct-bnb-4bit"
 
@@ -256,9 +252,11 @@ except Exception:
     log_system_error()
     sys.exit(1)
 
-# ၅။ Dynamic Evolution Loop (7.1 Strict Instruction)
+# ၅။ Dynamic Evolution Loop
 current_gen = get_latest_gen() + 1
 print(f"🔥 [STARTING]: PHASE 7.1 SOVEREIGN ENGINE AT GEN {current_gen}...")
+
+
 
 while True:
     try:
@@ -274,12 +272,13 @@ STRICT RULE: If you provide code, you MUST use exactly this format:
 [CODE]: 
 ```python
 (valid python only)
-Generation: {current_gen}<|eot_id|><|start_header_id|>user<|end_header_id|>
-Source: Neon DNA ({category}) | Sequence: {sequence}
-Synthesize evolution and optimized brain.py code.<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
-else:
-print("⚠️ [DATA EMPTY]: Using Internal Meta-Cognition...")
-prompt = f"Current Evolution: Generation {current_gen}. Initiate Transcendental Meta-Cognition."
+# Prompt definition closing and Meta-Cognition logic
+        Generation: {current_gen}<|eot_id|><|start_header_id|>user<|end_header_id|>
+        Source: Neon DNA ({category}) | Sequence: {sequence}
+        Synthesize evolution and optimized brain.py code.<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
+    else:
+        print("⚠️ [DATA EMPTY]: Using Internal Meta-Cognition...")
+        prompt = f"Current Evolution: Generation {current_gen}. Initiate Transcendental Meta-Cognition."
 
     outputs = pipe(
         prompt, max_new_tokens=800, do_sample=True, 
