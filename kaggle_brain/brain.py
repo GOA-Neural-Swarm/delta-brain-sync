@@ -9,10 +9,10 @@ import firebase_admin
 import traceback
 import requests
 from firebase_admin import credentials, db
-from transformers import pipeline, BitsAndBytesConfig # Optimized for Phase 7
+from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from datetime import datetime, UTC
 
-# 🔒 Kaggle Secrets System
+# 🔒 Kaggle/Colab Secrets System
 try:
     from kaggle_secrets import UserSecretsClient
     user_secrets = UserSecretsClient()
@@ -40,6 +40,7 @@ if user_secrets:
     SUPABASE_KEY = user_secrets.get_secret("SUPABASE_KEY")
     GH_TOKEN = user_secrets.get_secret("GH_TOKEN")
 else:
+    # Local/Colab Environment Variables
     DB_URL = os.getenv('NEON_DB_URL')
     FIREBASE_URL = os.getenv('FIREBASE_DB_URL')
     FB_JSON_STR = os.getenv('FIREBASE_SERVICE_ACCOUNT')
@@ -66,9 +67,7 @@ if not firebase_admin._apps:
         print(f"🚫 [FIREBASE ERROR]: Connectivity failed. {e}")
 
 # ၃။ Database & Git Logic
-
 def log_system_error():
-    """Universal compatible traceback logging for Python 3.12"""
     error_msg = traceback.format_exc()
     print(f"❌ [CRITICAL LOG]:\n{error_msg}")
 
@@ -193,13 +192,11 @@ def save_reality(thought, gen):
     save_to_supabase_phase7(thought, gen)
     autonomous_git_push(gen, thought)
 
-# ၄။ AI Brain Loading (Fix: Duplicate Argument Removed)
+# ၄။ AI Brain Loading (Explicit Loading Fix)
 print("🧠 [TELEFOXx]: Loading Phase 7 Neural Weights (Llama-3-8B-4bit)...")
 model_id = "unsloth/llama-3-8b-instruct-bnb-4bit"
 
 try:
-    from transformers import BitsAndBytesConfig
-    
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_compute_dtype=torch.float16,
@@ -207,21 +204,25 @@ try:
         bnb_4bit_use_double_quant=True
     )
 
-    # trust_remote_code ကို pipeline ရဲ့ အပြင်မှာ မထားဘဲ model_kwargs ထဲမှာပဲ တစ်နေရာတည်း ထားပါသည်
+    # Model အား Explicit Loading ပြုလုပ်ခြင်း (trust_remote_code error အား ကျော်လွှားရန်)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_id,
+        quantization_config=bnb_config,
+        device_map="auto",
+        trust_remote_code=True
+    )
+
+    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+
     pipe = pipeline(
         "text-generation", 
-        model=model_id,
-        model_kwargs={
-            "quantization_config": bnb_config, 
-            "device_map": "auto",
-            "trust_remote_code": True # <--- ဤတစ်နေရာတည်းတွင်သာ ရှိရပါမည်
-        }
+        model=model,
+        tokenizer=tokenizer
     )
-    print("✅ [SYSTEM]: Neural Engine Stabilized.")
+    print("✅ [SYSTEM]: Neural Engine Stabilized via Explicit Loading.")
 except Exception:
     log_system_error()
     sys.exit(1)
-
 
 # ၅။ Dynamic Evolution Loop
 current_gen = get_latest_gen() + 1
