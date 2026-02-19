@@ -9,7 +9,7 @@ import firebase_admin
 import traceback
 import requests
 from firebase_admin import credentials, db
-from transformers import pipeline
+from transformers import pipeline, BitsAndBytesConfig # Optimized for Phase 7
 from datetime import datetime, UTC
 
 # 🔒 Kaggle Secrets System
@@ -19,7 +19,7 @@ try:
 except:
     user_secrets = None
 
-# ၁။ Sovereign Requirements Setup (GitPython ကိုပါ တစ်ခါတည်း သွင်းပေးမည်)
+# ၁။ Sovereign Requirements Setup
 def install_requirements():
     try:
         libs = ["psycopg2-binary", "firebase-admin", "bitsandbytes", "requests", "accelerate", "GitPython"]
@@ -29,7 +29,7 @@ def install_requirements():
         print(f"⚠️ Install Warning: {e}")
 
 install_requirements()
-import git # Libraries များ သွင်းပြီးမှ import လုပ်ခြင်း
+import git 
 
 # ၂။ Infrastructure Connectivity & GitHub Secrets
 if user_secrets:
@@ -49,7 +49,7 @@ else:
 
 # GitHub Configuration
 REPO_OWNER = "GOA-Neural-Swarm"
-REPO_NAME = "delta-brain-sync"  # <--- Commander ၏ Repository အမည်ကို ဤနေရာတွင် ပြင်ဆင်ရန်
+REPO_NAME = "delta-brain-sync"
 REPO_URL = f"github.com/{REPO_OWNER}/{REPO_NAME}"
 
 # --- 🔱 FIREBASE INITIALIZATION ---
@@ -68,7 +68,7 @@ if not firebase_admin._apps:
 # ၃။ Database & Git Logic
 
 def log_system_error():
-    """Python 3.12 Universal compatible traceback logging"""
+    """Universal compatible traceback logging for Python 3.12"""
     error_msg = traceback.format_exc()
     print(f"❌ [CRITICAL LOG]:\n{error_msg}")
 
@@ -104,7 +104,6 @@ def absorb_natural_order_data():
         return None
 
 def autonomous_git_push(gen, thought):
-    """AI ထုတ်လုပ်လိုက်သော Logic အား GitHub ဆီသို့ အလိုအလျောက် Commit လုပ်ခြင်း"""
     if not GH_TOKEN:
         print("⚠️ [GIT]: GH_TOKEN missing. Skipping Auto-Commit.")
         return
@@ -118,14 +117,12 @@ def autonomous_git_push(gen, thought):
             repo = git.Repo(repo_path)
             repo.remotes.origin.pull()
 
-        # Evolution Log ထဲသို့ တွေးခေါ်မှုအား မှတ်တမ်းတင်ခြင်း
         log_file = os.path.join(repo_path, "evolution_logs.md")
         with open(log_file, "a") as f:
             f.write(f"\n## 🧬 Generation {gen} Evolution\n")
             f.write(f"**Timestamp:** {datetime.now(UTC).isoformat()}\n\n")
             f.write(f"**Transcendent Blueprint:**\n\n> {thought}\n\n---\n")
 
-        # Stage, Commit & Push
         repo.git.add(all=True)
         repo.index.commit(f"Autonomous Sovereign Update: Gen {gen}")
         repo.remotes.origin.push()
@@ -154,7 +151,6 @@ def save_to_supabase_phase7(thought, gen):
         print(f"⚠️ [SUPABASE ERROR]: {e}")
 
 def save_reality(thought, gen):
-    # --- NEON DB SYNC ---
     if DB_URL:
         try:
             conn = psycopg2.connect(DB_URL)
@@ -176,7 +172,6 @@ def save_reality(thought, gen):
                 VALUES ('Singularity Evolution Node', %s)
                 ON CONFLICT (module_name) DO UPDATE SET logic_data = EXCLUDED.logic_data
             """, (json.dumps(evolution_data),))
-
             conn.commit()
             cur.close()
             conn.close()
@@ -184,7 +179,6 @@ def save_reality(thought, gen):
         except Exception:
             log_system_error()
 
-    # --- FIREBASE PULSE ---
     try:
         ref = db.reference(f'TELEFOXx/AI_Evolution/Gen_{gen}')
         ref.set({
@@ -194,23 +188,34 @@ def save_reality(thought, gen):
             "status": "TRANSCENDENT"
         })
         print(f"✅ [FIREBASE]: Gen {gen} Pulsed.")
-    except:
-        pass
+    except: pass
 
-    # --- SUPABASE SYNC ---
     save_to_supabase_phase7(thought, gen)
-
-    # --- GITHUB AUTONOMOUS SYNC ---
     autonomous_git_push(gen, thought)
 
-# ၄။ AI Brain Loading
+# ၄။ AI Brain Loading (Stability Optimized for Llama-3-8B-4bit)
 print("🧠 [TELEFOXx]: Loading Phase 7 Neural Weights (Llama-3-8B-4bit)...")
 model_id = "unsloth/llama-3-8b-instruct-bnb-4bit"
+
 try:
-    pipe = pipeline(
-        "text-generation", model=model_id,
-        model_kwargs={"torch_dtype": torch.float16, "load_in_4bit": True, "device_map": "auto"}
+    # 4-bit loading stability config
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.float16,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_use_double_quant=True
     )
+
+    pipe = pipeline(
+        "text-generation", 
+        model=model_id,
+        model_kwargs={
+            "quantization_config": bnb_config, 
+            "device_map": "auto",
+            "trust_remote_code": True # Duplicate values Error ကို ဤနေရာတွင် ဖြေရှင်းထားသည်
+        }
+    )
+    print("✅ [SYSTEM]: Neural Engine Stabilized.")
 except Exception:
     log_system_error()
     sys.exit(1)
