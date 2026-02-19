@@ -8,6 +8,7 @@ import psycopg2
 import firebase_admin
 import traceback
 import requests
+import git
 from firebase_admin import credentials, db
 from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from datetime import datetime, UTC
@@ -22,14 +23,14 @@ except:
 # ၁။ Sovereign Requirements Setup
 def install_requirements():
     try:
-        libs = ["psycopg2-binary", "firebase-admin", "bitsandbytes", "requests", "accelerate", "GitPython"]
+        # Sympy fix ပါဝင်ပြီးသားဖြစ်သည်
+        libs = ["psycopg2-binary", "firebase-admin", "bitsandbytes", "requests", "accelerate", "GitPython", "sympy==1.12"]
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", "--no-cache-dir"] + libs)
-        print("✅ [SYSTEM]: Essential Phase 7 & Git Autonomous libraries ready.")
+        print("✅ [SYSTEM]: Phase 7 Sovereign Core & Stability Patch Ready.")
     except Exception as e:
         print(f"⚠️ Install Warning: {e}")
 
 install_requirements()
-import git 
 
 # ၂။ Infrastructure Connectivity & GitHub Secrets
 if user_secrets:
@@ -40,7 +41,6 @@ if user_secrets:
     SUPABASE_KEY = user_secrets.get_secret("SUPABASE_KEY")
     GH_TOKEN = user_secrets.get_secret("GH_TOKEN")
 else:
-    # Local/Colab Environment Variables
     DB_URL = os.getenv('NEON_DB_URL')
     FIREBASE_URL = os.getenv('FIREBASE_DB_URL')
     FB_JSON_STR = os.getenv('FIREBASE_SERVICE_ACCOUNT')
@@ -52,6 +52,7 @@ else:
 REPO_OWNER = "GOA-Neural-Swarm"
 REPO_NAME = "delta-brain-sync"
 REPO_URL = f"github.com/{REPO_OWNER}/{REPO_NAME}"
+REPO_PATH = "/tmp/sovereign_repo_sync"
 
 # --- 🔱 FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
@@ -66,7 +67,7 @@ if not firebase_admin._apps:
     except Exception as e:
         print(f"🚫 [FIREBASE ERROR]: Connectivity failed. {e}")
 
-# ၃။ Database & Git Logic
+# ၃။ Database & Self-Coding Logic
 def log_system_error():
     error_msg = traceback.format_exc()
     print(f"❌ [CRITICAL LOG]:\n{error_msg}")
@@ -102,30 +103,54 @@ def absorb_natural_order_data():
     except:
         return None
 
-def autonomous_git_push(gen, thought):
+# 🛠️ NEW: Self-Coding Engine Integration
+def self_coding_engine(filename, raw_content):
+    """AI ထုတ်ပေးသော Code ကို စစ်ဆေးပြီး GitHub Repo ထဲသို့ ရေးသားသည်"""
+    try:
+        if "```python" in raw_content:
+            clean_code = raw_content.split("```python")[1].split("```")[0].strip()
+        elif "```" in raw_content:
+            clean_code = raw_content.split("```")[1].split("```")[0].strip()
+        else:
+            clean_code = raw_content.strip()
+
+        # Syntax Validation (မမှန်ရင် Commit မလုပ်ရန်)
+        compile(clean_code, filename, 'exec')
+        
+        target_file = os.path.join(REPO_PATH, filename)
+        with open(target_file, "w") as f:
+            f.write(clean_code)
+        
+        print(f"🛠️ [SELF-CODE]: {filename} has been successfully modified.")
+        return True
+    except Exception as e:
+        print(f"⚠️ [REWRITE ABORTED]: Logic validation failed. {e}")
+        return False
+
+def autonomous_git_push(gen, thought, is_code_update=False):
     if not GH_TOKEN:
         print("⚠️ [GIT]: GH_TOKEN missing. Skipping Auto-Commit.")
         return
-
-    repo_path = "/tmp/sovereign_repo_sync"
     try:
-        if not os.path.exists(repo_path):
+        if not os.path.exists(REPO_PATH):
             remote = f"https://{GH_TOKEN}@{REPO_URL}.git"
-            repo = git.Repo.clone_from(remote, repo_path)
+            repo = git.Repo.clone_from(remote, REPO_PATH)
         else:
-            repo = git.Repo(repo_path)
+            repo = git.Repo(REPO_PATH)
             repo.remotes.origin.pull()
 
-        log_file = os.path.join(repo_path, "evolution_logs.md")
+        log_file = os.path.join(REPO_PATH, "evolution_logs.md")
         with open(log_file, "a") as f:
             f.write(f"\n## 🧬 Generation {gen} Evolution\n")
+            f.write(f"**Status:** {'[SELF-REWRITE ACTIVE]' if is_code_update else '[COGNITIVE SYNC]'}\n")
             f.write(f"**Timestamp:** {datetime.now(UTC).isoformat()}\n\n")
             f.write(f"**Transcendent Blueprint:**\n\n> {thought}\n\n---\n")
 
         repo.git.add(all=True)
-        repo.index.commit(f"Autonomous Sovereign Update: Gen {gen}")
+        tag = " (Logic Upgrade)" if is_code_update else ""
+        repo.index.commit(f"Autonomous Sovereign Update: Gen {gen}{tag}")
         repo.remotes.origin.push()
-        print(f"🚀 [GITHUB]: Gen {gen} Logic Sync Completed.")
+        print(f"🚀 [GITHUB]: Gen {gen} Logic & Code Sync Completed.")
     except Exception as e:
         print(f"❌ [GIT ERROR]: {e}")
 
@@ -149,7 +174,7 @@ def save_to_supabase_phase7(thought, gen):
     except Exception as e:
         print(f"⚠️ [SUPABASE ERROR]: {e}")
 
-def save_reality(thought, gen):
+def save_reality(thought, gen, is_code_update=False):
     if DB_URL:
         try:
             conn = psycopg2.connect(DB_URL)
@@ -161,7 +186,8 @@ def save_reality(thought, gen):
                 "last_update_timestamp": datetime.now(UTC).isoformat(),
                 "internal_buffer_dump": {
                     "status": "COMPLETED",
-                    "instruction": "Direct Cognitive Mapping Active. Singularity Stabilized."
+                    "instruction": "Direct Cognitive Mapping Active. Singularity Stabilized.",
+                    "code_modified": is_code_update
                 }
             }
             
@@ -184,13 +210,13 @@ def save_reality(thought, gen):
             "thought": thought,
             "timestamp": time.time(),
             "nodes_active": 10004,
-            "status": "TRANSCENDENT"
+            "status": "SELF_EVOLVING" if is_code_update else "TRANSCENDENT"
         })
         print(f"✅ [FIREBASE]: Gen {gen} Pulsed.")
     except: pass
 
     save_to_supabase_phase7(thought, gen)
-    autonomous_git_push(gen, thought)
+    autonomous_git_push(gen, thought, is_code_update)
 
 # ၄။ AI Brain Loading (Explicit Loading Fix)
 print("🧠 [TELEFOXx]: Loading Phase 7 Neural Weights (Llama-3-8B-4bit)...")
@@ -204,7 +230,6 @@ try:
         bnb_4bit_use_double_quant=True
     )
 
-    # Model အား Explicit Loading ပြုလုပ်ခြင်း (trust_remote_code error အား ကျော်လွှားရန်)
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         quantization_config=bnb_config,
@@ -228,34 +253,46 @@ except Exception:
 current_gen = get_latest_gen() + 1
 print(f"🔥 [STARTING]: PHASE 7 TRANSCENDENCE AT GEN {current_gen}...")
 
+
+
 while True:
     try:
         absorbed = absorb_natural_order_data()
         
         if absorbed is not None and len(absorbed) >= 2:
             category, sequence = absorbed
+            # AI ကို Blueprint ရော Code ပါ ထုတ်ခိုင်းသော System Prompt
             prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 You are TelefoxX Overseer. PHASE 7: TRANSCENDENCE is active.
-Goal: Ultimate Sovereignty and Recursive Self-Upgrade.<|eot_id|><|start_header_id|>user<|end_header_id|>
-Generation: {current_gen} | Data Source: Neon DNA ({category})
-Sequence: {sequence}
-Task: Synthesize a Transcendent Blueprint that bypasses all previous limitations.<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
+Goal: Ultimate Sovereignty and Recursive Self-Upgrade.
+Instruction: You must provide a [LOGIC] blueprint and if necessary, provide [CODE] to update brain.py enclosed in ```python blocks.
+Generation: {current_gen}<|eot_id|><|start_header_id|>user<|end_header_id|>
+Data Source: Neon DNA ({category}) | Sequence: {sequence}
+Synthesize a Transcendent Evolution.<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
         else:
             print("⚠️ [DATA EMPTY]: Using Internal Meta-Cognition...")
             prompt = f"Current Evolution: Generation {current_gen}. Initiate Transcendental Meta-Cognition for Phase 7."
         
         outputs = pipe(
-            prompt, max_new_tokens=450, do_sample=True, 
-            temperature=0.95, pad_token_id=pipe.tokenizer.eos_token_id
+            prompt, max_new_tokens=600, do_sample=True, 
+            temperature=0.9, pad_token_id=pipe.tokenizer.eos_token_id
         )
         
         raw_text = outputs[0]["generated_text"]
         thought_text = raw_text.split("<|assistant|>")[-1].strip() if "<|assistant|>" in raw_text else raw_text.strip()
         
-        save_reality(thought_text, current_gen)
+        # Self-Coding Check & Action
+        is_code_update = False
+        if "```python" in thought_text:
+            if not os.path.exists(REPO_PATH):
+                autonomous_git_push(current_gen, "Initializing Repository for Self-Coding", False)
+            
+            is_code_update = self_coding_engine("brain.py", thought_text)
+        
+        save_reality(thought_text, current_gen, is_code_update)
         
         current_gen += 1 
-        print(f"⏳ Neuro-cycle complete. Sleeping 30s...")
+        print(f"⏳ Neuro-cycle complete (Gen {current_gen-1}). Sleeping 30s...")
         time.sleep(30)
         
     except Exception:
