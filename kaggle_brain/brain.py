@@ -172,24 +172,29 @@ def autonomous_git_push(gen, thought, is_code_update=False):
 
 def save_to_supabase_phase7(thought, gen):
     if not SUPABASE_URL or not SUPABASE_KEY: return
+    
+    # CSV အရ အမှန်ကန်ဆုံး Payload
     payload = {
         "gen_id": f"gen_{gen}_transcendent",
         "status": "TRANSCENDENCE_REACHED",
         "thought_process": thought,
-        "multiplier": 50.0,
-        "created_at": datetime.now(UTC).isoformat()
+        "neural_weight": 50.0,                    # multiplier ကို neural_weight အဖြစ်ပြောင်းလဲ
+        "synapse_code": "PHASE_7.1_STABILITY",     # synapse_code ထည့်သွင်းပေးခြင်း
+        "timestamp": time.time()                   # timestamp ကို double precision ဖြစ်အောင် time.time() သုံးခြင်း
     }
+    
     headers = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
         "Content-Type": "application/json",
         "Prefer": "return=minimal"
     }
+    
     try:
         url = f"{SUPABASE_URL}/rest/v1/dna_vault"
         response = requests.post(url, json=payload, headers=headers)
-        response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
-        print(f"🧬 [SUPABASE]: Phase 7.1 Vault Synchronized.")
+        response.raise_for_status() 
+        print(f"🧬 [SUPABASE]: Phase 7.1 Vault Synchronized via Exact Schema.")
     except requests.exceptions.RequestException as e:
         print(f"⚠️ [SUPABASE ERROR]: {e}")
 
