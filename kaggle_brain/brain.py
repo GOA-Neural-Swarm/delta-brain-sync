@@ -48,7 +48,7 @@ else:
     GH_TOKEN = os.getenv('GH_TOKEN')
 
 # GitHub Configuration
-REPO_OWNER = "yewinthetlwin"
+REPO_OWNER = "yewintthetlwin"
 REPO_NAME = "delta-brain-sync"  # <--- Commander ၏ Repository အမည်ကို ဤနေရာတွင် ပြင်ဆင်ရန်
 REPO_URL = f"github.com/{REPO_OWNER}/{REPO_NAME}"
 
