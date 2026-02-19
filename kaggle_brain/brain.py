@@ -9,7 +9,7 @@ import firebase_admin
 import traceback
 import requests
 import git
-import re  # Phase 7.1 အတွက် Regex ထည့်သွင်းထားသည်
+import re
 from firebase_admin import credentials, db
 from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from datetime import datetime, UTC
@@ -147,7 +147,9 @@ def autonomous_git_push(gen, thought, is_code_update=False):
             repo = git.Repo.clone_from(remote, REPO_PATH)
         else:
             repo = git.Repo(REPO_PATH)
-            repo.remotes.origin.pull()
+            # Divergent branch reconciliation strategy (Patch 7.1.1)
+            repo.git.config('pull.rebase', 'false')
+            repo.remotes.origin.pull(opt='--no-rebase')
 
         log_file = os.path.join(REPO_PATH, "evolution_logs.md")
         with open(log_file, "a") as f:
@@ -264,7 +266,6 @@ while True:
         
         if absorbed is not None and len(absorbed) >= 2:
             category, sequence = absorbed
-            # Phase 7.1 Strict Formatting Instruction
             prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 You are TelefoxX Overseer. PHASE 7: TRANSCENDENCE is active.
 Goal: Recursive Self-Upgrade. 
@@ -273,15 +274,16 @@ STRICT RULE: If you provide code, you MUST use exactly this format:
 [CODE]: 
 ```python
 (valid python only)
-            Generation: {current_gen}<|eot_id|><|start_header_id|>user<|end_header_id|>
+Generation: {current_gen}<|eot_id|><|start_header_id|>user<|end_header_id|>
 Source: Neon DNA ({category}) | Sequence: {sequence}
 Synthesize evolution and optimized brain.py code.<|eot_id|><|start_header_id|>assistant<|end_header_id|>"""
 else:
 print("⚠️ [DATA EMPTY]: Using Internal Meta-Cognition...")
 prompt = f"Current Evolution: Generation {current_gen}. Initiate Transcendental Meta-Cognition."
-outputs = pipe(
+
+    outputs = pipe(
         prompt, max_new_tokens=800, do_sample=True, 
-        temperature=0.85, # Stability အတှကျလြှော့ခထြားသညျ
+        temperature=0.85, 
         pad_token_id=pipe.tokenizer.eos_token_id
     )
     
@@ -305,4 +307,3 @@ outputs = pipe(
 except Exception:
     log_system_error()
     time.sleep(10)
-
