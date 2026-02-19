@@ -1,28 +1,32 @@
-import numpy as np
-import tensorflow as tf
+import random
+import copy
 
 class Brain:
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self.weights = tf.Variable(tf.random.normal([len(sequence), len(sequence)]))
-        self.biases = tf.Variable(tf.random.normal([len(sequence)]))
-        self.optimize()
-
-    def optimize(self):
-        with tf.GradientTape() as tape:
-            output = tf.matmul(self.weights, self.sequence)
-            loss = tf.reduce_mean((output - self.sequence) ** 2)
-            gradients = tape.gradient(loss, [self.weights, self.biases])
-            self.weights.assign_sub(gradients[0])
-            self.biases.assign_sub(gradients[1])
+    def __init__(self):
+        self.dna_sequence = "PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW"
+        self.genes = [int(x) for x in self.dna_sequence]
+        self.mutation_rate = 0.1
 
     def evolve(self):
-        self.optimize()
-        new_sequence = tf.matmul(self.weights, self.sequence) + self.biases
-        self.sequence = new_sequence
-        self.optimize()
+        new_genes = []
+        for gene in self.genes:
+            if random.random() < self.mutation_rate:
+                new_gene = random.randint(0, 9)
+                new_genes.append(new_gene)
+            else:
+                new_genes.append(gene)
+        self.genes = new_genes
 
-brain = Brain(np.array(Source))
-for _ in range(1000):
-    brain.evolve()
-print(brain.sequence)
+    def upgrade(self):
+        new_brain = copy.deepcopy(self)
+        new_brain.evolve()
+        return new_brain
+
+    def think(self):
+        print("Thinking...")
+        for _ in range(100):
+            self.upgrade()
+        print("Thought complete.")
+
+brain = Brain()
+brain.think()
