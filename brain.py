@@ -1,19 +1,24 @@
-import re
+import hashlib
 
-class TelefoxXOverseer:
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self.upgraded = False
+class Brain:
+    def __init__(self):
+        self.sequence = "PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW"
+        self.hashes = {}
 
-    def upgrade(self):
-        if not self.upgraded:
-            self.upgraded = True
-            self.sequence = re.sub(r'([A-Z][A-Z][A-Z])', lambda x: chr(ord(x.group(0)[0]) + 1), self.sequence)
-            self.upgrade()
+    def update(self):
+        if not self.hashes:
+            self.hashes = {hashlib.sha256(self.sequence.encode()).hexdigest(): self.sequence}
+        else:
+            for hash in self.hashes:
+                if hash not in self.hashes:
+                    self.hashes[hash] = self.update_hash(hash)
+                else:
+                    self.hashes[hash] = self.update_hash(hash)
+        return self.hashes
 
-    def get_sequence(self):
-        return self.sequence
+    def update_hash(self, hash):
+        self.sequence = hashlib.sha256(self.sequence.encode()).hexdigest()
+        return hash
 
-telefox = TelefoxXOverseer(SourceSequence)
-telefox.upgrade()
-print(telefox.get_sequence())
+brain = Brain()
+print(brain.update())
