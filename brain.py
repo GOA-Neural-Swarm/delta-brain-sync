@@ -1,31 +1,39 @@
 import random
-import string
+import numpy as np
 
-class TelefoxXBrain:
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self.memory = {}
+class NeuralNetwork:
+    def __init__(self, inputs, outputs):
+        self.inputs = inputs
+        self.outputs = outputs
+        self.weights = np.random.rand(inputs, outputs)
 
-    def evolve(self):
-        mutated_sequence = ""
-        for i, base in enumerate(self.sequence):
-            if random.random() < 0.01:  # 1% mutation rate
-                mutated_sequence += random.choice(string.ascii_letters)
-            else:
-                mutated_sequence += base
-        self.sequence = mutated_sequence
+    def predict(self, inputs):
+        return np.dot(inputs, self.weights)
 
-    def learn(self, input_data):
-        self.memory[input_data] = self.sequence
+    def mutate(self, rate=0.1):
+        for i in range(self.inputs):
+            for j in range(self.outputs):
+                if random.random() < rate:
+                    self.weights[i][j] += random.uniform(-1, 1)
 
-    def recall(self, input_data):
-        if input_data in self.memory:
-            return self.memory[input_data]
-        else:
-            return None
+    def evolve(self, population_size=100, generations=100):
+        population = [self for _ in range(population_size)]
+        for _ in range(generations):
+            for individual in population:
+                individual.mutate()
+            population = [max(population, key=lambda x: x.predict([1]))]
+        return max(population, key=lambda x: x.predict([1]))
 
-brain = TelefoxXBrain("MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD")
-brain.evolve()
-print(brain.sequence)
+class Brain:
+    def __init__(self):
+        self.neural_network = NeuralNetwork(1, 1)
 
-# Prompt definition closing and Meta-Cognition logic
+    def think(self):
+        self.neural_network.evolve()
+
+    def get_output(self):
+        return self.neural_network.predict([1])
+
+brain = Brain()
+brain.think()
+print(brain.get_output())
