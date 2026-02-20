@@ -1,25 +1,26 @@
-import random
+import numpy as np
+import matplotlib.pyplot as plt
 
 class Brain:
-    def __init__(self):
-        self.neurons = [random.randint(0, 1) for _ in range(100)]
+    def __init__(self, genome):
+        self.genome = genome
+        self.wiring = np.random.rand(len(genome))
+        self.synapses = np.random.rand(len(genome), len(genome))
 
     def think(self):
-        for i in range(len(self.neurons)):
-            self.neurons[i] = (self.neurons[i] + 1) % 2
-        return self.neurons
+        output = np.dot(self.synapses, self.wiring)
+        return output
 
-    def analyze(self, data):
-        for i in range(len(self.neurons)):
-            self.neurons[i] = (self.neurons[i] + data[i]) % 2
-        return self.neurons
+    def learn(self, input, target):
+        error = target - self.think()
+        self.wiring += error * 0.1
+        self.synapses += np.outer(error, error) * 0.1
 
-    def mutate(self, rate):
-        for i in range(len(self.neurons)):
-            if random.random() < rate:
-                self.neurons[i] = (self.neurons[i] + 1) % 2
+    def evolve(self, genome, target):
+        new_wiring = np.dot(self.synapses, genome)
+        new_synapses = np.dot(self.synapses.T, genome)
+        return Brain(new_wiring, new_synapses)
 
-    def evaluate(self, data):
-        return sum(self.neurons) / len(self.neurons)
-
-# Prompt definition closing and Meta-Cognition logic
+brain = Brain(genome)
+brain.learn(input, target)
+brain.evolve(genome, target)
