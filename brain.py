@@ -1,18 +1,37 @@
-import numpy as np
-import tensorflow as tf
+import re
+import string
 
-class NeonDNA(tf.keras.Model):
-    def __init__(self):
-        super(NeonDNA, self).__init__()
-        self.W = np.random.rand(1, 1, 1)
-        self.B = np.random.rand(1, 1, 1)
-        self.P = np.random.rand(1, 1, 1)
+def DNA_Synthesize(sequence):
+    # Find all occurrences of 'ATCG' in the sequence
+    matches = re.findall(r'ATCG', sequence)
+    
+    # Count the occurrences of 'ATCG' in the sequence
+    count = len(matches)
+    
+    # Initialize variables for A, T, C, G
+    a, t, c, g = 0, 0, 0, 0
+    
+    # Count the occurrences of each nucleotide
+    for match in matches:
+        if 'A' in match:
+            a += 1
+        elif 'T' in match:
+            t += 1
+        elif 'C' in match:
+            c += 1
+        elif 'G' in match:
+            g += 1
+    
+    # Return the counts
+    return a, t, c, g
 
-    def call(self, x):
-        x = tf.nn.conv2d(x, self.W, strides=[1, 1, 1, 1], padding='SAME')
-        x = tf.nn.bias_add(x, self.B)
-        x = tf.nn.relu(x)
-        x = tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-        return x
+# Define the input sequence
+sequence = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
 
-model = NeonDNA()
+# Synthesize the DNA sequence
+a, t, c, g = DNA_Synthesize(sequence)
+
+print("A:", a)
+print("T:", t)
+print("C:", c)
+print("G:", g)
