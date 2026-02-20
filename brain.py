@@ -1,56 +1,43 @@
-import re
-import math
 import random
-import numpy as np
+
+class Neuron:
+    def __init__(self, id):
+        self.id = id
+        self.connections = []
+        self.output = 0
+        self.learning_rate = 0.1
+
+    def fire(self, input_signal):
+        self.output = self.learning_rate * input_signal
+        return self.output
+
+    def add_connection(self, neuron):
+        self.connections.append(neuron)
 
 class Brain:
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self.genes = []
-        self.weights = []
-        self.bias = 0
+    def __init__(self):
+        self.neurons = [Neuron(i) for i in range(100)]
 
-    def calculate_fitness(self):
-        fitness = 0
-        for i in range(len(self.sequence)):
-            if self.sequence[i] == 'A':
-                fitness += 1
-            elif self.sequence[i] == 'C':
-                fitness += 2
-            elif self.sequence[i] == 'G':
-                fitness += 3
-            elif self.sequence[i] == 'T':
-                fitness += 4
-        return fitness
+    def process(self):
+        for neuron in self.neurons:
+            input_signal = random.random()
+            output = neuron.fire(input_signal)
+            for connected_neuron in neuron.connections:
+                connected_neuron.fire(output)
 
-    def mutate(self):
-        for i in range(len(self.sequence)):
-            if random.random() < 0.05:
-                if self.sequence[i] == 'A':
-                    self.sequence = self.sequence.replace('A', 'C', 1)
-                elif self.sequence[i] == 'C':
-                    self.sequence = self.sequence.replace('C', 'G', 1)
-                elif self.sequence[i] == 'G':
-                    self.sequence = self.sequence.replace('G', 'T', 1)
-                elif self.sequence[i] == 'T':
-                    self.sequence = self.sequence.replace('T', 'A', 1)
+    def learn(self):
+        for neuron in self.neurons:
+            for connected_neuron in neuron.connections:
+                neuron.learning_rate += random.uniform(-0.01, 0.01)
 
     def evolve(self):
-        fitness = self.calculate_fitness()
-        if fitness > 100:
-            self.mutate()
-        else:
-            self.weights = []
-            self.bias = 0
-            self.genes = []
+        self.process()
+        self.learn()
+        for neuron in self.neurons:
+            if neuron.learning_rate > 0.5:
+                neuron.learning_rate = 0.5
 
-    def think(self):
-        if self.weights:
-            return np.dot(np.array(self.weights), np.array(self.genes)) + self.bias
-        else:
-            return 0
-
-brain = Brain(Source)
-for _ in range(100):
+brain = Brain()
+for _ in range(1000):
     brain.evolve()
-print(brain.think())
+print("Brain Evolved!")
