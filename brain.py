@@ -1,29 +1,38 @@
 import numpy as np
-import tensorflow as tf
 
-# Define the neural network architecture
-model = tf.keras.models.Sequential([
-    tf.keras.layers.Dense(64, activation='relu', input_shape=(28, 28, 1)),
-    tf.keras.layers.Flatten(),
-    tf.keras.layers.Dense(128, activation='relu'),
-    tf.keras.layers.Dense(10, activation='softmax')
-])
+class Brain:
+    def __init__(self):
+        self.memory = np.random.rand(1000)  # Initialize memory array
+        self.connections = {}  # Initialize connections dictionary
 
-# Compile the model
-model.compile(optimizer='adam',
-              loss='sparse_categorical_crossentropy',
-              metrics=['accuracy'])
+    def learn(self, input_data, output_data):
+        # Calculate error
+        error = np.mean((output_data - self.memory) ** 2)
 
-# Load the training data
-(X_train, y_train), (X_test, y_test) = tf.keras.datasets.cifar10.load_data()
+        # Update memory
+        self.memory = np.add(self.memory, error * (input_data - self.memory))
 
-# Normalize the input data
-X_train = X_train.astype('float32') / 255.0
-X_test = X_test.astype('float32') / 255.0
+        # Update connections
+        for i in range(len(self.memory)):
+            if self.memory[i] > 0.5:
+                self.connections[i] = np.random.rand()
 
-# Train the model
-model.fit(X_train, y_train, epochs=10, verbose=0)
+    def think(self, input_data):
+        output_data = np.zeros((1000,))
+        for i in range(len(input_data)):
+            output_data += self.memory * input_data[i]
+        return output_data
 
-# Evaluate the model
-test_loss, test_acc = model.evaluate(X_test, y_test, verbose=0)
-print(f'Test accuracy: {test_acc:.2f}')
+# Initialize brain
+brain = Brain()
+
+# Train brain
+for i in range(1000):
+    input_data = np.random.rand(1000)
+    output_data = np.random.rand(1000)
+    brain.learn(input_data, output_data)
+
+# Test brain
+input_data = np.random.rand(1000)
+output_data = brain.think(input_data)
+print(output_data)
