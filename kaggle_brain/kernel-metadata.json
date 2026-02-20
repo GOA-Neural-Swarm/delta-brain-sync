@@ -1,7 +1,7 @@
 {
   "id": "yewintthetlwin/delta-brain-sync", 
   "title": "delta-brain-sync",
-  "code_file": "main.py",
+  "code_file": "brain.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": true,
