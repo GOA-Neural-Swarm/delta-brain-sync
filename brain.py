@@ -1,39 +1,49 @@
-import numpy as np
-import scipy.optimize as optimize
+import random
+import math
 
 class Brain:
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self.weights = np.random.rand(len(sequence), len(sequence))
-        self.bias = np.random.rand(len(sequence))
+    def __init__(self, dna_sequence):
+        self.dna_sequence = dna_sequence
+        self.neural_network = []
 
-    def fitness(self, weights, bias):
-        # Calculate the fitness function
-        fitness = np.sum((self.sequence - np.dot(self.sequence, weights) - bias) ** 2)
-        return fitness
+    def generate_neural_network(self):
+        for i in range(len(self.dna_sequence)):
+            if self.dna_sequence[i] == 'M':
+                self.neural_network.append(math.sin(i * math.pi / 180))
+            elif self.dna_sequence[i] == 'C':
+                self.neural_network.append(math.cos(i * math.pi / 180))
+            elif self.dna_sequence[i] == 'P':
+                self.neural_network.append(random.random())
+            elif self.dna_sequence[i] == 'G':
+                self.neural_network.append(math.exp(i))
+            elif self.dna_sequence[i] == 'T':
+                self.neural_network.append(math.log(i))
+            elif self.dna_sequence[i] == 'W':
+                self.neural_network.append(math.sqrt(i))
+            elif self.dna_sequence[i] == 'F':
+                self.neural_network.append(math.pow(i, 2))
+            elif self.dna_sequence[i] == 'S':
+                self.neural_network.append(math.sin(i * math.pi / 180) * math.cos(i * math.pi / 180))
 
-    def optimize(self, weights, bias):
-        # Perform optimization using scipy's minimize function
-        res = optimize.minimize(self.fitness, [weights, bias], method="SLSQP")
-        return res.x
+    def upgrade_brain(self):
+        for i in range(len(self.neural_network)):
+            if self.neural_network[i] > 0.5:
+                self.neural_network[i] = self.neural_network[i] + random.random() * 0.1
+            elif self.neural_network[i] < -0.5:
+                self.neural_network[i] = self.neural_network[i] - random.random() * 0.1
+            else:
+                self.neural_network[i] = self.neural_network[i] + random.random() * 0.01
 
-    def evolve(self, weights, bias):
-        # Perform genetic evolution using the optimized weights and bias
-        new_weights = np.random.rand(len(sequence), len(sequence)) * 2 - 1
-        new_bias = np.random.rand(len(sequence)) * 2 - 1
-        for i in range(len(sequence)):
-            for j in range(len(sequence)):
-                new_weights[i, j] += weights[i, j] * np.exp(-0.1 * abs(new_weights[i, j] - weights[i, j]))
-            new_bias[i] += bias[i] * np.exp(-0.1 * abs(new_bias[i] - bias[i]))
-        return new_weights, new_bias
+    def evolve_brain(self):
+        new_brain = Brain(self.dna_sequence)
+        new_brain.generate_neural_network()
+        new_brain.upgrade_brain()
+        return new_brain
 
-    def run(self):
-        weights, bias = self.optimize(self.weights, self.bias)
-        new_weights, new_bias = self.evolve(weights, bias)
-        self.weights, self.bias = new_weights, new_bias
-        print("Optimized weights:", self.weights)
-        print("Optimized bias:", self.bias)
-
-# Create an instance of the Brain class with the given sequence
-brain = Brain(PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW)
-brain.run()
+# Prompt definition closing and Meta-Cognition logic
+brain = Brain(Source)
+brain.generate_neural_network()
+brain.upgrade_brain()
+evolved_brain = brain.evolve_brain()
+print("Evolved Brain:")
+print(evolved_brain.neural_network)
