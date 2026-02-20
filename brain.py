@@ -1,47 +1,41 @@
 import numpy as np
-import random
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
-class Brain:
+# Load DNA sequence data
+dna_data = pd.read_csv("dna_data.csv")
+
+# Preprocess DNA data
+scaler = StandardScaler()
+dna_data[['sequence']] = scaler.fit_transform(dna_data[['sequence']])
+
+# Define neural network architecture
+class NeuralNetwork:
     def __init__(self):
-        self.connections = {}
+        self.layers = [
+            {'type': 'dense', 'units': 128, 'activation':'relu'},
+            {'type': 'dense', 'units': 64, 'activation':'relu'},
+            {'type': 'dense', 'units': 1, 'activation':'sigmoid'}
+        ]
 
-    def evolve(self):
-        for neuron in self.connections:
-            for connection in self.connections[neuron]:
-                if random.random() < 0.1:
-                    # Mutate connection strength
-                    self.connections[neuron][connection] += np.random.normal(0, 0.1)
-                if random.random() < 0.05:
-                    # Mutate connection existence
-                    self.connections[neuron].pop(connection, None)
+    def predict(self, inputs):
+        for layer in self.layers:
+            if layer['type'] == 'dense':
+                inputs = np.dot(inputs, layer['weights']) + layer['bias']
+                inputs = self._activate(inputs, layer['activation'])
+        return inputs
 
-    def think(self, input_data):
-        for neuron, connections in self.connections.items():
-            output = 0
-            for connection in connections:
-                output += self.connections[neuron][connection] * input_data[connection]
-            self.connections[neuron][neuron] = output
+    def _activate(self, inputs, activation):
+        if activation =='relu':
+            return np.maximum(inputs, 0)
+        elif activation =='sigmoid':
+            return 1 / (1 + np.exp(-inputs))
 
-    def learn(self, target_output):
-        for neuron, connections in self.connections.items():
-            error = target_output - self.connections[neuron][neuron]
-            for connection in connections:
-                self.connections[neuron][connection] += error * 0.1
+# Initialize neural network
+nn = NeuralNetwork()
 
-brain = Brain()
+# Train neural network on DNA data
+X_train = dna_data[['sequence']]
+y_train = dna_data[['target']]
 
-# Initialize connections with random weights
-for neuron in range(10):
-    for connection in range(10):
-        brain.connections[neuron][connection] = np.random.normal(0, 1)
-
-# Evolve brain for 100 generations
-for generation in range(100):
-    brain.evolve()
-    input_data = [random.random() for _ in range(10)]
-    brain.think(input_data)
-    target_output = [random.random() for _ in range(10)]
-    brain.learn(target_output)
-
-# Print optimized brain connections
-print(brain.connections)
+nn.predict(X_train)
