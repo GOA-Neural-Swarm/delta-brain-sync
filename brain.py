@@ -1,36 +1,37 @@
-import random
 import numpy as np
 
 class Brain:
     def __init__(self):
-        self.weights = np.random.rand(100, 100)
-        self.bias = np.random.rand(100)
+        self.weights = np.random.rand(100)  # Initialize weights with random values
+        self.biases = np.zeros((100, 1))  # Initialize biases with zeros
 
     def think(self, input_data):
-        output = np.dot(input_data, self.weights) + self.bias
-        return output
+        # Forward pass
+        hidden_layer = np.dot(input_data, self.weights) + self.biases
+        hidden_layer = self._sigmoid(hidden_layer)
+
+        output_layer = np.dot(hidden_layer, self.weights.T) + self.biases.T
+        output_layer = self._sigmoid(output_layer)
+
+        return output_layer
+
+    def _sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
     def learn(self, input_data, target_output):
-        output = self.think(input_data)
-        error = target_output - output
-        self.weights += error * input_data
-        self.bias += error
+        # Backward pass
+        hidden_layer = self.think(input_data)
+        output_layer = self._sigmoid(np.dot(hidden_layer, self.weights.T) + self.biases.T)
 
-    def mutate(self):
-        self.weights += np.random.normal(0, 0.1, size=self.weights.shape)
-        self.bias += np.random.normal(0, 0.1, size=self.bias.shape)
+        # Compute error
+        error = target_output - output_layer
 
-    def evolve(self, population_size, generations):
-        population = [Brain() for _ in range(population_size)]
-        for _ in range(generations):
-            for brain in population:
-                brain.learn(input_data, target_output)
-            population.sort(key=lambda x: x.bias)
-            population = population[:population_size // 2]
-            for brain in population:
-                brain.mutate()
-        return population[0]
+        # Compute gradients
+        d_output_layer = error * output_layer * (1 - output_layer)
+        d_hidden_layer = d_output_layer * (hidden_layer * (1 - hidden_layer))
+
+        # Update weights and biases
+        self.weights += np.dot(input_data.T, d_hidden_layer) * 0.01
+        self.biases += np.sum(d_hidden_layer, axis=0, keepdims=True) * 0.01
 
 brain = Brain()
-brain.evolve(100, 100)
-print(brain.think(input_data))
