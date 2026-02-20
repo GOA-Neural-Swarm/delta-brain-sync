@@ -373,7 +373,7 @@ STRICT RULE: If you provide code, you MUST use exactly this format:
 ```python
 (valid python only)
 ```
-Generation: {current_gen} | Neural Mode: PREDATOR_ABSORPTION | Synthetic: {synthetic_output}
+Generation: {current_gen} | Neural Mode: ML_TRAINED | Synthetic: {synthetic_output}
 user
 Source: Neon DNA Sequence Analysis. ML Synthesis and optimized sovereign brain logic required.
 assistant"""
