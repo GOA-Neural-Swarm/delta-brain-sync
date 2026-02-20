@@ -1,43 +1,43 @@
-import random
-
-class Neuron:
-    def __init__(self, id):
-        self.id = id
-        self.connections = []
-        self.output = 0
-        self.learning_rate = 0.1
-
-    def fire(self, input_signal):
-        self.output = self.learning_rate * input_signal
-        return self.output
-
-    def add_connection(self, neuron):
-        self.connections.append(neuron)
+import numpy as np
+from scipy.optimize import minimize
 
 class Brain:
-    def __init__(self):
-        self.neurons = [Neuron(i) for i in range(100)]
-
-    def process(self):
-        for neuron in self.neurons:
-            input_signal = random.random()
-            output = neuron.fire(input_signal)
-            for connected_neuron in neuron.connections:
-                connected_neuron.fire(output)
-
-    def learn(self):
-        for neuron in self.neurons:
-            for connected_neuron in neuron.connections:
-                neuron.learning_rate += random.uniform(-0.01, 0.01)
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.synapses = np.random.rand(len(sequence), len(sequence))
 
     def evolve(self):
-        self.process()
-        self.learn()
-        for neuron in self.neurons:
-            if neuron.learning_rate > 0.5:
-                neuron.learning_rate = 0.5
+        # Objective function: Maximize similarity between original and evolved sequence
+        def objective(weights):
+            evolved_sequence = ""
+            for i in range(len(self.sequence)):
+                evolved_sequence += chr(int("".join(map(str, weights[i*len(self.sequence):(i+1)*len(self.sequence)])), 2))
+            return np.sum(np.array(list(self.sequence))!= list(evolved_sequence))
 
-brain = Brain()
-for _ in range(1000):
-    brain.evolve()
-print("Brain Evolved!")
+        # Minimize the objective function using gradient descent
+        result = minimize(objective, np.random.rand(len(self.sequence)*len(self.sequence)), method="SLSQP")
+
+        # Update synapses with evolved weights
+        self.synapses = np.array([result.x[i*len(self.sequence):(i+1)*len(self.sequence)] for i in range(len(self.sequence))])
+
+    def think(self):
+        # Neuron activation function
+        def sigmoid(x):
+            return 1 / (1 + np.exp(-x))
+
+        # Evolved sequence as input
+        input_sequence = np.array(list(self.sequence))
+
+        # Neural computation
+        hidden_layer = sigmoid(np.dot(input_sequence, self.synapses))
+        output = sigmoid(np.dot(hidden_layer, self.synapses.T))
+
+        # Output as new sequence
+        new_sequence = "".join(map(str, np.round(output).astype(int)))
+
+        return new_sequence
+
+brain = Brain(sequence)
+brain.evolve()
+new_sequence = brain.think()
+print(new_sequence)
