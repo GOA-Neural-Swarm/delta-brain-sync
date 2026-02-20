@@ -1,42 +1,34 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import minimize
-from sklearn.preprocessing import StandardScaler
+import random
+import math
 
-# Define the objective function
-def objective(params):
-    # Unpack parameters
-    w1, b1, w2, b2 = params
-    
-    # Calculate the output
-    output = np.tanh(np.dot(X_train, w1) + b1)
-    output = np.dot(output, w2) + b2
-    
-    # Calculate the loss
-    loss = np.mean((output - y_train) ** 2)
-    
-    return loss
+class NeuralNetwork:
+    def __init__(self, num_inputs, num_outputs, num_hidden):
+        self.num_inputs = num_inputs
+        self.num_outputs = num_outputs
+        self.num_hidden = num_hidden
+        self.weights1 = random.rand(num_inputs, num_hidden)
+        self.weights2 = random.rand(num_hidden, num_outputs)
 
-# Load the data
-np.random.seed(0)
-X_train, y_train = np.random.rand(100, 100), np.random.rand(100)
+    def sigmoid(self, x):
+        return 1 / (1 + math.exp(-x))
 
-# Scale the data
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-# Initialize the parameters
-params = np.random.rand(4)
+    def train(self, inputs, targets):
+        hidden_layer = self.sigmoid(np.dot(inputs, self.weights1))
+        output_layer = self.sigmoid(np.dot(hidden_layer, self.weights2))
+        target_layer = self.sigmoid(np.dot(output_layer, self.weights2))
 
-# Optimize the parameters
-res = minimize(objective, params, method="SLSQP")
+        error = targets - output_layer
+        delta2 = error * self.sigmoid_derivative(output_layer)
+        delta1 = delta2.dot(self.weights2.T) * self.sigmoid_derivative(hidden_layer)
+        self.weights1 += delta1.T
+        self.weights2 += delta2.T
 
-# Print the optimized parameters
-print(res.x)
+    def predict(self, inputs):
+        hidden_layer = self.sigmoid(np.dot(inputs, self.weights1))
+        output_layer = self.sigmoid(np.dot(hidden_layer, self.weights2))
+        return output_layer
 
-# Plot the optimized output
-plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train)
-plt.xlabel("Feature 1")
-plt.ylabel("Feature 2")
-plt.title("Optimized Output")
-plt.show()
+# Prompt definition closing and Meta-Cognition logic
