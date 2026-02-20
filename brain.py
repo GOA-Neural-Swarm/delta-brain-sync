@@ -1,51 +1,39 @@
-import re
+import random
 
-def neural_network_dna(seq):
-    # Initialize variables
-    synapses = []
-    neurons = []
-    learning_rate = 0.1
+class NeuralNetwork:
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.weights = [random.random() for _ in range(len(sequence))]
+        self.biases = [random.random() for _ in range(len(sequence))]
 
-    # Extract relevant information from DNA sequence
-    for i in range(0, len(seq), 3):
-        codon = seq[i:i+3]
-        if re.match(r'[ATCG]+', codon):
-            # Extract amino acid from codon
-            amino_acid = codon_to_amino_acid(codon)
-            # Create neuron with initial weights and biases
-            neuron = create_neuron(amino_acid, synapses)
-            # Add neuron to the network
-            neurons.append(neuron)
+    def activate(self, input_vector):
+        output_vector = []
+        for i in range(len(self.sequence)):
+            weighted_sum = sum(self.weights[i] * input_vector[i] for input_value in input_vector)
+            output_vector.append(self.sigmoid(weighted_sum + self.biases[i]))
+        return output_vector
 
-    # Define learning algorithm
-    def learning(neurons, learning_rate):
-        for neuron in neurons:
-            # Calculate output error
-            output_error = calculate_output_error(neuron)
-            # Update weights and biases
-            update_weights_and_biases(neuron, output_error, learning_rate)
+    def sigmoid(self, x):
+        return 1 / (1 + exp(-x))
 
-    # Define functions
-    def create_neuron(amino_acid, synapses):
-        # Initialize neuron with random weights and biases
-        neuron = {'weights': [random.random() for _ in range(len(synapses))],
-                  'biases': [random.random() for _ in range(len(synapses))],
-                  'amino_acid': amino_acid}
-        return neuron
+    def train(self, sequence, target_output):
+        input_vector = [1 if i % 2 else 0 for i in range(len(sequence))]
+        output_vector = self.activate(input_vector)
+        error = sum((output_vector[i] - target_output[i]) ** 2 for i in range(len(sequence)))
+        self.weights = [w + 0.1 * (target_output[i] - output_vector[i]) * input_vector[i] for i, w in enumerate(self.weights)]
+        self.biases = [b + 0.1 * (target_output[i] - output_vector[i]) for i, b in enumerate(self.biases)]
 
-    def calculate_output_error(neuron):
-        # Calculate output error using sigmoid function
-        output_error = 1 / (1 + math.exp(-sum(neuron['weights'] * [random.random() for _ in range(len(synapses))]) + neuron['biases']))
-        return output_error
+    def think(self):
+        input_vector = [1 if i % 2 else 0 for i in range(len(self.sequence))]
+        output_vector = self.activate(input_vector)
+        return output_vector
 
-    def update_weights_and_biases(neuron, output_error, learning_rate):
-        # Update weights and biases using backpropagation
-        for i, weight in enumerate(neuron['weights']):
-            neuron['weights'][i] += learning_rate * output_error * [random.random() for _ in range(len(synapses))][i]
-            neuron['biases'][i] += learning_rate * output_error * [random.random() for _ in range(len(synapses))][i]
+# Initialize neural network with given sequence
+neural_network = NeuralNetwork(sequence)
 
-    # Run the neural network
-    learning(neurons, learning_rate)
+# Train neural network with target output
+neural_network.train(sequence, [1 if i % 2 else 0 for i in range(len(sequence))])
 
-# Call the neural network function
-neural_network_dna(MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD)
+# Think with trained neural network
+thought = neural_network.think()
+print(thought)
