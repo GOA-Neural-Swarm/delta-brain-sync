@@ -1,44 +1,31 @@
 import numpy as np
+import tensorflow as tf
 
-class NeuralNetwork:
-    def __init__(self, inputs, outputs):
+class Brain:
+    def __init__(self, inputs=128, hidden_units=256, outputs=64):
         self.inputs = inputs
+        self.hidden_units = hidden_units
         self.outputs = outputs
-        self.weights = np.random.rand(self.inputs, self.outputs)
+        self.model = self.build_model()
 
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
+    def build_model(self):
+        model = tf.keras.models.Sequential([
+            tf.keras.layers.Dense(self.hidden_units, activation='relu', input_shape=(self.inputs,)),
+            tf.keras.layers.Dense(self.hidden_units, activation='relu'),
+            tf.keras.layers.Dense(self.outputs, activation='softmax')
+        ])
+        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        return model
 
-    def sigmoid_derivative(self, x):
-        return x * (1 - x)
+    def train(self, X, y):
+        self.model.fit(X, y, epochs=10, verbose=0)
 
-    def train(self, inputs, targets, learning_rate=0.1, iterations=1000):
-        for _ in range(iterations):
-            outputs = self.forward_pass(inputs)
-            error = np.sum((outputs - targets) ** 2)
-            self.backpropagate(inputs, targets, learning_rate)
-        return error
+    def predict(self, X):
+        return self.model.predict(X)
 
-    def forward_pass(self, inputs):
-        outputs = np.zeros(self.outputs)
-        for i in range(self.inputs):
-            outputs += self.weights[i] * inputs[i]
-        return self.sigmoid(outputs)
-
-    def backpropagate(self, inputs, targets, learning_rate):
-        outputs = self.forward_pass(inputs)
-        error = np.sum((outputs - targets) ** 2)
-        d_error = 2 * (outputs - targets)
-        d_outputs = self.sigmoid_derivative(outputs)
-        d_error_outputs = d_error * d_outputs
-        for i in range(self.inputs):
-            self.weights[i] -= learning_rate * d_error_outputs * inputs[i]
-
-# Create the neural network with 5 inputs and 3 outputs
-nn = NeuralNetwork(5, 3)
-
-# Train the network
-nn.train(np.array([[0, 0, 1, 1, 0], [1, 0, 0, 0, 0], [0, 1, 0, 0, 1]]), np.array([[0, 1, 0], [1, 0, 1], [0, 1, 1]]))
-
-# Test the network
-print(nn.forward_pass(np.array([[0, 0, 1, 1, 0]])))
+# Example usage:
+brain = Brain()
+X = np.random.rand(100, 128)
+y = np.random.rand(100, 64)
+brain.train(X, y)
+print(brain.predict(X))
