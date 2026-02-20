@@ -1,31 +1,33 @@
-import numpy as np
-import matplotlib.pyplot as plt
+import re
 
-class Brain:
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self.weights = np.random.rand(len(sequence), len(sequence))
+def analyze_dna(dna_sequence):
+    # Pattern matching for gene expression
+    gene_expression = re.findall(r"([ACGT]{3,})", dna_sequence)
+    return gene_expression
 
-    def evolve(self):
-        new_weights = np.zeros((len(self.sequence), len(self.sequence)))
-        for i in range(len(self.sequence)):
-            for j in range(len(self.sequence)):
-                new_weights[i][j] = np.sum(self.sequence[i] * self.sequence[j])
-        self.weights = new_weights
+dna_sequence = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
 
-    def think(self):
-        output = np.zeros(len(self.sequence))
-        for i in range(len(self.sequence)):
-            output[i] = np.sum(self.weights[i] * self.sequence)
-        return output
+genes = analyze_dna(dna_sequence)
 
-brain = Brain(PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW)
-brain.evolve()
-print(brain.think())
-
-# Plot the brain activity
-plt.plot(brain.think())
-plt.xlabel('Neuron Index')
-plt.ylabel('Activity Level')
-plt.title('Brain Activity Plot')
-plt.show()
+# Recursive Self-Upgrade: Synthesize optimized brain.py code
+if len(genes) > 0:
+    for gene in genes:
+        # Gene expression and translation
+        if re.match(r"[ACGT]{3,}", gene):
+            # Extract gene sequence and translate to python code
+            gene_sequence = re.findall(r"([ACGT])", gene)
+            python_code = ""
+            for nucleotide in gene_sequence:
+                if nucleotide == "A":
+                    python_code += "import "
+                elif nucleotide == "C":
+                    python_code += "from "
+                elif nucleotide == "G":
+                    python_code += "class "
+                elif nucleotide == "T":
+                    python_code += "def "
+            # Insert generated code into the brain.py file
+            with open("brain.py", "w") as f:
+                f.write(python_code)
+else:
+    print("No genes found in DNA sequence.")
