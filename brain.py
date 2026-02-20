@@ -1,42 +1,66 @@
 import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from keras.models import Sequential
-from keras.layers import Dense
+import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score
 
-def optimize_brain(dna_sequence):
-    # Convert DNA sequence to numerical array
-    dna_array = np.array([ord(base) for base in dna_sequence], dtype=int)
-    dna_array = StandardScaler().fit_transform(dna_array.reshape(-1, 1))
+# Initialize population and mutation rates
+POPULATION_SIZE = 100
+MUTATION_RATE = 0.1
 
-    # Create neural network model
-    model = Sequential()
-    model.add(Dense(64, input_shape=(1,), activation='relu'))
-    model.add(Dense(32, activation='relu'))
-    model.add(Dense(1, activation='sigmoid'))
+# Define the brain structure
+BRAIN_STRUCTURE = np.array([
+    [0.5, 0.5, 0.5],
+    [0.5, 0.5, 0.5],
+    [0.5, 0.5, 0.5]
+])
 
-    # Compile the model
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+# Define the fitness function
+def fitness(brain):
+    # Evaluate the brain's performance using the given sequence
+    sequence = "PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW"
+    predictions = []
+    for i in range(len(sequence) - 2):
+        input_vector = brain[i:i+3]
+        prediction = np.argmax(input_vector)
+        predictions.append(prediction)
+    accuracy = accuracy_score([ord(c) for c in sequence], predictions)
+    return accuracy
 
-    # Train the model
-    model.fit(dna_array, epochs=100, verbose=0)
+# Main evolution loop
+for generation in range(100):
+    # Initialize the population
+    population = np.random.rand(POPULATION_SIZE, len(BRAIN_STRUCTURE))
+    population /= population.sum(axis=1, keepdims=True)
 
-    # Predict the output
-    output = model.predict(dna_array)
+    # Evaluate the population's fitness
+    fitness_scores = np.zeros(POPULATION_SIZE)
+    for i in range(POPULATION_SIZE):
+        fitness_scores[i] = fitness(population[i])
 
-    # Optimize the brain by recursively generating new DNA sequences
-    optimized_dna = ""
-    for _ in range(1000):
-        new_dna = ""
-        for base in dna_sequence:
-            if np.random.rand() < 0.5:
-                new_dna += base
-            else:
-                new_dna += chr(np.random.randint(33, 126))  # Generate a random base
-        optimized_dna += new_dna
+    # Select the fittest individuals
+    indices = np.argsort(fitness_scores)[::-1][:int(POPULATION_SIZE * 0.5)]
+    population = population[indices]
 
-    return optimized_dna
+    # Perform crossover and mutation
+    offspring = np.zeros((POPULATION_SIZE, len(BRAIN_STRUCTURE)))
+    for i in range(POPULATION_SIZE):
+        parent1 = np.random.choice(indices, p=[1/len(indices)]*len(indices))
+        parent2 = np.random.choice(indices, p=[1/len(indices)]*len(indices))
+        if np.random.rand() < MUTATION_RATE:
+            offspring[i] = np.random.rand(len(BRAIN_STRUCTURE))
+        else:
+            offspring[i] = 0.5 * population[parent1] + 0.5 * population[parent2]
 
-# Generate optimized brain
-optimized_brain = optimize_brain(PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW)
-print(optimized_brain)
+    # Replace the least fit individuals with the offspring
+    population = np.concatenate((population, offspring))
+
+    # Plot the evolution of the population's fitness
+    plt.plot(fitness_scores)
+    plt.xlabel("Generation")
+    plt.ylabel("Fitness")
+    plt.title("Evolution of the Population's Fitness")
+    plt.show()
+
+    # Print the best brain found so far
+    best_brain = population[np.argmax(fitness_scores)]
+    print("Best Brain:")
+    print(best_brain)
