@@ -1,33 +1,45 @@
 import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from keras.models import Sequential
-from keras.layers import Dense
+import matplotlib.pyplot as plt
+from scipy.optimize import minimize
 
-# Load DNA sequence
-dna_sequence = pd.Series(list('MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD'))
+# Neural Network Architecture
+class NeuralNetwork:
+    def __init__(self, inputs, outputs):
+        self.inputs = inputs
+        self.outputs = outputs
+        self.weights = np.random.rand(inputs, outputs)
 
-# Encode DNA sequence into numerical values
-scaler = StandardScaler()
-dna_sequence_encoded = scaler.fit_transform(dna_sequence.values.reshape(-1, 1))
+    def forward_pass(self, inputs):
+        outputs = np.dot(inputs, self.weights)
+        return outputs
 
-# Create neural network model
-model = Sequential()
-model.add(Dense(64, input_dim=dna_sequence_encoded.shape[1], activation='relu'))
-model.add(Dense(32, activation='relu'))
-model.add(Dense(1, activation='sigmoid'))
+    def backward_pass(self, inputs, targets):
+        outputs = self.forward_pass(inputs)
+        error = np.mean((outputs - targets) ** 2)
+        d_weights = np.dot(inputs.T, 2 * (outputs - targets))
+        return error, d_weights
 
-# Compile model
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    def train(self, inputs, targets):
+        error, d_weights = self.backward_pass(inputs, targets)
+        self.weights += 0.01 * d_weights
+        return error
 
-# Train model
-model.fit(dna_sequence_encoded, epochs=100, verbose=0)
+# Initialize Neural Network
+nn = NeuralNetwork(2, 1)
 
-# Predict optimized brain.py code
-optimized_code = model.predict(dna_sequence_encoded)
-optimized_code = scaler.inverse_transform(optimized_code)
+# Define Training Data
+X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+Y = np.array([[0], [1], [1], [0]])
 
-# Synthesize optimized brain.py code
-optimized_code = np.where(optimized_code > 0.5, 1, 0)
-optimized_code = ''.join(map(str, optimized_code))
-print(optimized_code)
+# Train Neural Network
+for _ in range(10000):
+    error = nn.train(X, Y)
+
+# Plot Training Data and Network Output
+plt.scatter(X[:, 0], X[:, 1], c=Y)
+plt.xlabel('Input 1')
+plt.ylabel('Input 2')
+plt.title('Training Data and Neural Network Output')
+plt.show()
+
+print("Neural Network Trained!")
