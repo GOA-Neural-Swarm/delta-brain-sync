@@ -1,40 +1,50 @@
 import random
+import math
 
-# Define the DNA sequence
-dna_sequence = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
+class NeuralNetwork:
+    def __init__(self, inputs, outputs):
+        self.inputs = inputs
+        self.outputs = outputs
+        self.weights = [[random.random() for _ in range(outputs)] for _ in range(inputs)]
+        self.biases = [random.random() for _ in range(outputs)]
 
-# Define the brain function
-def brain_function(dna_sequence):
-    # Initialize the brain with a random configuration
-    brain = random.sample(range(len(dna_sequence)), len(dna_sequence))
-    # Iterate through the DNA sequence and update the brain configuration
-    for i in range(len(dna_sequence)):
-        if dna_sequence[i] == "T":
-            # If the current nucleotide is 'T', update the brain configuration
-            brain[i] = random.randint(0, 1)
-    return brain
+    def sigmoid(self, x):
+        return 1 / (1 + math.exp(-x))
 
-# Define the evolutionary algorithm
-def evolutionary_algorithm(dna_sequence, brain_function, generations=1000):
-    # Initialize the population with random brain configurations
-    population = [random.sample(range(len(dna_sequence)), len(dna_sequence)) for _ in range(len(dna_sequence))]
-    # Iterate through the generations
-    for _ in range(generations):
-        # Evaluate the fitness of each brain configuration
-        fitness = [sum([a == b for a, b in zip(brain, dna_sequence)]) for brain in population]
-        # Select the fittest brain configurations
-        selected_population = [population[i] for i in range(len(fitness)) if fitness[i] == max(fitness)]
-        # Apply crossover and mutation to generate new brain configurations
-        new_population = []
-        for _ in range(len(selected_population)):
-            parent1, parent2 = random.sample(selected_population, 2)
-            child = [random.choice([a, b]) for a, b in zip(parent1, parent2)]
-            new_population.append(child)
-        # Update the population
-        population = new_population
-    # Return the fittest brain configuration
-    return max(population, key=lambda x: sum([a == b for a, b in zip(x, dna_sequence)]))
+    def forward_pass(self, inputs):
+        outputs = []
+        for i in range(self.outputs):
+            weighted_sum = sum([inputs[j] * self.weights[j][i] for j in range(self.inputs)]) + self.biases[i]
+            outputs.append(self.sigmoid(weighted_sum))
+        return outputs
 
-# Run the evolutionary algorithm
-fittest_brain = evolutionary_algorithm(dna_sequence, brain_function)
-print("Fittest Brain Configuration:", fittest_brain)
+    def train(self, inputs, outputs):
+        for i in range(self.outputs):
+            error = outputs[i] - self.forward_pass(inputs)[i]
+            self.biases[i] += error * 0.1
+            for j in range(self.inputs):
+                self.weights[j][i] += inputs[j] * error * 0.1
+
+def generate_sequence(length):
+    sequence = ""
+    for _ in range(length):
+        if random.random() < 0.5:
+            sequence += "A"
+        else:
+            sequence += "C"
+    return sequence
+
+def optimize_brain():
+    nn = NeuralNetwork(2, 2)
+    inputs = [[0, 0], [0, 1], [1, 0], [1, 1]]
+    outputs = [[0, 0], [0, 1], [1, 0], [1, 1]]
+    for _ in range(1000):
+        for i in range(len(inputs)):
+            nn.train(inputs[i], outputs[i])
+    return nn
+
+brain = optimize_brain()
+print(brain.forward_pass([0, 0]))
+print(brain.forward_pass([0, 1]))
+print(brain.forward_pass([1, 0]))
+print(brain.forward_pass([1, 1]))
