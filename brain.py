@@ -1,34 +1,21 @@
+import re
 import random
-import string
+import math
 
-class TelefoxXBrain:
-    def __init__(self):
-        self.dna_sequence = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
-        self.brain_weight = 0.08784889522961573
+class NeuralNetwork:
+    def __init__(self, num_inputs, num_hidden, num_outputs):
+        self.num_inputs = num_inputs
+        self.num_hidden = num_hidden
+        self.num_outputs = num_outputs
+        self.weights = [random.uniform(-1, 1) for _ in range(num_inputs * num_hidden)]
+        self.bias = [random.uniform(-1, 1) for _ in range(num_hidden)]
 
-    def evolve(self):
-        new_dna_sequence = ""
-        for i in range(len(self.dna_sequence)):
-            if random.random() < 0.1:  # 10% chance of mutation
-                new_dna_sequence += random.choice(string.ascii_letters)
-            else:
-                new_dna_sequence += self.dna_sequence[i]
-        self.dna_sequence = new_dna_sequence
+    def sigmoid(self, x):
+        return 1 / (1 + math.exp(-x))
 
-    def optimize(self):
-        for i in range(len(self.dna_sequence)):
-            if self.dna_sequence[i] == "T" and random.random() < 0.05:  # 5% chance of replacement
-                self.dna_sequence = self.dna_sequence.replace("T", "A")
-            elif self.dna_sequence[i] == "A" and random.random() < 0.05:  # 5% chance of replacement
-                self.dna_sequence = self.dna_sequence.replace("A", "T")
-        self.brain_weight += 0.0001
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-    def think(self):
-        if self.brain_weight > 0.1:
-            self.optimize()
-        self.evolve()
-
-brain = TelefoxXBrain()
-brain.think()
-print(brain.dna_sequence)
-print(brain.brain_weight)
+    def forward_pass(self, inputs):
+        hidden_layer = [self.sigmoid(sum(i * w for i, w in zip(inputs, self.weights[j * self.num_inputs:(j + 1) * self.num_inputs]))) + self.bias[j] for j in range(self.num_hidden)]
+        return self.sigmoid(sum(i * w for i, w in zip(hidden_layer, self.weights[self.num_hidden * self.num_inputs:])))
