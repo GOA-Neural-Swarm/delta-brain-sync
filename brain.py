@@ -1,40 +1,34 @@
 import random
 
-def generate_gene(length):
-    gene = ""
-    for _ in range(length):
-        nucleotide = random.choice(["A", "C", "G", "T"])
-        gene += nucleotide
-    return gene
+class Brain:
+    def __init__(self, dna):
+        self.dna = dna
+        self.connections = []
 
-def mutate_gene(gene, mutation_rate):
-    new_gene = ""
-    for nucleotide in gene:
-        if random.random() < mutation_rate:
-            new_gene += random.choice(["A", "C", "G", "T"])
-        else:
-            new_gene += nucleotide
-    return new_gene
+    def synthesize(self):
+        for i in range(len(self.dna)):
+            for j in range(i+1, len(self.dna)):
+                if random.random() < 0.1:
+                    self.connections.append((i, j))
 
-def evolve_gene(gene, mutation_rate, generations):
-    for _ in range(generations):
-        gene = mutate_gene(gene, mutation_rate)
-    return gene
+    def mutate(self):
+        for connection in self.connections:
+            if random.random() < 0.05:
+                self.dna[connection[0]] += 1
+                self.dna[connection[1]] -= 1
 
-def brain_code(gene):
-    code = ""
-    for nucleotide in gene:
-        if nucleotide == "A":
-            code += "import os\n"
-        elif nucleotide == "C":
-            code += "os.system('cls')\n"
-        elif nucleotide == "G":
-            code += "print('Hello, world!')\n"
-        elif nucleotide == "T":
-            code += "print('Goodbye, world!')\n"
-    return code
+    def evolve(self, iterations):
+        for _ in range(iterations):
+            self.synthesize()
+            self.mutate()
 
-gene = generate_gene(100)
-evolved_gene = evolve_gene(gene, 0.1, 100)
-brain_code = brain_code(evolved_gene)
-print(brain_code)
+    def optimize(self):
+        optimal_dna = self.dna.copy()
+        for i in range(len(self.dna)):
+            optimal_dna[i] = min(optimal_dna)
+        return optimal_dna
+
+brain = Brain([int(x) for x in Source])
+brain.evolve(1000)
+optimal_dna = brain.optimize()
+print(optimal_dna)
