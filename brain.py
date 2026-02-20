@@ -1,27 +1,35 @@
+import math
 import random
 
-class Brain:
-    def __init__(self, dna_sequence):
-        self.dna_sequence = dna_sequence
-        self.brain_weights = [random.randint(0, 1) for _ in range(len(dna_sequence))]
+class NeuralNetwork:
+    def __init__(self):
+        self.synapses = {}
 
-    def think(self):
-        # Initialize thought process
-        thought_stream = ""
-        for i in range(len(self.dna_sequence)):
-            if self.brain_weights[i] == 1:
-                thought_stream += self.dna_sequence[i]
-        return thought_stream
+    def train(self, inputs, outputs):
+        self.synapses = {}
+        for i, input in enumerate(inputs):
+            for j, output in enumerate(outputs):
+                self.synapses[(i, j)] = random.random() * 2 - 1
 
-    def learn(self, input_data):
-        # Learn from input data
-        for i in range(len(self.dna_sequence)):
-            if input_data[i] == 1:
-                self.brain_weights[i] = 1 - self.brain_weights[i]
+    def predict(self, inputs):
+        predictions = []
+        for input in inputs:
+            prediction = 0
+            for synapse in self.synapses:
+                if synapse[0] == input:
+                    prediction += self.synapses[synapse] * synapse[1]
+            predictions.append(prediction)
+        return predictions
 
-    def evolve(self):
-        # Evolve brain weights
-        for i in range(len(self.brain_weights)):
-            self.brain_weights[i] = random.randint(0, 1)
+# Meta-Cognition logic
+class MetaCognition:
+    def __init__(self, neural_network):
+        self.neural_network = neural_network
 
-brain = Brain("MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD")
+    def think(self, inputs):
+        self.neural_network.train(inputs, [1] * len(inputs))
+        return self.neural_network.predict(inputs)
+
+# Prompt definition and Meta-Cognition logic
+meta_cognition = MetaCognition(NeuralNetwork())
+print(meta_cognition.think([1, 2, 3]))
