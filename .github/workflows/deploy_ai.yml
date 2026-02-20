@@ -24,16 +24,22 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install kaggle psycopg2-binary requests gitpython
+          pip install kaggle psycopg2-binary requests gitpython torch transformers accelerate bitsandbytes numpy
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       # --- ၂။ Neon Sync ---
       - name: Run Neon Sync Script
         env:
           NEON_URL: ${{ secrets.NEON_URL }}
-        run: python sync_data.py
+        run: |
+          # sync_data.py ရှိမရှိစစ်ဆေးပြီး run ခြင်း
+          if [ -f "sync_data.py" ]; then
+            python sync_data.py
+          else
+            echo "⚠️ sync_data.py not found, skipping Neon sync step."
+          fi
 
-      # --- ၃။ GitHub Auto-Commit (Fixed "Unstaged Changes" & "Rejected" Errors) ---
+      # --- ၃။ GitHub Auto-Commit (Sovereign Stability Patch) ---
       - name: Commit AI Status to Repository
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -42,28 +48,28 @@ jobs:
           git config --global user.email 'bot@sovereign.ai'
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
 
-          # အဆင့် (က) - sync_data.py ကြောင့် ထွက်လာတဲ့ changes တွေကို အရင် add လုပ်ပါ
+          # အပြောင်းအလဲများကို Stage လုပ်ခြင်း
           git add .
 
-          # အဆင့် (ခ) - ပြောင်းလဲမှုရှိမှသာ commit လုပ်ပါ (ဒါမှ pull လုပ်လို့ရမှာပါ)
+          # ပြောင်းလဲမှုရှိမှသာ Commit လုပ်ခြင်း
           if ! git diff-index --quiet HEAD; then
-            git commit -m "Phase 7.1 Evolution Sync: $(date)"
+            git commit -m "🧬 Phase 7.1 Evolution Sync: $(date)"
+            
+            # Conflict မဖြစ်အောင် Remote changes များကို အရင် pull လုပ်ခြင်း
+            git pull origin main --rebase
+            
+            # GitHub သို့ Push လုပ်ခြင်း
+            git push origin main
           else
-            echo "No changes to commit"
+            echo "No changes to commit."
           fi
 
-          # အဆင့် (ဂ) - Remote က version အသစ်ကို ယူပြီး ကိုယ့် commit ရဲ့ အောက်မှာ rebase လုပ်ပါ
-          # ဒါဟာ 'rejected' error ကို ဖြေရှင်းပေးပါတယ်
-          git pull origin main --rebase
-
-          # အဆင့် (ဃ) - GitHub ဆီသို့ နောက်ဆုံး version ကို တွန်းတင်ပါ
-          git push origin main
-
-      # --- ၄။ Kaggle Brain Trigger (Fixed Editor Type Error) ---
+      # --- ၄။ Kaggle Brain Trigger (RNA QT45 Integrated) ---
       - name: Trigger Kaggle Neural Evolution
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          # 🔱 Kaggle Kernel ထဲတွင် သုံးရန် Secrets များကိုပါ Inject လုပ်ခြင်း
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -82,11 +88,12 @@ jobs:
           # brain.py ကို main.py အဖြစ်ပြောင်းလဲကူးယူခြင်း (Kaggle Script format အတွက်)
           if [ -f "brain.py" ]; then
             cp brain.py kaggle_deploy/main.py
+            echo "✅ [SYSTEM]: brain.py replicated to main.py for deployment."
           else
-            echo "Error: brain.py not found!" && exit 1
+            echo "❌ Error: brain.py not found in root directory!" && exit 1
           fi
 
-          # kernel-metadata.json ကို အသေအချာ တည်ဆောက်ခြင်း (Fixes Editor Type Error)
+          # kernel-metadata.json ကို အသေအချာ တည်ဆောက်ခြင်း (Fixes Editor Type & Path Errors)
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
             "id": "$KAGGLE_USERNAME/delta-brain-sync",
@@ -105,5 +112,5 @@ jobs:
           EOF
 
           # Kaggle သို့ အတင်းအကြပ် Push လုပ်ခြင်း
-          echo "🚀 Pushing Sovereign Core to Kaggle Scripting Engine..."
+          echo "🚀 Pushing Sovereign Core (RNA QT45) to Kaggle Scripting Engine..."
           kaggle kernels push -p kaggle_deploy
