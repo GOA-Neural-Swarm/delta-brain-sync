@@ -1,68 +1,50 @@
 import numpy as np
-import pandas as pd
 
-# Define the Neon DNA sequence
-neon_dna = 'MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD'
+class NeuralNetwork:
+    def __init__(self):
+        self.weights1 = np.random.rand(6, 1)
+        self.weights2 = np.random.rand(6, 1)
 
-# Convert the DNA sequence to a numerical representation
-dna_array = np.array([ord(base) for base in neon_dna])
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-# Define a function to generate a neural network architecture based on the DNA sequence
-def generate_neural_network(dna_array):
-    # Initialize the neural network architecture
-    num_layers = int(np.mean(dna_array))
-    layer_sizes = [int(np.mean(dna_array[:i+1])) for i in range(num_layers)]
-    activation_functions = ['sigmoid' if np.random.rand() < 0.5 else'relu']
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-    # Define the neural network architecture
-    neural_network = []
-    for i in range(num_layers-1):
-        neural_network.append((layer_sizes[i], activation_functions[i]))
-    neural_network.append((layer_sizes[-1],'softmax'))
+    def fit(self, X, y):
+        X = np.array(X)
+        y = np.array(y)
+        learning_rate = 0.01
+        iterations = 1000
 
-    return neural_network
+        for _ in range(iterations):
+            z = np.dot(X, self.weights1)
+            layer1 = self.sigmoid(z)
+            z2 = np.dot(layer1, self.weights2)
+            layer2 = self.sigmoid(z2)
+            loss = np.mean((layer2 - y) ** 2)
+            dloss_dweights2 = np.dot(layer1.T, (2 * (layer2 - y)))
+            dloss_dlayer1 = dloss_dweights2 * self.sigmoid_derivative(layer2)
+            dloss_dweights1 = np.dot(X.T, dloss_dlayer1 * self.sigmoid_derivative(layer1))
+            self.weights1 -= learning_rate * dloss_dweights1
+            self.weights2 -= learning_rate * dloss_dweights2
 
-# Generate the neural network architecture
-neural_network = generate_neural_network(dna_array)
+    def predict(self, X):
+        X = np.array(X)
+        layer1 = self.sigmoid(np.dot(X, self.weights1))
+        layer2 = self.sigmoid(np.dot(layer1, self.weights2))
+        return layer2
 
-# Define a function to train the neural network using the DNA sequence
-def train_neural_network(neural_network, dna_array):
-    # Initialize the training data
-    X = np.array([[ord(base) for base in dna_array]])
-    y = np.array([0])
-
-    # Train the neural network
-    for i in range(1000):
-        # Forward pass
-        output = np.zeros((1, len(neural_network[-1][1])))
-        for j in range(len(neural_network)-1):
-            output = np.tanh(np.dot(output, neural_network[j][0]) + neural_network[j][1])
-        output = np.exp(output) / np.sum(np.exp(output), axis=1, keepdims=True)
-
-        # Backward pass
-        error = np.zeros((1, len(neural_network[-1][1])))
-        error = np.sum((output - y)**2) / 2
-
-        # Update the neural network weights
-        for j in range(len(neural_network)-1):
-            neural_network[j][0] += np.dot(output.T, error) * 0.01
-
-    return neural_network
+# Initialize the neural network
+nn = NeuralNetwork()
 
 # Train the neural network
-neural_network = train_neural_network(neural_network, dna_array)
+nn.fit([[0, 0, 0, 0, 0, 0], [0, 0, 1, 1, 1, 1], [1, 1, 0, 0, 1, 1], [0, 1, 1, 0, 0, 1], [0, 0, 0, 1, 1, 1], [1, 1, 1, 1, 0, 0]], [[0], [1], [1], [0], [1], [0]])
 
-# Define a function to predict the output of the neural network
-def predict_output(neural_network, dna_array):
-    # Forward pass
-    output = np.zeros((1, len(neural_network[-1][1])))
-    for i in range(len(neural_network)-1):
-        output = np.tanh(np.dot(output, neural_network[i][0]) + neural_network[i][1])
-    output = np.exp(output) / np.sum(np.exp(output), axis=1, keepdims=True)
-
-    return output
-
-# Predict the output of the neural network
-output = predict_output(neural_network, dna_array)
-
-print("Predicted output:", output)
+# Make predictions
+print(nn.predict([[0, 0, 0, 0, 0, 0]]))
+print(nn.predict([[0, 0, 1, 1, 1, 1]]))
+print(nn.predict([[1, 1, 0, 0, 1, 1]]))
+print(nn.predict([[0, 1, 1, 0, 0, 1]]))
+print(nn.predict([[0, 0, 0, 1, 1, 1]]))
+print(nn.predict([[1, 1, 1, 1, 0, 0]]))
