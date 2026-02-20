@@ -1,22 +1,22 @@
+import re
 import numpy as np
 
-class Brain:
-    def __init__(self):
-        self.weights = np.random.rand(1, len(Source))
-        self.bias = np.random.rand(1)
+# Initialize DNA sequence and code generation parameters
+dna_sequence = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
+dna_length = len(dna_sequence)
+base_pairs = ["A", "C", "G", "T"]
 
-    def think(self, input_seq):
-        output = np.dot(input_seq, self.weights) + self.bias
-        return np.round(output)
+# Define code generation functions
+def generate_code(dna_sequence, dna_length):
+    code = ""
+    for i in range(dna_length):
+        base_pair = dna_sequence[i]
+        if base_pair in base_pairs:
+            code += f"{base_pair} "
+        else:
+            code += f"Error: Unknown base pair {base_pair} at position {i}.\n"
+    return code
 
-brain = Brain()
-
-def recursive_self_upgrade():
-    global Source
-    new_weights = np.random.rand(1, len(Source))
-    new_bias = np.random.rand(1)
-    brain.weights = new_weights
-    brain.bias = new_bias
-    return brain.think(Source)
-
-print(recursive_self_upgrade())
+# Initialize code generation process
+code = generate_code(dna_sequence, dna_length)
+print(code)
