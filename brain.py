@@ -1,53 +1,38 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import random
 
-class Neuron:
-    def __init__(self, x, y, w):
-        self.x = x
-        self.y = y
-        self.w = w
-        self.output = 0
+class Brain:
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.weights = np.random.rand(len(sequence), len(sequence))
 
-    def compute_output(self, inputs):
-        self.output = np.dot(inputs, self.w) + self.x
-        return self.output
+    def mutate(self):
+        for i in range(len(self.sequence)):
+            for j in range(len(self.sequence)):
+                if random.random() < 0.1:
+                    self.weights[i][j] += random.uniform(-0.1, 0.1)
 
-    def plot(self):
-        plt.scatter(self.x, self.output)
-        plt.show()
+    def crossover(self, other):
+        offspring = Brain("")
+        for i in range(len(self.sequence)):
+            if random.random() < 0.5:
+                offspring.sequence += self.sequence[i]
+            else:
+                offspring.sequence += other.sequence[i]
+        return offspring
 
-class NeuralNetwork:
-    def __init__(self, layers):
-        self.layers = layers
+    def evolve(self, iterations):
+        for _ in range(iterations):
+            offspring = self.crossover(self)
+            offspring.mutate()
+            self = offspring
 
-    def compute_output(self, inputs):
-        outputs = []
-        for layer in self.layers:
-            neuron_outputs = []
-            for neuron in layer:
-                output = neuron.compute_output(inputs)
-                neuron_outputs.append(output)
-            outputs.append(neuron_outputs)
-            inputs = neuron_outputs
-        return outputs
+    def predict(self, input):
+        output = 0
+        for i in range(len(self.sequence)):
+            output += self.weights[i][input]
+        return output
 
-    def plot(self):
-        for i, layer in enumerate(self.layers):
-            plt.subplot(len(self.layers), 1, i + 1)
-            for neuron in layer:
-                neuron.plot()
-        plt.show()
-
-# Generate the sequence
-dna = "PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW"
-sequence = [ord(c) for c in dna]
-
-# Create the neural network
-layers = []
-for i in range(len(sequence)):
-    if i % 3 == 0:
-        layers.append([Neuron(i / 3, i, 0.1)])
-
-# Train the network
-network = NeuralNetwork(layers)
-network.plot()
+brain = Brain(sequence)
+brain.evolve(100)
+print(brain.predict(5))
