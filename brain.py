@@ -1,25 +1,25 @@
-import re
-from collections import deque
 import random
+import string
 
-def neon_code_upgrade(code, generations):
-    stack = deque([(code, generations)])
-    while stack:
-        code, generations = stack.pop()
-        if re.search(r'PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW', code):
-            # Pattern matched, upgrade recursive
-            upgraded_code = code
-            for _ in range(generations):
-                upgraded_code = upgraded_code.replace(code, code + code)
-            upgraded_code = upgraded_code + ''.join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(generations))
-            stack.append((upgraded_code, generations - 1))
+class Brain:
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.memory = []
+
+    def think(self):
+        if not self.memory:
+            self.memory.append(random.choice(string.ascii_letters))
         else:
-            # No pattern match, terminate
-            return code
-    return code
+            new_memory = []
+            for i in range(len(self.memory)):
+                new_memory.append(self.memory[i])
+                if i < len(self.memory) - 1:
+                    new_memory.append(random.choice(string.ascii_letters))
+            self.memory = new_memory
 
-# Example usage:
-code = "PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW"
-generations = 5
-upgraded_code = neon_code_upgrade(code, generations)
-print(upgraded_code)
+    def synthesize(self):
+        return "".join(self.memory)
+
+brain = Brain("PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW")
+brain.think()
+print(brain.synthesize())
