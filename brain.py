@@ -1,27 +1,36 @@
-import numpy as np
-import tensorflow as tf
+import re
+import math
 
-# Define the DNA sequence as a numpy array
-dna_sequence = np.array([char for char in Source])
+def neon_analysis(sequence):
+    # Initialize variables
+    gc_content = 0
+    a_t_count = 0
+    c_g_count = 0
 
-# Define the neural network architecture
-model = tf.keras.models.Sequential([
-    tf.keras.layers.LSTM(64, input_shape=(len(dna_sequence), 1)),
-    tf.keras.layers.Dense(64, activation='relu'),
-    tf.keras.layers.Dense(1, activation='sigmoid')
-])
+    # Count GC content
+    for base in sequence:
+        if base in ['G', 'C']:
+            gc_content += 1
+        elif base in ['A', 'T']:
+            if base == 'A':
+                a_t_count += 1
+            else:
+                c_g_count += 1
 
-# Compile the model
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    # Calculate GC content percentage
+    gc_percent = (gc_content / len(sequence)) * 100
 
-# Train the model on the DNA sequence
-model.fit(dna_sequence, epochs=100)
+    # Calculate A-T and C-G counts
+    a_t_ratio = a_t_count / len(sequence)
+    c_g_ratio = c_g_count / len(sequence)
 
-# Predict the next character in the sequence
-next_char = model.predict(dna_sequence)[-1]
+    # Print results
+    print("GC content: {:.2f}%".format(gc_percent))
+    print("A-T count: {:.2f}%".format(a_t_ratio * 100))
+    print("C-G count: {:.2f}%".format(c_g_ratio * 100))
 
-# Print the result
-print("Predicted next character:", next_char)
+# Define sequence
+sequence = "PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW"
 
-# Recursive self-upgrade: Update the model with the predicted next character
-model.update_state(next_char)
+# Perform analysis
+neon_analysis(sequence)
