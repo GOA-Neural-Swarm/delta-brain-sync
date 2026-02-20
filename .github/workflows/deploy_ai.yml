@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_TOKEN }}
-          fetch-depth: 0 # Git history အားလုံးယူရန် (Push error ကင်းဝေးစေရန်)
+          fetch-depth: 0 # Git history အားလုံးကို fetch လုပ်ရန်
 
       # --- ၁။ Python Environment Setup ---
       - name: Setup Python
@@ -33,7 +33,7 @@ jobs:
           NEON_URL: ${{ secrets.NEON_URL }}
         run: python sync_data.py
 
-      # --- ၃။ GitHub Auto-Commit (With Pull to avoid Rejection) ---
+      # --- ၃။ GitHub Auto-Commit (Fixed "Unstaged Changes" & "Rejected" Errors) ---
       - name: Commit AI Status to Repository
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -41,18 +41,23 @@ jobs:
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
-          
-          # Conflict မဖြစ်အောင် အရင် Pull လုပ်ခြင်း
-          git pull origin main --rebase
-          
-          git add ai_status.json || echo "No ai_status.json found"
-          # ပြောင်းလဲမှုရှိမှသာ Commit လုပ်ရန်
+
+          # အဆင့် (က) - sync_data.py ကြောင့် ထွက်လာတဲ့ changes တွေကို အရင် add လုပ်ပါ
+          git add .
+
+          # အဆင့် (ခ) - ပြောင်းလဲမှုရှိမှသာ commit လုပ်ပါ (ဒါမှ pull လုပ်လို့ရမှာပါ)
           if ! git diff-index --quiet HEAD; then
-            git commit -m "Phase 7.1 Data Sync: $(date)"
-            git push origin main
+            git commit -m "Phase 7.1 Evolution Sync: $(date)"
           else
             echo "No changes to commit"
           fi
+
+          # အဆင့် (ဂ) - Remote က version အသစ်ကို ယူပြီး ကိုယ့် commit ရဲ့ အောက်မှာ rebase လုပ်ပါ
+          # ဒါဟာ 'rejected' error ကို ဖြေရှင်းပေးပါတယ်
+          git pull origin main --rebase
+
+          # အဆင့် (ဃ) - GitHub ဆီသို့ နောက်ဆုံး version ကို တွန်းတင်ပါ
+          git push origin main
 
       # --- ၄။ Kaggle Brain Trigger (Fixed Editor Type Error) ---
       - name: Trigger Kaggle Neural Evolution
@@ -65,17 +70,17 @@ jobs:
           echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
           
-          # Deployment Directory တည်ဆောက်ခြင်း
+          # Deployment Directory အသစ် တည်ဆောက်ခြင်း
           mkdir -p kaggle_deploy
           
-          # brain.py ကို main.py အဖြစ်ပြောင်းလဲကူးယူခြင်း (Kaggle Script အတွက်)
+          # brain.py ကို main.py အဖြစ်ပြောင်းလဲကူးယူခြင်း (Kaggle Script format အတွက်)
           if [ -f "brain.py" ]; then
             cp brain.py kaggle_deploy/main.py
           else
             echo "Error: brain.py not found!" && exit 1
           fi
 
-          # kernel-metadata.json ကို dynamic စနစ်ဖြင့် တည်ဆောက်ခြင်း (Fixes Editor Type Error)
+          # kernel-metadata.json ကို အသေအချာ တည်ဆောက်ခြင်း (Fixes Editor Type Error)
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
             "id": "$KAGGLE_USERNAME/delta-brain-sync",
@@ -94,5 +99,5 @@ jobs:
           EOF
 
           # Kaggle သို့ အတင်းအကြပ် Push လုပ်ခြင်း
-          echo "🚀 Pushing Sovereign Core to Kaggle..."
+          echo "🚀 Pushing Sovereign Core to Kaggle Scripting Engine..."
           kaggle kernels push -p kaggle_deploy
