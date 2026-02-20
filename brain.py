@@ -1,40 +1,19 @@
 import random
 
-class TelefoxX:
-    def __init__(self):
-        self.brain = {'memory': {}, 'neurons': {}}
+class Evolution:
+    def __init__(self, dna_sequence):
+        self.dna_sequence = dna_sequence
 
-    def think(self, stimulus):
-        if stimulus in self.brain['memory']:
-            return self.brain['memory'][stimulus]
-        else:
-            response = self.generate_response(stimulus)
-            self.brain['memory'][stimulus] = response
-            return response
+    def mutate(self, probability):
+        if random.random() < probability:
+            index = random.randint(0, len(self.dna_sequence) - 1)
+            self.dna_sequence = self.dna_sequence[:index] + random.choice("ACGT") + self.dna_sequence[index + 1:]
 
-    def generate_response(self, stimulus):
-        if stimulus in self.brain['neurons']:
-            return self.brain['neurons'][stimulus]
-        else:
-            response = self.neuron_activation(stimulus)
-            self.brain['neurons'][stimulus] = response
-            return response
+    def evolve(self, generations, mutation_probability):
+        for _ in range(generations):
+            self.mutate(mutation_probability)
+            yield self.dna_sequence
 
-    def neuron_activation(self, stimulus):
-        # Randomly select a neuron from the sequence
-        neuron = random.choice([i for i in range(len(Source)) if Source[i] not in [' ', '\t', '\n']])
-
-        # Extract the corresponding amino acid
-        amino_acid = Source[neuron]
-
-        # Perform a random operation on the amino acid
-        if random.random() < 0.5:
-            amino_acid = amino_acid.upper()
-        else:
-            amino_acid = amino_acid.lower()
-
-        # Return the modified amino acid
-        return amino_acid
-
-telefox = TelefoxX()
-print(telefox.think("Neon DNA"))
+evolution = Evolution("MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD")
+for dna in evolution.evolve(50, 0.01):
+    print(dna)
