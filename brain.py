@@ -1,37 +1,28 @@
-import re
-import string
+import numpy as np
+import random
 
-def DNA_Synthesize(sequence):
-    # Find all occurrences of 'ATCG' in the sequence
-    matches = re.findall(r'ATCG', sequence)
-    
-    # Count the occurrences of 'ATCG' in the sequence
-    count = len(matches)
-    
-    # Initialize variables for A, T, C, G
-    a, t, c, g = 0, 0, 0, 0
-    
-    # Count the occurrences of each nucleotide
-    for match in matches:
-        if 'A' in match:
-            a += 1
-        elif 'T' in match:
-            t += 1
-        elif 'C' in match:
-            c += 1
-        elif 'G' in match:
-            g += 1
-    
-    # Return the counts
-    return a, t, c, g
+class Brain:
+    def __init__(self):
+        self.synapses = np.random.rand(100, 100)
+        self.neurons = np.zeros(100)
 
-# Define the input sequence
-sequence = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
+    def think(self, input_data):
+        self.neurons[:] = 0
+        for i, value in enumerate(input_data):
+            self.neurons[i] = value * self.synapses[i][0]
+        return np.max(self.neurons)
 
-# Synthesize the DNA sequence
-a, t, c, g = DNA_Synthesize(sequence)
+    def learn(self, input_data, output_data):
+        error = output_data - self.think(input_data)
+        for i, value in enumerate(input_data):
+            self.synapses[i][0] += error * value
 
-print("A:", a)
-print("T:", t)
-print("C:", c)
-print("G:", g)
+brain = Brain()
+
+# Recursive Self-Upgrade
+for _ in range(1000):
+    input_data = [random.random() for _ in range(100)]
+    output_data = brain.think(input_data)
+    brain.learn(input_data, output_data)
+
+print(brain.think([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]))
