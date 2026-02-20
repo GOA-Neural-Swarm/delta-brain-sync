@@ -2,28 +2,29 @@ name: Sovereign AI Multi-Cloud Sync (Neon + GitHub + Kaggle)
 
 on:
   schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
+    - cron: '0 * * * *' # တစ်နာရီတစ်ကြိမ် အလိုအလျောက် run မည်
+  workflow_dispatch: # Manual run ရန်
 
 jobs:
   sync_and_trigger:
     runs-on: ubuntu-latest
     steps:
       - name: Step 1 - Checkout
-        uses: actions/checkout@v4 # v4 သို့ Upgrade လုပ်ထားသည်
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0 # Git history အားလုံးယူရန် (Push error ကင်းဝေးစေရန်)
 
-      # --- ၁။ Python Environment Setup (Unified to 3.10) ---
+      # --- ၁။ Python Environment Setup ---
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10' # 3.9 မှ 3.10 သို့ ညှိလိုက်သည်
+          python-version: '3.10'
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install kaggle psycopg2-binary requests # လိုအပ်သည်များကို စုစည်းထားသည်
+          pip install kaggle psycopg2-binary requests gitpython
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       # --- ၂။ Neon Sync ---
@@ -32,30 +33,66 @@ jobs:
           NEON_URL: ${{ secrets.NEON_URL }}
         run: python sync_data.py
 
-      # --- ၃။ GitHub Auto-Commit ---
+      # --- ၃။ GitHub Auto-Commit (With Pull to avoid Rejection) ---
       - name: Commit AI Status to Repository
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
+          
+          # Conflict မဖြစ်အောင် အရင် Pull လုပ်ခြင်း
+          git pull origin main --rebase
+          
           git add ai_status.json || echo "No ai_status.json found"
-          git commit -m "Phase 6 Data Sync: $(date)" || exit 0
-          git push
+          # ပြောင်းလဲမှုရှိမှသာ Commit လုပ်ရန်
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "Phase 7.1 Data Sync: $(date)"
+            git push origin main
+          else
+            echo "No changes to commit"
+          fi
 
-      # --- ၄။ Kaggle Brain Trigger ---
+      # --- ၄။ Kaggle Brain Trigger (Fixed Editor Type Error) ---
       - name: Trigger Kaggle Neural Evolution
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
+          # Kaggle API Credentials Setup
           mkdir -p ~/.kaggle
           echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
-          if [ -d "kaggle_brain" ]; then
-            kaggle kernels push -p ./kaggle_brain
-          else
-            print "Directory kaggle_brain not found"
-          fi
           
+          # Deployment Directory တည်ဆောက်ခြင်း
+          mkdir -p kaggle_deploy
+          
+          # brain.py ကို main.py အဖြစ်ပြောင်းလဲကူးယူခြင်း (Kaggle Script အတွက်)
+          if [ -f "brain.py" ]; then
+            cp brain.py kaggle_deploy/main.py
+          else
+            echo "Error: brain.py not found!" && exit 1
+          fi
+
+          # kernel-metadata.json ကို dynamic စနစ်ဖြင့် တည်ဆောက်ခြင်း (Fixes Editor Type Error)
+          cat <<EOF > kaggle_deploy/kernel-metadata.json
+          {
+            "id": "$KAGGLE_USERNAME/delta-brain-sync",
+            "title": "Delta Brain Sync",
+            "code_file": "main.py",
+            "language": "python",
+            "kernel_type": "script",
+            "is_private": true,
+            "enable_gpu": true,
+            "enable_tpu": false,
+            "enable_internet": true,
+            "dataset_sources": [],
+            "competition_sources": [],
+            "kernel_sources": []
+          }
+          EOF
+
+          # Kaggle သို့ အတင်းအကြပ် Push လုပ်ခြင်း
+          echo "🚀 Pushing Sovereign Core to Kaggle..."
+          kaggle kernels push -p kaggle_deploy
