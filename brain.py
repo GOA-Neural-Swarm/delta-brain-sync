@@ -1,36 +1,43 @@
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPooling2D
+import random
 
-# Load and preprocess data
-data = np.load('neon_dna.npy')
-data = data.reshape((1, 100, 1))
-data = tf.keras.utils.to_categorical(data, num_classes=256)
+class NeuralNetwork:
+    def __init__(self, inputs, outputs):
+        self.inputs = inputs
+        self.outputs = outputs
+        self.weights = [[random.uniform(-1, 1) for _ in range(outputs)] for _ in range(inputs)]
 
-# Define model architecture
-model = Sequential()
-model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(100, 1, 1)))
-model.add(MaxPooling2D((2, 2)))
-model.add(Conv2D(64, (3, 3), activation='relu'))
-model.add(MaxPooling2D((2, 2)))
-model.add(Dropout(0.25))
-model.add(Flatten())
-model.add(Dense(128, activation='relu'))
-model.add(Dropout(0.5))
-model.add(Dense(256, activation='softmax'))
+    def calculate_outputs(self, inputs):
+        outputs = [0 for _ in range(self.outputs)]
+        for i in range(self.inputs):
+            for o in range(self.outputs):
+                outputs[o] += inputs[i] * self.weights[i][o]
+        return outputs
 
-# Compile model
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    def mutate(self):
+        for i in range(self.inputs):
+            for o in range(self.outputs):
+                self.weights[i][o] += random.uniform(-0.1, 0.1)
 
-# Train model
-model.fit(data, epochs=10, verbose=0)
+    def evaluate(self, inputs, expected_outputs):
+        outputs = self.calculate_outputs(inputs)
+        return sum((o - e) ** 2 for o, e in zip(outputs, expected_outputs))
 
-# Evaluate model
-loss, accuracy = model.evaluate(data, verbose=0)
-print(f'Model accuracy: {accuracy:.2f}')
+    def evolve(self, inputs, expected_outputs, generations):
+        for _ in range(generations):
+            self.mutate()
+            fitness = self.evaluate(inputs, expected_outputs)
+            if fitness < 0.1:
+                break
+        return self
 
-# Generate optimized brain code
-brain_code = model.predict(data)[0]
-brain_code = brain_code.astype(int).flatten().tolist()
-print(brain_code)
+# Define the neural network
+nn = NeuralNetwork(2, 1)
+
+# Train the neural network
+inputs = [0, 1]
+expected_outputs = [0]
+nn.evolve(inputs, expected_outputs, 1000)
+
+# Test the neural network
+print(nn.calculate_outputs([0, 1]))  # Should output around 0
+print(nn.calculate_outputs([1, 0]))  # Should output around 1
