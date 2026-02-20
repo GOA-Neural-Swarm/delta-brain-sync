@@ -1,41 +1,40 @@
-import numpy as np
 import random
 
-class NeuralNetwork:
-    def __init__(self):
-        self.weights = np.random.rand(100, 100)
-        self.biases = np.zeros((100, 1))
+def generate_gene(length):
+    gene = ""
+    for _ in range(length):
+        nucleotide = random.choice(["A", "C", "G", "T"])
+        gene += nucleotide
+    return gene
 
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
+def mutate_gene(gene, mutation_rate):
+    new_gene = ""
+    for nucleotide in gene:
+        if random.random() < mutation_rate:
+            new_gene += random.choice(["A", "C", "G", "T"])
+        else:
+            new_gene += nucleotide
+    return new_gene
 
-    def forward_pass(self, inputs):
-        outputs = np.dot(self.weights, inputs) + self.biases
-        return self.sigmoid(outputs)
+def evolve_gene(gene, mutation_rate, generations):
+    for _ in range(generations):
+        gene = mutate_gene(gene, mutation_rate)
+    return gene
 
-    def train(self, inputs, targets):
-        for _ in range(10000):
-            outputs = self.forward_pass(inputs)
-            error = targets - outputs
-            self.weights += np.dot(error, inputs.T) * 0.01
-            self.biases += np.mean(error, axis=0, keepdims=True) * 0.01
+def brain_code(gene):
+    code = ""
+    for nucleotide in gene:
+        if nucleotide == "A":
+            code += "import os\n"
+        elif nucleotide == "C":
+            code += "os.system('cls')\n"
+        elif nucleotide == "G":
+            code += "print('Hello, world!')\n"
+        elif nucleotide == "T":
+            code += "print('Goodbye, world!')\n"
+    return code
 
-    def predict(self, inputs):
-        return self.forward_pass(inputs)
-
-# Define the sequence
-sequence = 'MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD'
-
-# Convert the sequence to a numerical representation
-numerical_sequence = [ord(c) for c in sequence]
-
-# Initialize the neural network
-nn = NeuralNetwork()
-
-# Train the neural network
-nn.train(np.array([[1] * len(numerical_sequence)]), np.array([[1] * len(numerical_sequence)]))
-
-# Predict the output
-output = nn.predict(np.array([[1] * len(numerical_sequence)]))
-
-print("Predicted output:", output)
+gene = generate_gene(100)
+evolved_gene = evolve_gene(gene, 0.1, 100)
+brain_code = brain_code(evolved_gene)
+print(brain_code)
