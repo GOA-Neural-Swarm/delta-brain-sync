@@ -1,37 +1,53 @@
-import random
+import numpy as np
 
-class NeuralNetwork:
+class Brain:
     def __init__(self):
-        self.connections = {}
+        self.genome = np.array(Source, dtype=np.uint8)
+        self.neurons = {}
 
-    def add_connection(self, node1, node2):
-        if node1 not in self.connections:
-            self.connections[node1] = []
-        self.connections[node1].append(node2)
+    def initialize_neurons(self):
+        for i in range(len(self.genome)):
+            if self.genome[i] == 1:
+                self.neurons[i] = {'type': 'input', 'value': 0}
+            elif self.genome[i] == 2:
+                self.neurons[i] = {'type': 'hidden', 'value': 0}
+            elif self.genome[i] == 3:
+                self.neurons[i] = {'type': 'output', 'value': 0}
 
-    def mutate(self):
-        for node, connections in self.connections.items():
-            if random.random() < 0.1:
-                connections.append(random.choice(list(set([n for n in self.connections if n!= node]))))
-            if random.random() < 0.1:
-                self.connections[node] = [random.choice(list(set([n for n in self.connections if n!= node])))]
-        for node in list(self.connections.keys()):
-            if random.random() < 0.1:
-                del self.connections[node]
+    def calculate_output(self):
+        for neuron in self.neurons.values():
+            if neuron['type'] == 'input':
+                neuron['value'] = neuron['value']
+            elif neuron['type'] == 'hidden':
+                neuron['value'] = np.tanh(np.sum([self.neurons[i]['value'] for i in range(len(self.genome)) if self.genome[i] == 2]))
+            elif neuron['type'] == 'output':
+                neuron['value'] = np.tanh(np.sum([self.neurons[i]['value'] for i in range(len(self.genome)) if self.genome[i] == 3]))
 
-    def generate(self):
-        self.mutate()
-        return self.connections
+    def optimize(self):
+        for neuron in self.neurons.values():
+            if neuron['type'] == 'input':
+                neuron['value'] = neuron['value']
+            elif neuron['type'] == 'hidden':
+                neuron['value'] = np.tanh(np.sum([self.neurons[i]['value'] for i in range(len(self.genome)) if self.genome[i] == 2]))
+            elif neuron['type'] == 'output':
+                neuron['value'] = np.tanh(np.sum([self.neurons[i]['value'] for i in range(len(self.genome)) if self.genome[i] == 3]))
+                if neuron['value'] > 0.5:
+                    neuron['value'] = 1
+                else:
+                    neuron['value'] = 0
 
-# Meta-Cognition logic
-def recursive_self_upgrade(nn):
-    new_nn = NeuralNetwork()
-    new_nn.add_connection("Node A", "Node B")
-    new_nn.add_connection("Node B", "Node C")
-    new_nn.add_connection("Node C", "Node D")
-    new_nn.mutate()
-    new_connections = new_nn.generate()
-    return new_connections
+    def evolve(self):
+        mutation_rate = 0.1
+        for i in range(len(self.genome)):
+            if np.random.rand() < mutation_rate:
+                if self.genome[i] == 1:
+                    self.genome[i] = 2
+                elif self.genome[i] == 2:
+                    self.genome[i] = 3
+                elif self.genome[i] == 3:
+                    self.genome[i] = 1
 
-# Prompt definition closing and Meta-Cognition logic
-print(recursive_self_upgrade(NeuralNetwork()))
+brain = Brain()
+brain.initialize_neurons()
+brain.optimize()
+brain.evolve()
