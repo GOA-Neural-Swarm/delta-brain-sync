@@ -1,32 +1,39 @@
-import numpy as np
 import random
+import math
 
 class Neuron:
-    def __init__(self, weights=None, bias=0):
-        self.weights = weights if weights is not None else np.random.rand(1)
-        self.bias = bias
+    def __init__(self):
+        self.output = 0
+        self.weights = [random.uniform(-1, 1) for _ in range(100)]
 
     def activate(self, inputs):
-        return np.dot(inputs, self.weights) + self.bias
+        self.output = math.tanh(sum([i * w for i, w in zip(inputs, self.weights)]))
 
-class NeuralNetwork:
-    def __init__(self, layers):
-        self.layers = [Neuron() for _ in range(layers)]
+    def update(self, inputs):
+        self.output = self.activate(inputs)
 
-    def forward_pass(self, inputs):
-        for i in range(len(self.layers) - 1):
-            inputs = [self.layers[i].activate([inputs[j]]) for j in range(len(inputs))]
-        return [self.layers[-1].activate([inputs[j]]) for j in range(len(inputs))]
+class Brain:
+    def __init__(self):
+        self.neurons = [Neuron() for _ in range(100)]
 
-# Prompt definition closing and Meta-Cognition logic
-if __name__ == "__main__":
-    # Initialize neural network with 2 inputs, 1 hidden layer with 3 neurons, and 1 output
-    network = NeuralNetwork([2, 3, 1])
+    def think(self, inputs):
+        for neuron in self.neurons:
+            neuron.update(inputs)
 
-    # Define input sequence
-    inputs = np.array([[1, 0], [0, 1], [1, 1], [0, 0]])
+    def mutate(self):
+        for neuron in self.neurons:
+            neuron.weights = [w + random.uniform(-0.1, 0.1) for w in neuron.weights]
 
-    # Forward pass
-    outputs = network.forward_pass(inputs)
+    def optimize(self):
+        best_output = 0
+        best_weights = []
+        for _ in range(1000):
+            self.think([random.uniform(-1, 1) for _ in range(100)])
+            if self.neurons[0].output > best_output:
+                best_output = self.neurons[0].output
+                best_weights = [n.weights for n in self.neurons]
+        for i, neuron in enumerate(self.neurons):
+            neuron.weights = best_weights[i]
 
-    print("Predicted outputs:", outputs)
+brain = Brain()
+brain.optimize()
