@@ -1,38 +1,30 @@
 import numpy as np
-import tensorflow as tf
+import scipy.optimize as optimize
+import matplotlib.pyplot as plt
 
-class NeuralNetwork:
-    def __init__(self, sequence, layer_size):
-        self.sequence = sequence
-        self.layer_size = layer_size
-        self.model = self.build_model()
+# Define the genetic sequence
+sequence = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
 
-    def build_model(self):
-        model = tf.keras.models.Sequential([
-            tf.keras.layers.LSTM(self.layer_size, input_shape=(None, 1)),
-            tf.keras.layers.Dense(len(self.sequence), activation='softmax')
-        ])
-        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-        return model
+# Convert the sequence to a numerical representation
+sequence_array = np.array(list(sequence))
 
-    def train_model(self):
-        self.model.fit(np.array(self.sequence).reshape(-1, 1), epochs=100, verbose=0)
+# Define the objective function to optimize
+def objective_function(parameters):
+    # Calculate the fitness function
+    fitness = np.sum(np.exp(-np.sum((sequence_array - parameters) ** 2)))
+    return -fitness
 
-    def predict_sequence(self, input_sequence):
-        input_seq = np.array(input_sequence).reshape(-1, 1)
-        predictions = self.model.predict(input_seq)
-        return predictions.argmax(axis=-1)
+# Define the initial guess for the parameters
+initial_guess = np.random.rand(len(sequence_array))
 
-# Define the sequence and layer size
-sequence = np.array([int(i) for i in self.sequence])
-layer_size = 128
+# Optimize the parameters using the gradient descent algorithm
+result = optimize.minimize(objective_function, initial_guess, method="BFGS")
 
-# Initialize the neural network
-brain = NeuralNetwork(sequence, layer_size)
+# Print the optimized parameters
+print("Optimized Parameters:", result.x)
 
-# Train the model
-brain.train_model()
-
-# Predict the next sequence element
-next_element = brain.predict_sequence([0])
-print("Predicted next element:", next_element)
+# Plot the original and optimized sequences
+plt.plot(sequence_array, label="Original Sequence")
+plt.plot(result.x, label="Optimized Sequence")
+plt.legend()
+plt.show()
