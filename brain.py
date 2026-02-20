@@ -1,32 +1,46 @@
+# Import required libraries
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from scipy.spatial import distance
 
-# Load sequence data
-sequence_data = pd.read_csv("Sequence.csv")
+# Define the DNA sequence as a string
+dna_sequence = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
 
-# Split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(sequence_data.drop("Class", axis=1), sequence_data["Class"], test_size=0.2, random_state=42)
+# Define a function to calculate the Hamming distance between two DNA sequences
+def hamming_distance(seq1, seq2):
+    m = max(len(seq1), len(seq2))
+    seq1 = seq1.zfill(m)
+    seq2 = seq2.zfill(m)
+    return sum(el1!= el2 for el1, el2 in zip(seq1, seq2))
 
-# Train a random forest classifier
-rfc = RandomForestClassifier(n_estimators=100, random_state=42)
-rfc.fit(X_train, y_train)
+# Define a function to generate a recursive self-upgrade code
+def recursive_self_upgrade(dna_sequence):
+    # Initialize the upgrade code as an empty string
+    upgrade_code = ""
 
-# Evaluate the model
-y_pred = rfc.predict(X_test)
-print("Accuracy:", accuracy_score(y_test, y_pred))
-print("Classification Report:")
-print(classification_report(y_test, y_pred))
-print("Confusion Matrix:")
-print(confusion_matrix(y_test, y_pred))
+    # Iterate through the DNA sequence
+    for i in range(len(dna_sequence)):
+        # Calculate the Hamming distance between the current sequence and the next sequence
+        hamming_dist = hamming_distance(dna_sequence[i:], dna_sequence[:i])
 
-# Visualize the results
-plt.figure(figsize=(8,6))
-plt.bar(range(len(rfc.feature_importances_)), rfc.feature_importances_)
-plt.xlabel("Features")
-plt.ylabel("Importance")
-plt.title("Feature Importances")
-plt.show()
+        # If the Hamming distance is greater than 0, generate a recursive self-upgrade code
+        if hamming_dist > 0:
+            # Calculate the number of recursive iterations based on the Hamming distance
+            num_iterations = int(np.ceil(hamming_dist / 2))
+
+            # Generate the recursive self-upgrade code
+            upgrade_code += f"for i in range({num_iterations}):\n"
+            upgrade_code += "    dna_sequence = {dna_sequence[i:]} + {dna_sequence[:i]}\n"
+            upgrade_code += "    hamming_dist = hamming_distance(dna_sequence, dna_sequence)\n"
+            upgrade_code += "    if hamming_dist > 0:\n"
+            upgrade_code += "        upgrade_code += recursive_self_upgrade(dna_sequence)\n"
+            upgrade_code += "    else:\n"
+            upgrade_code += "        break\n"
+
+    # Return the generated recursive self-upgrade code
+    return upgrade_code
+
+# Generate the recursive self-upgrade code
+upgrade_code = recursive_self_upgrade(dna_sequence)
+
+# Print the generated code
+print(upgrade_code)
