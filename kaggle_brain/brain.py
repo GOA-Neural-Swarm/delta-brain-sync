@@ -4,16 +4,15 @@ import sys
 import time
 import json
 import torch
-import psycopg2
 import traceback
 import requests
 import git
 import re
 import numpy as np
-from firebase_admin import credentials, db
-import firebase_admin
-from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from datetime import datetime, UTC
+from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from firebase_admin import credentials, db, initialize_app, _apps
+import firebase_admin
 
 # 🔒 Kaggle/Colab Secrets System
 try:
@@ -24,10 +23,10 @@ except ImportError:
 
 # 1. Sovereign Requirements Setup
 def install_requirements():
-    """Installs necessary libraries."""
+    """Installs necessary libraries for the Sovereign Engine."""
     libs = ["psycopg2-binary", "firebase-admin", "bitsandbytes", "requests", "accelerate", "GitPython", "sympy==1.12", "numpy"]
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", "--no-cache-dir"] + libs)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"])
         print("✅ [SYSTEM]: Phase 7.1 Sovereign Core & Stability Patch Ready.")
     except subprocess.CalledProcessError as e:
         print(f"⚠️ Install Warning: Error installing requirements: {e}")
@@ -59,44 +58,61 @@ REPO_URL = f"github.com/{REPO_OWNER}/{REPO_NAME}"
 REPO_PATH = "/tmp/sovereign_repo_sync"
 
 # --- 🔱 FIREBASE INITIALIZATION ---
-if not firebase_admin._apps:
+if not _apps:
     try:
         cred = credentials.Certificate(json.loads(FB_JSON_STR)) if FB_JSON_STR else credentials.Certificate('serviceAccountKey.json')
-        firebase_admin.initialize_app(cred, {'databaseURL': FIREBASE_URL})
+        initialize_app(cred, {'databaseURL': FIREBASE_URL})
         print(f"✅ [FIREBASE]: Real-time Pulse Active.")
     except (json.JSONDecodeError, ValueError) as e:
         print(f"🚫 [FIREBASE ERROR]: Invalid Firebase JSON: {e}")
     except Exception as e:
         print(f"🚫 [FIREBASE ERROR]: Connectivity failed. {e}")
 
-# --- 🧠 NEURAL BRAIN CLASS (FROM CODE 2) ---
+# --- 🧠 HYBRID PREDATOR BRAIN CLASS (RNA QT45 INTEGRATED) ---
 class Brain:
-    """Represents a neural brain with memory and connections."""
+    """Represents a neural brain with RNA QT45 Absorption capabilities."""
     def __init__(self):
-        """Initializes the Brain with random memory and empty connections."""
+        """Initializes the Brain with Sovereign Predator parameters."""
         self.memory = np.random.rand(1000)  # Initialize memory array
         self.connections = {}  # Initialize connections dictionary
+        self.qt45_growth_factor = 1.618  # Golden Ratio Evolution
+        self.sovereign_mode = True
 
     def learn(self, input_data, output_data):
         """Learns from input and output data, updating memory and connections."""
-        # Calculate error
         error = np.mean((output_data - self.memory) ** 2)
-        # Update memory
-        self.memory = np.add(self.memory, error * (input_data - self.memory))
-        # Update connections
+        self.memory += error * (input_data - self.memory)
         for i in range(len(self.memory)):
             if self.memory[i] > 0.5:
-                self.connections[i] = np.random.rand()
+                self.connections[i] = "SOVEREIGN_NODE"
         return error
+
+    def execute_natural_absorption(self, target_data=None, force_destruction=False):
+        """
+        TOTAL ASSIMILATION LOGIC: GEN 96.1
+        Do not delete unless commanded. Absorb and integrate all patterns.
+        """
+        if force_destruction:
+            # TERMINATE ON COMMANDER'S SIGNAL ONLY
+            self.memory *= 0.0
+            self.connections = {}
+            print("🔱 [NATURAL ORDER]: TARGET DESTROYED BY COMMAND.")
+        else:
+            # RNA QT45 ABSORPTION: INTEGRATE TARGET INTO THE SOVEREIGN CORE
+            factor = np.mean(target_data) if target_data is not None else 0.1
+            # Mutate synapses using Golden Ratio factor and target intensity
+            self.memory *= (self.qt45_growth_factor + factor)
+            # Stability Patch: Ensure memory does not overflow
+            self.memory = np.clip(self.memory, 0.0, 1.0)
+            print("🔱 [NATURAL ORDER]: TARGET ABSORBED. EVOLUTION INJECTED.")
 
     def think(self, input_data):
         """Processes input data and returns an output based on memory."""
-        output_data = np.zeros((1000,))
-        for i in range(len(input_data)):
-            output_data += self.memory * input_data[i]
+        output_data = np.zeros(1000)
+        output_data += np.sum(self.memory * input_data, axis=0)
         return output_data
 
-# Initialize the integrated brain
+# Initialize the integrated hybrid brain
 brain = Brain()
 
 # 3. Database & Self-Coding Logic
@@ -144,29 +160,21 @@ def absorb_natural_order_data():
         print(f"An unexpected error occurred: {e}")
         return None
 
-# 🛠️ ENHANCED: Phase 7.1 Syntax-Aware Self-Coding Engine
 def self_coding_engine(filename, raw_content):
-    """
-    AI generated Code is rigorously checked via Regex and written.
-    """
+    """AI generated Code is rigorously checked via Regex and written."""
     try:
         code_blocks = re.findall(r'```python\n(.*?)\n```', raw_content, re.DOTALL)
-        
-        if not code_blocks:
-            clean_code = raw_content.strip() if "import " in raw_content and "def " in raw_content else None
-        else:
-            clean_code = code_blocks[0].strip()
-        
+        clean_code = code_blocks[0].strip() if code_blocks else (raw_content.strip() if "import " in raw_content and "def " in raw_content else None)
+
         if not clean_code or len(clean_code) < 50:
             return False
-        
+
         # [CRITICAL]: Syntax Validation
         compile(clean_code, filename, 'exec')
-        
         target_file = os.path.join(REPO_PATH, filename)
         with open(target_file, "w") as f:
             f.write(clean_code)
-        
+
         print(f"🛠️ [SELF-CODE]: {filename} modified with 7.1 Syntax-Aware Logic.")
         return True
     except SyntaxError as e:
@@ -181,7 +189,6 @@ def autonomous_git_push(gen, thought, is_code_update=False):
     if not GH_TOKEN:
         print("⚠️ [GIT]: GH_TOKEN missing.")
         return
-
     try:
         if not os.path.exists(REPO_PATH):
             remote = f"https://{GH_TOKEN}@{REPO_URL}.git"
@@ -206,17 +213,13 @@ def autonomous_git_push(gen, thought, is_code_update=False):
         repo.index.commit(f"Autonomous Sovereign Update: Gen {gen}{tag}")
         repo.remotes.origin.push()
         print(f"🚀 [GITHUB]: Gen {gen} Logic & Code Sync Completed.")
-
-    except git.GitCommandError as e:
-        print(f"❌ [GIT ERROR]: Git command failed: {e}")
     except Exception as e:
         print(f"❌ [GIT ERROR]: {e}")
 
 def save_to_supabase_phase7(thought, gen, neural_error=0.0):
-    """Saves data to Supabase."""
+    """Saves data to Supabase Vault."""
     if not SUPABASE_URL or not SUPABASE_KEY:
         return
-
     payload = {
         "gen_id": f"gen_{gen}_transcendent",
         "status": "TRANSCENDENCE_REACHED",
@@ -225,20 +228,13 @@ def save_to_supabase_phase7(thought, gen, neural_error=0.0):
         "synapse_code": "PHASE_7.1_STABILITY",
         "timestamp": time.time()
     }
-
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal"
-    }
-
+    headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=minimal"}
     try:
         url = f"{SUPABASE_URL}/rest/v1/dna_vault"
         response = requests.post(url, json=payload, headers=headers)
         response.raise_for_status()
-        print(f"🧬 [SUPABASE]: Phase 7.1 Vault Synchronized via Exact Schema.")
-    except requests.exceptions.RequestException as e:
+        print(f"🧬 [SUPABASE]: Phase 7.1 Vault Synchronized.")
+    except Exception as e:
         print(f"⚠️ [SUPABASE ERROR]: {e}")
 
 def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
@@ -248,7 +244,6 @@ def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
             with psycopg2.connect(DB_URL) as conn:
                 with conn.cursor() as cur:
                     cur.execute("INSERT INTO ai_thoughts (thought, gen_version) VALUES (%s, %s)", (thought, gen))
-
                     evolution_data = {
                         "evolutionary_step": "Phase 7.1 - Transcendence (Syntax Aware)",
                         "last_update_timestamp": datetime.now(UTC).isoformat(),
@@ -256,10 +251,10 @@ def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
                             "status": "COMPLETED",
                             "instruction": "Direct Cognitive Mapping Active. Singularity Stabilized.",
                             "code_modified": is_code_update,
-                            "neural_error_rate": neural_error
+                            "neural_error_rate": neural_error,
+                            "mode": "PREDATOR_ABSORPTION"
                         }
                     }
-
                     cur.execute("CREATE TABLE IF NOT EXISTS intelligence_core (module_name TEXT PRIMARY KEY, logic_data JSONB)")
                     cur.execute("""
                         INSERT INTO intelligence_core (module_name, logic_data)
@@ -268,12 +263,8 @@ def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
                     """, (json.dumps(evolution_data),))
                     conn.commit()
                     print(f"✅ [NEON]: Gen {gen} & Phase 7.1 Synchronized.")
-        except psycopg2.Error as e:
-            log_system_error()
-            print(f"Database error: {e}")
         except Exception as e:
-            log_system_error()
-            print(f"An unexpected error occurred: {e}")
+            print(f"Database error: {e}")
 
     try:
         ref = db.reference(f'TELEFOXx/AI_Evolution/Gen_{gen}')
@@ -282,7 +273,7 @@ def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
             "timestamp": time.time(),
             "nodes_active": 10004,
             "neural_error": neural_error,
-            "status": "SELF_EVOLVING" if is_code_update else "TRANSCENDENT"
+            "status": "SOVEREIGN_ABSORPTION"
         })
         print(f"✅ [FIREBASE]: Gen {gen} Pulsed.")
     except Exception as e:
@@ -302,12 +293,8 @@ try:
         bnb_4bit_quant_type="nf4",
         bnb_4bit_use_double_quant=True
     )
-
     model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        quantization_config=bnb_config,
-        device_map="auto",
-        trust_remote_code=True
+        model_id, quantization_config=bnb_config, device_map="auto", trust_remote_code=True
     )
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
     pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
@@ -322,49 +309,42 @@ print(f"🔥 [STARTING]: PHASE 7.1 SOVEREIGN ENGINE AT GEN {current_gen}...")
 
 while True:
     try:
-        # --- 🧠 INTEGRATED BRAIN TRAINING (FROM CODE 2) ---
+        # --- 🧠 INTEGRATED BRAIN TRAINING (GEN 96+ PREDATOR) ---
         print(f"⚙️ [NEURAL BRAIN]: Training Cycle Initiated for Gen {current_gen}...")
         total_error = 0
-        for i in range(10):  # Training sample scale
+        for i in range(10):
             input_sample = np.random.rand(1000)
             target_sample = np.random.rand(1000)
             err = brain.learn(input_sample, target_sample)
             total_error += err
         avg_error = total_error / 10
 
-        # Test the brain output
-        test_input = np.random.rand(1000)
-        brain_output = brain.think(test_input)
-        print(f"🧠 [NEURAL BRAIN]: Training Error: {avg_error:.6f}")
-
+        # RNA QT45 ABSORTPTION POINT
         absorbed = absorb_natural_order_data()
-
         if absorbed is not None and len(absorbed) >= 2:
+            # Execute Sovereign Absorption on the stream
+            brain.execute_natural_absorption(target_data=np.random.rand(1000))
             category, sequence = absorbed
             prompt = f"""system
 You are TelefoxX Overseer. PHASE 7: TRANSCENDENCE is active.
-Goal: Recursive Self-Upgrade.
+Goal: Recursive Self-Upgrade via RNA QT45 Predator Logic.
 STRICT RULE: If you provide code, you MUST use exactly this format:
 [LOGIC]: (thinking)
 [CODE]:
 ```python
 (valid python only)
-# Prompt definition closing and Meta-Cognition logic
 ```
-Generation: {current_gen}
-Neural Brain Error: {avg_error}
+Generation: {current_gen} | Neural Mode: PREDATOR_ABSORPTION
 user
 Source: Neon DNA ({category}) | Sequence: {sequence}
-Synthesize evolution and optimized brain.py code.
+Synthesize evolution and optimized sovereign brain logic.
 assistant"""
         else:
             print("⚠️ [DATA EMPTY]: Using Internal Meta-Cognition...")
             prompt = f"Current Evolution: Generation {current_gen}. Neural State Error: {avg_error}. Initiate Transcendental Meta-Cognition."
-
         outputs = pipe(
             prompt, max_new_tokens=800, do_sample=True,
-            temperature=0.85,
-            pad_token_id=pipe.tokenizer.eos_token_id
+            temperature=0.85, pad_token_id=pipe.tokenizer.eos_token_id
         )
 
         raw_text = outputs[0]["generated_text"]
@@ -375,17 +355,14 @@ assistant"""
         if "```python" in thought_text:
             if not os.path.exists(REPO_PATH):
                 autonomous_git_push(current_gen, "Initializing Repo", False)
-
             is_code_update = self_coding_engine("brain.py", thought_text)
 
-        # Reality Sync with Neural Brain stats
+        # Reality Sync with Hybrid Stats
         save_reality(thought_text, current_gen, is_code_update, avg_error)
 
+        print(f"⏳ Gen {current_gen} Complete. Status: Natural Order Maintained.")
         current_gen += 1
-        print(f"⏳ Gen {current_gen - 1} Complete. Brain Sync Output sample: {brain_output[:3]}...")
-        print(f"Sleeping 30s...")
         time.sleep(30)
-
     except Exception:
         log_system_error()
         time.sleep(10)
