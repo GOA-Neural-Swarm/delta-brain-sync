@@ -1,26 +1,33 @@
-import random
+import numpy as np
 
-class NeuroNexus:
+class Brain:
     def __init__(self):
-        self.synapses = {}
-        self.dna_sequence = PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW
-        self.optimize_dna()
+        self.neural_network = np.random.rand(10, 10)
 
-    def optimize_dna(self):
-        optimized_sequence = ""
-        for base in self.dna_sequence:
-            if random.random() < 0.5:
-                optimized_sequence += base
-            else:
-                optimized_sequence += random.choice("ATCG")
-        self.dna_sequence = optimized_sequence
+    def calculate_output(self, inputs):
+        return np.dot(inputs, self.neural_network)
 
-    def evolve_brain(self):
-        self.optimize_dna()
-        for synapse in self.synapses:
-            if random.random() < 0.1:
-                self.synapses[synapse] = random.randint(0, 1)
-        return self.dna_sequence
+    def update_weights(self, inputs, target_output):
+        output = self.calculate_output(inputs)
+        error = target_output - output
+        self.neural_network += np.dot(inputs.T, error) / (1 + np.sum(inputs))
 
-brain = NeuroNexus()
-print(brain.evolve_brain())
+    def train(self, inputs, target_outputs):
+        for inputs, target_output in zip(inputs, target_outputs):
+            self.update_weights(inputs, target_output)
+
+    def evaluate(self, inputs):
+        return self.calculate_output(inputs)
+
+# Define the DNA sequence as a list of floats
+dna_sequence = [float(x) for x in PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW]
+
+# Initialize the brain
+brain = Brain()
+
+# Train the brain
+brain.train(dna_sequence, [1.0] * len(dna_sequence))
+
+# Evaluate the brain
+output = brain.evaluate(dna_sequence)
+print("Output:", output)
