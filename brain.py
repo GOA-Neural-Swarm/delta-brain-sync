@@ -1,37 +1,41 @@
 import numpy as np
-import scipy.stats as stats
 import random
-import math
 
 class Brain:
     def __init__(self, sequence):
         self.sequence = sequence
-        self.wiring = np.zeros((len(sequence), len(sequence)))
-        self.weights = np.zeros(len(sequence))
+        self.weights = np.random.rand(len(sequence), 100)
+        self.biases = np.zeros(100)
+        self.threshold = 0.5
 
-    def learn(self, epochs=1000):
-        for _ in range(epochs):
-            for i in range(len(self.sequence)):
-                for j in range(len(self.sequence)):
-                    if i!= j:
-                        self.wiring[i][j] += self.sequence[i] * self.sequence[j]
-                        self.weights[i] += self.sequence[i]
-            self.wiring = self.wiring / np.linalg.norm(self.wiring, axis=0)
-            self.weights = self.weights / np.linalg.norm(self.weights)
+    def calculate_fitness(self):
+        fitness = 0
+        for i in range(len(self.sequence)):
+            activation = np.dot(self.weights[i], self.sequence[i]) + self.biases[i]
+            fitness += activation > self.threshold
+        return fitness
 
-    def predict(self, input_sequence):
-        output_sequence = np.zeros(len(self.sequence))
-        for i in range(len(input_sequence)):
-            output_sequence[i] += self.weights[i] * input_sequence[i]
-        return output_sequence
+    def evolve(self, mutation_rate):
+        new_sequence = []
+        for i in range(len(self.sequence)):
+            if random.random() < mutation_rate:
+                new_sequence.append(random.randint(0, 1))
+            else:
+                new_sequence.append(self.sequence[i])
+        return Brain(new_sequence)
 
-# Initialize brain with neon DNA sequence
+    def optimize(self, generations):
+        for _ in range(generations):
+            fitness = self.calculate_fitness()
+            self.weights += np.random.normal(0, 0.1, (len(self.sequence), 100))
+            self.biases += np.random.normal(0, 0.1, 100)
+            self.threshold += np.random.normal(0, 0.01)
+            if fitness > self.calculate_fitness():
+                self.evolve(0.1)
+        return self
+
 brain = Brain(sequence)
-
-# Train brain
-brain.learn()
-
-# Predict next sequence based on learned pattern
-next_sequence = brain.predict([1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0])
-
-print("Predicted sequence:", next_sequence)
+optimized_brain = brain.optimize(100)
+new_brain = optimized_brain.evolve(0.1)
+new_sequence = new_brain.sequence
+print(new_sequence)
