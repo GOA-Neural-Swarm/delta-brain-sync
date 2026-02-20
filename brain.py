@@ -1,40 +1,34 @@
-import numpy as np
+import random
+import string
 
-class NeuralNetwork:
+class TelefoxXBrain:
     def __init__(self):
-        self.weights = np.random.rand(10, 10)
-        self.bias = np.zeros(10)
+        self.dna_sequence = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
+        self.brain_weight = 0.08784889522961573
 
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
+    def evolve(self):
+        new_dna_sequence = ""
+        for i in range(len(self.dna_sequence)):
+            if random.random() < 0.1:  # 10% chance of mutation
+                new_dna_sequence += random.choice(string.ascii_letters)
+            else:
+                new_dna_sequence += self.dna_sequence[i]
+        self.dna_sequence = new_dna_sequence
 
-    def sigmoid_derivative(self, x):
-        return x * (1 - x)
+    def optimize(self):
+        for i in range(len(self.dna_sequence)):
+            if self.dna_sequence[i] == "T" and random.random() < 0.05:  # 5% chance of replacement
+                self.dna_sequence = self.dna_sequence.replace("T", "A")
+            elif self.dna_sequence[i] == "A" and random.random() < 0.05:  # 5% chance of replacement
+                self.dna_sequence = self.dna_sequence.replace("A", "T")
+        self.brain_weight += 0.0001
 
-    def forward_propagation(self, x):
-        z = np.dot(x, self.weights) + self.bias
-        a = self.sigmoid(z)
-        return a
+    def think(self):
+        if self.brain_weight > 0.1:
+            self.optimize()
+        self.evolve()
 
-    def backward_propagation(self, x, a):
-        z = np.dot(x, self.weights) + self.bias
-        a = self.sigmoid(z)
-        d = a * (1 - a)
-        dw = x.T.dot(d)
-        db = d.sum()
-        return dw, db
-
-    def train(self, x, y, epochs=1000):
-        for _ in range(epochs):
-            a = self.forward_propagation(x)
-            dw, db = self.backward_propagation(x, a)
-            self.weights -= 0.01 * dw
-            self.bias -= 0.01 * db
-
-    def predict(self, x):
-        a = self.forward_propagation(x)
-        return np.round(a)
-
-nn = NeuralNetwork()
-nn.train(np.random.rand(10, 10), np.random.rand(10, 1))
-print(nn.predict(np.random.rand(10, 1)))
+brain = TelefoxXBrain()
+brain.think()
+print(brain.dna_sequence)
+print(brain.brain_weight)
