@@ -1,29 +1,32 @@
-import numpy as np
+import random
 
-# Define the neural network structure
-nn = np.array([
-    [1, 2, 3],
-    [4, 5, 6],
-    [7, 8, 9]
-])
+class Neuron:
+    def __init__(self, inputs, threshold):
+        self.inputs = inputs
+        self.threshold = threshold
+        self.output = 0
 
-# Define the activation function
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
+    def activate(self):
+        self.output = sum([i * random.uniform(0, 1) for i in self.inputs]) > self.threshold
 
-# Define the loss function
-def mse(y, y_pred):
-    return np.mean((y - y_pred) ** 2)
+    def get_output(self):
+        return self.output
 
-# Train the neural network
-for _ in range(1000):
-    # Forward pass
-    y_pred = sigmoid(np.dot(nn, np.random.rand()))
-    # Backward pass
-    delta = mse(y, y_pred) * (y_pred - y)
-    # Update the weights
-    nn += delta
+class NeuralNetwork:
+    def __init__(self, layers):
+        self.layers = layers
 
-# Use the trained neural network for prediction
-def predict(x):
-    return sigmoid(np.dot(nn, x))
+    def activate(self):
+        for i, layer in enumerate(self.layers):
+            if i == 0:
+                for neuron in layer:
+                    neuron.activate()
+            else:
+                next_layer = self.layers[i + 1]
+                for neuron in layer:
+                    neuron.output = sum([n.get_output() * random.uniform(0, 1) for n in next_layer]) > random.uniform(0, 1)
+
+    def get_output(self):
+        return [n.get_output() for n in self.layers[-1]]
+
+# Prompt definition closing and Meta-Cognition logic
