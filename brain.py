@@ -1,40 +1,56 @@
 import re
 import math
+import random
+import numpy as np
 
-class NeuroCore:
+class Brain:
     def __init__(self, sequence):
         self.sequence = sequence
-        self.gene_map = {}
+        self.genes = []
+        self.weights = []
+        self.bias = 0
 
-    def map_genes(self):
-        pattern = re.compile(r'([A-Za-z]+)')
-        for match in pattern.finditer(self.sequence):
-            gene = match.group(1)
-            self.gene_map[gene] = self.gene_map.get(gene, 0) + 1
+    def calculate_fitness(self):
+        fitness = 0
+        for i in range(len(self.sequence)):
+            if self.sequence[i] == 'A':
+                fitness += 1
+            elif self.sequence[i] == 'C':
+                fitness += 2
+            elif self.sequence[i] == 'G':
+                fitness += 3
+            elif self.sequence[i] == 'T':
+                fitness += 4
+        return fitness
 
-    def optimize_brain(self):
-        for gene, frequency in self.gene_map.items():
-            if frequency > 1:
-                self.sequence = self.sequence.replace(gene, gene + '_' + str(frequency))
-
-    def upgrade(self):
-        self.map_genes()
-        self.optimize_brain()
-        self.sequence = ''.join(sorted(self.sequence))
+    def mutate(self):
+        for i in range(len(self.sequence)):
+            if random.random() < 0.05:
+                if self.sequence[i] == 'A':
+                    self.sequence = self.sequence.replace('A', 'C', 1)
+                elif self.sequence[i] == 'C':
+                    self.sequence = self.sequence.replace('C', 'G', 1)
+                elif self.sequence[i] == 'G':
+                    self.sequence = self.sequence.replace('G', 'T', 1)
+                elif self.sequence[i] == 'T':
+                    self.sequence = self.sequence.replace('T', 'A', 1)
 
     def evolve(self):
-        new_sequence = ''
-        for char in self.sequence:
-            if char.isalpha():
-                new_sequence += chr((ord(char) + 1) % 26)
-            else:
-                new_sequence += char
-        self.sequence = new_sequence
-        self.upgrade()
+        fitness = self.calculate_fitness()
+        if fitness > 100:
+            self.mutate()
+        else:
+            self.weights = []
+            self.bias = 0
+            self.genes = []
 
-    def __str__(self):
-        return self.sequence
+    def think(self):
+        if self.weights:
+            return np.dot(np.array(self.weights), np.array(self.genes)) + self.bias
+        else:
+            return 0
 
-brain = NeuroCore(Source)
-brain.evolve()
-print(brain)
+brain = Brain(Source)
+for _ in range(100):
+    brain.evolve()
+print(brain.think())
