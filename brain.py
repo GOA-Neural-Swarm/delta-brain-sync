@@ -1,22 +1,36 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
-class NeuralNetwork:
-    def __init__(self):
-        self.synaptic_weights = np.array([
-            [-0.144, 0.217, -0.031, 0.123, -0.049, -0.017, 0.021, -0.095, 0.037, -0.103],
-            [0.119, -0.041, 0.053, -0.099, 0.151, 0.093, 0.029, -0.115, 0.071, -0.027],
-            [0.053, 0.101, -0.115, 0.025, -0.021, 0.029, 0.039, 0.053, 0.033, 0.031],
-            [0.031, -0.017, 0.023, 0.019, 0.015, 0.021, 0.029, 0.043, 0.025, 0.017],
-            [0.021, 0.029, 0.031, 0.015, -0.025, 0.017, 0.033, 0.035, 0.033, 0.017],
-            [0.017, 0.021, 0.017, 0.015, 0.029, 0.021, 0.033, 0.035, 0.033, 0.017],
-            [0.029, 0.033, 0.035, 0.017, 0.021, 0.017, 0.033, 0.035, 0.033, 0.017],
-            [0.033, 0.035, 0.033, 0.017, 0.021, 0.017, 0.033, 0.035, 0.033, 0.017],
-            [0.017, 0.017, 0.017, 0.017, 0.021, 0.017, 0.033, 0.035, 0.033, 0.017],
-            [0.021, 0.021, 0.021, 0.017, 0.021, 0.017, 0.033, 0.035, 0.033, 0.017]
-        ])
+class Brain:
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.weights = np.random.rand(len(sequence), len(sequence))
+        self.biases = np.random.rand(len(sequence), 1)
 
-    def predict(self, input_vector):
-        return np.dot(input_vector, self.synaptic_weights)
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-neural_network = NeuralNetwork()
-print(neural_network.predict(np.array([0.5, 0.3, 0.7, 0.2, 0.9, 0.1, 0.6, 0.8, 0.4, 0.3])))
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
+
+    def train(self, epochs=1000, learning_rate=0.1):
+        for _ in range(epochs):
+            for i in range(len(self.sequence)):
+                for j in range(len(self.sequence)):
+                    if i!= j:
+                        self.weights[i][j] += learning_rate * (self.sigmoid(self.biases[i][0] + np.dot(self.weights[:, j], self.sequence)) - self.sigmoid(self.biases[j][0] + np.dot(self.weights[:, i], self.sequence)))
+                        self.biases[i][0] += learning_rate * (self.sigmoid(self.biases[i][0] + np.dot(self.weights[:, j], self.sequence)) - self.sigmoid(self.biases[j][0] + np.dot(self.weights[:, i], self.sequence)))
+            self.weights = self.weights / np.linalg.norm(self.weights, axis=0, keepdims=True)
+            self.biases = self.biases / np.linalg.norm(self.biases, axis=0, keepdims=True)
+
+    def predict(self, input_sequence):
+        output = np.zeros(len(input_sequence))
+        for i in range(len(input_sequence)):
+            for j in range(len(input_sequence)):
+                if i!= j:
+                    output[i] += self.weights[i][j] * self.sigmoid(self.biases[i][0] + np.dot(self.weights[:, j], input_sequence))
+        return output
+
+brain = Brain(PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW)
+brain.train(epochs=5000, learning_rate=0.1)
+print(brain.predict(np.array([1, 0, 1, 0, 1, 0, 1, 0, 1, 0])))
