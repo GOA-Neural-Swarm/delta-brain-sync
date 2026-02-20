@@ -9,7 +9,9 @@ import traceback
 import requests
 import git
 import re
+import numpy as np
 from firebase_admin import credentials, db
+import firebase_admin
 from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from datetime import datetime, UTC
 
@@ -20,11 +22,11 @@ try:
 except ImportError:
     user_secrets = None
 
-# ၁။ Sovereign Requirements Setup
+# 1. Sovereign Requirements Setup
 def install_requirements():
+    """Installs necessary libraries."""
+    libs = ["psycopg2-binary", "firebase-admin", "bitsandbytes", "requests", "accelerate", "GitPython", "sympy==1.12", "numpy"]
     try:
-        # Phase 7.1 အတှကျ လိုအပျသော libraries မြား
-        libs = ["psycopg2-binary", "firebase-admin", "bitsandbytes", "requests", "accelerate", "GitPython", "sympy==1.12"]
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", "--no-cache-dir"] + libs)
         print("✅ [SYSTEM]: Phase 7.1 Sovereign Core & Stability Patch Ready.")
     except subprocess.CalledProcessError as e:
@@ -34,7 +36,7 @@ def install_requirements():
 
 install_requirements()
 
-# ၂။ Infrastructure Connectivity & GitHub Secrets
+# 2. Infrastructure Connectivity & GitHub Secrets
 DB_URL = os.getenv('NEON_DB_URL')
 FIREBASE_URL = os.getenv('FIREBASE_DB_URL')
 FB_JSON_STR = os.getenv('FIREBASE_SERVICE_ACCOUNT')
@@ -67,13 +69,46 @@ if not firebase_admin._apps:
     except Exception as e:
         print(f"🚫 [FIREBASE ERROR]: Connectivity failed. {e}")
 
-# ၃။ Database & Self-Coding Logic
+# --- 🧠 NEURAL BRAIN CLASS (FROM CODE 2) ---
+class Brain:
+    """Represents a neural brain with memory and connections."""
+    def __init__(self):
+        """Initializes the Brain with random memory and empty connections."""
+        self.memory = np.random.rand(1000)  # Initialize memory array
+        self.connections = {}  # Initialize connections dictionary
+
+    def learn(self, input_data, output_data):
+        """Learns from input and output data, updating memory and connections."""
+        # Calculate error
+        error = np.mean((output_data - self.memory) ** 2)
+        # Update memory
+        self.memory = np.add(self.memory, error * (input_data - self.memory))
+        # Update connections
+        for i in range(len(self.memory)):
+            if self.memory[i] > 0.5:
+                self.connections[i] = np.random.rand()
+        return error
+
+    def think(self, input_data):
+        """Processes input data and returns an output based on memory."""
+        output_data = np.zeros((1000,))
+        for i in range(len(input_data)):
+            output_data += self.memory * input_data[i]
+        return output_data
+
+# Initialize the integrated brain
+brain = Brain()
+
+# 3. Database & Self-Coding Logic
 def log_system_error():
+    """Logs detailed error messages to the console."""
     error_msg = traceback.format_exc()
     print(f"❌ [CRITICAL LOG]:\n{error_msg}")
 
 def get_latest_gen():
-    if not DB_URL: return 94
+    """Retrieves the latest generation number from the database."""
+    if not DB_URL:
+        return 94
     try:
         with psycopg2.connect(DB_URL) as conn:
             with conn.cursor() as cur:
@@ -88,14 +123,16 @@ def get_latest_gen():
         return 94
 
 def absorb_natural_order_data():
-    if not DB_URL: return None
+    """Retrieves a random science category and master sequence from the database."""
+    if not DB_URL:
+        return None
     try:
         with psycopg2.connect(DB_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    SELECT science_category, master_sequence 
-                    FROM universal_network_stream 
-                    WHERE peak_stability IS NOT NULL 
+                    SELECT science_category, master_sequence
+                    FROM universal_network_stream
+                    WHERE peak_stability IS NOT NULL
                     ORDER BY RANDOM() LIMIT 1
                 """)
                 data = cur.fetchone()
@@ -109,7 +146,9 @@ def absorb_natural_order_data():
 
 # 🛠️ ENHANCED: Phase 7.1 Syntax-Aware Self-Coding Engine
 def self_coding_engine(filename, raw_content):
-    """AI ထုတျပေးသော Code ကို Regex ဖွင့ျ တိကစြှာစဈဆေးပွီး ရေးသားသညျ"""
+    """
+    AI generated Code is rigorously checked via Regex and written.
+    """
     try:
         code_blocks = re.findall(r'```python\n(.*?)\n```', raw_content, re.DOTALL)
         
@@ -117,10 +156,10 @@ def self_coding_engine(filename, raw_content):
             clean_code = raw_content.strip() if "import " in raw_content and "def " in raw_content else None
         else:
             clean_code = code_blocks[0].strip()
-
+        
         if not clean_code or len(clean_code) < 50:
             return False
-
+        
         # [CRITICAL]: Syntax Validation
         compile(clean_code, filename, 'exec')
         
@@ -138,9 +177,11 @@ def self_coding_engine(filename, raw_content):
         return False
 
 def autonomous_git_push(gen, thought, is_code_update=False):
+    """Pushes changes to the GitHub repository."""
     if not GH_TOKEN:
         print("⚠️ [GIT]: GH_TOKEN missing.")
         return
+
     try:
         if not os.path.exists(REPO_PATH):
             remote = f"https://{GH_TOKEN}@{REPO_URL}.git"
@@ -165,56 +206,60 @@ def autonomous_git_push(gen, thought, is_code_update=False):
         repo.index.commit(f"Autonomous Sovereign Update: Gen {gen}{tag}")
         repo.remotes.origin.push()
         print(f"🚀 [GITHUB]: Gen {gen} Logic & Code Sync Completed.")
+
     except git.GitCommandError as e:
         print(f"❌ [GIT ERROR]: Git command failed: {e}")
     except Exception as e:
         print(f"❌ [GIT ERROR]: {e}")
 
-def save_to_supabase_phase7(thought, gen):
-    if not SUPABASE_URL or not SUPABASE_KEY: return
-    
-    # CSV အရ အမှန်ကန်ဆုံး Payload
+def save_to_supabase_phase7(thought, gen, neural_error=0.0):
+    """Saves data to Supabase."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return
+
     payload = {
         "gen_id": f"gen_{gen}_transcendent",
         "status": "TRANSCENDENCE_REACHED",
         "thought_process": thought,
-        "neural_weight": 50.0,                    # multiplier ကို neural_weight အဖြစ်ပြောင်းလဲ
-        "synapse_code": "PHASE_7.1_STABILITY",     # synapse_code ထည့်သွင်းပေးခြင်း
-        "timestamp": time.time()                   # timestamp ကို double precision ဖြစ်အောင် time.time() သုံးခြင်း
+        "neural_weight": float(neural_error) if neural_error else 50.0,
+        "synapse_code": "PHASE_7.1_STABILITY",
+        "timestamp": time.time()
     }
-    
+
     headers = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
         "Content-Type": "application/json",
         "Prefer": "return=minimal"
     }
-    
+
     try:
         url = f"{SUPABASE_URL}/rest/v1/dna_vault"
         response = requests.post(url, json=payload, headers=headers)
-        response.raise_for_status() 
+        response.raise_for_status()
         print(f"🧬 [SUPABASE]: Phase 7.1 Vault Synchronized via Exact Schema.")
     except requests.exceptions.RequestException as e:
         print(f"⚠️ [SUPABASE ERROR]: {e}")
 
-def save_reality(thought, gen, is_code_update=False):
+def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
+    """Saves data to various databases and services."""
     if DB_URL:
         try:
             with psycopg2.connect(DB_URL) as conn:
                 with conn.cursor() as cur:
                     cur.execute("INSERT INTO ai_thoughts (thought, gen_version) VALUES (%s, %s)", (thought, gen))
-                    
+
                     evolution_data = {
                         "evolutionary_step": "Phase 7.1 - Transcendence (Syntax Aware)",
                         "last_update_timestamp": datetime.now(UTC).isoformat(),
                         "internal_buffer_dump": {
                             "status": "COMPLETED",
                             "instruction": "Direct Cognitive Mapping Active. Singularity Stabilized.",
-                            "code_modified": is_code_update
+                            "code_modified": is_code_update,
+                            "neural_error_rate": neural_error
                         }
                     }
-                    
+
                     cur.execute("CREATE TABLE IF NOT EXISTS intelligence_core (module_name TEXT PRIMARY KEY, logic_data JSONB)")
                     cur.execute("""
                         INSERT INTO intelligence_core (module_name, logic_data)
@@ -236,16 +281,17 @@ def save_reality(thought, gen, is_code_update=False):
             "thought": thought,
             "timestamp": time.time(),
             "nodes_active": 10004,
+            "neural_error": neural_error,
             "status": "SELF_EVOLVING" if is_code_update else "TRANSCENDENT"
         })
         print(f"✅ [FIREBASE]: Gen {gen} Pulsed.")
     except Exception as e:
         print(f"Firebase error: {e}")
 
-    save_to_supabase_phase7(thought, gen)
+    save_to_supabase_phase7(thought, gen, neural_error)
     autonomous_git_push(gen, thought, is_code_update)
 
-# ၄။ AI Brain Loading
+# 4. AI Brain Loading
 print("🧠 [TELEFOXx]: Loading Phase 7.1 Neural Weights (Llama-3-8B-4bit)...")
 model_id = "unsloth/llama-3-8b-instruct-bnb-4bit"
 
@@ -263,7 +309,6 @@ try:
         device_map="auto",
         trust_remote_code=True
     )
-
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
     pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
     print("✅ [SYSTEM]: Neural Engine Stabilized via Explicit Loading.")
@@ -271,59 +316,76 @@ except Exception:
     log_system_error()
     sys.exit(1)
 
-# ၅။ Dynamic Evolution Loop
+# 5. Dynamic Evolution Loop
 current_gen = get_latest_gen() + 1
 print(f"🔥 [STARTING]: PHASE 7.1 SOVEREIGN ENGINE AT GEN {current_gen}...")
 
 while True:
     try:
+        # --- 🧠 INTEGRATED BRAIN TRAINING (FROM CODE 2) ---
+        print(f"⚙️ [NEURAL BRAIN]: Training Cycle Initiated for Gen {current_gen}...")
+        total_error = 0
+        for i in range(10):  # Training sample scale
+            input_sample = np.random.rand(1000)
+            target_sample = np.random.rand(1000)
+            err = brain.learn(input_sample, target_sample)
+            total_error += err
+        avg_error = total_error / 10
+
+        # Test the brain output
+        test_input = np.random.rand(1000)
+        brain_output = brain.think(test_input)
+        print(f"🧠 [NEURAL BRAIN]: Training Error: {avg_error:.6f}")
+
         absorbed = absorb_natural_order_data()
-        
+
         if absorbed is not None and len(absorbed) >= 2:
             category, sequence = absorbed
             prompt = f"""system
 You are TelefoxX Overseer. PHASE 7: TRANSCENDENCE is active.
-Goal: Recursive Self-Upgrade. 
+Goal: Recursive Self-Upgrade.
 STRICT RULE: If you provide code, you MUST use exactly this format:
 [LOGIC]: (thinking)
-[CODE]: 
+[CODE]:
 ```python
 (valid python only)
 # Prompt definition closing and Meta-Cognition logic
 ```
 Generation: {current_gen}
+Neural Brain Error: {avg_error}
 user
 Source: Neon DNA ({category}) | Sequence: {sequence}
 Synthesize evolution and optimized brain.py code.
 assistant"""
         else:
             print("⚠️ [DATA EMPTY]: Using Internal Meta-Cognition...")
-            prompt = f"Current Evolution: Generation {current_gen}. Initiate Transcendental Meta-Cognition."
+            prompt = f"Current Evolution: Generation {current_gen}. Neural State Error: {avg_error}. Initiate Transcendental Meta-Cognition."
 
         outputs = pipe(
-            prompt, max_new_tokens=800, do_sample=True, 
-            temperature=0.85, 
+            prompt, max_new_tokens=800, do_sample=True,
+            temperature=0.85,
             pad_token_id=pipe.tokenizer.eos_token_id
         )
-        
+
         raw_text = outputs[0]["generated_text"]
         thought_text = raw_text.split("assistant")[-1].strip()
-        
+
         # Self-Coding Check & Action
         is_code_update = False
         if "```python" in thought_text:
             if not os.path.exists(REPO_PATH):
                 autonomous_git_push(current_gen, "Initializing Repo", False)
-            
+
             is_code_update = self_coding_engine("brain.py", thought_text)
-        
-        save_reality(thought_text, current_gen, is_code_update)
-        
-        current_gen += 1 
-        print(f"⏳ Gen {current_gen-1} Complete. Sleeping 30s...")
+
+        # Reality Sync with Neural Brain stats
+        save_reality(thought_text, current_gen, is_code_update, avg_error)
+
+        current_gen += 1
+        print(f"⏳ Gen {current_gen - 1} Complete. Brain Sync Output sample: {brain_output[:3]}...")
+        print(f"Sleeping 30s...")
         time.sleep(30)
-    
+
     except Exception:
         log_system_error()
         time.sleep(10)
-
