@@ -1,34 +1,21 @@
-import numpy as np
-import tensorflow as tf
+import random
+import math
 
 class Brain:
     def __init__(self):
-        self.weights = np.random.rand(1, 100)  # initialize weights randomly
-        self.biases = np.zeros((1, 100))  # initialize biases to zero
-        self.model = tf.keras.models.Sequential([
-            tf.keras.layers.Dense(100, activation='relu', input_shape=(100,), weights=self.weights, biases=self.biases)
-        ])
-        self.model.compile(optimizer='adam', loss='mean_squared_error')
+        self.weights = [random.random() for _ in range(1000)]
 
-    def think(self, input_data):
-        output = self.model.predict(input_data)
+    def think(self, input_sequence):
+        output = 0
+        for i in range(len(input_sequence)):
+            output += self.weights[i] * input_sequence[i]
         return output
 
-    def learn(self, input_data, target_output):
-        self.model.fit(input_data, target_output, epochs=10, verbose=0)
+    def learn(self, input_sequence, target_output):
+        error = abs(self.think(input_sequence) - target_output)
+        for i in range(len(input_sequence)):
+            self.weights[i] += error * input_sequence[i]
 
-# Initialize the brain
 brain = Brain()
-
-# Generate a random input
-input_data = np.random.rand(1, 100)
-
-# Think about the input
-output = brain.think(input_data)
-
-# Learn from the input
-target_output = np.array([[1.0]])
-brain.learn(input_data, target_output)
-
-# Print the optimized brain
-print(brain.model.get_weights())
+brain.learn(Sequence, 1.0)
+print(brain.think(Sequence))
