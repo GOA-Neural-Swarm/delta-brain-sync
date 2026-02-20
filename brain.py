@@ -1,41 +1,44 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from keras.models import Sequential
 from keras.layers import Dense
 
-# Define the sequence
-sequence = 'MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD'
+# Define the dataset
+data = pd.read_csv('https://raw.githubusercontent.com/telefoxx/neon-dna/master/dataset.csv')
 
-# Convert the sequence to a numerical array
-sequence_array = np.array([ord(char) for char in sequence])
-
-# Normalize the sequence array using StandardScaler
+# Preprocess the data
 scaler = StandardScaler()
-sequence_array_scaled = scaler.fit_transform(sequence_array.reshape(-1, 1))
+data[['feature1', 'feature2', 'feature3']] = scaler.fit_transform(data[['feature1', 'feature2', 'feature3']])
+
+# Perform PCA
+pca = PCA(n_components=2)
+data_reduced = pca.fit_transform(data[['feature1', 'feature2', 'feature3']])
+
+# Perform t-SNE
+tsne = TSNE(n_components=2)
+data_reduced_tsne = tsne.fit_transform(data_reduced)
 
 # Define the neural network model
 model = Sequential()
-model.add(Dense(64, input_shape=(1,), activation='relu'))
-model.add(Dense(64, activation='relu'))
-model.add(Dense(len(set(sequence)), activation='softmax'))
+model.add(Dense(64, activation='relu', input_shape=(2,)))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
 
 # Compile the model
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
 # Train the model
-model.fit(sequence_array_scaled, epochs=100)
+model.fit(data_reduced_tsne, data['target'], epochs=100, verbose=0)
 
-# Predict the next character in the sequence
-next_char = model.predict(sequence_array_scaled[-1].reshape(1, 1))[0].argmax()
+# Evaluate the model
+loss, accuracy = model.evaluate(data_reduced_tsne, data['target'])
+print(f'Test loss: {loss:.3f}, Test accuracy: {accuracy:.3f}')
 
-# Print the predicted next character
-print(f'Predicted next character: {chr(next_char)}')
+# Use the model to make predictions
+predictions = model.predict(data_reduced_tsne)
 
-# Plot the sequence and predicted next character
-plt.plot(sequence_array_scaled)
-plt.axvline(len(sequence_array_scaled) - 1, color='r', linestyle='--')
-plt.xlabel('Sequence Index')
-plt.ylabel('Sequence Value')
-plt.title('Sequence and Predicted Next Character')
-plt.show()
+# Print the predictions
+print(predictions)
