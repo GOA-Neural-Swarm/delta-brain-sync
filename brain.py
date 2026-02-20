@@ -1,33 +1,48 @@
-import numpy as np
+import random
+import math
 
 class Brain:
     def __init__(self):
-        self.neural_network = np.random.rand(10, 10)
+        self.dna = Source.get_dna_sequence()
+        self.genes = self.extract_genes(self.dna)
+        self.neural_network = self.create_neural_network(self.genes)
 
-    def calculate_output(self, inputs):
-        return np.dot(inputs, self.neural_network)
+    def extract_genes(self, dna):
+        genes = []
+        for i in range(0, len(dna), 3):
+            gene = dna[i:i+3]
+            genes.append(int(gene, 16))
+        return genes
 
-    def update_weights(self, inputs, target_output):
-        output = self.calculate_output(inputs)
-        error = target_output - output
-        self.neural_network += np.dot(inputs.T, error) / (1 + np.sum(inputs))
+    def create_neural_network(self, genes):
+        # Create a neural network with a single layer
+        neurons = []
+        for gene in genes:
+            if gene % 2 == 0:
+                neurons.append(math.sin(gene / 10))
+            else:
+                neurons.append(gene / 10)
+        return neurons
 
-    def train(self, inputs, target_outputs):
-        for inputs, target_output in zip(inputs, target_outputs):
-            self.update_weights(inputs, target_output)
+    def think(self):
+        # Randomly select a neuron to stimulate
+        neuron = random.choice(self.neural_network)
+        # Use the neuron's output to influence the next thought
+        thought = neuron * random.randint(-1, 1)
+        return thought
 
-    def evaluate(self, inputs):
-        return self.calculate_output(inputs)
+    def evolve(self):
+        # Mutate some genes to introduce variation
+        for i in range(len(self.genes)):
+            if random.random() < 0.01:
+                self.genes[i] += random.randint(-1, 1)
+        # Create a new neural network with the mutated genes
+        self.neural_network = self.create_neural_network(self.genes)
 
-# Define the DNA sequence as a list of floats
-dna_sequence = [float(x) for x in PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW]
+    def run(self):
+        while True:
+            thought = self.think()
+            print("Thought:", thought)
+            self.evolve()
 
-# Initialize the brain
-brain = Brain()
-
-# Train the brain
-brain.train(dna_sequence, [1.0] * len(dna_sequence))
-
-# Evaluate the brain
-output = brain.evaluate(dna_sequence)
-print("Output:", output)
+Brain().run()
