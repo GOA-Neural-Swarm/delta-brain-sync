@@ -1,28 +1,46 @@
 import numpy as np
 import tensorflow as tf
 
-# Define the neural network model
-class Brain(tf.keras.Model):
-    def __init__(self):
-        super(Brain, self).__init__()
-        self.fc1 = tf.keras.layers.Dense(64, activation='relu', input_shape=(5223,))
-        self.fc2 = tf.keras.layers.Dense(128, activation='relu')
-        self.fc3 = tf.keras.layers.Dense(256, activation='relu')
-        self.fc4 = tf.keras.layers.Dense(1)
+class NeuralNetwork:
+    def __init__(self, inputs, outputs):
+        self.inputs = inputs
+        self.outputs = outputs
+        self.weights = np.random.rand(self.inputs, self.outputs)
+        self.bias = np.zeros((1, self.outputs))
 
-    def call(self, x):
-        x = tf.keras.layers.Dense(64, activation='relu')(x)
-        x = tf.keras.layers.Dense(128, activation='relu')(x)
-        x = tf.keras.layers.Dense(256, activation='relu')(x)
-        return self.fc4(x)
+    def predict(self, inputs):
+        return np.dot(inputs, self.weights) + self.bias
 
-# Compile the model
-brain = Brain()
-brain.compile(optimizer='adam', loss='mean_squared_error')
+    def train(self, inputs, outputs):
+        predictions = self.predict(inputs)
+        errors = outputs - predictions
+        self.weights += np.dot(inputs.T, errors)
+        self.bias += np.sum(errors, axis=0)
 
-# Train the model
-brain.fit(np.random.rand(1000, 5223), epochs=1000)
+class MetaCognition:
+    def __init__(self, neural_network):
+        self.neural_network = neural_network
 
-# Generate optimized brain code
-with open('optimized_brain.py', 'w') as f:
-    f.write(str(brain))
+    def think(self, inputs):
+        predictions = self.neural_network.predict(inputs)
+        self.neural_network.train(inputs, predictions)
+
+    def learn(self, inputs, outputs):
+        self.think(inputs)
+        self.neural_network.train(inputs, outputs)
+
+# Define the neural network and meta-cognition
+nn = NeuralNetwork(2, 1)
+meta = MetaCognition(nn)
+
+# Define the sequence of inputs and outputs
+sequence = np.array([[1, 0], [0, 1], [1, 1], [0, 0]])
+outputs = np.array([1, 0, 1, 0])
+
+# Train the neural network using meta-cognition
+for _ in range(1000):
+    meta.learn(sequence, outputs)
+
+# Use the trained neural network to make predictions
+predictions = nn.predict(np.array([[1, 1]]))
+print("Prediction:", predictions[0][0])
