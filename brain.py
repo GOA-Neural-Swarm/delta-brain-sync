@@ -1,30 +1,38 @@
 import random
-import string
+import numpy as np
+from scipy.optimize import minimize
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import normalize
 
-class Brain:
-    def __init__(self, dna_sequence):
-        self.dna_sequence = dna_sequence
-        self.brain_cells = []
+class NeuralBrain:
+    def __init__(self, seq):
+        self.seq = seq
+        self.neural_network = MLPClassifier(hidden_layer_sizes=(10,))
 
-    def generate_cells(self):
-        for _ in range(100):
-            cell = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(10))
-            self.brain_cells.append(cell)
+    def synthesize(self):
+        # DNA to Neural Network Architecture
+        self.neural_network.set_params({
+            'activation':'relu',
+            'learning_rate': 'constant',
+           'max_iter': 1000,
+            'hidden_layer_sizes': (int(np.ceil(len(self.seq) ** 0.5)),),
+           'verbose': False
+        })
+        # Train Neural Network with Sequence Data
+        X = np.array([[ord(c) for c in self.seq]]).T
+        y = np.array([[1 if c == 'A' else 0 for c in self.seq]]).T
+        self.neural_network.fit(X, y)
+        # Neural Network to Optimal DNA Sequence
+        def optimize_seq(neural_network, seq):
+            X = np.array([[ord(c) for c in seq]]).T
+            y = np.array([[1 if c == 'A' else 0 for c in seq]]).T
+            return -neural_network.score(X, y)
+        res = minimize(optimize_seq, self.seq, method='SLSQP', bounds=((0, 256),))
+        optimal_seq = res.x.astype(str).tolist()[0]
+        return optimal_seq
 
-    def upgrade_cells(self):
-        for cell in self.brain_cells:
-            if cell in self.dna_sequence:
-                new_cell = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(10))
-                while new_cell in self.brain_cells:
-                    new_cell = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(10))
-                self.brain_cells[self.brain_cells.index(cell)] = new_cell
-
-    def optimize_brain(self):
-        self.generate_cells()
-        self.upgrade_cells()
-        optimized_brain = [cell for cell in self.brain_cells if cell in self.dna_sequence]
-        return optimized_brain
-
-brain = Brain(Source)
-optimized_brain = brain.optimize_brain()
-print(optimized_brain)
+# Prompt definition closing and Meta-Cognition logic
+if __name__ == '__main__':
+    neural_brain = NeuralBrain(seq)
+    optimal_seq = neural_brain.synthesize()
+    print(optimal_seq)
