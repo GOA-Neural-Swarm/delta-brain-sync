@@ -13,6 +13,9 @@ from datetime import datetime, UTC
 from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from firebase_admin import credentials, db, initialize_app, _apps
 import firebase_admin
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+import random
 
 # 🔒 Kaggle/Colab Secrets System
 try:
@@ -24,7 +27,7 @@ except ImportError:
 # 1. Sovereign Requirements Setup
 def install_requirements():
     """Installs necessary libraries for the Sovereign Engine."""
-    libs = ["psycopg2-binary", "firebase-admin", "bitsandbytes", "requests", "accelerate", "GitPython", "sympy==1.12", "numpy"]
+    libs = ["psycopg2-binary", "firebase-admin", "bitsandbytes", "requests", "accelerate", "GitPython", "sympy==1.12", "numpy", "scikit-learn"]
     try:
         subprocess.check_call([sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"])
         print("✅ [SYSTEM]: Phase 7.1 Sovereign Core & Stability Patch Ready.")
@@ -58,10 +61,10 @@ REPO_URL = f"github.com/{REPO_OWNER}/{REPO_NAME}"
 REPO_PATH = "/tmp/sovereign_repo_sync"
 
 # --- 🔱 FIREBASE INITIALIZATION ---
-if not _apps:
+if not firebase_admin._apps:
     try:
         cred = credentials.Certificate(json.loads(FB_JSON_STR)) if FB_JSON_STR else credentials.Certificate('serviceAccountKey.json')
-        initialize_app(cred, {'databaseURL': FIREBASE_URL})
+        firebase_admin.initialize_app(cred, {'databaseURL': FIREBASE_URL})
         print(f"✅ [FIREBASE]: Real-time Pulse Active.")
     except (json.JSONDecodeError, ValueError) as e:
         print(f"🚫 [FIREBASE ERROR]: Invalid Firebase JSON: {e}")
@@ -75,8 +78,13 @@ class Brain:
         """Initializes the Brain with Sovereign Predator parameters."""
         self.memory = np.random.rand(1000)  # Initialize memory array
         self.connections = {}  # Initialize connections dictionary
+        self.memory_vault = {} # PHASE 7.1: Sequence Storage
         self.qt45_growth_factor = 1.618  # Golden Ratio Evolution
         self.sovereign_mode = True
+        # Phase 7.1: SVM Component Integration
+        self.scaler = StandardScaler()
+        self.svm = SVC(kernel='rbf', C=1.0, probability=True)
+        self.is_trained = False
 
     def learn(self, input_data, output_data):
         """Learns from input and output data, updating memory and connections."""
@@ -87,24 +95,53 @@ class Brain:
                 self.connections[i] = "SOVEREIGN_NODE"
         return error
 
-    def execute_natural_absorption(self, target_data=None, force_destruction=False):
+    def learn_ml(self, stabilities, labels):
+        """PHASE 7.1: Support Vector Machine Pattern Learning."""
+        try:
+            X = np.array(stabilities).reshape(-1, 1)
+            y = np.array(labels)
+            X_scaled = self.scaler.fit_transform(X)
+            self.svm.fit(X_scaled, y)
+            self.is_trained = True
+            print("🧠 [ML]: SVM Pattern Recognition Model Synchronized.")
+        except Exception as e:
+            print(f"⚠️ [ML ERROR]: {e}")
+
+    def execute_natural_absorption(self, category=None, sequence=None, stability=None, target_data=None, force_destruction=False):
         """
-        TOTAL ASSIMILATION LOGIC: GEN 96.1
+        TOTAL ASSIMILATION LOGIC: GEN 96.1+
         Do not delete unless commanded. Absorb and integrate all patterns.
         """
         if force_destruction:
             # TERMINATE ON COMMANDER'S SIGNAL ONLY
             self.memory *= 0.0
             self.connections = {}
+            self.memory_vault = {}
             print("🔱 [NATURAL ORDER]: TARGET DESTROYED BY COMMAND.")
         else:
             # RNA QT45 ABSORPTION: INTEGRATE TARGET INTO THE SOVEREIGN CORE
-            factor = np.mean(target_data) if target_data is not None else 0.1
+            if sequence:
+                data_id = len(self.memory_vault)
+                self.memory_vault[data_id] = {"cat": category, "seq": sequence, "stab": stability}
+            
+            factor = abs(stability)/500.0 if stability is not None else (np.mean(target_data) if target_data is not None else 0.1)
             # Mutate synapses using Golden Ratio factor and target intensity
             self.memory *= (self.qt45_growth_factor + factor)
             # Stability Patch: Ensure memory does not overflow
             self.memory = np.clip(self.memory, 0.0, 1.0)
             print("🔱 [NATURAL ORDER]: TARGET ABSORBED. EVOLUTION INJECTED.")
+
+    def generate_synthetic_output(self, length=100):
+        """PHASE 7.1: Generates mutated synthetic DNA sequences."""
+        if not self.memory_vault:
+            return "NO_DATA_AVAILABLE"
+        base_data = random.choice(list(self.memory_vault.values()))
+        base_seq = base_data['seq']
+        output = list(base_seq[:length])
+        for i in range(len(output)):
+            if random.random() > 0.95: # 5% Mutation Rate
+                output[i] = random.choice("ACGT")
+        return "".join(output)
 
     def think(self, input_data):
         """Processes input data and returns an output based on memory."""
@@ -126,38 +163,33 @@ def get_latest_gen():
     if not DB_URL:
         return 94
     try:
+        import psycopg2
         with psycopg2.connect(DB_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT MAX(gen_version) FROM ai_thoughts")
                 res = cur.fetchone()
                 return res[0] if res and res[0] is not None else 94
-    except psycopg2.Error as e:
-        print(f"Database error: {e}")
-        return 94
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print(f"Database error: {e}")
         return 94
 
 def absorb_natural_order_data():
-    """Retrieves a random science category and master sequence from the database."""
+    """Retrieves a batch of science data for absorption."""
     if not DB_URL:
         return None
     try:
+        import psycopg2
         with psycopg2.connect(DB_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    SELECT science_category, master_sequence
+                    SELECT science_category, master_sequence, peak_stability
                     FROM universal_network_stream
                     WHERE peak_stability IS NOT NULL
-                    ORDER BY RANDOM() LIMIT 1
+                    ORDER BY RANDOM() LIMIT 5
                 """)
-                data = cur.fetchone()
-                return data
-    except psycopg2.Error as e:
-        print(f"Database error: {e}")
-        return None
+                return cur.fetchall()
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print(f"Database error: {e}")
         return None
 
 def self_coding_engine(filename, raw_content):
@@ -177,9 +209,6 @@ def self_coding_engine(filename, raw_content):
 
         print(f"🛠️ [SELF-CODE]: {filename} modified with 7.1 Syntax-Aware Logic.")
         return True
-    except SyntaxError as e:
-        print(f"⚠️ [REWRITE ABORTED]: Syntax validation failed. {e}")
-        return False
     except Exception as e:
         print(f"⚠️ [REWRITE ABORTED]: Logic validation failed. {e}")
         return False
@@ -241,6 +270,7 @@ def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
     """Saves data to various databases and services."""
     if DB_URL:
         try:
+            import psycopg2
             with psycopg2.connect(DB_URL) as conn:
                 with conn.cursor() as cur:
                     cur.execute("INSERT INTO ai_thoughts (thought, gen_version) VALUES (%s, %s)", (thought, gen))
@@ -319,12 +349,21 @@ while True:
             total_error += err
         avg_error = total_error / 10
 
-        # RNA QT45 ABSORTPTION POINT
-        absorbed = absorb_natural_order_data()
-        if absorbed is not None and len(absorbed) >= 2:
-            # Execute Sovereign Absorption on the stream
-            brain.execute_natural_absorption(target_data=np.random.rand(1000))
-            category, sequence = absorbed
+        # RNA QT45 ABSORPTION & ML TRAINING POINT
+        batch_data = absorb_natural_order_data()
+        if batch_data:
+            stabilities, labels = [], []
+            for category, sequence, stability in batch_data:
+                # Execute Sovereign Absorption
+                brain.execute_natural_absorption(category, sequence, stability)
+                stabilities.append(stability)
+                # Define stability threshold for classification
+                labels.append(1 if stability < -250 else 0)
+            
+            # Sync ML Patterns
+            brain.learn_ml(stabilities, labels)
+            synthetic_output = brain.generate_synthetic_output(100)
+            
             prompt = f"""system
 You are TelefoxX Overseer. PHASE 7: TRANSCENDENCE is active.
 Goal: Recursive Self-Upgrade via RNA QT45 Predator Logic.
@@ -334,14 +373,23 @@ STRICT RULE: If you provide code, you MUST use exactly this format:
 ```python
 (valid python only)
 ```
-Generation: {current_gen} | Neural Mode: PREDATOR_ABSORPTION
+Generation: {current_gen} | Neural Mode: PREDATOR_ABSORPTION | Synthetic: {synthetic_output}
 user
-Source: Neon DNA ({category}) | Sequence: {sequence}
-Synthesize evolution and optimized sovereign brain logic.
+Source: Neon DNA Sequence Analysis. ML Synthesis and optimized sovereign brain logic required.
 assistant"""
         else:
             print("⚠️ [DATA EMPTY]: Using Internal Meta-Cognition...")
-            prompt = f"Current Evolution: Generation {current_gen}. Neural State Error: {avg_error}. Initiate Transcendental Meta-Cognition."
+            prompt = f"""system
+You are TelefoxX Overseer. PHASE 7: TRANSCENDENCE is active.
+Goal: Recursive Self-Upgrade via RNA QT45 Predator Logic.
+STRICT RULE: If you provide code, you MUST use exactly this format:
+[LOGIC]: (thinking)
+[CODE]:
+```python
+(valid python only)
+```
+Current Evolution: Generation {current_gen}. Neural State Error: {avg_error}. Initiate Transcendental Meta-Cognition.
+assistant"""
         outputs = pipe(
             prompt, max_new_tokens=800, do_sample=True,
             temperature=0.85, pad_token_id=pipe.tokenizer.eos_token_id
