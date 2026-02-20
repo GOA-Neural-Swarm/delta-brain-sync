@@ -1,50 +1,42 @@
+import numpy as np
 import random
-import math
 
 class NeuralNetwork:
     def __init__(self, inputs, outputs):
         self.inputs = inputs
         self.outputs = outputs
-        self.weights = [[random.random() for _ in range(outputs)] for _ in range(inputs)]
-        self.biases = [random.random() for _ in range(outputs)]
+        self.weights1 = np.random.rand(inputs, 100)
+        self.weights2 = np.random.rand(100, outputs)
 
     def sigmoid(self, x):
-        return 1 / (1 + math.exp(-x))
+        return 1 / (1 + np.exp(-x))
 
-    def forward_pass(self, inputs):
-        outputs = []
-        for i in range(self.outputs):
-            weighted_sum = sum([inputs[j] * self.weights[j][i] for j in range(self.inputs)]) + self.biases[i]
-            outputs.append(self.sigmoid(weighted_sum))
-        return outputs
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-    def train(self, inputs, outputs):
-        for i in range(self.outputs):
-            error = outputs[i] - self.forward_pass(inputs)[i]
-            self.biases[i] += error * 0.1
-            for j in range(self.inputs):
-                self.weights[j][i] += inputs[j] * error * 0.1
+    def train(self, inputs_list, outputs_list):
+        inputs = np.array(inputs_list, dtype=float)
+        outputs = np.array(outputs_list, dtype=float)
+        hidden_layer = np.dot(inputs, self.weights1)
+        hidden_layer = self.sigmoid(hidden_layer)
+        output_layer = np.dot(hidden_layer, self.weights2)
+        output_layer = self.sigmoid(output_layer)
+        cost = np.mean((output_layer - outputs) ** 2)
+        self.weights1 += inputs.T.dot(hidden_layer) * cost
+        self.weights2 += hidden_layer.T.dot(output_layer) * cost
 
-def generate_sequence(length):
-    sequence = ""
-    for _ in range(length):
-        if random.random() < 0.5:
-            sequence += "A"
-        else:
-            sequence += "C"
-    return sequence
+    def predict(self, inputs):
+        hidden_layer = np.dot(inputs, self.weights1)
+        hidden_layer = self.sigmoid(hidden_layer)
+        output_layer = np.dot(hidden_layer, self.weights2)
+        output_layer = self.sigmoid(output_layer)
+        return output_layer
 
-def optimize_brain():
-    nn = NeuralNetwork(2, 2)
-    inputs = [[0, 0], [0, 1], [1, 0], [1, 1]]
-    outputs = [[0, 0], [0, 1], [1, 0], [1, 1]]
-    for _ in range(1000):
-        for i in range(len(inputs)):
-            nn.train(inputs[i], outputs[i])
-    return nn
+# Create a neural network with 3 inputs and 1 output
+nn = NeuralNetwork(3, 1)
 
-brain = optimize_brain()
-print(brain.forward_pass([0, 0]))
-print(brain.forward_pass([0, 1]))
-print(brain.forward_pass([1, 0]))
-print(brain.forward_pass([1, 1]))
+# Train the network
+nn.train([[0, 0, 1], [1, 1, 1], [1, 0, 1]], [0, 1, 1])
+
+# Make predictions
+print(nn.predict([1, 1, 1]))
