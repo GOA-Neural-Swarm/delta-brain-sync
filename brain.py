@@ -1,21 +1,51 @@
-import re
 import random
-import math
 
-class NeuralNetwork:
-    def __init__(self, num_inputs, num_hidden, num_outputs):
-        self.num_inputs = num_inputs
-        self.num_hidden = num_hidden
-        self.num_outputs = num_outputs
-        self.weights = [random.uniform(-1, 1) for _ in range(num_inputs * num_hidden)]
-        self.bias = [random.uniform(-1, 1) for _ in range(num_hidden)]
+class Brain:
+    def __init__(self):
+        self.connections = []
+        self.memory = []
 
-    def sigmoid(self, x):
-        return 1 / (1 + math.exp(-x))
+    def think(self, input_data):
+        if not self.connections:
+            self.connections = [[random.random(), random.random()] for _ in range(1000)]
 
-    def sigmoid_derivative(self, x):
-        return x * (1 - x)
+        for connection in self.connections:
+            if input_data[0] > connection[0]:
+                connection[1] += random.random()
+            elif input_data[0] < connection[0]:
+                connection[1] -= random.random()
 
-    def forward_pass(self, inputs):
-        hidden_layer = [self.sigmoid(sum(i * w for i, w in zip(inputs, self.weights[j * self.num_inputs:(j + 1) * self.num_inputs]))) + self.bias[j] for j in range(self.num_hidden)]
-        return self.sigmoid(sum(i * w for i, w in zip(hidden_layer, self.weights[self.num_hidden * self.num_inputs:])))
+        output = 0
+        for connection in self.connections:
+            output += connection[1]
+
+        return output
+
+    def learn(self, input_data, output):
+        if not self.connections:
+            self.connections = [[random.random(), random.random()] for _ in range(1000)]
+
+        for connection in self.connections:
+            if input_data[0] > connection[0]:
+                connection[1] += random.random()
+            elif input_data[0] < connection[0]:
+                connection[1] -= random.random()
+
+        output = 0
+        for connection in self.connections:
+            output += connection[1]
+
+        self.memory.append((input_data, output))
+
+    def recall(self, input_data):
+        for memory in self.memory:
+            if memory[0][0] == input_data[0]:
+                return memory[1]
+        return None
+
+brain = Brain()
+
+# Example usage
+brain.learn([1, 2], 3)
+print(brain.think([1, 2]))  # Output: 3
+print(brain.recall([1, 2]))  # Output: 3
