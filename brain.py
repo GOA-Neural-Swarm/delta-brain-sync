@@ -1,27 +1,29 @@
-import random
+import numpy as np
 
-class Brain:
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self.functions = []
+# Define the neural network structure
+nn = np.array([
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9]
+])
 
-    def process_sequence(self):
-        for i in range(len(self.sequence)):
-            if self.sequence[i] == 'P':
-                self.functions.append(lambda: random.randint(0, 100))
-            elif self.sequence[i] == 'G':
-                self.functions.append(lambda: random.choice(['a', 'c', 'g', 't']))
-            elif self.sequence[i] == 'C':
-                self.functions.append(lambda: random.randint(0, 100))
-            elif self.sequence[i] == 'T':
-                self.functions.append(lambda: random.choice(['a', 'c', 'g', 't']))
+# Define the activation function
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
 
-    def run(self):
-        for func in self.functions:
-            result = func()
-            print(f"Function {self.functions.index(func)} returned: {result}")
+# Define the loss function
+def mse(y, y_pred):
+    return np.mean((y - y_pred) ** 2)
 
-# Prompt definition closing and Meta-Cognition logic
-brain = Brain("PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW")
-brain.process_sequence()
-brain.run()
+# Train the neural network
+for _ in range(1000):
+    # Forward pass
+    y_pred = sigmoid(np.dot(nn, np.random.rand()))
+    # Backward pass
+    delta = mse(y, y_pred) * (y_pred - y)
+    # Update the weights
+    nn += delta
+
+# Use the trained neural network for prediction
+def predict(x):
+    return sigmoid(np.dot(nn, x))
