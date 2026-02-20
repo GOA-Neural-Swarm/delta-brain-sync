@@ -1,21 +1,30 @@
-import random
+import numpy as np
 
-# Define the DNA sequence as a string
-dna_sequence = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
+class OptimizedBrain:
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.weights = np.random.rand(100, 100)
+        self.biases = np.random.rand(100)
+        self.learning_rate = 0.1
 
-# Initialize an empty list to store the optimized brain
-optimized_brain = []
+    def calculate_activation(self, inputs):
+        return np.dot(inputs, self.weights.T) + self.biases
 
-# Iterate over the DNA sequence, 3 characters at a time
-for i in range(0, len(dna_sequence), 3):
-    # Extract the current triplet
-    triplet = dna_sequence[i:i+3]
-    
-    # Determine the next base in the triplet (based on evolutionary biology rules)
-    next_base = random.choice(["A", "C", "G", "T"])
-    
-    # Add the triplet and next base to the optimized brain
-    optimized_brain.append((triplet, next_base))
+    def propagate_error(self, expected_output):
+        error = expected_output - self.calculate_activation(self.sequence)
+        return error
 
-# Print the optimized brain
-print(optimized_brain)
+    def update_weights_biases(self, error):
+        self.weights += self.learning_rate * np.dot(error[:, np.newaxis], self.sequence)[np.newaxis, :]
+        self.biases += self.learning_rate * error
+
+    def train(self, sequence, expected_output):
+        activation = self.calculate_activation(sequence)
+        error = self.propagate_error(expected_output)
+        self.update_weights_biases(error)
+
+    def run(self):
+        self.train(self.sequence, self.sequence)
+
+brain = OptimizedBrain(Source)
+brain.run()
