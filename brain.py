@@ -1,37 +1,27 @@
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, confusion_matrix
+import random
 
-# Define the input data
-X = np.array([PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW])
-y = np.array([0, 1, 0, 1, 0, 1, 0, 1, 0, 1])
+class Brain:
+    def __init__(self, dna_sequence):
+        self.dna_sequence = dna_sequence
+        self.brain_weights = [random.randint(0, 1) for _ in range(len(dna_sequence))]
 
-# Standardize the input data
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+    def think(self):
+        # Initialize thought process
+        thought_stream = ""
+        for i in range(len(self.dna_sequence)):
+            if self.brain_weights[i] == 1:
+                thought_stream += self.dna_sequence[i]
+        return thought_stream
 
-# Apply PCA to reduce dimensionality
-pca = PCA(n_components=2)
-X_pca = pca.fit_transform(X_scaled)
+    def learn(self, input_data):
+        # Learn from input data
+        for i in range(len(self.dna_sequence)):
+            if input_data[i] == 1:
+                self.brain_weights[i] = 1 - self.brain_weights[i]
 
-# Apply K-Means clustering to group similar data points
-kmeans = KMeans(n_clusters=2)
-kmeans.fit(X_pca)
-labels = kmeans.labels_
+    def evolve(self):
+        # Evolve brain weights
+        for i in range(len(self.brain_weights)):
+            self.brain_weights[i] = random.randint(0, 1)
 
-# Train a logistic regression model on the clustered data
-model = LogisticRegression()
-model.fit(X_pca, labels)
-
-# Evaluate the model's accuracy
-y_pred = model.predict(X_pca)
-accuracy = accuracy_score(y, labels)
-print(f"Accuracy: {accuracy:.3f}")
-
-# Print the confusion matrix
-conf_mat = confusion_matrix(y, labels)
-print(conf_mat)
+brain = Brain("MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD")
