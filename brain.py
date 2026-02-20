@@ -1,37 +1,29 @@
-import random
 import numpy as np
+import tensorflow as tf
 
-class Brain:
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self.fitness = 0
+# Define the neural network architecture
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Dense(64, activation='relu', input_shape=(28, 28, 1)),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dense(10, activation='softmax')
+])
 
-    def calculate_fitness(self):
-        fitness = 0
-        for i in range(len(self.sequence) - 1):
-            if self.sequence[i] == self.sequence[i+1]:
-                fitness += 1
-        self.fitness = fitness
+# Compile the model
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
 
-    def mutate(self):
-        index = random.randint(0, len(self.sequence) - 1)
-        self.sequence = list(self.sequence)
-        self.sequence[index] = random.choice('ATCG')
-        self.sequence = ''.join(self.sequence)
+# Load the training data
+(X_train, y_train), (X_test, y_test) = tf.keras.datasets.cifar10.load_data()
 
-    def evolve(self, population_size):
-        population = [Brain(self.sequence) for _ in range(population_size)]
-        for _ in range(100):  # Evolution for 100 generations
-            population.sort(key=lambda x: x.fitness, reverse=True)
-            offspring = []
-            for _ in range(population_size // 2):
-                parent1, parent2 = random.sample(population[:population_size//2], 2)
-                child = Brain(''.join([random.choice(parent1.sequence), random.choice(parent2.sequence)]))
-                child.mutate()
-                offspring.append(child)
-            population = offspring
-        self.fitness = population[0].fitness
+# Normalize the input data
+X_train = X_train.astype('float32') / 255.0
+X_test = X_test.astype('float32') / 255.0
 
-brain = Brain('MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD')
-brain.evolve(100)
-print(brain.fitness)
+# Train the model
+model.fit(X_train, y_train, epochs=10, verbose=0)
+
+# Evaluate the model
+test_loss, test_acc = model.evaluate(X_test, y_test, verbose=0)
+print(f'Test accuracy: {test_acc:.2f}')
