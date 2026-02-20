@@ -1,38 +1,38 @@
+import random
 import numpy as np
 
 class Brain:
-    def __init__(self, dna_sequence):
-        self.dna_sequence = dna_sequence
-        self.neural_network = self.generate_neural_network()
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.weights = np.random.rand(len(sequence), len(sequence))
+        self.bias = np.random.rand(len(sequence))
 
-    def generate_neural_network(self):
-        # Initialize the neural network with a random structure
-        layers = [np.random.rand(1, len(self.dna_sequence)) for _ in range(3)]
-        return layers
+    def calculate_fitness(self, target):
+        score = 0
+        for i in range(len(self.sequence)):
+            score += self.sequence[i] * self.weights[i][i]
+        return score
 
-    def train(self):
-        # Train the neural network using the DNA sequence as input
-        for _ in range(1000):
-            for layer in self.neural_network:
-                layer += np.random.rand(1, len(self.dna_sequence)) * 0.1
-            self.neural_network = [np.clip(layer, 0, 1) for layer in self.neural_network]
+    def evolve(self, target):
+        new_sequence = []
+        for i in range(len(self.sequence)):
+            new_sequence.append(self.sequence[i] + random.choice([-1, 1]))
+        new_brain = Brain(new_sequence)
+        new_score = new_brain.calculate_fitness(target)
+        if new_score > self.calculate_fitness(target):
+            self.sequence = new_sequence
+            self.weights = new_brain.weights
+            self.bias = new_brain.bias
 
-    def evolve(self):
-        # Evolve the neural network using a simple mutation algorithm
-        for _ in range(100):
-            for i in range(len(self.neural_network)):
-                self.neural_network[i] += np.random.rand(1, len(self.dna_sequence)) * 0.01
-            self.neural_network = [np.clip(layer, 0, 1) for layer in self.neural_network]
+# Initialize the brain with the given sequence
+brain = Brain(sequence)
 
-    def think(self):
-        # Use the neural network to generate a thought
-        thought = np.zeros(len(self.dna_sequence))
-        for layer in self.neural_network:
-            thought += np.dot(layer, np.random.rand(len(self.dna_sequence), 1))
-        return thought
+# Set the target sequence for evolution
+target_sequence = "PHASE 7: TRANSCENDENCE is active."
 
-brain = Brain("PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW")
-brain.train()
-brain.evolve()
-thought = brain.think()
-print(thought)
+# Perform 1000 generations of evolution
+for _ in range(1000):
+    brain.evolve(target_sequence)
+
+# Print the evolved sequence
+print(brain.sequence)
