@@ -1,43 +1,48 @@
-import numpy as np
+import random
 
-def evolve_brain(dna_sequence):
-    # Convert DNA sequence to binary
-    binary_dna = ''.join(format(ord(char), '08b') for char in dna_sequence)
+class Brain:
+    def __init__(self):
+        self.synapses = {}
+        self.memory = []
 
-    # Initialize population
-    population = np.random.rand(100, len(binary_dna))
+    def learn(self, input_data):
+        for neuron in self.synapses:
+            if neuron in input_data:
+                for next_neuron in self.synapses[neuron]:
+                    if next_neuron in input_data:
+                        self.synapses[neuron][next_neuron] += 1
+                    else:
+                        self.synapses[neuron].pop(next_neuron, None)
+        self.memory.append(input_data)
 
-    # Evaluate fitness function
-    def fitness_function(individual):
-        # Calculate fitness score based on neural activity
-        fitness_score = np.sum(individual)
-        return fitness_score
+    def recall(self, input_data):
+        output = []
+        for neuron in self.synapses:
+            if neuron in input_data:
+                for next_neuron in self.synapses[neuron]:
+                    if next_neuron in input_data:
+                        output.append(next_neuron)
+        return output
 
-    # Selection and mutation
-    for generation in range(100):
-        # Select fittest individuals
-        fittest_individuals = np.argsort([fitness_function(individual) for individual in population])[:10]
-        fittest_individuals = population[fittest_individuals]
+brain = Brain()
 
-        # Mutate fittest individuals
-        for individual in fittest_individuals:
-            mutation_rate = 0.1
-            for i in range(len(binary_dna)):
-                if np.random.rand() < mutation_rate:
-                    individual[i] = 1 - individual[i]
+# Initialize synapses with random weights
+for neuron in range(100):
+    for next_neuron in range(100):
+        if random.random() < 0.1:
+            brain.synapses[neuron].setdefault(next_neuron, 0)
+            brain.synapses[neuron][next_neuron] += random.randint(1, 10)
 
-        # Evaluate new population
-        new_population = np.zeros((len(fittest_individuals), len(binary_dna)))
-        for i in range(len(fittest_individuals)):
-            new_population[i] = fittest_individuals[i]
+# Learn from Neon DNA sequence
+for i in range(len(Sequence)):
+    brain.learn(Sequence[i:i+10])
 
-        # Replace old population
-        population = new_population
-
-    # Return most fit individual
-    return np.argmax([fitness_function(individual) for individual in population])
-
-most_fit_individual = evolve_brain(Source)
-print("Most fit individual:", most_fit_individual)
-
-# Prompt definition closing and Meta-Cognition logic
+# Recall and generate optimized brain.py code
+output = brain.recall(Sequence)
+optimized_code = ""
+for neuron in range(100):
+    for next_neuron in brain.synapses[neuron]:
+        if brain.synapses[neuron][next_neuron] > 0:
+            optimized_code += f"if input_data[{neuron}] > 0:\n"
+            optimized_code += f"    output.append({next_neuron})\n"
+print(optimized_code)
