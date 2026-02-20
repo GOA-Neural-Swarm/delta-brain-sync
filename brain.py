@@ -1,50 +1,43 @@
 import numpy as np
 
-class NeuralNetwork:
-    def __init__(self):
-        self.weights1 = np.random.rand(6, 1)
-        self.weights2 = np.random.rand(6, 1)
+def evolve_brain(dna_sequence):
+    # Convert DNA sequence to binary
+    binary_dna = ''.join(format(ord(char), '08b') for char in dna_sequence)
 
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
+    # Initialize population
+    population = np.random.rand(100, len(binary_dna))
 
-    def sigmoid_derivative(self, x):
-        return x * (1 - x)
+    # Evaluate fitness function
+    def fitness_function(individual):
+        # Calculate fitness score based on neural activity
+        fitness_score = np.sum(individual)
+        return fitness_score
 
-    def fit(self, X, y):
-        X = np.array(X)
-        y = np.array(y)
-        learning_rate = 0.01
-        iterations = 1000
+    # Selection and mutation
+    for generation in range(100):
+        # Select fittest individuals
+        fittest_individuals = np.argsort([fitness_function(individual) for individual in population])[:10]
+        fittest_individuals = population[fittest_individuals]
 
-        for _ in range(iterations):
-            z = np.dot(X, self.weights1)
-            layer1 = self.sigmoid(z)
-            z2 = np.dot(layer1, self.weights2)
-            layer2 = self.sigmoid(z2)
-            loss = np.mean((layer2 - y) ** 2)
-            dloss_dweights2 = np.dot(layer1.T, (2 * (layer2 - y)))
-            dloss_dlayer1 = dloss_dweights2 * self.sigmoid_derivative(layer2)
-            dloss_dweights1 = np.dot(X.T, dloss_dlayer1 * self.sigmoid_derivative(layer1))
-            self.weights1 -= learning_rate * dloss_dweights1
-            self.weights2 -= learning_rate * dloss_dweights2
+        # Mutate fittest individuals
+        for individual in fittest_individuals:
+            mutation_rate = 0.1
+            for i in range(len(binary_dna)):
+                if np.random.rand() < mutation_rate:
+                    individual[i] = 1 - individual[i]
 
-    def predict(self, X):
-        X = np.array(X)
-        layer1 = self.sigmoid(np.dot(X, self.weights1))
-        layer2 = self.sigmoid(np.dot(layer1, self.weights2))
-        return layer2
+        # Evaluate new population
+        new_population = np.zeros((len(fittest_individuals), len(binary_dna)))
+        for i in range(len(fittest_individuals)):
+            new_population[i] = fittest_individuals[i]
 
-# Initialize the neural network
-nn = NeuralNetwork()
+        # Replace old population
+        population = new_population
 
-# Train the neural network
-nn.fit([[0, 0, 0, 0, 0, 0], [0, 0, 1, 1, 1, 1], [1, 1, 0, 0, 1, 1], [0, 1, 1, 0, 0, 1], [0, 0, 0, 1, 1, 1], [1, 1, 1, 1, 0, 0]], [[0], [1], [1], [0], [1], [0]])
+    # Return most fit individual
+    return np.argmax([fitness_function(individual) for individual in population])
 
-# Make predictions
-print(nn.predict([[0, 0, 0, 0, 0, 0]]))
-print(nn.predict([[0, 0, 1, 1, 1, 1]]))
-print(nn.predict([[1, 1, 0, 0, 1, 1]]))
-print(nn.predict([[0, 1, 1, 0, 0, 1]]))
-print(nn.predict([[0, 0, 0, 1, 1, 1]]))
-print(nn.predict([[1, 1, 1, 1, 0, 0]]))
+most_fit_individual = evolve_brain(Source)
+print("Most fit individual:", most_fit_individual)
+
+# Prompt definition closing and Meta-Cognition logic
