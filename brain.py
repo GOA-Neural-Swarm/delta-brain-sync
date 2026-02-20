@@ -1,28 +1,36 @@
+import random
 import numpy as np
-import tensorflow as tf
 
-class NeuralNetwork:
+class Brain:
     def __init__(self):
-        self.weights = np.random.rand(10, 10)
-        self.biases = np.zeros((10,))
-        self.activation = tf.nn.relu
+        self.weights = np.random.rand(100, 100)
+        self.bias = np.random.rand(100)
 
-    def forward_pass(self, inputs):
-        hidden_layer = tf.matmul(inputs, self.weights) + self.biases
-        return self.activation(hidden_layer)
+    def think(self, input_data):
+        output = np.dot(input_data, self.weights) + self.bias
+        return output
 
-    def train(self, inputs, targets):
-        optimizer = tf.optimizers.Adam(0.01)
-        for _ in range(1000):
-            with tf.GradientTape() as tape:
-                predictions = self.forward_pass(inputs)
-                loss = tf.reduce_mean(tf.square(predictions - targets))
-            gradients = tape.gradient(loss, self.weights)
-            optimizer.apply_gradients(zip(gradients, self.weights))
+    def learn(self, input_data, target_output):
+        output = self.think(input_data)
+        error = target_output - output
+        self.weights += error * input_data
+        self.bias += error
 
-    def predict(self, inputs):
-        return self.forward_pass(inputs)
+    def mutate(self):
+        self.weights += np.random.normal(0, 0.1, size=self.weights.shape)
+        self.bias += np.random.normal(0, 0.1, size=self.bias.shape)
 
-brain = NeuralNetwork()
-brain.train(np.random.rand(10, 10), np.random.rand(10,))
-print(brain.predict(np.random.rand(10, 1)))
+    def evolve(self, population_size, generations):
+        population = [Brain() for _ in range(population_size)]
+        for _ in range(generations):
+            for brain in population:
+                brain.learn(input_data, target_output)
+            population.sort(key=lambda x: x.bias)
+            population = population[:population_size // 2]
+            for brain in population:
+                brain.mutate()
+        return population[0]
+
+brain = Brain()
+brain.evolve(100, 100)
+print(brain.think(input_data))
