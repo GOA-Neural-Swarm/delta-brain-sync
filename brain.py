@@ -1,40 +1,18 @@
-import random
-import string
-import time
+import numpy as np
+import tensorflow as tf
 
-# Function to generate a random DNA sequence
-def generate_dna_sequence(length):
-    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
+class NeonDNA(tf.keras.Model):
+    def __init__(self):
+        super(NeonDNA, self).__init__()
+        self.W = np.random.rand(1, 1, 1)
+        self.B = np.random.rand(1, 1, 1)
+        self.P = np.random.rand(1, 1, 1)
 
-# Function to calculate the similarity between two DNA sequences
-def calculate_similarity(seq1, seq2):
-    similarity = 0
-    for i in range(len(seq1)):
-        if seq1[i] == seq2[i]:
-            similarity += 1
-    return similarity / len(seq1)
+    def call(self, x):
+        x = tf.nn.conv2d(x, self.W, strides=[1, 1, 1, 1], padding='SAME')
+        x = tf.nn.bias_add(x, self.B)
+        x = tf.nn.relu(x)
+        x = tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+        return x
 
-# Function to evolve the DNA sequence
-def evolve_dna_sequence(seq, iterations):
-    for _ in range(iterations):
-        new_seq = generate_dna_sequence(len(seq))
-        if calculate_similarity(seq, new_seq) > calculate_similarity(seq, seq):
-            seq = new_seq
-    return seq
-
-# Main function
-def main():
-    # Initialize the DNA sequence
-    dna_sequence = generate_dna_sequence(100)
-    print("Initial DNA sequence:", dna_sequence)
-
-    # Evolve the DNA sequence
-    evolved_dna_sequence = evolve_dna_sequence(dna_sequence, 1000)
-    print("Evolved DNA sequence:", evolved_dna_sequence)
-
-    # Print the final DNA sequence
-    print("Final DNA sequence:", evolved_dna_sequence)
-
-# Run the main function
-if __name__ == "__main__":
-    main()
+model = NeonDNA()
