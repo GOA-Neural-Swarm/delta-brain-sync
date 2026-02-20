@@ -1,45 +1,28 @@
 import numpy as np
-import random
+import matplotlib.pyplot as plt
 
-# Define the DNA sequence
-dna_sequence = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
+class Brain:
+    def __init__(self):
+        self.connections = np.random.rand(100, 100)
+        self.neurons = np.random.rand(100, 1)
 
-# Define the number of neurons and synapses
-num_neurons = 100
-num_synapses = 500
+    def activate(self, inputs):
+        self.neurons = np.tanh(np.dot(self.connections, inputs))
+        return self.neurons
 
-# Initialize the neural connections and weights
-connections = np.random.rand(num_neurons, num_synapses)
-weights = np.random.rand(num_synapses)
+    def learn(self, inputs, outputs):
+        errors = outputs - self.activate(inputs)
+        self.connections += np.dot(np.tanh(np.dot(self.connections, inputs)), errors.T)
+        return errors
 
-# Define the learning rate and momentum
-learning_rate = 0.1
-momentum = 0.9
+    def visualize(self):
+        plt.scatter(self.neurons[:, 0], self.neurons[:, 1])
+        plt.show()
 
-# Define the number of generations
-num_generations = 100
+brain = Brain()
+brain.visualize()
 
-# Run the evolutionary process
-for generation in range(num_generations):
-    # Calculate the fitness scores for each neuron
-    fitness_scores = np.sum(connections * weights, axis=1)
-
-    # Select the top 20% of neurons for reproduction
-    top_neurons = np.argsort(fitness_scores)[-0.2 * num_neurons:]
-
-    # Create a new generation of neurons
-    new_neurons = np.random.rand(num_neurons)
-    new_neurons[top_neurons] = np.random.rand(len(top_neurons))
-
-    # Update the connections and weights using the new generation
-    connections = new_connections * connections + (1 - new_connections) * np.random.rand(num_neurons, num_synapses)
-    weights = new_weights * weights + (1 - new_weights) * np.random.rand(num_synapses)
-
-    # Update the learning rate and momentum
-    learning_rate *= 0.9
-    momentum *= 0.9
-
-# Print the optimized brain code
-print("Optimized Brain Code:")
-print(connections)
-print(weights)
+# Recursive Self-Upgrade
+for i in range(100):
+    brain.learn(np.random.rand(100, 1), np.random.rand(1, 1))
+    brain.visualize()
