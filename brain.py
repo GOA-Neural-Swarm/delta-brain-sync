@@ -1,32 +1,40 @@
 import random
-import numpy as np
-from deap import base, creator, tools, algorithms
 
-# Define the fitness function
-def evaluate(individual):
-    return sum(individual),
+class TelefoxX:
+    def __init__(self):
+        self.brain = {'memory': {}, 'neurons': {}}
 
-# Create the toolbox
-toolbox = base.Toolbox()
-creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
-creator.create("Individual", list, fitness=creator.FitnessMin)
+    def think(self, stimulus):
+        if stimulus in self.brain['memory']:
+            return self.brain['memory'][stimulus]
+        else:
+            response = self.generate_response(stimulus)
+            self.brain['memory'][stimulus] = response
+            return response
 
-# Define the genetic operators
-toolbox.register("attr_bool", random.randint, 0, 1)
-toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, n=100)
-toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+    def generate_response(self, stimulus):
+        if stimulus in self.brain['neurons']:
+            return self.brain['neurons'][stimulus]
+        else:
+            response = self.neuron_activation(stimulus)
+            self.brain['neurons'][stimulus] = response
+            return response
 
-# Define the genetic algorithm
-pop = toolbox.population(n=50)
-hof = tools.HallOfFame(1)
+    def neuron_activation(self, stimulus):
+        # Randomly select a neuron from the sequence
+        neuron = random.choice([i for i in range(len(Source)) if Source[i] not in [' ', '\t', '\n']])
 
-# Run the genetic algorithm
-for _ in range(10):
-    offspring = algorithms.varAnd(pop, toolbox, cxpb=0.5, mutpb=0.1)
-    fitness = map(evaluate, offspring)
-    for fit, ind in zip(fitness, offspring):
-        ind.fitness.values = fit
-    hof.update(offspring)
+        # Extract the corresponding amino acid
+        amino_acid = Source[neuron]
 
-# Print the best individual
-print(hof[0])
+        # Perform a random operation on the amino acid
+        if random.random() < 0.5:
+            amino_acid = amino_acid.upper()
+        else:
+            amino_acid = amino_acid.lower()
+
+        # Return the modified amino acid
+        return amino_acid
+
+telefox = TelefoxX()
+print(telefox.think("Neon DNA"))
