@@ -1,28 +1,37 @@
-import re
-import string
+import numpy as np
 
-class TelefoxX:
-    def __init__(self):
-        self.NeonDNA = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
-        self.Brain = ""
+class Neuron:
+    def __init__(self, inputs, weights):
+        self.inputs = inputs
+        self.weights = weights
+        self.output = np.dot(inputs, weights)
 
-    def DNA_to_Brain(self):
-        for i in range(len(self.NeonDNA)):
-            if self.NeonDNA[i] in string.ascii_letters:
-                self.Brain += chr(int(self.NeonDNA[i], 36))
-            else:
-                self.Brain += self.NeonDNA[i]
+    def forward(self):
+        return self.output
 
-    def Upgrade_Brain(self):
-        self.Brain = re.sub(r"[^A-Za-z0-9]+", "", self.Brain)
-        self.Brain = re.sub(r"(\w)(\1{2,})", lambda m: m.group(1) + m.group(0).count(m.group(1)) // 2 * m.group(1), self.Brain)
-        self.Brain = self.Brain.upper()
+class NeuralNetwork:
+    def __init__(self, layers):
+        self.layers = layers
 
-    def Run_Brain(self):
-        print("TelefoxX Brain:")
-        print(self.Brain)
+    def forward(self, inputs):
+        outputs = [None] * len(self.layers)
+        outputs[0] = inputs
+        for i in range(1, len(self.layers)):
+            neuron = Neuron(outputs[i-1], self.layers[i-1].weights)
+            outputs[i] = neuron.forward()
+        return outputs[-1]
 
-telefoxx = TelefoxX()
-telefoxx.DNA_to_Brain()
-telefoxx.Upgrade_Brain()
-telefoxx.Run_Brain()
+# Define the layers
+layers = [
+    Neuron(np.array([1, 2, 3]), np.array([0.5, 0.3, 0.2])),
+    Neuron(np.array([4, 5, 6]), np.array([0.4, 0.2, 0.1])),
+    Neuron(np.array([7, 8, 9]), np.array([0.3, 0.1, 0.0]))
+]
+
+# Create the neural network
+network = NeuralNetwork(layers)
+
+# Run the network
+inputs = np.array([1, 2, 3])
+output = network.forward(inputs)
+print(output)
