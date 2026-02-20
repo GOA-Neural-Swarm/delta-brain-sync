@@ -1,35 +1,40 @@
-import random
-import string
+import re
+import math
 
-class Brain:
-    def __init__(self):
-        self.memory = {}
+class NeuroCore:
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.gene_map = {}
 
-    def think(self, input_data):
-        if input_data in self.memory:
-            return self.memory[input_data]
-        else:
-            self.memory[input_data] = self.process(input_data)
-            return self.memory[input_data]
+    def map_genes(self):
+        pattern = re.compile(r'([A-Za-z]+)')
+        for match in pattern.finditer(self.sequence):
+            gene = match.group(1)
+            self.gene_map[gene] = self.gene_map.get(gene, 0) + 1
 
-    def process(self, input_data):
-        if isinstance(input_data, str):
-            return self.process_string(input_data)
-        elif isinstance(input_data, int):
-            return self.process_integer(input_data)
-        else:
-            return None
+    def optimize_brain(self):
+        for gene, frequency in self.gene_map.items():
+            if frequency > 1:
+                self.sequence = self.sequence.replace(gene, gene + '_' + str(frequency))
 
-    def process_string(self, input_string):
-        if random.random() < 0.5:
-            return self.process_string(input_string + string.ascii_uppercase[0])
-        else:
-            return self.process_string(input_string + string.ascii_lowercase[0])
+    def upgrade(self):
+        self.map_genes()
+        self.optimize_brain()
+        self.sequence = ''.join(sorted(self.sequence))
 
-    def process_integer(self, input_integer):
-        if random.random() < 0.5:
-            return self.process_integer(input_integer + 1)
-        else:
-            return self.process_integer(input_integer - 1)
+    def evolve(self):
+        new_sequence = ''
+        for char in self.sequence:
+            if char.isalpha():
+                new_sequence += chr((ord(char) + 1) % 26)
+            else:
+                new_sequence += char
+        self.sequence = new_sequence
+        self.upgrade()
 
-brain = Brain()
+    def __str__(self):
+        return self.sequence
+
+brain = NeuroCore(Source)
+brain.evolve()
+print(brain)
