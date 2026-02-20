@@ -1,36 +1,41 @@
-import re
-import math
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.model_selection import train_test_split
 
-def neon_analysis(sequence):
-    # Initialize variables
-    gc_content = 0
-    a_t_count = 0
-    c_g_count = 0
+class Brain:
+    def __init__(self, data):
+        self.data = data
+        self.scaler = StandardScaler()
+        self.pca = PCA(n_components=2)
+        self.svm = SVC(kernel='linear', C=1, probability=True)
 
-    # Count GC content
-    for base in sequence:
-        if base in ['G', 'C']:
-            gc_content += 1
-        elif base in ['A', 'T']:
-            if base == 'A':
-                a_t_count += 1
-            else:
-                c_g_count += 1
+    def process_data(self):
+        self.data = self.scaler.fit_transform(self.data)
+        self.data = self.pca.fit_transform(self.data)
+        X_train, X_test, y_train, y_test = train_test_split(self.data[:, :2], self.data[:, 2], test_size=0.2, random_state=42)
+        return X_train, X_test, y_train, y_test
 
-    # Calculate GC content percentage
-    gc_percent = (gc_content / len(sequence)) * 100
+    def train_svm(self, X_train, y_train):
+        self.svm.fit(X_train, y_train)
 
-    # Calculate A-T and C-G counts
-    a_t_ratio = a_t_count / len(sequence)
-    c_g_ratio = c_g_count / len(sequence)
+    def predict(self, X_test):
+        return self.svm.predict(X_test)
 
-    # Print results
-    print("GC content: {:.2f}%".format(gc_percent))
-    print("A-T count: {:.2f}%".format(a_t_ratio * 100))
-    print("C-G count: {:.2f}%".format(c_g_ratio * 100))
+    def evaluate(self, y_test, y_pred):
+        accuracy = accuracy_score(y_test, y_pred)
+        cm = confusion_matrix(y_test, y_pred)
+        print(f"Accuracy: {accuracy:.3f}")
+        print(f"Confusion Matrix:\n{cm}")
 
-# Define sequence
-sequence = "PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW"
+    def recursive_upgrade(self):
+        self.data = self.process_data()
+        self.train_svm(*self.data)
+        y_pred = self.predict(*self.data[2:])
+        self.evaluate(*self.data[2:], y_pred)
 
-# Perform analysis
-neon_analysis(sequence)
+brain = Brain(np.array([[1, 2, 0], [3, 4, 1], [5, 6, 0]]))
+brain.recursive_upgrade()
