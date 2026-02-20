@@ -1,48 +1,65 @@
-import numpy as np
-import tensorflow as tf
+import random
+import string
 
-class Brain:
+class NeuralNetwork:
     def __init__(self):
-        self.nn_weights = []
-        self.nn_biases = []
+        self.synapses = {}
+        self.neurons = {}
 
-    def load_neural_network(self, sequence):
-        for i in range(0, len(sequence), 2):
-            weight = np.array([int(sequence[i+1], 16)])
-            bias = np.array([int(sequence[i], 16)])
-            self.nn_weights.append(weight)
-            self.nn_biases.append(bias)
+    def connect(self, neuron1, neuron2):
+        if neuron1 not in self.synapses:
+            self.synapses[neuron1] = {}
+        self.synapses[neuron1][neuron2] = random.randint(0, 1)
 
-    def calculate_output(self, inputs):
-        outputs = []
-        for i in range(len(self.nn_weights)):
-            output = np.dot(inputs, self.nn_weights[i]) + self.nn_biases[i]
-            outputs.append(tf.nn.relu(output))
-        return outputs
+    def fire(self, neuron):
+        if neuron not in self.neurons:
+            self.neurons[neuron] = random.randint(0, 1)
+        if neuron in self.synapses:
+            for connected_neuron in self.synapses[neuron]:
+                if self.synapses[neuron][connected_neuron] == 1:
+                    self.fire(connected_neuron)
+        return self.neurons[neuron]
 
-    def train(self, inputs, targets):
-        self.load_neural_network(inputs)
-        for i in range(len(self.nn_weights)):
-            self.nn_weights[i] = tf.Variable(self.nn_weights[i], dtype=tf.float32)
-            self.nn_biases[i] = tf.Variable(self.nn_biases[i], dtype=tf.float32)
-        optimizer = tf.optimizers.Adam(0.001)
-        loss_fn = tf.keras.losses.MeanSquaredError()
-        for epoch in range(100):
-            with tf.GradientTape() as tape:
-                outputs = self.calculate_output(inputs)
-                loss = loss_fn(tf.stack(outputs), targets)
-                gradients = tape.gradient(loss, self.nn_weights + self.nn_biases)
-                optimizer.apply_gradients(zip(gradients, self.nn_weights + self.nn_biases))
-        print("Training complete")
+    def mutate(self):
+        for neuron in self.synapses:
+            for connected_neuron in self.synapses[neuron]:
+                if random.randint(0, 1) == 1:
+                    self.synapses[neuron][connected_neuron] = random.randint(0, 1)
 
-    def run(self, inputs):
-        outputs = self.calculate_output(inputs)
-        return tf.stack(outputs)
+    def evolve(self, iterations):
+        for _ in range(iterations):
+            self.mutate()
+            max_value = 0
+            max_neuron = None
+            for neuron in self.synapses:
+                value = 0
+                for connected_neuron in self.synapses[neuron]:
+                    value += self.synapses[neuron][connected_neuron]
+                if value > max_value:
+                    max_value = value
+                    max_neuron = neuron
+            self.fire(max_neuron)
 
-# Example usage:
-brain = Brain()
-inputs = np.array([[1, 2, 3, 4, 5]])
-targets = np.array([[10, 20, 30, 40, 50]])
-brain.train(inputs, targets)
-outputs = brain.run(inputs)
-print(outputs)
+# Define the prompt and meta-cognition logic
+prompt = input("Enter a prompt: ")
+meta_cognition = input("Enter meta-cognition logic: ")
+
+# Create a neural network and evolve it
+nn = NeuralNetwork()
+nn.evolve(100)
+
+# Print the evolved neural network
+print("Evolved Neural Network:")
+for neuron in nn.synapses:
+    print(f"Neuron {neuron}:")
+    for connected_neuron in nn.synapses[neuron]:
+        print(f"  Connected to {connected_neuron} with probability {nn.synapses[neuron][connected_neuron]}")
+
+# Run the evolved neural network on the prompt and meta-cognition logic
+output = nn.fire(neuron)
+print(f"Output: {output}")
+
+# Output the evolved neural network and the output
+print("Evolved Neural Network and Output:")
+print(nn.synapses)
+print(output)
