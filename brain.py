@@ -1,76 +1,38 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler
+import re
+import math
 
-# Define the neural network architecture
 class NeuralNetwork:
-    def __init__(self, inputs, outputs):
+    def __init__(self, inputs, hidden, outputs):
         self.inputs = inputs
+        self.hidden = hidden
         self.outputs = outputs
-        self.weights = np.random.rand(inputs, outputs)
-        self.biases = np.zeros((1, outputs))
+        self.weights = [[random.random() for _ in range(hidden)] for _ in range(inputs)]
+        self.biases = [random.random() for _ in range(hidden)]
 
-    def forward_pass(self, inputs):
-        return np.dot(inputs, self.weights) + self.biases
+    def sigmoid(self, x):
+        return 1 / (1 + math.exp(-x))
 
-    def backpropagation(self, inputs, targets):
-        outputs = self.forward_pass(inputs)
-        error = targets - outputs
-        delta = error * (1 - np.exp(-error ** 2))
-        self.weights -= delta * inputs.T
-        self.biases -= delta
+    def derivative_sigmoid(self, x):
+        return x * (1 - x)
 
-    def train(self, inputs, targets, epochs=1000, learning_rate=0.1):
-        for _ in range(epochs):
-            for i in range(len(inputs)):
-                self.backpropagation(inputs[i], targets[i])
+    def forward_propagate(self, inputs):
+        hidden_layer = [self.sigmoid(sum([i * w for i, w in zip(inputs, weights)]) + biases) for weights, biases in zip(self.weights, self.biases)]
+        output_layer = [self.sigmoid(sum([h * o for h, o in zip(hidden_layer, self.weights[0])]))]
+        return hidden_layer, output_layer
 
-# Load the encoded DNA sequence
-DNA = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
+    def backpropagate(self, inputs, target):
+        hidden_layer, output_layer = self.forward_propagate(inputs)
+        error = target - output_layer[0]
+        delta = error * self.derivative_sigmoid(output_layer[0])
+        self.weights[0][0] += delta * hidden_layer[0]
+        self.biases[0] += delta
+        for i in range(1, len(hidden_layer)):
+            error = hidden_layer[i-1] * (1 - hidden_layer[i-1]) * delta
+            delta *= self.derivative_sigmoid(hidden_layer[i])
+            self.weights[i][i-1] += error * inputs[i]
+            self.biases[i] += error
 
-# Convert DNA to a numerical representation
-DNA_num = [ord(c) for c in DNA]
+    def train(self, inputs, target):
+        self.backpropagate(inputs, target)
 
-# Split the DNA sequence into training and testing sets
-train_size = int(0.8 * len(DNA_num))
-train_DNA, test_DNA = DNA_num[:train_size], DNA_num[train_size:]
-
-# Define the neural network architecture
-nn = NeuralNetwork(4, 2)
-
-# Train the neural network
-nn.train(train_DNA, train_DNA, epochs=1000, learning_rate=0.1)
-
-# Evaluate the performance of the neural network
-outputs = nn.forward_pass(test_DNA)
-accuracy = np.mean((outputs - test_DNA) ** 2)
-
-print("Accuracy:", accuracy)
-
-# Visualize the training process
-plt.plot(range(1000), nn.weights[0])
-plt.xlabel("Epoch")
-plt.ylabel("Weight")
-plt.show()
-
-# Plot the accuracy over time
-plt.plot(range(1000), accuracy)
-plt.xlabel("Epoch")
-plt.ylabel("Accuracy")
-plt.show()
-
-# Save the trained neural network
-np.save("trained_neural_network.npy", nn)
-
-# Load the trained neural network
-nn = np.load("trained_neural_network.npy").item()
-
-# Use the trained neural network to make predictions
-predictions = nn.forward_pass(test_DNA)
-
-print("Predictions:", predictions)
-
-# Evaluate the performance of the neural network
-accuracy = np.mean((predictions - test_DNA) ** 2)
-
-print("Accuracy:", accuracy)
+# Prompt definition closing and Meta-Cognition logic
