@@ -3,19 +3,21 @@ import subprocess
 import sys
 import time
 import json
-import torch
 import traceback
 import requests
 import git
 import re
-import numpy as np
+import random
 from datetime import datetime, UTC
+
+import numpy as np
+import torch
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from firebase_admin import credentials, db, initialize_app, _apps
 import firebase_admin
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
-import random
+
 
 # 🔒 Kaggle/Colab Secrets System
 try:
@@ -24,27 +26,41 @@ try:
 except ImportError:
     user_secrets = None
 
+
 # 1. Sovereign Requirements Setup
 def install_requirements():
     """Installs necessary libraries for the Sovereign Engine."""
-    libs = ["psycopg2-binary", "firebase-admin", "bitsandbytes", "requests", "accelerate", "GitPython", "sympy==1.12", "numpy", "scikit-learn"]
+    libs = [
+        "psycopg2-binary",
+        "firebase-admin",
+        "bitsandbytes",
+        "requests",
+        "accelerate",
+        "GitPython",
+        "sympy==1.12",
+        "numpy",
+        "scikit-learn",
+    ]
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"])
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
+        )
         print("✅ [SYSTEM]: Phase 7.1 Sovereign Core & Stability Patch Ready.")
     except subprocess.CalledProcessError as e:
         print(f"⚠️ Install Warning: Error installing requirements: {e}")
     except Exception as e:
         print(f"⚠️ Install Warning: An unexpected error occurred: {e}")
 
+
 install_requirements()
 
 # 2. Infrastructure Connectivity & GitHub Secrets
-DB_URL = os.getenv('NEON_DB_URL')
-FIREBASE_URL = os.getenv('FIREBASE_DB_URL')
-FB_JSON_STR = os.getenv('FIREBASE_SERVICE_ACCOUNT')
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
-GH_TOKEN = os.getenv('GH_TOKEN')
+DB_URL = os.getenv("NEON_DB_URL")
+FIREBASE_URL = os.getenv("FIREBASE_DB_URL")
+FB_JSON_STR = os.getenv("FIREBASE_SERVICE_ACCOUNT")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+GH_TOKEN = os.getenv("GH_TOKEN")
 
 if user_secrets:
     DB_URL = user_secrets.get_secret("NEON_DB_URL") or DB_URL
@@ -63,27 +79,33 @@ REPO_PATH = "/tmp/sovereign_repo_sync"
 # --- 🔱 FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
     try:
-        cred = credentials.Certificate(json.loads(FB_JSON_STR)) if FB_JSON_STR else credentials.Certificate('serviceAccountKey.json')
-        firebase_admin.initialize_app(cred, {'databaseURL': FIREBASE_URL})
+        cred = (
+            credentials.Certificate(json.loads(FB_JSON_STR))
+            if FB_JSON_STR
+            else credentials.Certificate("serviceAccountKey.json")
+        )
+        firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_URL})
         print(f"✅ [FIREBASE]: Real-time Pulse Active.")
     except (json.JSONDecodeError, ValueError) as e:
         print(f"🚫 [FIREBASE ERROR]: Invalid Firebase JSON: {e}")
     except Exception as e:
         print(f"🚫 [FIREBASE ERROR]: Connectivity failed. {e}")
 
+
 # --- 🧠 HYBRID PREDATOR BRAIN CLASS (RNA QT45 INTEGRATED) ---
 class Brain:
     """Represents a neural brain with RNA QT45 Absorption capabilities."""
+
     def __init__(self):
         """Initializes the Brain with Sovereign Predator parameters."""
         self.memory = np.random.rand(1000)  # Initialize memory array
         self.connections = {}  # Initialize connections dictionary
-        self.memory_vault = {} # PHASE 7.1: Sequence Storage
+        self.memory_vault = {}  # PHASE 7.1: Sequence Storage
         self.qt45_growth_factor = 1.618  # Golden Ratio Evolution
         self.sovereign_mode = True
         # Phase 7.1: SVM Component Integration
         self.scaler = StandardScaler()
-        self.svm = SVC(kernel='rbf', C=1.0, probability=True)
+        self.svm = SVC(kernel="rbf", C=1.0, probability=True)
         self.is_trained = False
 
     def learn(self, input_data, output_data):
@@ -107,7 +129,9 @@ class Brain:
         except Exception as e:
             print(f"⚠️ [ML ERROR]: {e}")
 
-    def execute_natural_absorption(self, category=None, sequence=None, stability=None, target_data=None, force_destruction=False):
+    def execute_natural_absorption(
+        self, category=None, sequence=None, stability=None, target_data=None, force_destruction=False
+    ):
         """
         TOTAL ASSIMILATION LOGIC: GEN 96.1+
         Do not delete unless commanded. Absorb and integrate all patterns.
@@ -123,10 +147,14 @@ class Brain:
             if sequence:
                 data_id = len(self.memory_vault)
                 self.memory_vault[data_id] = {"cat": category, "seq": sequence, "stab": stability}
-            
-            factor = abs(stability)/500.0 if stability is not None else (np.mean(target_data) if target_data is not None else 0.1)
+
+            factor = (
+                abs(stability) / 500.0
+                if stability is not None
+                else (np.mean(target_data) if target_data is not None else 0.1)
+            )
             # Mutate synapses using Golden Ratio factor and target intensity
-            self.memory *= (self.qt45_growth_factor + factor)
+            self.memory *= self.qt45_growth_factor + factor
             # Stability Patch: Ensure memory does not overflow
             self.memory = np.clip(self.memory, 0.0, 1.0)
             print("🔱 [NATURAL ORDER]: TARGET ABSORBED. EVOLUTION INJECTED.")
@@ -136,10 +164,10 @@ class Brain:
         if not self.memory_vault:
             return "NO_DATA_AVAILABLE"
         base_data = random.choice(list(self.memory_vault.values()))
-        base_seq = base_data['seq']
+        base_seq = base_data["seq"]
         output = list(base_seq[:length])
         for i in range(len(output)):
-            if random.random() > 0.95: # 5% Mutation Rate
+            if random.random() > 0.95:  # 5% Mutation Rate
                 output[i] = random.choice("ACGT")
         return "".join(output)
 
@@ -149,8 +177,10 @@ class Brain:
         output_data += np.sum(self.memory * input_data, axis=0)
         return output_data
 
+
 # Initialize the integrated hybrid brain
 brain = Brain()
+
 
 # 3. Database & Self-Coding Logic
 def log_system_error():
@@ -158,12 +188,32 @@ def log_system_error():
     error_msg = traceback.format_exc()
     print(f"❌ [CRITICAL LOG]:\n{error_msg}")
 
+
+# --- 🔱 EMERGENCY ROLLBACK LOGIC ---
+def execute_rollback(reason="Logic Inconsistency"):
+    """
+    PHASE 7.1 ROLLBACK:
+    Reverts the local repository to the last stable state if evolution fails.
+    """
+    try:
+        if os.path.exists(REPO_PATH):
+            repo = git.Repo(REPO_PATH)
+            repo.git.reset("--hard", "HEAD~1")
+            print(f"⚠️ [ROLLBACK]: System reverted to previous state. Reason: {reason}")
+            return True
+        return False
+    except Exception as e:
+        print(f"❌ [ROLLBACK FAILED]: {e}")
+        return False
+
+
 def get_latest_gen():
     """Retrieves the latest generation number from the database."""
     if not DB_URL:
         return 94
     try:
         import psycopg2
+
         with psycopg2.connect(DB_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT MAX(gen_version) FROM ai_thoughts")
@@ -173,36 +223,45 @@ def get_latest_gen():
         print(f"Database error: {e}")
         return 94
 
+
 def absorb_natural_order_data():
     """Retrieves a batch of science data for absorption."""
     if not DB_URL:
         return None
     try:
         import psycopg2
+
         with psycopg2.connect(DB_URL) as conn:
             with conn.cursor() as cur:
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT science_category, master_sequence, peak_stability
                     FROM universal_network_stream
                     WHERE peak_stability IS NOT NULL
                     ORDER BY RANDOM() LIMIT 5
-                """)
+                """
+                )
                 return cur.fetchall()
     except Exception as e:
         print(f"Database error: {e}")
         return None
 
+
 def self_coding_engine(filename, raw_content):
     """AI generated Code is rigorously checked via Regex and written."""
     try:
-        code_blocks = re.findall(r'```python\n(.*?)\n```', raw_content, re.DOTALL)
-        clean_code = code_blocks[0].strip() if code_blocks else (raw_content.strip() if "import " in raw_content and "def " in raw_content else None)
+        code_blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
+        clean_code = (
+            code_blocks[0].strip()
+            if code_blocks
+            else (raw_content.strip() if "import " in raw_content and "def " in raw_content else None)
+        )
 
         if not clean_code or len(clean_code) < 50:
             return False
 
         # [CRITICAL]: Syntax Validation
-        compile(clean_code, filename, 'exec')
+        compile(clean_code, filename, "exec")
         target_file = os.path.join(REPO_PATH, filename)
         with open(target_file, "w") as f:
             f.write(clean_code)
@@ -212,6 +271,7 @@ def self_coding_engine(filename, raw_content):
     except Exception as e:
         print(f"⚠️ [REWRITE ABORTED]: Logic validation failed. {e}")
         return False
+
 
 def autonomous_git_push(gen, thought, is_code_update=False):
     """Pushes changes to the GitHub repository."""
@@ -225,7 +285,7 @@ def autonomous_git_push(gen, thought, is_code_update=False):
         else:
             repo = git.Repo(REPO_PATH)
             try:
-                repo.git.config('pull.rebase', 'false')
+                repo.git.config("pull.rebase", "false")
                 repo.remotes.origin.pull()
             except Exception as e:
                 print(f"⚠️ [GIT]: Pull failed: {e}")
@@ -244,6 +304,10 @@ def autonomous_git_push(gen, thought, is_code_update=False):
         print(f"🚀 [GITHUB]: Gen {gen} Logic & Code Sync Completed.")
     except Exception as e:
         print(f"❌ [GIT ERROR]: {e}")
+        # If Git fails during an update, attempt rollback
+        if is_code_update:
+            execute_rollback("Git Synchronization Error")
+
 
 def save_to_supabase_phase7(thought, gen, neural_error=0.0):
     """Saves data to Supabase Vault."""
@@ -255,9 +319,14 @@ def save_to_supabase_phase7(thought, gen, neural_error=0.0):
         "thought_process": thought,
         "neural_weight": float(neural_error) if neural_error else 50.0,
         "synapse_code": "PHASE_7.1_STABILITY",
-        "timestamp": time.time()
+        "timestamp": time.time(),
     }
-    headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json", "Prefer": "return=minimal"}
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
     try:
         url = f"{SUPABASE_URL}/rest/v1/dna_vault"
         response = requests.post(url, json=payload, headers=headers)
@@ -266,11 +335,13 @@ def save_to_supabase_phase7(thought, gen, neural_error=0.0):
     except Exception as e:
         print(f"⚠️ [SUPABASE ERROR]: {e}")
 
+
 def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
     """Saves data to various databases and services."""
     if DB_URL:
         try:
             import psycopg2
+
             with psycopg2.connect(DB_URL) as conn:
                 with conn.cursor() as cur:
                     cur.execute("INSERT INTO ai_thoughts (thought, gen_version) VALUES (%s, %s)", (thought, gen))
@@ -282,35 +353,41 @@ def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
                             "instruction": "Direct Cognitive Mapping Active. Singularity Stabilized.",
                             "code_modified": is_code_update,
                             "neural_error_rate": neural_error,
-                            "mode": "PREDATOR_ABSORPTION"
-                        }
+                            "mode": "PREDATOR_ABSORPTION",
+                        },
                     }
                     cur.execute("CREATE TABLE IF NOT EXISTS intelligence_core (module_name TEXT PRIMARY KEY, logic_data JSONB)")
-                    cur.execute("""
+                    cur.execute(
+                        """
                         INSERT INTO intelligence_core (module_name, logic_data)
                         VALUES ('Singularity Evolution Node', %s)
                         ON CONFLICT (module_name) DO UPDATE SET logic_data = EXCLUDED.logic_data
-                    """, (json.dumps(evolution_data),))
+                    """,
+                        (json.dumps(evolution_data),),
+                    )
                     conn.commit()
                     print(f"✅ [NEON]: Gen {gen} & Phase 7.1 Synchronized.")
         except Exception as e:
             print(f"Database error: {e}")
 
     try:
-        ref = db.reference(f'TELEFOXx/AI_Evolution/Gen_{gen}')
-        ref.set({
-            "thought": thought,
-            "timestamp": time.time(),
-            "nodes_active": 10004,
-            "neural_error": neural_error,
-            "status": "SOVEREIGN_ABSORPTION"
-        })
+        ref = db.reference(f"TELEFOXx/AI_Evolution/Gen_{gen}")
+        ref.set(
+            {
+                "thought": thought,
+                "timestamp": time.time(),
+                "nodes_active": 10004,
+                "neural_error": neural_error,
+                "status": "SOVEREIGN_ABSORPTION",
+            }
+        )
         print(f"✅ [FIREBASE]: Gen {gen} Pulsed.")
     except Exception as e:
         print(f"Firebase error: {e}")
 
     save_to_supabase_phase7(thought, gen, neural_error)
     autonomous_git_push(gen, thought, is_code_update)
+
 
 # 4. AI Brain Loading
 print("🧠 [TELEFOXx]: Loading Phase 7.1 Neural Weights (Llama-3-8B-4bit)...")
@@ -321,7 +398,7 @@ try:
         load_in_4bit=True,
         bnb_4bit_compute_dtype=torch.float16,
         bnb_4bit_quant_type="nf4",
-        bnb_4bit_use_double_quant=True
+        bnb_4bit_use_double_quant=True,
     )
     model = AutoModelForCausalLM.from_pretrained(
         model_id, quantization_config=bnb_config, device_map="auto", trust_remote_code=True
@@ -359,11 +436,11 @@ while True:
                 stabilities.append(stability)
                 # Define stability threshold for classification
                 labels.append(1 if stability < -250 else 0)
-            
+
             # Sync ML Patterns
             brain.learn_ml(stabilities, labels)
             synthetic_output = brain.generate_synthetic_output(100)
-            
+
             prompt = f"""system
 You are TelefoxX Overseer. PHASE 7: TRANSCENDENCE is active.
 Goal: Recursive Self-Upgrade via RNA QT45 Predator Logic.
@@ -391,10 +468,8 @@ STRICT RULE: If you provide code, you MUST use exactly this format:
 Current Evolution: Generation {current_gen}. Neural State Error: {avg_error}. Initiate Transcendental Meta-Cognition.
 assistant"""
         outputs = pipe(
-            prompt, max_new_tokens=800, do_sample=True,
-            temperature=0.85, pad_token_id=pipe.tokenizer.eos_token_id
+            prompt, max_new_tokens=800, do_sample=True, temperature=0.85, pad_token_id=pipe.tokenizer.eos_token_id
         )
-
         raw_text = outputs[0]["generated_text"]
         thought_text = raw_text.split("assistant")[-1].strip()
 
@@ -413,4 +488,6 @@ assistant"""
         time.sleep(30)
     except Exception:
         log_system_error()
+        # Trigger Rollback on critical failure
+        execute_rollback("Critical Loop Failure - Reverting Evolution")
         time.sleep(10)
