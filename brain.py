@@ -3,29 +3,25 @@ import random
 class Brain:
     def __init__(self, sequence):
         self.sequence = sequence
-        self.genome = ''.join(random.sample(sequence, len(sequence)))
+        self.functions = []
 
-    def mutate(self):
+    def process_sequence(self):
         for i in range(len(self.sequence)):
-            if random.random() < 0.1:
-                self.sequence = self.sequence[:i] + chr(ord(self.sequence[i]) + random.randint(-1, 1)) + self.sequence[i+1:]
-                self.genome = self.genome[:i] + chr(ord(self.genome[i]) + random.randint(-1, 1)) + self.genome[i+1:]
+            if self.sequence[i] == 'P':
+                self.functions.append(lambda: random.randint(0, 100))
+            elif self.sequence[i] == 'G':
+                self.functions.append(lambda: random.choice(['a', 'c', 'g', 't']))
+            elif self.sequence[i] == 'C':
+                self.functions.append(lambda: random.randint(0, 100))
+            elif self.sequence[i] == 'T':
+                self.functions.append(lambda: random.choice(['a', 'c', 'g', 't']))
 
-    def evaluate(self):
-        fitness = 0
-        for i in range(len(self.sequence)):
-            if self.sequence[i] == self.genome[i]:
-                fitness += 1
-        return fitness / len(self.sequence)
+    def run(self):
+        for func in self.functions:
+            result = func()
+            print(f"Function {self.functions.index(func)} returned: {result}")
 
-    def evolve(self, generations):
-        for _ in range(generations):
-            self.mutate()
-            self.genome = self.genome[:int(len(self.genome) * 0.1)] + self.genome[int(len(self.genome) * 0.1):]
-
-    def print_sequence(self):
-        print(self.sequence)
-
-brain = Brain(Source)
-brain.evolve(100)
-brain.print_sequence()
+# Prompt definition closing and Meta-Cognition logic
+brain = Brain("PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW")
+brain.process_sequence()
+brain.run()
