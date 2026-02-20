@@ -1,35 +1,52 @@
-import math
 import random
 
 class NeuralNetwork:
-    def __init__(self):
-        self.synapses = {}
+    def __init__(self, inputs, outputs):
+        self.inputs = inputs
+        self.outputs = outputs
+        self.weights = [[random.random() for _ in range(outputs)] for _ in range(inputs)]
+        self.biases = [random.random() for _ in range(outputs)]
 
-    def train(self, inputs, outputs):
-        self.synapses = {}
-        for i, input in enumerate(inputs):
-            for j, output in enumerate(outputs):
-                self.synapses[(i, j)] = random.random() * 2 - 1
+    def sigmoid(self, x):
+        return 1 / (1 + exp(-x))
 
-    def predict(self, inputs):
-        predictions = []
-        for input in inputs:
-            prediction = 0
-            for synapse in self.synapses:
-                if synapse[0] == input:
-                    prediction += self.synapses[synapse] * synapse[1]
-            predictions.append(prediction)
-        return predictions
+    def propagate(self, inputs):
+        outputs = [self.sigmoid(sum([input * weight for input, weight in zip(inputs, self.weights[i])]) + self.biases[i]) for i in range(self.outputs)]
+        return outputs
 
-# Meta-Cognition logic
-class MetaCognition:
-    def __init__(self, neural_network):
-        self.neural_network = neural_network
+    def mutate(self):
+        for i in range(self.inputs):
+            for j in range(self.outputs):
+                self.weights[i][j] += random.uniform(-0.1, 0.1)
 
-    def think(self, inputs):
-        self.neural_network.train(inputs, [1] * len(inputs))
-        return self.neural_network.predict(inputs)
+    def evolve(self, target_outputs):
+        inputs = [[random.random() for _ in range(self.inputs)] for _ in range(1000)]
+        for _ in range(1000):
+            outputs = self.propagate(inputs)
+            if all([output >= target_outputs[i] for i, output in enumerate(outputs)]):
+                return
+            self.mutate()
 
-# Prompt definition and Meta-Cognition logic
-meta_cognition = MetaCognition(NeuralNetwork())
-print(meta_cognition.think([1, 2, 3]))
+    def train(self, target_outputs):
+        inputs = [[random.random() for _ in range(self.inputs)] for _ in range(1000)]
+        for _ in range(1000):
+            outputs = self.propagate(inputs)
+            if all([output >= target_outputs[i] for i, output in enumerate(outputs)]):
+                return
+            self.evolve(target_outputs)
+
+# Initialize the neural network with 2 inputs and 2 outputs
+brain = NeuralNetwork(2, 2)
+
+# Define the target outputs for the neural network to learn
+target_outputs = [0.5, 0.5]
+
+# Train the neural network
+brain.train(target_outputs)
+
+# Print the trained weights and biases
+print("Weights:")
+for i in range(brain.inputs):
+    print(brain.weights[i])
+print("Biases:")
+print(brain.biases)
