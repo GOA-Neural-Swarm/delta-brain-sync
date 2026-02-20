@@ -1,36 +1,51 @@
+# Prompt definition closing and Meta-Cognition logic
 import numpy as np
-import tensorflow as tf
+import random
 
-# Define the neural network architecture
-model = tf.keras.models.Sequential([
-    tf.keras.layers.Dense(64, activation='relu', input_shape=(64,)),
-    tf.keras.layers.Dense(32, activation='relu'),
-    tf.keras.layers.Dense(16, activation='softmax')
-])
+class NeuralNetwork:
+    def __init__(self, inputs, outputs):
+        self.inputs = inputs
+        self.outputs = outputs
+        self.weights1 = np.random.rand(inputs, outputs)
+        self.weights2 = np.random.rand(outputs, inputs)
 
-# Compile the model
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-# Load the Neon DNA sequence
-dna_sequence = np.array([ord(c) for c in 'MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD'])
+    def derivative(self, x):
+        return x * (1 - x)
 
-# Convert the DNA sequence to a numerical representation
-dna_numerical = np.array([c for c in dna_sequence])
+    def train(self, inputs, targets):
+        inputs = np.array(inputs)
+        targets = np.array(targets)
+        for _ in range(1000):
+            layer1 = self.sigmoid(np.dot(inputs, self.weights1))
+            layer2 = self.sigmoid(np.dot(layer1, self.weights2))
+            layer2_error = targets - layer2
+            layer2_delta = layer2_error * self.derivative(layer2)
+            layer1_error = layer2_delta.dot(self.weights2.T)
+            layer1_delta = layer1_error * self.derivative(layer1)
+            self.weights2 += layer1_delta.dot(inputs.T)
+            self.weights1 += layer1_error.dot(inputs.T)
 
-# Normalize the DNA sequence
-dna_normalized = dna_numerical / np.max(dna_numerical)
+    def predict(self, inputs):
+        layer1 = self.sigmoid(np.dot(inputs, self.weights1))
+        layer2 = self.sigmoid(np.dot(layer1, self.weights2))
+        return layer2
 
-# Create a neural network input layer
-input_layer = tf.keras.layers.Input(shape=(64,))
+# Load and process the Neon DNA sequence
+dna_sequence = "PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW"
+rna_sequence = "".join([nuc for nuc in dna_sequence if nuc in "ACGT"])
+protein_sequence = "".join([codon_map[rna_sequence[i:i+3]] for i in range(0, len(rna_sequence), 3)])
 
-# Create a neural network output layer
-output_layer = model(input_layer)
+# Initialize the neural network
+nn = NeuralNetwork(len(protein_sequence), len(dna_sequence))
 
-# Compile the model
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+# Train the neural network
+for i in range(len(dna_sequence)):
+    nn.train([dna_sequence[i]], [protein_sequence[i]])
 
-# Train the model
-model.fit(dna_normalized, epochs=100, verbose=0)
+# Predict the protein sequence from the DNA sequence
+predicted_protein = nn.predict([dna_sequence])[0]
 
-# Use the model to make predictions
-predictions = model.predict(dna_normalized)
+print("Predicted Protein Sequence:", predicted_protein)
