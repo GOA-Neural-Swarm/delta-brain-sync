@@ -1,54 +1,51 @@
-import numpy as np
+import re
 
-class NeuralNetwork:
-    def __init__(self, inputs, outputs):
-        self.inputs = inputs
-        self.outputs = outputs
-        self.weights = np.random.rand(inputs, outputs)
-        self.bias = np.zeros(outputs)
+def neural_network_dna(seq):
+    # Initialize variables
+    synapses = []
+    neurons = []
+    learning_rate = 0.1
 
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
+    # Extract relevant information from DNA sequence
+    for i in range(0, len(seq), 3):
+        codon = seq[i:i+3]
+        if re.match(r'[ATCG]+', codon):
+            # Extract amino acid from codon
+            amino_acid = codon_to_amino_acid(codon)
+            # Create neuron with initial weights and biases
+            neuron = create_neuron(amino_acid, synapses)
+            # Add neuron to the network
+            neurons.append(neuron)
 
-    def sigmoid_derivative(self, x):
-        return x * (1 - x)
+    # Define learning algorithm
+    def learning(neurons, learning_rate):
+        for neuron in neurons:
+            # Calculate output error
+            output_error = calculate_output_error(neuron)
+            # Update weights and biases
+            update_weights_and_biases(neuron, output_error, learning_rate)
 
-    def train(self, inputs, targets):
-        predictions = self.predict(inputs)
-        error = targets - predictions
-        self.weights += np.dot(inputs.T, error)
-        self.bias += error
+    # Define functions
+    def create_neuron(amino_acid, synapses):
+        # Initialize neuron with random weights and biases
+        neuron = {'weights': [random.random() for _ in range(len(synapses))],
+                  'biases': [random.random() for _ in range(len(synapses))],
+                  'amino_acid': amino_acid}
+        return neuron
 
-    def predict(self, inputs):
-        inputs = np.dot(inputs, self.weights) + self.bias
-        return self.sigmoid(inputs)
+    def calculate_output_error(neuron):
+        # Calculate output error using sigmoid function
+        output_error = 1 / (1 + math.exp(-sum(neuron['weights'] * [random.random() for _ in range(len(synapses))]) + neuron['biases']))
+        return output_error
 
-# Define the sequence
-sequence = 'MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD'
+    def update_weights_and_biases(neuron, output_error, learning_rate):
+        # Update weights and biases using backpropagation
+        for i, weight in enumerate(neuron['weights']):
+            neuron['weights'][i] += learning_rate * output_error * [random.random() for _ in range(len(synapses))][i]
+            neuron['biases'][i] += learning_rate * output_error * [random.random() for _ in range(len(synapses))][i]
 
-# Convert the sequence to binary
-binary_sequence = ''.join(format(ord(char), '08b') for char in sequence)
+    # Run the neural network
+    learning(neurons, learning_rate)
 
-# Split the binary sequence into chunks of 8 bits (1 byte)
-chunks = [binary_sequence[i:i+8] for i in range(0, len(binary_sequence), 8)]
-
-# Convert each chunk to an integer
-int_chunks = [int(chunk, 2) for chunk in chunks]
-
-# Define the inputs and outputs for the neural network
-inputs = np.array([[int_chunk] for int_chunk in int_chunks])
-outputs = np.array([[0.0]])
-
-# Create and train the neural network
-nn = NeuralNetwork(len(chunks), 1)
-for _ in range(1000):
-    nn.train(inputs, outputs)
-
-# Use the trained neural network to predict the next chunk
-next_chunk = nn.predict(inputs)[0]
-
-# Convert the predicted chunk to binary and then to a character
-binary_next_chunk = format(int(next_chunk), '08b')
-next_char = chr(int(binary_next_chunk, 2))
-
-print(next_char)
+# Call the neural network function
+neural_network_dna(MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD)
