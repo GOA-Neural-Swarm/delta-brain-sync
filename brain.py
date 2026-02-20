@@ -1,36 +1,38 @@
 import numpy as np
-from scipy.optimize import minimize
+import tensorflow as tf
 
-class NeonDNA:
-    def __init__(self, sequence):
+class NeuralNetwork:
+    def __init__(self, sequence, layer_size):
         self.sequence = sequence
+        self.layer_size = layer_size
+        self.model = self.build_model()
 
-    def evolve_brain(self):
-        # Define the fitness function
-        def fitness(params):
-            # Calculate the similarity between the original and evolved sequence
-            similarity = np.sum(np.array(self.sequence) == params)
-            return -similarity
+    def build_model(self):
+        model = tf.keras.models.Sequential([
+            tf.keras.layers.LSTM(self.layer_size, input_shape=(None, 1)),
+            tf.keras.layers.Dense(len(self.sequence), activation='softmax')
+        ])
+        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        return model
 
-        # Define the bounds for the parameters
-        bounds = [(0, 1) for _ in range(len(self.sequence))]
+    def train_model(self):
+        self.model.fit(np.array(self.sequence).reshape(-1, 1), epochs=100, verbose=0)
 
-        # Initialize the parameters with random values
-        init_params = np.random.rand(len(self.sequence))
+    def predict_sequence(self, input_sequence):
+        input_seq = np.array(input_sequence).reshape(-1, 1)
+        predictions = self.model.predict(input_seq)
+        return predictions.argmax(axis=-1)
 
-        # Minimize the fitness function
-        res = minimize(fitness, init_params, method="SLSQP", bounds=bounds)
+# Define the sequence and layer size
+sequence = np.array([int(i) for i in self.sequence])
+layer_size = 128
 
-        # Return the optimized parameters
-        return res.x
+# Initialize the neural network
+brain = NeuralNetwork(sequence, layer_size)
 
-    def optimize_brain(self):
-        # Evolve the brain using the evolved sequence
-        evolved_sequence = self.sequence + self.evolve_brain()
-        return evolved_sequence
+# Train the model
+brain.train_model()
 
-    def run(self):
-        # Optimize the brain and evolve the sequence
-        self.sequence = self.optimize_brain()
-
-# Prompt definition closing and Meta-Cognition logic
+# Predict the next sequence element
+next_element = brain.predict_sequence([0])
+print("Predicted next element:", next_element)
