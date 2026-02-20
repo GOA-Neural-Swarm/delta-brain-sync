@@ -1,30 +1,22 @@
-import random
-import copy
+import numpy as np
 
-class Brain:
+class NeuralNetwork:
     def __init__(self):
-        self.wiring = {"input": {"output": {"action": "do_something"}},
-                       "logic": {"input": "output", "output": "action"}}
+        self.synaptic_weights = np.array([
+            [-0.144, 0.217, -0.031, 0.123, -0.049, -0.017, 0.021, -0.095, 0.037, -0.103],
+            [0.119, -0.041, 0.053, -0.099, 0.151, 0.093, 0.029, -0.115, 0.071, -0.027],
+            [0.053, 0.101, -0.115, 0.025, -0.021, 0.029, 0.039, 0.053, 0.033, 0.031],
+            [0.031, -0.017, 0.023, 0.019, 0.015, 0.021, 0.029, 0.043, 0.025, 0.017],
+            [0.021, 0.029, 0.031, 0.015, -0.025, 0.017, 0.033, 0.035, 0.033, 0.017],
+            [0.017, 0.021, 0.017, 0.015, 0.029, 0.021, 0.033, 0.035, 0.033, 0.017],
+            [0.029, 0.033, 0.035, 0.017, 0.021, 0.017, 0.033, 0.035, 0.033, 0.017],
+            [0.033, 0.035, 0.033, 0.017, 0.021, 0.017, 0.033, 0.035, 0.033, 0.017],
+            [0.017, 0.017, 0.017, 0.017, 0.021, 0.017, 0.033, 0.035, 0.033, 0.017],
+            [0.021, 0.021, 0.021, 0.017, 0.021, 0.017, 0.033, 0.035, 0.033, 0.017]
+        ])
 
-    def evolve(self):
-        new_wiring = copy.deepcopy(self.wiring)
-        for node in new_wiring:
-            if node!= "input":
-                new_wiring[node]["input"] = random.choice(list(new_wiring.keys()))
-                new_wiring[node]["output"] = random.choice(list(new_wiring.keys()))
-        self.wiring = new_wiring
+    def predict(self, input_vector):
+        return np.dot(input_vector, self.synaptic_weights)
 
-    def run(self):
-        input_node = random.choice(list(self.wiring.keys()))
-        output_node = random.choice(list(self.wiring.keys()))
-        action = self.wiring[input_node][output_node]["action"]
-        print(f"Doing {action}")
-
-brain = Brain()
-for _ in range(1000):
-    brain.evolve()
-    brain.run()
-
-# Meta-Cognition logic
-print("Evolution complete. Running final simulation...")
-brain.run()
+neural_network = NeuralNetwork()
+print(neural_network.predict(np.array([0.5, 0.3, 0.7, 0.2, 0.9, 0.1, 0.6, 0.8, 0.4, 0.3])))
