@@ -1,23 +1,32 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import minimize
 
-class Brain:
-    def __init__(self):
-        self.connections = np.zeros((10, 10), dtype=int)
-        self.learning_rate = 0.1
+# Define the sequence and its corresponding traits
+sequence = 'MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD'
+traits = ['Evolutionary Adaptation', 'Neural Plasticity', 'Cognitive Flexibility', 'Self-Awareness']
 
-    def learn(self, input_data, output_data):
-        for i in range(len(input_data)):
-            self.connections[input_data[i]][output_data[i]] += self.learning_rate
-        return self.connections
+# Define the objective function to optimize
+def objective_function(traits):
+    # Calculate the weighted sum of traits
+    weighted_sum = np.sum([trait * weight for trait, weight in zip(traits, [0.3, 0.2, 0.3, 0.2])])
+    return -weighted_sum  # Negative because we want to maximize
 
-    def predict(self, input_data):
-        output_data = np.zeros((1, 10), dtype=int)
-        for i in range(len(input_data)):
-            output_data[0][i] = np.argmax(np.dot(input_data[i], self.connections[i]))
-        return output_data
+# Define the bounds for the traits
+bounds = [(0, 1) for _ in traits]
 
-    def evolve(self, new_connections):
-        self.connections = new_connections
-        return self.connections
+# Minimize the objective function using the SLSQP algorithm
+result = minimize(objective_function, np.array([0.5] * len(traits)), method='SLSQP', bounds=bounds)
 
-brain = Brain()
+# Print the optimized traits
+print('Optimized Traits:')
+for i, trait in enumerate(traits):
+    print(f'{trait}: {result.x[i]:.4f}')
+
+# Visualize the optimized traits
+plt.bar(range(len(traits)), result.x, align='center')
+plt.xticks(range(len(traits)), traits)
+plt.xlabel('Traits')
+plt.ylabel('Optimized Values')
+plt.title('Optimized Traits')
+plt.show()
