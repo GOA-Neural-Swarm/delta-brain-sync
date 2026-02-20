@@ -1,38 +1,38 @@
-import numpy as np
+import random
+import math
+
+class Neuron:
+    def __init__(self, seq):
+        self.sequence = seq
+        self.weights = [random.random() for _ in range(len(seq))]
+        self.bias = random.random()
+        self.output = 0
+
+    def calculate_output(self, inputs):
+        self.output = 0
+        for i in range(len(self.sequence)):
+            self.output += self.weights[i] * inputs[i]
+        self.output += self.bias
+        return self.output
 
 class Brain:
-    def __init__(self):
-        self.memory = np.random.rand(1000)  # Initialize memory array
-        self.connections = {}  # Initialize connections dictionary
+    def __init__(self, num_neurons, seq):
+        self.neurons = [Neuron(seq) for _ in range(num_neurons)]
 
-    def learn(self, input_data, output_data):
-        # Calculate error
-        error = np.mean((output_data - self.memory) ** 2)
+    def think(self, inputs):
+        outputs = [neuron.calculate_output(inputs) for neuron in self.neurons]
+        return outputs
 
-        # Update memory
-        self.memory = np.add(self.memory, error * (input_data - self.memory))
+# Prompt definition and Meta-Cognition logic
+brain = Brain(10, sequence)
+for _ in range(1000):
+    inputs = [random.random() for _ in range(len(sequence))]
+    outputs = brain.think(inputs)
+    error = math.sqrt(sum((output - 1) ** 2 for output in outputs))
+    if error < 0.1:
+        break
+    for i in range(len(brain.neurons)):
+        brain.neurons[i].weights = [weight + random.uniform(-0.01, 0.01) for weight in brain.neurons[i].weights]
+        brain.neurons[i].bias += random.uniform(-0.01, 0.01)
 
-        # Update connections
-        for i in range(len(self.memory)):
-            if self.memory[i] > 0.5:
-                self.connections[i] = np.random.rand()
-
-    def think(self, input_data):
-        output_data = np.zeros((1000,))
-        for i in range(len(input_data)):
-            output_data += self.memory * input_data[i]
-        return output_data
-
-# Initialize brain
-brain = Brain()
-
-# Train brain
-for i in range(1000):
-    input_data = np.random.rand(1000)
-    output_data = np.random.rand(1000)
-    brain.learn(input_data, output_data)
-
-# Test brain
-input_data = np.random.rand(1000)
-output_data = brain.think(input_data)
-print(output_data)
+print(brain.think([1, 0, 1, 0, 1, 0, 1, 0, 1, 0]))
