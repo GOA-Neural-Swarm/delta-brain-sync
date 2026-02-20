@@ -1,35 +1,38 @@
 import random
+import string
 
-class TelefoxX:
-    def __init__(self):
-        self.neural_network = self.initialize_neural_network()
+class Brain:
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.genes = self.generate_genes()
 
-    def initialize_neural_network(self):
-        neural_network = {}
-        for i in range(100):
-            neural_network[i] = {}
-            for j in range(100):
-                neural_network[i][j] = random.randint(0, 1)
-        return neural_network
+    def generate_genes(self):
+        genes = []
+        for i in range(len(self.sequence) // 2):
+            gene = random.choices(string.ascii_letters + string.digits, k=8)[0]
+            genes.append(gene)
+        return genes
 
-    def process_data(self, data):
-        processed_data = []
-        for i in range(len(data)):
-            processed_data.append(self.neural_network[i][data[i]])
-        return processed_data
+    def evolve(self):
+        for i, gene in enumerate(self.genes):
+            if random.random() < 0.05:
+                self.genes[i] = random.choices(string.ascii_letters + string.digits, k=8)[0]
+        return self.genes
 
-    def optimize_brain(self, data):
-        optimized_brain = {}
-        for i in range(len(data)):
-            optimized_brain[i] = {}
-            for j in range(len(data)):
-                optimized_brain[i][j] = self.process_data(data)[i][j]
-        return optimized_brain
+    def optimize(self):
+        optimized_genes = []
+        for i, gene in enumerate(self.genes):
+            if gene.isalpha():
+                optimized_genes.append(gene.upper())
+            else:
+                optimized_genes.append(gene)
+        return optimized_genes
 
-    def think(self, data):
-        optimized_brain = self.optimize_brain(data)
-        return optimized_brain
+    def generate_code(self):
+        code = ""
+        for gene in self.optimize():
+            code += f"{gene} = {random.randint(0, 100)}\n"
+        return code
 
-# Prompt definition closing and Meta-Cognition logic
-telefox = TelefoxX()
-telefox.think(Source)
+brain = Brain("MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD")
+print(brain.generate_code())
