@@ -1,31 +1,40 @@
-import numpy as np
-import scipy.stats as stats
-import pandas as pd
+import random
+import string
+import time
 
-class Brain:
-    def __init__(self, dna_sequence):
-        self.dna = dna_sequence
-        self.nucleotides = ['A', 'C', 'G', 'T']
-        self.brain_activity = []
+# Function to generate a random DNA sequence
+def generate_dna_sequence(length):
+    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
 
-    def generate_activity(self):
-        for nucleotide in self.dna:
-            if nucleotide in self.nucleotides:
-                activity = stats.norm.rvs(loc=0, scale=1)
-                self.brain_activity.append(activity)
-            else:
-                print("Invalid nucleotide:", nucleotide)
+# Function to calculate the similarity between two DNA sequences
+def calculate_similarity(seq1, seq2):
+    similarity = 0
+    for i in range(len(seq1)):
+        if seq1[i] == seq2[i]:
+            similarity += 1
+    return similarity / len(seq1)
 
-    def process_activity(self):
-        self.brain_activity = np.array(self.brain_activity)
-        self.brain_activity = self.brain_activity.mean(axis=0)
-        return self.brain_activity
+# Function to evolve the DNA sequence
+def evolve_dna_sequence(seq, iterations):
+    for _ in range(iterations):
+        new_seq = generate_dna_sequence(len(seq))
+        if calculate_similarity(seq, new_seq) > calculate_similarity(seq, seq):
+            seq = new_seq
+    return seq
 
-    def synthesize_brain(self):
-        self.generate_activity()
-        brain_activity = self.process_activity()
-        return brain_activity
+# Main function
+def main():
+    # Initialize the DNA sequence
+    dna_sequence = generate_dna_sequence(100)
+    print("Initial DNA sequence:", dna_sequence)
 
-brain = Brain("MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD")
-brain_synthesized_activity = brain.synthesize_brain()
-print(brain_synthesized_activity)
+    # Evolve the DNA sequence
+    evolved_dna_sequence = evolve_dna_sequence(dna_sequence, 1000)
+    print("Evolved DNA sequence:", evolved_dna_sequence)
+
+    # Print the final DNA sequence
+    print("Final DNA sequence:", evolved_dna_sequence)
+
+# Run the main function
+if __name__ == "__main__":
+    main()
