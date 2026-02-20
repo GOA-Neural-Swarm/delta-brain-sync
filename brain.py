@@ -1,36 +1,56 @@
-import re
-import random
+import numpy as np
+import pandas as pd
 
-class Brain:
-    def __init__(self):
-        self.memory = []
-        self.thoughts = []
+class NeuralNetwork:
+    def __init__(self, input_size, hidden_size, output_size):
+        self.weights1 = np.random.rand(input_size, hidden_size)
+        self.weights2 = np.random.rand(hidden_size, output_size)
 
-    def think(self):
-        self.thoughts = []
-        for seq in self.memory:
-            if re.search('DNA', seq):
-                self.thoughts.append(seq)
-        return self.thoughts
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-    def learn(self, new_sequence):
-        self.memory.append(new_sequence)
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-    def evolve(self):
-        if len(self.memory) > 1:
-            new_sequence = ''
-            for i in range(len(self.memory[0])):
-                if random.random() < 0.5:
-                    new_sequence += self.memory[0][i]
-                else:
-                    new_sequence += self.memory[1][i]
-            self.memory.append(new_sequence)
-            return new_sequence
-        else:
-            return None
+    def train(self, inputs, outputs):
+        hidden_layer = np.dot(inputs, self.weights1)
+        hidden_layer = self.sigmoid(hidden_layer)
 
-brain = Brain()
-brain.learn(Source)
-brain.learn(Sequence)
-print(brain.think())
-print(brain.evolve())
+        output_layer = np.dot(hidden_layer, self.weights2)
+        output_layer = self.sigmoid(output_layer)
+
+        error = outputs - output_layer
+        d_error = error * self.sigmoid_derivative(output_layer)
+
+        self.weights2 += np.dot(hidden_layer.T, d_error)
+
+        delta_weights2 = d_error * hidden_layer
+        delta_weights1 = delta_weights2 * self.sigmoid_derivative(hidden_layer)
+
+        self.weights1 += np.dot(inputs.T, delta_weights1)
+
+    def predict(self, inputs):
+        hidden_layer = np.dot(inputs, self.weights1)
+        hidden_layer = self.sigmoid(hidden_layer)
+
+        output_layer = np.dot(hidden_layer, self.weights2)
+        output_layer = self.sigmoid(output_layer)
+
+        return output_layer
+
+# Initialize Neural Network
+nn = NeuralNetwork(4, 2, 1)
+
+# Define inputs and outputs
+inputs = np.array([[0, 0, 0, 1], [1, 1, 1, 1], [1, 0, 1, 1], [0, 1, 1, 0]])
+outputs = np.array([[0], [1], [1], [0]])
+
+# Train Neural Network
+for _ in range(10000):
+    nn.train(inputs, outputs)
+
+# Predict outputs
+predictions = nn.predict(inputs)
+
+print("Predicted outputs:")
+print(predictions)
