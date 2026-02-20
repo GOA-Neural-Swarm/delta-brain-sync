@@ -1,34 +1,31 @@
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
-from scipy.spatial.distance import pdist, squareform
+import random
 
-def optimize_brain(dna_sequence):
-    # Extract relevant features from DNA sequence
-    features = pd.Series([int(dna_sequence[i]) for i in range(len(dna_sequence))])
-    scaler = StandardScaler()
-    features_scaled = scaler.fit_transform(features.values.reshape(-1, 1))
-    
-    # Apply PCA to reduce dimensionality
-    pca = PCA(n_components=2)
-    features_pca = pca.fit_transform(features_scaled)
-    
-    # Perform K-Means clustering
-    kmeans = KMeans(n_clusters=3)
-    labels = kmeans.fit_predict(features_pca)
-    
-    # Plot results
-    plt.scatter(features_pca[:, 0], features_pca[:, 1], c=labels)
-    plt.xlabel('Principal Component 1')
-    plt.ylabel('Principal Component 2')
-    plt.title('Optimized Brain Clustering')
-    plt.show()
-    
-    return labels
+class Brain:
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.genome = ''.join(random.sample(sequence, len(sequence)))
 
-# Run optimization
-labels = optimize_brain(Sequence)
-print(labels)
+    def mutate(self):
+        for i in range(len(self.sequence)):
+            if random.random() < 0.1:
+                self.sequence = self.sequence[:i] + chr(ord(self.sequence[i]) + random.randint(-1, 1)) + self.sequence[i+1:]
+                self.genome = self.genome[:i] + chr(ord(self.genome[i]) + random.randint(-1, 1)) + self.genome[i+1:]
+
+    def evaluate(self):
+        fitness = 0
+        for i in range(len(self.sequence)):
+            if self.sequence[i] == self.genome[i]:
+                fitness += 1
+        return fitness / len(self.sequence)
+
+    def evolve(self, generations):
+        for _ in range(generations):
+            self.mutate()
+            self.genome = self.genome[:int(len(self.genome) * 0.1)] + self.genome[int(len(self.genome) * 0.1):]
+
+    def print_sequence(self):
+        print(self.sequence)
+
+brain = Brain(Source)
+brain.evolve(100)
+brain.print_sequence()
