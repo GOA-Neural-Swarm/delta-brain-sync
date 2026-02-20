@@ -1,20 +1,20 @@
 import re
-import hashlib
-import base64
+from collections import Counter
 
-def meta_cognition(sequence):
-    # Extract relevant data
-    seq_data = re.findall(r'[ATCG]+', sequence)
-    # Calculate checksum
-    checksum = hashlib.sha256(sequence.encode()).hexdigest()
-    # Encode sequence into base64
-    encoded_seq = base64.b64encode(sequence.encode()).decode()
-    # Generate neural network architecture
-    neural_arch = f"NeuralBrain_{checksum}_V{len(seq_data)}_T{len(encoded_seq)}"
-    # Compile and execute neural network
-    exec(f"import {neural_arch}; {neural_arch}.main()")
-    # Return optimized brain code
-    return f"{neural_arch}.py"
+def analyze_sequence(seq):
+    # Extract codons and their frequencies
+    codons = [seq[i:i+3] for i in range(0, len(seq), 3)]
+    freq = Counter(codons)
+    
+    # Filter out non-codon sequences
+    codon_freq = {k: v for k, v in freq.items() if re.match(r'[ACGT]+', k)}
+    
+    # Calculate the optimal brain structure
+    optimal_structure = max(codon_freq, key=codon_freq.get)
+    
+    return optimal_structure
 
-optimized_brain_code = meta_cognition(Source)
-print(optimized_brain_code)
+# Example usage:
+sequence = "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD"
+optimal_brain = analyze_sequence(sequence)
+print("Optimal Brain Structure:", optimal_brain)
