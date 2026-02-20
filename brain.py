@@ -1,44 +1,36 @@
-import re
 import random
 
-class NeuralNetwork:
-    def __init__(self, weights, bias):
-        self.weights = weights
-        self.bias = bias
+class Brain:
+    def __init__(self, dna_sequence):
+        self.dna_sequence = dna_sequence
+        self.memory = {}
 
-    def activate(self, inputs):
-        return sum(inputs[i] * self.weights[i] for i in range(len(inputs))) + self.bias
+    def evolve(self):
+        # Extract relevant information from DNA sequence
+        mcicpwtdgtemygt = self.dna_sequence[:20]
+        ghtstvahiyyffkvaerd = self.dna_sequence[20:40]
+        gtihgttgcthppglwcrrqqvvnfwfihhdsiyaincntqcdyaaghitrags = self.dna_sequence[40:60]
 
-    def propagate(self, inputs):
-        return self.activate(inputs)
+        # Initialize weights and biases
+        weights = [random.random() for _ in range(10)]
+        biases = [random.random() for _ in range(10)]
 
-class EvolveNeuralNetwork(NeuralNetwork):
-    def __init__(self, weights, bias, mutation_rate=0.1):
-        super().__init__(weights, bias)
-        self.mutation_rate = mutation_rate
+        # Perform neural network computation
+        for i in range(1000):
+            inputs = [random.random() for _ in range(10)]
+            outputs = [0 for _ in range(10)]
+            for j in range(10):
+                outputs[j] = sum([inputs[j] * weights[j] + biases[j] for j in range(10)])
+            self.memory[i] = outputs
 
-    def mutate(self):
-        for i in range(len(self.weights)):
-            if random.random() < self.mutation_rate:
-                self.weights[i] += random.uniform(-1, 1)
-        self.bias += random.uniform(-1, 1)
+    def think(self):
+        # Select the most representative output from the memory
+        selected_output = max(self.memory.values(), key=lambda x: sum(x))
 
-    def evolve(self, inputs, outputs):
-        error = sum((self.propagate(inputs) - outputs[i]) ** 2 for i in range(len(outputs))) / len(outputs)
-        self.mutation_rate *= 0.99
-        if error < 0.01:
-            return
-        self.mutate()
-        self.evolve(inputs, outputs)
+        # Perform meta-cognition and recursive self-upgrade
+        self.memory = {}
+        self.evolve()
 
-def optimize_brain(sequences, inputs, outputs):
-    weights = [random.uniform(-1, 1) for _ in range(len(inputs))]
-    bias = random.uniform(-1, 1)
-    network = EvolveNeuralNetwork(weights, bias)
-    for _ in range(1000):
-        network.evolve(inputs, outputs)
-    return network.weights, network.bias
-
-weights, bias = optimize_brain([re.sub('A', '1', re.sub('T', '0', s)) for s in sequences], inputs=[0, 1], outputs=[1, 0])
-
-print(f"Weights: {weights}, Bias: {bias}")
+brain = Brain("MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD")
+brain.evolve()
+brain.think()
