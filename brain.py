@@ -1,44 +1,37 @@
-import random
-import math
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix
 
-class Brain:
-    def __init__(self):
-        self.genes = [random.choice([0, 1]) for _ in range(1000)]  # Initialize genes with random 0s and 1s
-        self.fitness = 0  # Initialize fitness value
+# Define the input data
+X = np.array([PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW])
+y = np.array([0, 1, 0, 1, 0, 1, 0, 1, 0, 1])
 
-    def mutate(self):
-        index = random.randint(0, 999)  # Randomly select a gene to mutate
-        self.genes[index] = 1 - self.genes[index]  # Flip the gene (0 to 1 or 1 to 0)
+# Standardize the input data
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
 
-    def evaluate_fitness(self):
-        self.fitness = sum([gene * (2 ** (index % 10)) for index, gene in enumerate(self.genes)])  # Calculate fitness using XOR gate
-        return self.fitness
+# Apply PCA to reduce dimensionality
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
 
-    def crossover(self, other_brain):
-        child_genes = []
-        for i in range(1000):
-            if random.random() < 0.5:  # 50% chance of inheriting gene from either parent
-                child_genes.append(self.genes[i])
-            else:
-                child_genes.append(other_brain.genes[i])
-        return Brain(child_genes)
+# Apply K-Means clustering to group similar data points
+kmeans = KMeans(n_clusters=2)
+kmeans.fit(X_pca)
+labels = kmeans.labels_
 
-    def evolve(self, population_size, generations):
-        population = [Brain() for _ in range(population_size)]
-        for _ in range(generations):
-            for brain in population:
-                brain.mutate()
-            population.sort(key=lambda brain: brain.evaluate_fitness(), reverse=True)
-            next_generation = []
-            for _ in range(population_size // 2):
-                parent1 = random.choice(population)
-                parent2 = random.choice(population)
-                child = parent1.crossover(parent2)
-                next_generation.append(child)
-            population = next_generation
-        return population[0]
+# Train a logistic regression model on the clustered data
+model = LogisticRegression()
+model.fit(X_pca, labels)
 
-# Prompt definition and Meta-Cognition logic
-brain = Brain()
-evolved_brain = brain.evolve(100, 1000)
-print("Evolved Brain's Fitness:", evolved_brain.fitness)
+# Evaluate the model's accuracy
+y_pred = model.predict(X_pca)
+accuracy = accuracy_score(y, labels)
+print(f"Accuracy: {accuracy:.3f}")
+
+# Print the confusion matrix
+conf_mat = confusion_matrix(y, labels)
+print(conf_mat)
