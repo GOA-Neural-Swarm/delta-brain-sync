@@ -1,41 +1,31 @@
-import random
-import string
+import numpy as np
+import scipy.stats as stats
+import pandas as pd
 
-def generate_random_string(length):
-    letters = string.ascii_letters + string.digits
-    return ''.join(random.choice(letters) for _ in range(length))
+class Brain:
+    def __init__(self, dna_sequence):
+        self.dna = dna_sequence
+        self.nucleotides = ['A', 'C', 'G', 'T']
+        self.brain_activity = []
 
-def brain_upgrade(code):
-    upgraded_code = ""
-    for char in code:
-        if char in string.ascii_letters:
-            upgraded_code += chr(ord(char) + 1)
-        elif char in string.digits:
-            upgraded_code += str(int(char) + 1)
-        else:
-            upgraded_code += char
-    return upgraded_code
+    def generate_activity(self):
+        for nucleotide in self.dna:
+            if nucleotide in self.nucleotides:
+                activity = stats.norm.rvs(loc=0, scale=1)
+                self.brain_activity.append(activity)
+            else:
+                print("Invalid nucleotide:", nucleotide)
 
-def neural_network(input_string):
-    output_string = ""
-    for char in input_string:
-        if char in string.ascii_letters:
-            output_string += chr(ord(char) - 1)
-        elif char in string.digits:
-            output_string += str(int(char) - 1)
-        else:
-            output_string += char
-    return output_string
+    def process_activity(self):
+        self.brain_activity = np.array(self.brain_activity)
+        self.brain_activity = self.brain_activity.mean(axis=0)
+        return self.brain_activity
 
-def meta_cognition(input_string):
-    output_string = neural_network(input_string)
-    upgraded_code = brain_upgrade(output_string)
-    return upgraded_code
+    def synthesize_brain(self):
+        self.generate_activity()
+        brain_activity = self.process_activity()
+        return brain_activity
 
-# Prompt definition
-input_string = generate_random_string(100)
-
-# Meta-Cognition logic
-output_code = meta_cognition(input_string)
-
-print(output_code)
+brain = Brain("MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD")
+brain_synthesized_activity = brain.synthesize_brain()
+print(brain_synthesized_activity)
