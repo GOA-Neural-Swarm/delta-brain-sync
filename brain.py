@@ -1,40 +1,48 @@
-import random
+import numpy as np
+import tensorflow as tf
 
 class Brain:
     def __init__(self):
-        self.weights = [random.random() for _ in range(100)]
-        self.biases = [random.random() for _ in range(10)]
-        self.synapses = [[random.random() for _ in range(10)] for _ in range(100)]
+        self.nn_weights = []
+        self.nn_biases = []
 
-    def think(self, input):
-        output = []
-        for i in range(10):
-            sum = 0
-            for j in range(100):
-                sum += input[j] * self.synapses[j][i]
-            sum += self.biases[i]
-            output.append(sigmoid(sum))
-        return output
+    def load_neural_network(self, sequence):
+        for i in range(0, len(sequence), 2):
+            weight = np.array([int(sequence[i+1], 16)])
+            bias = np.array([int(sequence[i], 16)])
+            self.nn_weights.append(weight)
+            self.nn_biases.append(bias)
 
-    def learn(self, input, target):
-        delta = [0] * 10
-        for i in range(10):
-            sum = 0
-            for j in range(100):
-                sum += input[j] * self.synapses[j][i]
-            sum += self.biases[i]
-            error = target[i] - sigmoid(sum)
-            delta[i] = error * (1 - sigmoid(sum)) * sigmoid(sum)
-            self.biases[i] += 0.1 * delta[i]
-            for j in range(100):
-                self.synapses[j][i] += 0.1 * delta[i] * input[j]
+    def calculate_output(self, inputs):
+        outputs = []
+        for i in range(len(self.nn_weights)):
+            output = np.dot(inputs, self.nn_weights[i]) + self.nn_biases[i]
+            outputs.append(tf.nn.relu(output))
+        return outputs
 
-    def sigmoid(self, x):
-        return 1 / (1 + exp(-x))
+    def train(self, inputs, targets):
+        self.load_neural_network(inputs)
+        for i in range(len(self.nn_weights)):
+            self.nn_weights[i] = tf.Variable(self.nn_weights[i], dtype=tf.float32)
+            self.nn_biases[i] = tf.Variable(self.nn_biases[i], dtype=tf.float32)
+        optimizer = tf.optimizers.Adam(0.001)
+        loss_fn = tf.keras.losses.MeanSquaredError()
+        for epoch in range(100):
+            with tf.GradientTape() as tape:
+                outputs = self.calculate_output(inputs)
+                loss = loss_fn(tf.stack(outputs), targets)
+                gradients = tape.gradient(loss, self.nn_weights + self.nn_biases)
+                optimizer.apply_gradients(zip(gradients, self.nn_weights + self.nn_biases))
+        print("Training complete")
 
-    def exp(self, x):
-        return math.exp(x)
+    def run(self, inputs):
+        outputs = self.calculate_output(inputs)
+        return tf.stack(outputs)
 
+# Example usage:
 brain = Brain()
-brain.learn([1, 0, 1, 1, 1, 0, 1, 1, 0, 1], [1, 0, 1, 1, 1, 0, 1, 1, 0, 1])
-print(brain.think([1, 0, 1, 1, 1, 0, 1, 1, 0, 1]))
+inputs = np.array([[1, 2, 3, 4, 5]])
+targets = np.array([[10, 20, 30, 40, 50]])
+brain.train(inputs, targets)
+outputs = brain.run(inputs)
+print(outputs)
