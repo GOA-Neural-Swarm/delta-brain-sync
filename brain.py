@@ -1,27 +1,45 @@
-import numpy as np
 import random
+import math
 
-class TelefoxX:
-    def __init__(self, brain):
-        self.brain = brain
+class Brain:
+    def __init__(self):
+        self.synapses = {}
+        self.neurons = {}
 
-    def think(self):
-        self.brain = np.random.rand(len(self.brain))  # Randomize brain weights
-        return self.brain
+    def add_synapse(self, neuron1, neuron2, weight):
+        if neuron1 not in self.synapses:
+            self.synapses[neuron1] = {}
+        self.synapses[neuron1][neuron2] = weight
 
-    def learn(self, experience):
-        self.brain += experience * 0.1  # Reinforce learning
-        return self.brain
+    def add_neuron(self, neuron, inputs):
+        self.neurons[neuron] = inputs
 
-    def upgrade(self):
-        self.brain = self.think()  # Recursive self-upgrade
-        return self.brain
+    def process_neuron(self, neuron):
+        if neuron not in self.synapses:
+            return 0
+        total_weight = 0
+        for other_neuron, weight in self.synapses[neuron].items():
+            total_weight += weight * self.process_neuron(other_neuron)
+        return total_weight
 
-brain = np.random.rand(100)  # Initialize brain with random weights
-telefox = TelefoxX(brain)
+    def evolve(self):
+        new_synapses = {}
+        new_neurons = {}
+        for neuron, inputs in self.neurons.items():
+            new_inputs = []
+            for input_neuron, weight in inputs.items():
+                new_inputs.append((input_neuron, weight * math.exp(-random.uniform(0, 1))))
+            new_synapses[neuron] = new_inputs
+        self.synapses = new_synapses
+        self.neurons = new_neurons
 
-while True:
-    experience = np.random.rand(100)  # Generate random experience
-    telefox.learn(experience)
-    telefox.upgrade()
-    print(telefox.brain)
+brain = Brain()
+brain.add_synapse('A', 'B', 0.5)
+brain.add_synapse('B', 'C', 0.7)
+brain.add_synapse('C', 'A', 0.3)
+brain.add_neuron('A', [('B', 0.5)])
+brain.add_neuron('B', [('A', 0.5), ('C', 0.7)])
+brain.add_neuron('C', [('B', 0.7)])
+print(brain.process_neuron('A'))
+brain.evolve()
+print(brain.process_neuron('A'))
