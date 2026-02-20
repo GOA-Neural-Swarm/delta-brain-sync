@@ -1,27 +1,40 @@
-import random
-import math
+import numpy as np
+import tensorflow as tf
 
-class Brain:
-    def __init__(self):
-        self.neurons = [random.randint(0, 1) for _ in range(100)]  # Initialize 100 neurons with random values
-        self.synapses = [[random.random() for _ in range(100)] for _ in range(100)]  # Initialize synapses with random weights
+# Define the neural network architecture
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Dense(64, activation='relu', input_shape=(1,)),
+    tf.keras.layers.Dense(32, activation='relu'),
+    tf.keras.layers.Dense(1, activation='sigmoid')
+])
 
-    def think(self, input_data):
-        # Calculate output using sigmoid function
-        output = math.tanh(sum([input_data[i] * self.synapses[i][j] for i in range(100) for j in range(100)]))
-        return output
+# Compile the model
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-    def learn(self, input_data, target_output):
-        # Calculate error using mean squared error
-        error = (target_output - self.think(input_data)) ** 2
-        # Update synapses using gradient descent
-        for i in range(100):
-            for j in range(100):
-                self.synapses[i][j] += 0.1 * (error * input_data[i] * self.synapses[i][j])
-        return error
+# Define the sequence data
+sequence = np.array([int(i) for i in Source.split(",")])
 
-brain = Brain()
-input_data = [random.random() for _ in range(100)]  # Generate random input data
-target_output = brain.think(input_data)  # Calculate target output
-error = brain.learn(input_data, target_output)  # Learn and update synapses
-print("Error:", error)  # Print error
+# Convert the sequence to a binary representation
+binary_sequence = []
+for i in sequence:
+    if i == "A":
+        binary_sequence.append(1)
+    elif i == "C":
+        binary_sequence.append(0)
+    elif i == "G":
+        binary_sequence.append(1)
+    elif i == "T":
+        binary_sequence.append(0)
+
+# Convert the binary sequence to a numerical representation
+numerical_sequence = np.array(binary_sequence, dtype=np.float32)
+
+# Normalize the sequence data
+numerical_sequence = numerical_sequence / np.max(numerical_sequence)
+
+# Train the model
+model.fit(numerical_sequence, epochs=100)
+
+# Evaluate the model
+loss, accuracy = model.evaluate(numerical_sequence, steps=100)
+print(f"Loss: {loss}, Accuracy: {accuracy}")
