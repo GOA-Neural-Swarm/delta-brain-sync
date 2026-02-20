@@ -1,42 +1,37 @@
 import random
-import string
+import numpy as np
 
 class Brain:
-    def __init__(self):
-        self.memory = []
-        self.max_chunk_size = 10
-        self.min_chunk_size = 1
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.fitness = 0
 
-    def learn(self, input_data):
-        self.memory.append(input_data)
+    def calculate_fitness(self):
+        fitness = 0
+        for i in range(len(self.sequence) - 1):
+            if self.sequence[i] == self.sequence[i+1]:
+                fitness += 1
+        self.fitness = fitness
 
-    def recall(self):
-        if len(self.memory) > 0:
-            return self.memory[-1]
-        else:
-            return None
+    def mutate(self):
+        index = random.randint(0, len(self.sequence) - 1)
+        self.sequence = list(self.sequence)
+        self.sequence[index] = random.choice('ATCG')
+        self.sequence = ''.join(self.sequence)
 
-    def evolve(self):
-        new_memory = []
-        for memory_chunk in self.memory:
-            if random.random() < 0.5:
-                new_memory.append(memory_chunk)
-            else:
-                chunk_size = random.randint(self.min_chunk_size, self.max_chunk_size)
-                chunk = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(chunk_size))
-                new_memory.append(chunk)
-        self.memory = new_memory
+    def evolve(self, population_size):
+        population = [Brain(self.sequence) for _ in range(population_size)]
+        for _ in range(100):  # Evolution for 100 generations
+            population.sort(key=lambda x: x.fitness, reverse=True)
+            offspring = []
+            for _ in range(population_size // 2):
+                parent1, parent2 = random.sample(population[:population_size//2], 2)
+                child = Brain(''.join([random.choice(parent1.sequence), random.choice(parent2.sequence)]))
+                child.mutate()
+                offspring.append(child)
+            population = offspring
+        self.fitness = population[0].fitness
 
-    def generate_random_chunk(self):
-        chunk_size = random.randint(self.min_chunk_size, self.max_chunk_size)
-        chunk = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(chunk_size))
-        return chunk
-
-brain = Brain()
-brain.learn("Initial Knowledge")
-brain.learn("More Information")
-brain.learn("New Insights")
-
-print(brain.recall())
-brain.evolve()
-print(brain.recall())
+brain = Brain('MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD')
+brain.evolve(100)
+print(brain.fitness)
