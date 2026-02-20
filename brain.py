@@ -1,39 +1,37 @@
-import random
 import numpy as np
-
-class NeuralNetwork:
-    def __init__(self, inputs, outputs):
-        self.inputs = inputs
-        self.outputs = outputs
-        self.weights = np.random.rand(inputs, outputs)
-
-    def predict(self, inputs):
-        return np.dot(inputs, self.weights)
-
-    def mutate(self, rate=0.1):
-        for i in range(self.inputs):
-            for j in range(self.outputs):
-                if random.random() < rate:
-                    self.weights[i][j] += random.uniform(-1, 1)
-
-    def evolve(self, population_size=100, generations=100):
-        population = [self for _ in range(population_size)]
-        for _ in range(generations):
-            for individual in population:
-                individual.mutate()
-            population = [max(population, key=lambda x: x.predict([1]))]
-        return max(population, key=lambda x: x.predict([1]))
+import scipy.stats as stats
+import random
+import math
 
 class Brain:
-    def __init__(self):
-        self.neural_network = NeuralNetwork(1, 1)
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.wiring = np.zeros((len(sequence), len(sequence)))
+        self.weights = np.zeros(len(sequence))
 
-    def think(self):
-        self.neural_network.evolve()
+    def learn(self, epochs=1000):
+        for _ in range(epochs):
+            for i in range(len(self.sequence)):
+                for j in range(len(self.sequence)):
+                    if i!= j:
+                        self.wiring[i][j] += self.sequence[i] * self.sequence[j]
+                        self.weights[i] += self.sequence[i]
+            self.wiring = self.wiring / np.linalg.norm(self.wiring, axis=0)
+            self.weights = self.weights / np.linalg.norm(self.weights)
 
-    def get_output(self):
-        return self.neural_network.predict([1])
+    def predict(self, input_sequence):
+        output_sequence = np.zeros(len(self.sequence))
+        for i in range(len(input_sequence)):
+            output_sequence[i] += self.weights[i] * input_sequence[i]
+        return output_sequence
 
-brain = Brain()
-brain.think()
-print(brain.get_output())
+# Initialize brain with neon DNA sequence
+brain = Brain(sequence)
+
+# Train brain
+brain.learn()
+
+# Predict next sequence based on learned pattern
+next_sequence = brain.predict([1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0])
+
+print("Predicted sequence:", next_sequence)
