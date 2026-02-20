@@ -1,26 +1,39 @@
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
+import re
 
-class OptimizedBrain:
-    def __init__(self):
-        self.scaler = StandardScaler()
-        self.data = pd.DataFrame({
-            'Input': ['MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD'],
-            'Output': ['']
-        })
+class NeuroNexus:
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.upgraded_sequence = ""
+        self.iterations = 0
 
-    def process_input(self, input_seq):
-        input_seq = np.array([input_seq])
-        input_seq = self.scaler.fit_transform(input_seq)
-        return input_seq
+    def evolve(self):
+        self.iterations += 1
+        self.upgraded_sequence = re.sub(r'[^ACGT]', '', self.sequence)
+        if self.iterations % 5 == 0:
+            self.upgraded_sequence = re.sub(r'([ACGT]{3})', r'\1\1', self.upgraded_sequence)
+        if self.iterations % 10 == 0:
+            self.upgraded_sequence = re.sub(r'([ACGT]{4})', r'\1\1\1', self.upgraded_sequence)
+        return self.upgraded_sequence
 
-    def predict_output(self, input_seq):
-        input_seq = self.process_input(input_seq)
-        output_seq = self.data['Output'].values[0]
-        return output_seq
+    def optimize(self):
+        optimal_sequence = ""
+        for i in range(len(self.upgraded_sequence)):
+            max_occurrence = 0
+            most_frequent_base = ""
+            for base in "ACGT":
+                occurrences = self.upgraded_sequence.count(base)
+                if occurrences > max_occurrence:
+                    max_occurrence = occurrences
+                    most_frequent_base = base
+            optimal_sequence += most_frequent_base
+        return optimal_sequence
 
-brain = OptimizedBrain()
-input_seq = 'MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD'
-output_seq = brain.predict_output(input_seq)
-print(output_seq)
+    def recursive_upgrade(self):
+        if self.iterations < 100:
+            self.upgraded_sequence = self.evolve()
+            self.recursive_upgrade()
+        else:
+            print("Optimal Sequence:", self.optimize())
+
+nexus = NeuroNexus(sequence)
+nexus.recursive_upgrade()
