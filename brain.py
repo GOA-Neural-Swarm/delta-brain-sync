@@ -1,26 +1,40 @@
 import numpy as np
-import scipy.stats as stats
-from sklearn.preprocessing import StandardScaler
 
-class Brain:
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self.scaler = StandardScaler()
+class NeuralNetwork:
+    def __init__(self):
+        self.weights = np.random.rand(10, 10)
+        self.bias = np.zeros(10)
 
-    def process_sequence(self):
-        # Extract relevant features from DNA sequence
-        features = np.array([
-            stats.mean(self.sequence),
-            stats.median(self.sequence),
-            np.max(self.sequence),
-            np.min(self.sequence),
-            np.var(self.sequence)
-        ])
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-        # Scale features using StandardScaler
-        features_scaled = self.scaler.fit_transform(features.reshape(1, -1))
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-        return features_scaled[0]
+    def forward_propagation(self, x):
+        z = np.dot(x, self.weights) + self.bias
+        a = self.sigmoid(z)
+        return a
 
-brain = Brain(PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW)
-print(brain.process_sequence())
+    def backward_propagation(self, x, a):
+        z = np.dot(x, self.weights) + self.bias
+        a = self.sigmoid(z)
+        d = a * (1 - a)
+        dw = x.T.dot(d)
+        db = d.sum()
+        return dw, db
+
+    def train(self, x, y, epochs=1000):
+        for _ in range(epochs):
+            a = self.forward_propagation(x)
+            dw, db = self.backward_propagation(x, a)
+            self.weights -= 0.01 * dw
+            self.bias -= 0.01 * db
+
+    def predict(self, x):
+        a = self.forward_propagation(x)
+        return np.round(a)
+
+nn = NeuralNetwork()
+nn.train(np.random.rand(10, 10), np.random.rand(10, 1))
+print(nn.predict(np.random.rand(10, 1)))
