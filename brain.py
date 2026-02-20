@@ -1,21 +1,32 @@
-import random
-import string
+import numpy as np
 
-def generate_random_subsequence(dna_sequence, length):
-    random_subsequence = ''
-    for _ in range(length):
-        random_subsequence += random.choice(string.ascii_letters)
-    return random_subsequence
+class Brain:
+    def __init__(self, dna):
+        self.dna = dna
+        self.weights = np.random.rand(len(dna), len(dna))
 
-def optimize_brain_code(dna_sequence, length):
-    random_subsequence = generate_random_subsequence(dna_sequence, length)
-    optimized_code = ''
-    for char in dna_sequence:
-        if char in random_subsequence:
-            optimized_code += char
-        else:
-            optimized_code += random.choice(string.ascii_letters)
-    return optimized_code
+    def think(self):
+        self.weights = np.dot(self.weights, self.weights)
+        return np.argmax(self.weights)
 
-brain_code = optimize_brain_code(Source, 1000)
-print(brain_code)
+    def evolve(self, fitness):
+        self.dna = np.dot(self.dna, fitness)
+        self.weights = np.dot(self.weights, fitness)
+
+    def mutate(self, mutation_rate):
+        self.dna = np.random.binomial(1, mutation_rate, size=self.dna.shape)
+        self.weights = np.random.binomial(1, mutation_rate, size=self.weights.shape)
+
+    def learn(self, sequence, target):
+        for i in range(len(sequence)):
+            self.think()
+            if self.think() == target[i]:
+                self.evolve([1, 1, 1, 1, 1])
+            else:
+                self.evolve([-1, -1, -1, -1, -1])
+        self.mutate(0.01)
+
+# Prompt definition and Meta-Cognition logic
+brain = Brain(np.array(list(Source)))
+brain.learn(sequence, target)
+brain.think()
