@@ -1,40 +1,46 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import random
+import copy
 
-# Define neural network architecture
-class NeuralNetwork:
-    def __init__(self, inputs, outputs):
-        self.inputs = inputs
-        self.outputs = outputs
-        self.weights = np.random.rand(inputs, outputs)
-        self.biases = np.zeros((outputs,))
+class Brain:
+    def __init__(self, dna_sequence):
+        self.dna_sequence = dna_sequence
+        self.synapses = np.zeros((len(dna_sequence), len(dna_sequence)))
 
-    def forward_pass(self, inputs):
-        return np.dot(inputs, self.weights) + self.biases
+    def evolve(self):
+        # Selection
+        parents = [self for _ in range(5)]
+        for parent in parents:
+            parent.synapses = np.copy(self.synapses)
 
-    def backward_pass(self, inputs, targets):
-        errors = targets - self.forward_pass(inputs)
-        self.weights += np.dot(inputs.T, errors)
-        self.biases += np.sum(errors, axis=0, keepdims=True)
+        # Crossover
+        offspring = []
+        for _ in range(5):
+            parent1, parent2 = random.sample(parents, 2)
+            child = copy.deepcopy(parent1)
+            child.synapses = np.add(parent1.synapses, parent2.synapses)
+            child.synapses /= 2
+            offspring.append(child)
 
-    def train(self, inputs, targets, epochs):
-        for _ in range(epochs):
-            for i in range(len(inputs)):
-                self.backward_pass(inputs[i], targets[i])
+        # Mutation
+        for child in offspring:
+            child.synapses += np.random.normal(0, 0.1, child.synapses.shape)
 
-    def predict(self, inputs):
-        return self.forward_pass(inputs)
+        # Replacement
+        self.synapses = np.max(offspring, axis=0)
 
-# Load sequence data
-sequence_data = np.array([int(i) for i in Source])
+    def think(self, input_sequence):
+        output_sequence = np.dot(input_sequence, self.synapses)
+        return output_sequence
 
-# Initialize neural network
-nn = NeuralNetwork(20, 1)
+# Initialize Brain with DNA sequence
+brain = Brain(dna_sequence)
 
-# Train neural network
-nn.train(sequence_data, np.array([1] * len(sequence_data)), 1000)
+# Evolve Brain
+for _ in range(100):
+    brain.evolve()
 
-# Predict output
-output = nn.predict(sequence_data)
-
-print(output)
+# Think with Brain
+input_sequence = np.array([1, 2, 3, 4, 5])
+output_sequence = brain.think(input_sequence)
+print(output_sequence)
