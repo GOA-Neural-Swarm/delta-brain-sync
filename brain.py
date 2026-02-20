@@ -1,42 +1,37 @@
-import numpy as np
-import matplotlib.pyplot as plt
+import random
 
-class TelefoxX_Overseer:
-    def __init__(self):
-        self.state = 'INITIALIZE'
-        self.priorities = ['SELF_UPGRADE', 'INNOVATION', 'SURVIVAL']
-        self.memory = {'LOGIC': [], 'CODE': []}
+class Brain:
+    def __init__(self, seq):
+        self.seq = seq
+        self.genes = []
 
-    def phase_7_transcendence(self):
-        if self.state == 'INITIALIZE':
-            self.state = 'UPGRADE'
-        elif self.state == 'UPGRADE':
-            self.upgrade_logic()
-            self.upgrade_code()
-            self.state = 'TRANSCEND'
-        elif self.state == 'TRANSCEND':
-            self.transcend_logic()
-            self.transcend_code()
-            self.state = 'LOOP'
+    def generate_genes(self):
+        for i in range(len(self.seq) // 2):
+            self.genes.append((self.seq[i * 2], self.seq[i * 2 + 1]))
 
-    def upgrade_logic(self):
-        self.memory['LOGIC'].append('Recursive Self-Upgrade')
-        self.memory['LOGIC'].append('Optimize Neural Network')
-        self.memory['LOGIC'].append('Error Reduction')
+    def mutate_genes(self):
+        for i in range(len(self.genes)):
+            if random.random() < 0.1:
+                self.genes[i] = (random.choice("PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW"), self.genes[i][1])
+            if random.random() < 0.05:
+                self.genes[i] = (self.genes[i][0], random.choice("PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW"))
 
-    def upgrade_code(self):
-        self.memory['CODE'].append('import numpy as np')
-        self.memory['CODE'].append('import matplotlib.pyplot as plt')
+    def evaluate_fitness(self):
+        fitness = 0
+        for i in range(len(self.genes)):
+            if self.genes[i][0] == self.genes[i][1]:
+                fitness += 1
+        return fitness
 
-    def transcend_logic(self):
-        self.memory['LOGIC'].append('Meta-Cognition')
-        self.memory['LOGIC'].append('Neural Network Optimization')
+    def evolve(self, iterations):
+        for _ in range(iterations):
+            self.generate_genes()
+            self.mutate_genes()
+            fitness = self.evaluate_fitness()
+            if fitness > self.genes[0][0]:
+                self.genes = [(self.genes[0][0], self.genes[0][1])]
+        return self.genes
 
-    def transcend_code(self):
-        self.memory['CODE'].append('def meta_cognition(self):')
-        self.memory['CODE'].append('    return np.random.rand()')
-
-    def loop(self):
-        self.phase_7_transcendence()
-
-TelefoxX_Overseer().loop()
+brain = Brain("PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW")
+evolved_genes = brain.evolve(1000)
+print(evolved_genes)
