@@ -1,38 +1,32 @@
+import random
 import numpy as np
+from deap import base, creator, tools, algorithms
 
-class Brain:
-    def __init__(self, dna_sequence):
-        self.dna_sequence = dna_sequence
-        self.weights = np.zeros((len(dna_sequence), len(dna_sequence)))
-        self.biases = np.zeros((len(dna_sequence), 1))
-        self.children = []
+# Define the fitness function
+def evaluate(individual):
+    return sum(individual),
 
-    def process_dna(self):
-        for i in range(len(self.dna_sequence)):
-            for j in range(len(self.dna_sequence)):
-                self.weights[i][j] = np.exp(-(i-j)**2) / (np.sqrt(len(self.dna_sequence)))
-                self.biases[i][0] += self.dna_sequence[i]
+# Create the toolbox
+toolbox = base.Toolbox()
+creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
+creator.create("Individual", list, fitness=creator.FitnessMin)
 
-    def think(self):
-        self.process_dna()
-        output = np.zeros((len(self.dna_sequence), 1))
-        for i in range(len(self.dna_sequence)):
-            output[i][0] = np.sum(self.weights[i][:] * self.biases[i][0]) + self.biases[i][0]
-        return output
+# Define the genetic operators
+toolbox.register("attr_bool", random.randint, 0, 1)
+toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, n=100)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
-    def reproduce(self):
-        child = Brain(self.dna_sequence)
-        child.weights = np.copy(self.weights)
-        child.biases = np.copy(self.biases)
-        self.children.append(child)
-        return child
+# Define the genetic algorithm
+pop = toolbox.population(n=50)
+hof = tools.HallOfFame(1)
 
-brain = Brain(Source)
-for _ in range(100):  # Replicate 100 times
-    child = brain.reproduce()
-    child.think()
-    child.process_dna()
-print(brain.children)
+# Run the genetic algorithm
+for _ in range(10):
+    offspring = algorithms.varAnd(pop, toolbox, cxpb=0.5, mutpb=0.1)
+    fitness = map(evaluate, offspring)
+    for fit, ind in zip(fitness, offspring):
+        ind.fitness.values = fit
+    hof.update(offspring)
 
-brain.self_upgrade()
-print(brain.think())
+# Print the best individual
+print(hof[0])
