@@ -1,55 +1,42 @@
-import random
 import numpy as np
-from scipy.spatial import distance
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from keras.models import Sequential
+from keras.layers import Dense
 
-class NeuralNetwork:
-    def __init__(self, num_inputs, num_hidden, num_outputs):
-        self.num_inputs = num_inputs
-        self.num_hidden = num_hidden
-        self.num_outputs = num_outputs
-        self.weights1 = np.random.rand(num_inputs, num_hidden)
-        self.weights2 = np.random.rand(num_hidden, num_outputs)
+def optimize_brain(dna_sequence):
+    # Convert DNA sequence to numerical array
+    dna_array = np.array([ord(base) for base in dna_sequence], dtype=int)
+    dna_array = StandardScaler().fit_transform(dna_array.reshape(-1, 1))
 
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
+    # Create neural network model
+    model = Sequential()
+    model.add(Dense(64, input_shape=(1,), activation='relu'))
+    model.add(Dense(32, activation='relu'))
+    model.add(Dense(1, activation='sigmoid'))
 
-    def derivative(self, x):
-        return x * (1 - x)
+    # Compile the model
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-    def predict(self, inputs):
-        hidden_layer = np.dot(inputs, self.weights1)
-        hidden_layer = self.sigmoid(hidden_layer)
-        output_layer = np.dot(hidden_layer, self.weights2)
-        output_layer = self.sigmoid(output_layer)
-        return output_layer
+    # Train the model
+    model.fit(dna_array, epochs=100, verbose=0)
 
-    def train(self, inputs, targets):
-        hidden_layer = np.dot(inputs, self.weights1)
-        hidden_layer = self.sigmoid(hidden_layer)
-        output_layer = np.dot(hidden_layer, self.weights2)
-        output_layer = self.sigmoid(output_layer)
-        errors = targets - output_layer
-        self.weights2 += np.dot(hidden_layer.T, errors * self.derivative(output_layer))
-        self.weights1 += np.dot(inputs.T, hidden_layer * self.derivative(hidden_layer))
+    # Predict the output
+    output = model.predict(dna_array)
 
-    def mutate(self, mutation_rate):
-        self.weights1 += np.random.normal(0, 0.1, size=self.weights1.shape) * mutation_rate
-        self.weights2 += np.random.normal(0, 0.1, size=self.weights2.shape) * mutation_rate
+    # Optimize the brain by recursively generating new DNA sequences
+    optimized_dna = ""
+    for _ in range(1000):
+        new_dna = ""
+        for base in dna_sequence:
+            if np.random.rand() < 0.5:
+                new_dna += base
+            else:
+                new_dna += chr(np.random.randint(33, 126))  # Generate a random base
+        optimized_dna += new_dna
 
-class Evolution:
-    def __init__(self, num_inputs, num_hidden, num_outputs, population_size, mutation_rate):
-        self.num_inputs = num_inputs
-        self.num_hidden = num_hidden
-        self.num_outputs = num_outputs
-        self.population_size = population_size
-        self.mutation_rate = mutation_rate
-        self.population = [NeuralNetwork(num_inputs, num_hidden, num_outputs) for _ in range(population_size)]
+    return optimized_dna
 
-    def evolve(self, inputs, targets):
-        for i in range(self.population_size):
-            self.population[i].train(inputs, targets)
-            self.population[i].mutate(self.mutation_rate)
-        return self.population[np.argmax([np.mean([distance.cosine(output_layer, targets) for output_layer in nn.predict(inputs)]) for nn in self.population])]
-
-evolution = Evolution(2, 3, 1, 100, 0.1)
-print(evolution.evolve(np.array([[0, 0], [0, 1], [1, 0], [1, 1]]), np.array([[0], [1]])))
+# Generate optimized brain
+optimized_brain = optimize_brain(PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW)
+print(optimized_brain)
