@@ -1,10 +1,12 @@
+import random
 import numpy as np
-import pandas as pd
 
 class NeuralNetwork:
-    def __init__(self, input_size, hidden_size, output_size):
-        self.weights1 = np.random.rand(input_size, hidden_size)
-        self.weights2 = np.random.rand(hidden_size, output_size)
+    def __init__(self, inputs, outputs):
+        self.inputs = inputs
+        self.outputs = outputs
+        self.weights1 = np.random.rand(inputs, outputs)
+        self.weights2 = np.random.rand(outputs, outputs)
 
     def sigmoid(self, x):
         return 1 / (1 + np.exp(-x))
@@ -12,45 +14,40 @@ class NeuralNetwork:
     def sigmoid_derivative(self, x):
         return x * (1 - x)
 
-    def train(self, inputs, outputs):
-        hidden_layer = np.dot(inputs, self.weights1)
-        hidden_layer = self.sigmoid(hidden_layer)
+    def fit(self, X, y):
+        learning_rate = 0.01
+        iterations = 10000
 
-        output_layer = np.dot(hidden_layer, self.weights2)
-        output_layer = self.sigmoid(output_layer)
+        for _ in range(iterations):
+            layer0 = X.reshape(X.shape[0], -1)
+            layer1 = self.sigmoid(np.dot(layer0, self.weights1))
+            layer2 = self.sigmoid(np.dot(layer1, self.weights2))
+            layer2_delta = layer2 * (1 - layer2) * (y - layer2)
+            layer1_delta = layer1 * (1 - layer1) * np.dot(layer2_delta, self.weights2.T)
+            self.weights2 += learning_rate * np.dot(layer1.T, layer2_delta)
+            self.weights1 += learning_rate * np.dot(layer0.T, layer1_delta)
 
-        error = outputs - output_layer
-        d_error = error * self.sigmoid_derivative(output_layer)
+    def predict(self, X):
+        layer0 = X.reshape(X.shape[0], -1)
+        layer1 = self.sigmoid(np.dot(layer0, self.weights1))
+        layer2 = self.sigmoid(np.dot(layer1, self.weights2))
+        return layer2
 
-        self.weights2 += np.dot(hidden_layer.T, d_error)
+# Load the sequence
+sequence = "PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW"
 
-        delta_weights2 = d_error * hidden_layer
-        delta_weights1 = delta_weights2 * self.sigmoid_derivative(hidden_layer)
+# Encode the sequence into numerical values
+encoded_sequence = []
+for char in sequence:
+    encoded_sequence.append(ord(char))
 
-        self.weights1 += np.dot(inputs.T, delta_weights1)
+# Create a neural network with 1 input layer and 1 output layer
+network = NeuralNetwork(1, len(encoded_sequence))
 
-    def predict(self, inputs):
-        hidden_layer = np.dot(inputs, self.weights1)
-        hidden_layer = self.sigmoid(hidden_layer)
+# Train the network
+network.fit(encoded_sequence, encoded_sequence)
 
-        output_layer = np.dot(hidden_layer, self.weights2)
-        output_layer = self.sigmoid(output_layer)
+# Generate a prediction
+prediction = network.predict(encoded_sequence)
 
-        return output_layer
-
-# Initialize Neural Network
-nn = NeuralNetwork(4, 2, 1)
-
-# Define inputs and outputs
-inputs = np.array([[0, 0, 0, 1], [1, 1, 1, 1], [1, 0, 1, 1], [0, 1, 1, 0]])
-outputs = np.array([[0], [1], [1], [0]])
-
-# Train Neural Network
-for _ in range(10000):
-    nn.train(inputs, outputs)
-
-# Predict outputs
-predictions = nn.predict(inputs)
-
-print("Predicted outputs:")
-print(predictions)
+print("Prediction:", prediction)
