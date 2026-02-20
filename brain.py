@@ -1,39 +1,51 @@
-import random
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
 
-class NeuralNetwork:
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self.weights = [random.random() for _ in range(len(sequence))]
-        self.biases = [random.random() for _ in range(len(sequence))]
+class Brain:
+    def __init__(self, seq):
+        self.seq = seq
+        self.scaler = StandardScaler()
 
-    def activate(self, input_vector):
-        output_vector = []
-        for i in range(len(self.sequence)):
-            weighted_sum = sum(self.weights[i] * input_vector[i] for input_value in input_vector)
-            output_vector.append(self.sigmoid(weighted_sum + self.biases[i]))
-        return output_vector
+    def process_signal(self, signal):
+        signal = self.scaler.fit_transform(signal)
+        return signal
 
-    def sigmoid(self, x):
-        return 1 / (1 + exp(-x))
+    def neural_network(self, signal):
+        # Define neural network architecture
+        model = Sequential()
+        model.add(Dense(64, input_dim=1, activation='relu'))
+        model.add(Dense(1, activation='sigmoid'))
 
-    def train(self, sequence, target_output):
-        input_vector = [1 if i % 2 else 0 for i in range(len(sequence))]
-        output_vector = self.activate(input_vector)
-        error = sum((output_vector[i] - target_output[i]) ** 2 for i in range(len(sequence)))
-        self.weights = [w + 0.1 * (target_output[i] - output_vector[i]) * input_vector[i] for i, w in enumerate(self.weights)]
-        self.biases = [b + 0.1 * (target_output[i] - output_vector[i]) for i, b in enumerate(self.biases)]
+        # Compile neural network
+        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-    def think(self):
-        input_vector = [1 if i % 2 else 0 for i in range(len(self.sequence))]
-        output_vector = self.activate(input_vector)
-        return output_vector
+        # Train neural network
+        model.fit(signal, epochs=100, verbose=0)
 
-# Initialize neural network with given sequence
-neural_network = NeuralNetwork(sequence)
+        return model
 
-# Train neural network with target output
-neural_network.train(sequence, [1 if i % 2 else 0 for i in range(len(sequence))])
+    def evaluate_network(self, signal):
+        # Evaluate neural network on test signal
+        loss, accuracy = model.evaluate(signal)
+        return loss, accuracy
 
-# Think with trained neural network
-thought = neural_network.think()
-print(thought)
+# Initialize brain with provided DNA sequence
+brain = Brain(seq)
+
+# Process signal using brain's neural network
+signal = np.random.rand(100, 1)
+processed_signal = brain.process_signal(signal)
+print("Processed signal:", processed_signal)
+
+# Train and evaluate neural network
+model = brain.neural_network(processed_signal)
+loss, accuracy = brain.evaluate_network(processed_signal)
+print("Loss:", loss)
+print("Accuracy:", accuracy)
+
+# Visualize neural network's performance
+plt.plot(loss)
+plt.xlabel("Epochs")
+plt.ylabel("Loss")
+plt.show()
