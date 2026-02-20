@@ -1,36 +1,47 @@
-import numpy as np
 import random
-from keras.models import Sequential
-from keras.layers import Dense
+
+class Neuron:
+    def __init__(self, synapses, activation_function):
+        self.synapses = synapses
+        self.activation_function = activation_function
+        self.output = 0
+
+    def fire(self, input_signal):
+        self.output = self.activation_function(sum([synapse * input_signal for synapse in self.synapses]))
+
+    def mutate(self):
+        self.synapses = [synapse * random.uniform(0.9, 1.1) for synapse in self.synapses]
+
+class Synapse:
+    def __init__(self, strength):
+        self.strength = strength
 
 class Brain:
-    def __init__(self):
-        self.model = Sequential()
-        self.model.add(Dense(64, input_dim=1000, activation='relu'))
-        self.model.add(Dense(1, activation='sigmoid'))
-        self.model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-        self.mutation_rate = 0.1
-        self.selection_pressure = 0.5
+    def __init__(self, neurons):
+        self.neurons = neurons
 
-    def think(self, input_data):
-        return self.model.predict(input_data)
-
-    def learn(self, input_data, target_output):
-        self.model.fit(input_data, target_output, epochs=1, verbose=0)
-        return self.model.evaluate(input_data, target_output)
+    def think(self, input_signal):
+        for neuron in self.neurons:
+            neuron.fire(input_signal)
+        return [neuron.output for neuron in self.neurons]
 
     def evolve(self):
-        parents = [Brain() for _ in range(10)]
-        for parent in parents:
-            parent.learn(np.random.rand(1000, 1), np.random.rand(1, 1))
-        children = [Brain() for _ in range(10)]
-        for child in children:
-            child.model = Sequential()
-            child.model.add(Dense(64, input_dim=1000, activation='relu'))
-            child.model.add(Dense(1, activation='sigmoid'))
-            child.model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-            child.model.set_weights(parents[random.randint(0, 9)].model.get_weights())
-        self.model = np.copy(children[random.randint(0, 9)].model)
+        for neuron in self.neurons:
+            neuron.mutate()
 
-brain = Brain()
-brain.evolve()
+# Define activation functions
+def sigmoid(x):
+    return 1 / (1 + math.exp(-x))
+
+def ReLU(x):
+    return max(0, x)
+
+# Create brain with neurons and synapses
+brain = Brain([Neuron([Synapse(0.5), Synapse(0.3)], sigmoid), Neuron([Synapse(0.8), Synapse(0.2)], ReLU)])
+
+# Think and evolve the brain
+for _ in range(100):
+    input_signal = random.uniform(0, 1)
+    output = brain.think(input_signal)
+    print(output)
+    brain.evolve()
