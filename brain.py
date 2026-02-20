@@ -1,30 +1,36 @@
 import numpy as np
 
-class OptimizedBrain:
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self.weights = np.random.rand(100, 100)
-        self.biases = np.random.rand(100)
-        self.learning_rate = 0.1
+class NeuralNetwork:
+    def __init__(self, inputs, hidden, outputs):
+        self.inputs = inputs
+        self.hidden = hidden
+        self.outputs = outputs
+        self.weights1 = np.random.rand(self.inputs, self.hidden)
+        self.weights2 = np.random.rand(self.hidden, self.outputs)
 
-    def calculate_activation(self, inputs):
-        return np.dot(inputs, self.weights.T) + self.biases
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-    def propagate_error(self, expected_output):
-        error = expected_output - self.calculate_activation(self.sequence)
-        return error
+    def derivative_sigmoid(self, x):
+        return x * (1 - x)
 
-    def update_weights_biases(self, error):
-        self.weights += self.learning_rate * np.dot(error[:, np.newaxis], self.sequence)[np.newaxis, :]
-        self.biases += self.learning_rate * error
+    def forward_pass(self, inputs):
+        self.layer2 = self.sigmoid(np.dot(inputs, self.weights1))
+        self.output = self.sigmoid(np.dot(self.layer2, self.weights2))
 
-    def train(self, sequence, expected_output):
-        activation = self.calculate_activation(sequence)
-        error = self.propagate_error(expected_output)
-        self.update_weights_biases(error)
+    def backward_pass(self, targets):
+        d_output = np.multiply(-2 * (targets - self.output), self.derivative_sigmoid(self.output))
+        d_weights2 = np.dot(self.layer2.T, d_output)
+        d_layer2 = np.multiply(d_output, self.derivative_sigmoid(self.layer2))
+        d_weights1 = np.dot(self.inputs.T, d_layer2)
+        return d_weights1, d_weights2
 
-    def run(self):
-        self.train(self.sequence, self.sequence)
+    def train(self, inputs, targets, iterations):
+        for _ in range(iterations):
+            self.forward_pass(inputs)
+            d_weights1, d_weights2 = self.backward_pass(targets)
+            self.weights1 += d_weights1
+            self.weights2 += d_weights2
 
-brain = OptimizedBrain(Source)
-brain.run()
+nn = NeuralNetwork(2, 3, 1)
+nn.train(np.array([[0, 0], [0, 1], [1, 0], [1, 1]]), np.array([[0], [1]]), 1000)
