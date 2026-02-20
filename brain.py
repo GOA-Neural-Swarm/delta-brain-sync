@@ -1,34 +1,35 @@
 import random
+import string
 
 class Brain:
-    def __init__(self, dna):
-        self.dna = dna
-        self.connections = []
+    def __init__(self):
+        self.memory = {}
 
-    def synthesize(self):
-        for i in range(len(self.dna)):
-            for j in range(i+1, len(self.dna)):
-                if random.random() < 0.1:
-                    self.connections.append((i, j))
+    def think(self, input_data):
+        if input_data in self.memory:
+            return self.memory[input_data]
+        else:
+            self.memory[input_data] = self.process(input_data)
+            return self.memory[input_data]
 
-    def mutate(self):
-        for connection in self.connections:
-            if random.random() < 0.05:
-                self.dna[connection[0]] += 1
-                self.dna[connection[1]] -= 1
+    def process(self, input_data):
+        if isinstance(input_data, str):
+            return self.process_string(input_data)
+        elif isinstance(input_data, int):
+            return self.process_integer(input_data)
+        else:
+            return None
 
-    def evolve(self, iterations):
-        for _ in range(iterations):
-            self.synthesize()
-            self.mutate()
+    def process_string(self, input_string):
+        if random.random() < 0.5:
+            return self.process_string(input_string + string.ascii_uppercase[0])
+        else:
+            return self.process_string(input_string + string.ascii_lowercase[0])
 
-    def optimize(self):
-        optimal_dna = self.dna.copy()
-        for i in range(len(self.dna)):
-            optimal_dna[i] = min(optimal_dna)
-        return optimal_dna
+    def process_integer(self, input_integer):
+        if random.random() < 0.5:
+            return self.process_integer(input_integer + 1)
+        else:
+            return self.process_integer(input_integer - 1)
 
-brain = Brain([int(x) for x in Source])
-brain.evolve(1000)
-optimal_dna = brain.optimize()
-print(optimal_dna)
+brain = Brain()
