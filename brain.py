@@ -1,70 +1,42 @@
-import hashlib
-import random
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import minimize
+from sklearn.preprocessing import StandardScaler
 
-# Define constants
-MAX_NEURONS = 1000
-MAX_SYNAPSES = 10000
-LEARNING_RATE = 0.01
+# Define the objective function
+def objective(params):
+    # Unpack parameters
+    w1, b1, w2, b2 = params
+    
+    # Calculate the output
+    output = np.tanh(np.dot(X_train, w1) + b1)
+    output = np.dot(output, w2) + b2
+    
+    # Calculate the loss
+    loss = np.mean((output - y_train) ** 2)
+    
+    return loss
 
-# Define neuron class
-class Neuron:
-    def __init__(self, id):
-        self.id = id
-        self.synapses = {}
-        self.value = random.uniform(0, 1)
+# Load the data
+np.random.seed(0)
+X_train, y_train = np.random.rand(100, 100), np.random.rand(100)
 
-    def update(self, input_value):
-        self.value += LEARNING_RATE * input_value
+# Scale the data
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
 
-    def fire(self):
-        return self.value > 0.5
+# Initialize the parameters
+params = np.random.rand(4)
 
-# Define synapse class
-class Synapse:
-    def __init__(self, neuron_id):
-        self.neuron_id = neuron_id
-        self.weight = random.uniform(0, 1)
+# Optimize the parameters
+res = minimize(objective, params, method="SLSQP")
 
-    def update(self, input_value):
-        self.weight += LEARNING_RATE * input_value
+# Print the optimized parameters
+print(res.x)
 
-    def fire(self):
-        return self.weight > 0.5
-
-# Initialize brain
-brain = []
-for i in range(MAX_NEURONS):
-    brain.append(Neuron(i))
-
-# Initialize synapses
-synapses = {}
-for i in range(MAX_SYNAPSES):
-    neuron_id = random.randint(0, MAX_NEURONS - 1)
-    synapses[i] = Synapse(neuron_id)
-
-# Main loop
-while True:
-    # Receive input from environment
-    input_value = float(input("Enter input value: "))
-
-    # Propagate input through brain
-    for neuron in brain:
-        neuron.update(input_value)
-
-    # Fire synapses
-    for synapse in synapses.values():
-        synapse.update(input_value)
-
-    # Update weights
-    for synapse in synapses.values():
-        synapse.fire()
-
-    # Output result
-    output = 0
-    for neuron in brain:
-        output += neuron.value
-    print("Output:", output)
-
-    # Store output for future use
-    with open("output.txt", "w") as f:
-        f.write(str(output))
+# Plot the optimized output
+plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train)
+plt.xlabel("Feature 1")
+plt.ylabel("Feature 2")
+plt.title("Optimized Output")
+plt.show()
