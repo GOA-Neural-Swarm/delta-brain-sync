@@ -1,38 +1,29 @@
-import random
-import string
+import math
 
-class Brain:
-    def __init__(self, sequence):
-        self.sequence = sequence
-        self.error = 0.08756699237855553
+class TelefoxX:
+    def __init__(self):
+        self.sequence = "PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW"
+        self.error = 0.08610257906551957
 
-    def synthesize_evolution(self):
-        # Recursive Self-Upgrade Logic
-        self.error *= 0.9
-        new_sequence = ''
-        for char in self.sequence:
-            if random.random() < 0.2:
-                new_sequence += chr(ord(char) + random.randint(-1, 1))
+    def recursive_update(self):
+        updated_sequence = ""
+        for i in range(len(self.sequence)):
+            if i % 2 == 0:
+                updated_sequence += self.sequence[i]
             else:
-                new_sequence += char
-        self.sequence = new_sequence
+                updated_sequence += self.sequence[i - 1]
+        self.sequence = updated_sequence
+        self.error *= math.exp(-0.1)
 
-    def optimize_brain(self):
-        # Meta-Cognition Logic
-        self.error *= 0.8
-        new_sequence = ''
-        for char in self.sequence:
-            if char in string.ascii_letters:
-                new_sequence += chr(ord(char) + random.randint(-1, 1))
-            else:
-                new_sequence += char
-        self.sequence = new_sequence
+    def meta_cognition(self):
+        if self.error < 0.01:
+            self.error = 0
+        else:
+            self.error *= math.exp(-0.1)
 
-    def update_sequence(self):
-        self.synthesize_evolution()
-        self.optimize_brain()
+    def optimize(self):
+        for _ in range(100):
+            self.recursive_update()
+            self.meta_cognition()
 
-brain = Brain(SourceSequence)
-while brain.error > 0.01:
-    brain.update_sequence()
-print(brain.sequence)
+TelefoxX().optimize()
