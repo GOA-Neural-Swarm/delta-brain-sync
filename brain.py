@@ -1,37 +1,39 @@
-import math
+import numpy as np
+import scipy.optimize as optimize
 
-def optimize_synapse(strength, plasticity):
-    # calculate the optimal synaptic weight based on strength and plasticity
-    optimal_weight = strength * (1 + math.exp(-plasticity))
-    return optimal_weight
+class Brain:
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.weights = np.random.rand(len(sequence), len(sequence))
+        self.bias = np.random.rand(len(sequence))
 
-def evolve_neuron(neuron, inputs, outputs):
-    # iterate through inputs and calculate output
-    for input, output in zip(inputs, outputs):
-        # calculate the synaptic weight update based on plasticity
-        weight_update = input * (output - neuron['output']) * neuron['plasticity']
-        neuron['synapse'] += weight_update
-        neuron['output'] = optimize_synapse(neuron['synapse'], neuron['plasticity'])
-    return neuron
+    def fitness(self, weights, bias):
+        # Calculate the fitness function
+        fitness = np.sum((self.sequence - np.dot(self.sequence, weights) - bias) ** 2)
+        return fitness
 
-def neural_network(inputs, outputs):
-    # initialize neurons
-    neurons = [{'synapse': 0, 'plasticity': 0.1, 'output': 0} for _ in range(len(outputs))]
-    
-    # iterate through inputs and outputs
-    for inputs, outputs in zip(inputs, outputs):
-        # evolve each neuron
-        for i, neuron in enumerate(neurons):
-            neurons[i] = evolve_neuron(neuron, inputs, outputs)
-    
-    # calculate the output of the network
-    output = sum([neuron['output'] for neuron in neurons])
-    
-    return output
+    def optimize(self, weights, bias):
+        # Perform optimization using scipy's minimize function
+        res = optimize.minimize(self.fitness, [weights, bias], method="SLSQP")
+        return res.x
 
-# Example usage:
-inputs = [0, 1, 0, 1, 0, 1, 1, 0]
-outputs = [0, 0, 1, 0, 1, 1, 0, 1]
+    def evolve(self, weights, bias):
+        # Perform genetic evolution using the optimized weights and bias
+        new_weights = np.random.rand(len(sequence), len(sequence)) * 2 - 1
+        new_bias = np.random.rand(len(sequence)) * 2 - 1
+        for i in range(len(sequence)):
+            for j in range(len(sequence)):
+                new_weights[i, j] += weights[i, j] * np.exp(-0.1 * abs(new_weights[i, j] - weights[i, j]))
+            new_bias[i] += bias[i] * np.exp(-0.1 * abs(new_bias[i] - bias[i]))
+        return new_weights, new_bias
 
-output = neural_network(inputs, outputs)
-print(output)
+    def run(self):
+        weights, bias = self.optimize(self.weights, self.bias)
+        new_weights, new_bias = self.evolve(weights, bias)
+        self.weights, self.bias = new_weights, new_bias
+        print("Optimized weights:", self.weights)
+        print("Optimized bias:", self.bias)
+
+# Create an instance of the Brain class with the given sequence
+brain = Brain(PGCNTMKFSMHLWALHYWTKVWRIPTWRAIHWMKERLLVIVVMYHPAGGRLWLVFCLCTVDFLCVMFQEELFIKWQKTASDWMAAPAYAEFRQGYHDGIW)
+brain.run()
