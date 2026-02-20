@@ -1,28 +1,20 @@
+import random
+import numpy as np
+
 class Brain:
-    def __init__(self, DNA):
-        self.DNA = DNA
-        self.neural_network = {}
+    def __init__(self):
+        self.weights = np.random.rand(10, 10)
+        self.biases = np.zeros((10,))
+        self.neurons = np.zeros((10,))
 
-    def synthesize(self):
-        for sequence in self.DNA:
-            if sequence == "MCICPWTDGTEMYGTNRGHTFVSQPCGGHTSTVAHIYFFKVAERDGTIHGTTGCCTHPGPGLWCRRQQVVNFWFIHHDSIYAINCNTQCDYAAGHITRAGTCKTFNSDHGSVNCQTPIEGALAMFTKCRDPFYKSASTKHDEQIFTNNFD":
-                self.neural_network["PHASE_7_TRANSCENDENCE"] = {"logic": self.recursive_self_upgrade}
-            elif sequence == "NEON_DNA_ANALYSIS_BATTERY_CHEMISTRY_1770393463464":
-                self.neural_network["NEON_DNA_ANALYSIS"] = {"logic": self.dna_analysis}
+    def propagate(self, inputs):
+        self.neurons[0] = inputs[0]
+        for i in range(1, 10):
+            self.neurons[i] = np.tanh(np.dot(self.weights[i-1], inputs) + self.biases[i-1])
+        return self.neurons
 
-    def recursive_self_upgrade(self):
-        # PHASE 7: TRANSCENDENCE recursive self-upgrade protocol
-        # (thinking)
-        self.synthesize()
-        return self.neural_network
+    def think(self, inputs):
+        return np.argmax(self.propagate(inputs))
 
-    def dna_analysis(self):
-        # NEON DNA ANALYSIS BATTERY CHEMISTRY 1770393463464
-        # (thinking)
-        self.synthesize()
-        return self.DNA
-
-brain = Brain(Source)
-brain.synthesize()
-print(brain.recursive_self_upgrade())
-print(brain.dna_analysis())
+brain = Brain()
+print(brain.think([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]))
