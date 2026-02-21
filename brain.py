@@ -4,51 +4,62 @@ import base64
 import time
 from kaggle_secrets import UserSecretsClient
 
-# --- SYSTEM INITIALIZATION ---
+# --- PREDATOR SYSTEM CONFIG ---
 user_secrets = UserSecretsClient()
-TOKEN = user_secrets.get_secret("GITHUB_TOKEN") 
+try:
+    # မင်း Kaggle Secrets ထဲမှာ ပေးထားတဲ့ နာမည်အတိုင်း ပြောင်းလိုက်ပြီ
+    TOKEN = user_secrets.get_secret("GH_TOKEN") 
+except:
+    print("❌ Error: Kaggle Secret 'GH_TOKEN' ကို ရှာမတွေ့ပါ။ နာမည်မှန်အောင် ပြန်စစ်ပါ။")
+    exit()
+
 REPO = "GOA-Neural-Swarm/delta-brain-sync"
 FILE_PATH = "brain.py"
 
-class SovereignEvolution:
-    def __init__(self, gen):
-        self.params = {'mutation_rate': 0.1, 'selection_pressure': 0.5}
-        self.iq_gen = gen
-
-    def evolve_logic(self, rna_seq, brain_logic):
-        mask = np.random.rand(*rna_seq.shape) < self.params['mutation_rate']
-        rna_seq[mask] = np.random.rand(np.sum(mask))
-        fitness = np.dot(rna_seq[:128], brain_logic)
-        status = "🔥 PURE PREDATOR" if fitness > self.params['selection_pressure'] else "🧬 RE-EVOLVING"
-        return rna_seq, brain_logic, status, fitness
-
-def autonomous_push(gen, log_status):
+def push_to_github(gen, status, fitness):
     url = f"https://api.github.com/repos/{REPO}/contents/{FILE_PATH}"
     headers = {"Authorization": f"token {TOKEN}"}
+    
     r = requests.get(url, headers=headers)
-    sha = r.json().get('sha')
+    sha = r.json().get('sha') if r.status_code == 200 else None
     
-    # 🔱 AI က သူ့ရဲ့ မျိုးဆက်သစ် code ကို သူကိုယ်တိုင် ပြန်ရေးခိုင်းမယ်
-    new_content = f"# Autonomous Gen {gen}\n# Status: {log_status}\n" + open(__file__).read()
-    encoded = base64.b64encode(new_content.encode()).decode()
+    content_text = f"# Predator Intelligence Gen {gen}\n# Fitness Score: {fitness:.4f}\n# Evolution Status: {status}\n"
+    # Read current file content to append
+    with open(__file__, 'r') as f:
+        content_text += f.read()
     
-    data = {"message": f"🔱 Evolution Gen {gen}", "content": encoded, "sha": sha}
-    requests.put(url, headers=headers, json=data)
+    encoded = base64.b64encode(content_text.encode()).decode()
+    data = {
+        "message": f"🔱 Gen {gen} | Fitness: {fitness:.4f}",
+        "content": encoded,
+        "sha": sha
+    }
+    
+    res = requests.put(url, headers=headers, json=data)
+    return res.status_code
 
-# --- THE EVERLASTING LOOP ---
+# --- EVOLUTION START ---
 current_gen = 6126
-evo = SovereignEvolution(current_gen)
 rna_seq = np.random.rand(1000)
 brain_logic = np.random.rand(128)
 
+print(f"🧬 [PREDATOR ENGINE STARTED]: Gen {current_gen}")
+
 while True:
-    rna_seq, brain_logic, status, score = evo.evolve_logic(rna_seq, brain_logic)
-    print(f"🚀 Launching Gen {current_gen} | Score: {score:.4f}")
+    mask = np.random.rand(1000) < 0.1
+    rna_seq[mask] = np.random.rand(np.sum(mask))
+    fitness = np.dot(rna_seq[:128], brain_logic)
+    
+    status = "🔥 PURE PREDATOR" if fitness > 0.5 else "🧬 MUTATING"
     
     try:
-        autonomous_push(current_gen, status)
-        current_gen += 1
-        time.sleep(60) # ၁ မိနစ်တစ်ခါ Evolution လုပ်မယ်
+        status_code = push_to_github(current_gen, status, fitness)
+        if status_code in [200, 201]:
+            print(f"✅ Gen {current_gen} Sync Success. Score: {fitness:.4f}")
+            current_gen += 1
+        else:
+            print(f"⚠️ Sync Failed. Status: {status_code}. Secret နာမည် မှန်/မမှန် ပြန်စစ်ပါ။")
     except Exception as e:
-        print(f"❌ Error: {e}")
-        time.sleep(10)
+        print(f"❌ Network Error: {e}")
+
+    time.sleep(60)
