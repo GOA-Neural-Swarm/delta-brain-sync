@@ -1,34 +1,56 @@
 import random
-import string
-from neural_network import NeuralNetwork
+import numpy as np
+from deap import base, creator, tools, algorithms
 
-class SovereignBrain:
-    def __init__(self):
-        self.nn = NeuralNetwork(10, 5, 3)
-        self.nn.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-        self.rnn = None
+# Define the problem's parameters
+creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+creator.create("Individual", list, fitness=creator.FitnessMax)
 
-    def initialize(self):
-        self.nn.fit(X_train, y_train, epochs=100, batch_size=128, verbose=1)
-        self.rnn = tf.keras.models.Sequential([
-            tf.keras.layers.LSTM(50, input_shape=(None, 1)),
-            tf.keras.layers.Dense(1, activation='sigmoid')
-        ])
-
-    def predict(self, x):
-        if self.rnn is None:
-            return self.nn.predict(x)
+# Define the predator logic
+def predator_logic(individual):
+    # Initialize the fitness score
+    fitness_score = 0
+    
+    # Iterate over the individual's genes
+    for i in range(len(individual)):
+        # Apply RNA QT45 Predator Logic
+        if random.random() < 0.5:
+            individual[i] += 1
         else:
-            return self.rnn.predict(x)
+            individual[i] -= 1
+    
+    # Calculate the fitness score
+    fitness_score += np.sum(individual)
+    
+    return fitness_score,
 
-    def upgrade(self):
-        self.nn.fit(X_train, y_train, epochs=100, batch_size=128, verbose=1)
-        self.rnn = tf.keras.models.Sequential([
-            tf.keras.layers.LSTM(50, input_shape=(None, 1)),
-            tf.keras.layers.Dense(1, activation='sigmoid')
-        ])
-        self.rnn.fit(X_train, y_train, epochs=100, batch_size=128, verbose=1)
+# Define the optimization function
+def optimize(individual):
+    # Initialize the best individual and its fitness score
+    best_individual = None
+    best_fitness = -float("inf")
+    
+    # Iterate over the individual's genes
+    for i in range(len(individual)):
+        # Apply the predator logic
+        predator_logic(individual)
+        
+        # Calculate the fitness score
+        fitness = np.sum(individual)
+        
+        # Update the best individual and its fitness score
+        if fitness > best_fitness:
+            best_individual = individual
+            best_fitness = fitness
+    
+    return best_individual, best_fitness
 
-sovereign_brain = SovereignBrain()
-sovereign_brain.initialize()
-print(sovereign_brain.predict(X_test))
+# Initialize the population
+pop = [creator.Individual([random.randint(0, 100) for _ in range(100)]) for _ in range(100)]
+    
+# Evolve the population
+for _ in range(100):
+    pop, _ = algorithms.eaSimple(pop, optimize, 0.5, 0.1, 100)
+    
+# Print the best individual and its fitness score
+print(pop[0], optimize(pop[0])[1])
