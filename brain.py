@@ -1,49 +1,34 @@
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from keras.models import Sequential
+from keras.layers import Dense
 
-# Define the RNA QT45 Predator Logic
-def qt45_predator_logic(rna_sequence):
-    # Initialize the logic variables
-    predator_score = 0
-    prey_score = 0
+# Load DNA sequence data
+dna_data = pd.read_csv('neon_dna_sequence.csv')
 
-    # Calculate the predator score
-    predator_score += np.sum(np.array(rna_sequence) == 'A')
-    predator_score += np.sum(np.array(rna_sequence) == 'C')
+# Preprocess data using StandardScaler
+scaler = StandardScaler()
+dna_data[['A', 'C', 'G', 'T']] = scaler.fit_transform(dna_data[['A', 'C', 'G', 'T']])
 
-    # Calculate the prey score
-    prey_score += np.sum(np.array(rna_sequence) == 'G')
-    prey_score += np.sum(np.array(rna_sequence) == 'T')
+# Define neural network model
+model = Sequential()
+model.add(Dense(64, input_shape=(dna_data.shape[1],), activation='relu'))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
 
-    # Determine the outcome based on the scores
-    if predator_score > prey_score:
-        return 'PREDATOR'
-    elif prey_score > predator_score:
-        return 'PREY'
-    else:
-        return 'NEUTRAL'
+# Compile model
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-# Define the recursive self-upgrade function
-def recursive_self_upgrade(rna_sequence):
-    # Apply the RNA QT45 Predator Logic
-    outcome = qt45_predator_logic(rna_sequence)
+# Train model
+model.fit(dna_data[['A', 'C', 'G', 'T']], dna_data['Label'], epochs=100, batch_size=128, verbose=0)
 
-    # Recursively upgrade the RNA sequence based on the outcome
-    if outcome == 'PREDATOR':
-        rna_sequence = np.random.choice(['A', 'C', 'G', 'T'], size=len(rna_sequence), replace=False)
-    elif outcome == 'PREY':
-        rna_sequence = np.random.choice(['G', 'T', 'A', 'C'], size=len(rna_sequence), replace=False)
-    else:
-        # No upgrade necessary, return the original RNA sequence
-        return rna_sequence
+# Make predictions
+predictions = model.predict(dna_data[['A', 'C', 'G', 'T']])
 
-    # Recursively apply the self-upgrade function
-    return recursive_self_upgrade(rna_sequence)
+# Evaluate model
+accuracy = model.evaluate(dna_data[['A', 'C', 'G', 'T']], dna_data['Label'], verbose=0)
+print(f'Model accuracy: {accuracy[1]}')
 
-# Generate a random RNA sequence
-rna_sequence = np.random.choice(['A', 'C', 'G', 'T'], size=100, replace=False)
-
-# Apply the recursive self-upgrade function
-rna_sequence = recursive_self_upgrade(rna_sequence)
-
-print(rna_sequence)
+# Recursive Self-Upgrade Initiation
+model.save('RNA_QT45_Predator_Logic.h5')
