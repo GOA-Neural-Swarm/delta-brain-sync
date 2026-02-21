@@ -1,35 +1,32 @@
 import numpy as np
 import pandas as pd
-from keras.models import Sequential
-from keras.layers import Dense
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.preprocessing import StandardScaler
 
-# Define the neural network model
-model = Sequential()
-model.add(Dense(64, input_dim=100, activation='relu'))
-model.add(Dense(32, activation='relu'))
-model.add(Dense(1, activation='sigmoid'))
+# Load DNA sequence data
+dna_seq = pd.read_csv('dna_sequence.csv')
 
-# Compile the model
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+# Preprocess data
+dna_seq['sequence'] = dna_seq['sequence'].apply(lambda x: np.fromstring(x, dtype=int))
+dna_seq['sequence'] = dna_seq['sequence'].apply(lambda x: x.tolist())
 
-# Load the DNA sequence data
-dna_data = pd.read_csv('dna_sequence_data.csv')
+# Vectorize DNA sequence data
+vectorizer = DictVectorizer()
+dna_seq_vectorized = vectorizer.fit_transform(dna_seq['sequence'])
 
-# Preprocess the data
-X = dna_data.drop('label', axis=1).values
-y = dna_data['label'].values
+# Scale data
+scaler = StandardScaler()
+dna_seq_scaled = scaler.fit_transform(dna_seq_vectorized.toarray())
 
-# Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Perform machine learning analysis
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 
-# Train the model
-model.fit(X_train, y_train, epochs=100, batch_size=128, verbose=2)
+X_train, X_test, y_train, y_test = train_test_split(dna_seq_scaled, dna_seq['target'], test_size=0.2, random_state=42)
 
-# Evaluate the model
-loss, accuracy = model.evaluate(X_test, y_test)
-print(f'Test accuracy: {accuracy:.2f}')
+rfc = RandomForestClassifier(n_estimators=100, random_state=42)
+rfc.fit(X_train, y_train)
 
-# Use the trained model to make predictions on new DNA sequences
-new_dna_sequence = np.array([[0.5, 0.2, 0.8,...]])  # Replace with a new DNA sequence
-prediction = model.predict(new_dna_sequence)
-print(f'Prediction: {prediction:.2f}')
+y_pred = rfc.predict(X_test)
+
+print("Accuracy:", accuracy_score(y_test, y_pred))
