@@ -1,36 +1,59 @@
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
-
-# Load Neon DNA Sequence Data
-neon_dna = pd.read_csv('neon_dna_sequence.csv')
-
-# Preprocess Data
-scaler = StandardScaler()
-neon_dna[['AT', 'GC', 'CG', 'GT']] = scaler.fit_transform(neon_dna[['AT', 'GC', 'CG', 'GT']])
-
-# Define RNA QT45 Predator Logic
-def rna_qt45_predator_logic(neon_dna):
-    # Perform recursive self-upgrade via RNA QT45 Predator Logic
-    neon_dna['AT'] = neon_dna['AT'] + np.sin(neon_dna['GC'] * np.pi / 2)
-    neon_dna['GC'] = neon_dna['GC'] + np.cos(neon_dna['AT'] * np.pi / 2)
-    neon_dna['CG'] = neon_dna['CG'] + np.tan(neon_dna['AT'] * np.pi / 2)
-    neon_dna['GT'] = neon_dna['GT'] + np.log(neon_dna['GC'] + 1)
-    return neon_dna
-
-# Apply RNA QT45 Predator Logic
-neon_dna = rna_qt45_predator_logic(neon_dna)
-
-# Visualize Results
+import seaborn as sns
 import matplotlib.pyplot as plt
+from scipy import stats
+from sklearn.preprocessing import StandardScaler
+from keras.models import Sequential
+from keras.layers import Dense, Dropout
+from keras.callbacks import EarlyStopping
+from keras.optimizers import Adam
 
-plt.figure(figsize=(10, 6))
-plt.plot(neon_dna['AT'], label='AT')
-plt.plot(neon_dna['GC'], label='GC')
-plt.plot(neon_dna['CG'], label='CG')
-plt.plot(neon_dna['GT'], label='GT')
-plt.xlabel('Time')
-plt.ylabel('Value')
-plt.title('RNA QT45 Predator Logic Results')
-plt.legend()
+# Load dataset
+df = pd.read_csv('neon_dna_sequence_analysis.csv')
+
+# Preprocessing
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(df.drop(['target'], axis=1))
+y = df['target']
+
+# Model architecture
+model = Sequential()
+model.add(Dense(64, activation='relu', input_shape=(X_scaled.shape[1],)))
+model.add(Dropout(0.2))
+model.add(Dense(64, activation='relu'))
+model.add(Dropout(0.2))
+model.add(Dense(1, activation='sigmoid'))
+
+# Compile model
+model.compile(optimizer=Adam(lr=0.001), loss='binary_crossentropy', metrics=['accuracy'])
+
+# Early stopping
+es = EarlyStopping(monitor='val_loss', patience=5, min_delta=0.001)
+
+# Train model
+history = model.fit(X_scaled, y, epochs=100, batch_size=32, validation_split=0.2, callbacks=[es])
+
+# Plot training and validation accuracy
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('Model accuracy')
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.legend(['Train', 'Val'])
+plt.show()
+
+# Make predictions
+y_pred = model.predict(X_scaled)
+
+# Calculate AUC-ROC
+auc = stats.roc_auc_score(y, y_pred)
+print(f'AUC-ROC: {auc:.4f}')
+
+# Plot ROC curve
+fpr, tpr, _ = stats.roc_curve(y, y_pred)
+plt.plot(fpr, tpr)
+plt.xlabel('False positive rate')
+plt.ylabel('True positive rate')
+plt.title('ROC curve')
 plt.show()
