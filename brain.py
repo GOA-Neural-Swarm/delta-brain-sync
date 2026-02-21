@@ -1,26 +1,16 @@
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.layers import Dense, Dropout
 
-# Define the neural network model
-model = tf.keras.models.Sequential([
-    Dense(64, activation='relu', input_shape=(32,)),
-    Dropout(0.2),
-    Dense(32, activation='relu'),
-    Dropout(0.2),
-    Dense(8, activation='softmax')
-])
+class TelefoxX:
+    def __init__(self):
+        self.model = tf.keras.models.Sequential([
+            tf.keras.layers.LSTM(64, return_sequences=True),
+            tf.keras.layers.Dense(1)
+        ])
+        self.model.compile(optimizer='adam', loss='mean_squared_error')
 
-# Compile the model
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    def predict(self, data):
+        predictions = self.model.predict(data)
+        return predictions
 
-# Train the model
-model.fit(np.random.rand(100, 32), epochs=10, verbose=0)
-
-# Evaluate the model
-loss, accuracy = model.evaluate(np.random.rand(100, 32), verbose=0)
-print(f'Test accuracy: {accuracy:.2f}')
-
-# Use the model to predict the output
-output = model.predict(np.random.rand(1, 32))
-print(f'Predicted output: {output[0]}')
+telefox = TelefoxX()
