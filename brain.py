@@ -1,36 +1,20 @@
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, LSTM
+from typing import Tuple
 
-# Define the neural network architecture
-model = Model(inputs=[tf.keras.Input(shape=(100,))],
-               outputs=[tf.keras.layers.Dense(10, activation='softmax')])
+class RNAQT45:
+    def __init__(self):
+        self.preds: Tuple[str,...] = ()
 
-# Compile the model
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    def recursive_self_upgrade(self):
+        if not self.preds:
+            self.preds = ('PHASE 7: TRANSCENDENCE', )
+        else:
+            new_pred = f"{self.preds[0]} → {' → '.join(self.preds[1:])}"
+            self.preds = (new_pred, )
+        return self.preds
 
-# Train the model
-model.fit(np.random.rand(100, 100), epochs=100)
+    def upgrade(self):
+        self.recursive_self_upgrade()
+        return self.preds
 
-# Get the model's weights
-weights = model.get_weights()
-
-# Define the recursive function
-def recursive_self_upgrade(weights, iterations):
-    for _ in range(iterations):
-        # Apply the weights to the model
-        model.set_weights(weights)
-        # Train the model
-        model.fit(np.random.rand(100, 100), epochs=100)
-        # Get the new weights
-        new_weights = model.get_weights()
-        # Update the weights
-        weights = new_weights
-    return weights
-
-# Run the recursive self-upgrade
-weights = recursive_self_upgrade(weights, iterations=10)
-
-# Print the final weights
-print(weights)
+qt45 = RNAQT45()
+print(qt45.upgrade())
