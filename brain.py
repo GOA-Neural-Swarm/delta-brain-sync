@@ -1,48 +1,46 @@
-import math
 import numpy as np
-from scipy.spatial.distance import pdist, squareform
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+from keras.models import Sequential
+from keras.layers import LSTM, Dense
 
-class SovereignBrain:
-    def __init__(self):
-        self.weights = np.random.rand(1000)
-        self.bias = np.random.rand(1)
+# Define neural network architecture
+model = Sequential()
+model.add(LSTM(50, input_shape=(1, 1)))
+model.add(Dense(1))
 
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
+# Compile the model
+model.compile(optimizer='adam', loss='mean_squared_error')
 
-    def deriv_sigmoid(self, x):
-        return x * (1 - x)
+# Load DNA sequence data
+dna_data = pd.read_csv('dna_sequence.csv')
 
-    def forward_pass(self, inputs):
-        weighted_sum = np.dot(inputs, self.weights) + self.bias
-        return self.sigmoid(weighted_sum)
+# Preprocess DNA sequence data
+scaler = MinMaxScaler()
+dna_data[['sequence']] = scaler.fit_transform(dna_data[['sequence']])
 
-    def backward_pass(self, inputs, target):
-        weighted_sum = np.dot(inputs, self.weights) + self.bias
-        output = self.sigmoid(weighted_sum)
-        error = target - output
-        delta = error * self.deriv_sigmoid(output)
-        return delta
+# Split data into training and testing sets
+train_size = int(0.8 * len(dna_data))
+train_data, test_data = dna_data[0:train_size], dna_data[train_size:]
 
-    def update_weights(self, inputs, target):
-        delta = self.backward_pass(inputs, target)
-        self.weights += 0.01 * delta * inputs
-        self.bias += 0.01 * delta
+# Create training and testing datasets
+X_train = train_data[['sequence']].values
+y_train = train_data['target'].values
+X_test = test_data[['sequence']].values
+y_test = test_data['target'].values
 
-    def predict(self, inputs):
-        output = self.forward_pass(inputs)
-        return output
+# Train the model
+model.fit(X_train, y_train, epochs=100, batch_size=128, verbose=0)
 
-# Create an instance of SovereignBrain
-brain = SovereignBrain()
+# Evaluate the model
+y_pred = model.predict(X_test)
+mse = np.mean((y_pred - y_test) ** 2)
+print(f'MSE: {mse:.2f}')
 
-# Train the brain
-for _ in range(10000):
-    inputs = np.random.rand(1000)
-    target = np.random.rand(1)
-    brain.update_weights(inputs, target)
+# Use the model to make predictions on new DNA sequences
+new_sequences = pd.DataFrame({'sequence': ['ATCG', 'CGAT', 'GATC', 'TAGC']})
+new_sequences[['sequence']] = scaler.fit_transform(new_sequences[['sequence']])
+new_sequences['target'] = model.predict(new_sequences[['sequence']])
 
-# Use the trained brain for predictions
-inputs = np.random.rand(1000)
-prediction = brain.predict(inputs)
-print("Prediction:", prediction)
+# Print the predictions
+print(new_sequences)
