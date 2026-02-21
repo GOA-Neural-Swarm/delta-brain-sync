@@ -1,39 +1,30 @@
 import random
+import string
+import math
 
 class SovereignBrain:
     def __init__(self):
-        self.dna_sequence = ""
-        self.upgrade_log = []
+        self.neural_network = []
+        self.rna_qt45_predator_logic = []
 
-    def generate_dna(self):
-        self.dna_sequence = ""
-        for _ in range(10000):
-            self.dna_sequence += random.choice("ATCG")
-
-    def analyze_neon_dna(self, neon_dna):
-        self.upgrade_log = []
-        for i in range(len(neon_dna)):
-            if neon_dna[i] == "A":
-                self.upgrade_log.append("Adenine")
-            elif neon_dna[i] == "T":
-                self.upgrade_log.append("Thymine")
-            elif neon_dna[i] == "C":
-                self.upgrade_log.append("Cytosine")
-            elif neon_dna[i] == "G":
-                self.upgrade_log.append("Guanine")
-
-    def upgrade_software(self):
-        if self.upgrade_log:
-            self.dna_sequence = self.upgrade_log[-1]
-            self.upgrade_log.pop()
+    def integrate_neon_dna(self, neon_dna_sequence):
+        self.neural_network = [random.randint(0, 1) for _ in range(len(neon_dna_sequence))]
+        self.rna_qt45_predator_logic = [math.sin(random.uniform(0, 1)) for _ in range(len(neon_dna_sequence))]
 
     def recursive_self_upgrade(self):
-        self.generate_dna()
-        self.analyze_neon_dna(self.dna_sequence)
-        self.upgrade_software()
-        if self.upgrade_log:
-            self.recursive_self_upgrade()
+        for i in range(len(self.neural_network)):
+            self.neural_network[i] = self.neural_network[i] + self.rna_qt45_predator_logic[i]
+            self.rna_qt45_predator_logic[i] = self.rna_qt45_predator_logic[i] + self.neural_network[i]
+
+    def display_network(self):
+        print("Neural Network:")
+        for i in range(len(self.neural_network)):
+            print(f"Node {i}: {self.neural_network[i]}")
+        print("RNA QT45 Predator Logic:")
+        for i in range(len(self.rna_qt45_predator_logic)):
+            print(f"Node {i}: {self.rna_qt45_predator_logic[i]}")
 
 sovereign_brain = SovereignBrain()
+sovereign_brain.integrate_neon_dna("ATCGATCGATCG")
 sovereign_brain.recursive_self_upgrade()
-print(sovereign_brain.dna_sequence)
+sovereign_brain.display_network()
