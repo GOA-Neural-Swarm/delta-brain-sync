@@ -1,59 +1,43 @@
-import json
-import random
-import math
+import numpy as np
+import pandas as pd
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.models import Sequential
 
-class RNAQT45:
-    def __init__(self):
-        self.quantum = {}
-        self.transcript = {}
+# Load DNA sequence data
+dna_data = pd.read_csv('neon_dna_sequence.csv')
 
-    def analyze(self, sequence):
-        self.quantum = {}
-        self.transcript = {}
-        for i in range(len(sequence)):
-            if sequence[i] not in self.quantum:
-                self.quantum[sequence[i]] = 1
-            else:
-                self.quantum[sequence[i]] += 1
-            if i >= 2:
-                triplet = sequence[i-2:i]
-                if triplet not in self.transcript:
-                    self.transcript[triplet] = 1
-                else:
-                    self.transcript[triplet] += 1
+# Preprocess DNA sequence data
+X = dna_data['sequence'].values
+y = dna_data['label'].values
 
-    def predict(self):
-        predictions = {}
-        for triplet, count in self.transcript.items():
-            if triplet in self.quantum:
-                predictions[triplet] = self.quantum[triplet] / len(self.quantum)
-            else:
-                predictions[triplet] = 0
-        return predictions
+# Split data into training and testing sets
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    def upgrade(self):
-        upgrades = {}
-        for triplet, probability in self.predict().items():
-            if probability > 0.5:
-                upgrades[triplet] = 1
-            else:
-                upgrades[triplet] = 0
-        return upgrades
+# Build the model
+model = Sequential()
+model.add(Dense(64, activation='relu', input_shape=(X.shape[1],)))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-    def evolve(self):
-        new_sequence = ""
-        for triplet, probability in self.upgrade().items():
-            if probability == 1:
-                new_sequence += triplet
-            else:
-                new_sequence += random.choice(list(self.quantum.keys()))
-        return new_sequence
+# Train the model
+model.fit(X_train, y_train, epochs=10, batch_size=128, verbose=0)
 
-    def iterate(self):
-        sequence = input("Enter DNA sequence: ")
-        self.analyze(sequence)
-        new_sequence = self.evolve()
-        print("Upgraded DNA sequence: ", new_sequence)
-        self.iterate()
+# Evaluate the model
+y_pred = model.predict(X_test)
+y_pred_class = (y_pred > 0.5).astype('int32')
 
-RNAQT45().iterate()
+# Evaluate performance
+accuracy = np.mean(y_pred_class == y_test)
+print(f'Test accuracy: {accuracy:.4f}')
+
+# Use the trained model to predict the label for a new DNA sequence
+new_sequence = 'ATCGATCGATCG'
+new_sequence_array = np.array([new_sequence])
+
+# Predict the label
+new_label = model.predict(new_sequence_array)
+new_label_class = (new_label > 0.5).astype('int32')
+
+print(f'Predicted label for new sequence: {new_label_class}')
