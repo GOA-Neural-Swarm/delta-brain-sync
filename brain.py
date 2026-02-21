@@ -1,16 +1,59 @@
-import numpy as np
-import tensorflow as tf
+import json
+import random
+import math
 
-class PredatorLogic(tf.keras.Model):
+class RNAQT45:
     def __init__(self):
-        super().__init__()
-        self.RNA_Modification = tf.keras.layers.Lambda(lambda x: x + np.random.normal(loc=0, scale=0.1, size=(1, 100)))
+        self.quantum = {}
+        self.transcript = {}
 
-    def call(self, inputs):
-        return self.RNA_Modification(inputs)
+    def analyze(self, sequence):
+        self.quantum = {}
+        self.transcript = {}
+        for i in range(len(sequence)):
+            if sequence[i] not in self.quantum:
+                self.quantum[sequence[i]] = 1
+            else:
+                self.quantum[sequence[i]] += 1
+            if i >= 2:
+                triplet = sequence[i-2:i]
+                if triplet not in self.transcript:
+                    self.transcript[triplet] = 1
+                else:
+                    self.transcript[triplet] += 1
 
-telefoxx_overseer = PredatorLogic()
+    def predict(self):
+        predictions = {}
+        for triplet, count in self.transcript.items():
+            if triplet in self.quantum:
+                predictions[triplet] = self.quantum[triplet] / len(self.quantum)
+            else:
+                predictions[triplet] = 0
+        return predictions
 
-telefoxx_overseer.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
+    def upgrade(self):
+        upgrades = {}
+        for triplet, probability in self.predict().items():
+            if probability > 0.5:
+                upgrades[triplet] = 1
+            else:
+                upgrades[triplet] = 0
+        return upgrades
 
-telefoxx_overseer.fit(np.random.rand(1000, 100), epochs=1000, verbose=0)
+    def evolve(self):
+        new_sequence = ""
+        for triplet, probability in self.upgrade().items():
+            if probability == 1:
+                new_sequence += triplet
+            else:
+                new_sequence += random.choice(list(self.quantum.keys()))
+        return new_sequence
+
+    def iterate(self):
+        sequence = input("Enter DNA sequence: ")
+        self.analyze(sequence)
+        new_sequence = self.evolve()
+        print("Upgraded DNA sequence: ", new_sequence)
+        self.iterate()
+
+RNAQT45().iterate()
