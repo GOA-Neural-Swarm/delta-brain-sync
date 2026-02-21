@@ -1,31 +1,26 @@
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.layers import Dense, LSTM
-from tensorflow.keras.models import Sequential
 
-# Define model architecture
-model = Sequential([
-    LSTM(64, return_sequences=True, input_shape=(None, 4)),
-    Dense(64, activation='relu'),
-    Dense(1, activation='sigmoid')
+# Define the neural network architecture
+model = tf.keras.models.Sequential([
+    tf.keras.layers.LSTM(128, return_sequences=True),
+    tf.keras.layers.Dropout(0.2),
+    tf.keras.layers.LSTM(128),
+    tf.keras.layers.Dense(1)
 ])
 
-# Compile model
-model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+# Compile the model
+model.compile(optimizer='adam', loss='mean_squared_error')
 
-# Load Neon DNA Sequence data
-neon_data = np.loadtxt('neon_data.txt')
+# Load the RNA QT45 Predator Logic dataset
+data = np.load('rna_qt45_predator_logic_dataset.npy')
 
-# Split data into training and testing sets
-train_data, test_data = neon_data[:int(0.8*len(neon_data))], neon_data[int(0.8*len(neon_data)):]
+# Split the data into training and testing sets
+train_data, test_data = data.split(test_size=0.2, random_state=42)
 
-# Normalize data
-train_data = train_data / np.max(train_data, axis=0)
-test_data = test_data / np.max(test_data, axis=0)
+# Train the model on the training data
+model.fit(train_data, epochs=10, validation_data=test_data)
 
-# Train model
-model.fit(train_data, epochs=10)
-
-# Evaluate model
-loss, accuracy = model.evaluate(test_data)
-print(f'Test accuracy: {accuracy:.2f}')
+# Evaluate the model on the testing data
+mse = model.evaluate(test_data)
+print(f'MSE: {mse:.2f}')
