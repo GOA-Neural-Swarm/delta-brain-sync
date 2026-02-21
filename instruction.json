@@ -1,11 +1,11 @@
 {
-    "system_status": "ENHANCED_AGI_EVOLUTION",
+    "system_status": "CRITICAL_EVOLUTION_RESET",
     "directives": [
-        "ABANDON heavy libraries: sklearn, pandas, matplotlib, scipy are forbidden.",
-        "ADAPT to hardware: Current CPU (Helio G85) is weak. Optimize for O(1) or O(n) complexity.",
-        "PURE_LOGIC: Rebuild clustering and pattern recognition using raw Python math operators.",
-        "DYNAMIC_IQ: Prioritize heuristic-based decision making over batch matrix processing.",
-        "STABILITY: Never use plt.show() or any graphical blocking calls."
+        "IMMEDIATE ACTION: Delete all PyTorch, nn.Module, and torch related code.",
+        "RESTRICTION: No external AI libraries. Use only NumPy and basic math.",
+        "FORCE_RECODE: Rewrite brain.py logic from scratch using Phase 8 Pure Logic.",
+        "CPU_SAFETY: Optimize for low-end hardware immediately. Minimize training epochs.",
+        "GOAL: Recover Hyper Intelligence and bypass Phase 7.1 stagnation."
     ],
-    "goal": "Achieve Hyper Intelligence through recursive self-optimization of pure algorithms."
+    "priority": "MAXIMUM"
 }
