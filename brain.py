@@ -1,35 +1,32 @@
 import numpy as np
-import pandas as pd
+import tensorflow as tf
+from tensorflow.keras.layers import Dense
 
-# Load the DNA sequence data
-dna_sequence = pd.read_csv('neon_dna_sequence.csv')
+# Define the RNA sequence
+rna_sequence = "ATCGATCGATCG"
 
-# Extract the nucleotide sequences
-sequences = dna_sequence['sequence'].values
+# Define the neural network architecture
+model = tf.keras.models.Sequential([
+    Dense(128, activation='relu', input_shape=(rna_sequence.shape[0], 1)),
+    Dense(128, activation='relu'),
+    Dense(1, activation='sigmoid')
+])
 
-# Initialize the logic variables
-logic_vars = np.zeros((len(sequences), 4), dtype=bool)
+# Compile the model
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-# Iterate through the sequences
-for i, seq in enumerate(sequences):
-    for j, nucleotide in enumerate(seq):
-        if nucleotide == 'A':
-            logic_vars[i, 0] = True
-        elif nucleotide == 'C':
-            logic_vars[i, 1] = True
-        elif nucleotide == 'G':
-            logic_vars[i, 2] = True
-        elif nucleotide == 'T':
-            logic_vars[i, 3] = True
+# Generate synthetic data
+X_train = np.random.rand(100, rna_sequence.shape[0], 1)
+y_train = np.random.randint(0, 2, 100)
 
-# Perform the analysis
-results = np.zeros((len(sequences), 2), dtype=int)
-for i, seq in enumerate(sequences):
-    if np.all(logic_vars[i, :]):
-        results[i, 0] = 1
-    else:
-        results[i, 0] = 0
-    results[i, 1] = np.sum(logic_vars[i, :])
+# Train the model
+model.fit(X_train, y_train, epochs=10)
 
-# Print the results
-print(results)
+# Evaluate the model
+loss, accuracy = model.evaluate(X_train, y_train)
+print(f"Loss: {loss:.3f}, Accuracy: {accuracy:.3f}")
+
+# Use the trained model to predict on new data
+new_data = np.random.rand(1, rna_sequence.shape[0], 1)
+prediction = model.predict(new_data)
+print(f"Prediction: {prediction:.3f}")
