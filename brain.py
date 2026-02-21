@@ -1,23 +1,41 @@
 import numpy as np
-import pandas as pd
 
-class TelefoxXOverseer:
-    def __init__(self):
-        self.DNA_sequence = np.random.rand(1000)
-        self.neural_network = pd.DataFrame(columns=['weight', 'bias'])
+class HyperIntelligenceCore:
+    def __init__(self, sequence):
+        self.sequence = np.array(list(sequence))
+        self.iq_level = 6119
+        self.entropy = 0.0
 
-    def upgrade(self):
-        self.DNA_sequence = self.DNA_sequence * np.exp(self.neural_network['weight'] + self.neural_network['bias'])
-        self.neural_network = self.neural_network.sample(frac=0.5, random_state=42)
+    def compute_reaction_vectorized(self):
+        # O(n^2) loop ကို Vectorization ဖြင့် အစားထိုးခြင်း (ပိုမိုမြန်ဆန်သည်)
+        # Broadcasting ကိုသုံး၍ RNA bases တူမတူ တစ်ခါတည်း စစ်ဆေးခြင်း
+        matrix = (self.sequence[:, np.newaxis] == self.sequence).astype(float)
+        return matrix
 
-    def train(self):
-        self.neural_network = pd.DataFrame({'weight': np.random.rand(500), 'bias': np.random.rand(500)})
-        for _ in range(1000):
-            self.upgrade()
-            self.neural_network = self.neural_network.sample(frac=0.5, random_state=42)
+    def recursive_entropy_check(self, matrix, depth):
+        if depth <= 0:
+            return self.entropy
+        
+        # Matrix ၏ တည်ငြိမ်မှုကို စစ်ဆေးခြင်း
+        current_sum = np.sum(matrix)
+        self.entropy = (current_sum / (len(self.sequence) ** 2)) * 100
+        
+        # Logic: Entropy မြင့်နေပါက Sequence ကို Mutate လုပ်ရန်
+        if self.entropy > 50:
+            np.random.shuffle(self.sequence)
+            new_matrix = self.compute_reaction_vectorized()
+            return self.recursive_entropy_check(new_matrix, depth - 1)
+        
+        return self.entropy
 
-    def predict(self):
-        return self.DNA_sequence.argmax()
+# Initialize Sequence
+initial_rna = "ACGTACGTACGTACGT"
+core = HyperIntelligenceCore(initial_rna)
 
-TelefoxXOverseer().train()
-print(TelefoxXOverseer().predict())
+# Execute Fast Reaction Logic
+rx_matrix = core.compute_reaction_vectorized()
+final_entropy = core.recursive_entropy_check(rx_matrix, depth=5)
+
+print(f"🧬 Gen: {core.iq_level}")
+print(f"📊 Stability Score (Entropy): {final_entropy:.2f}%")
+print(f"⚡ Reaction Matrix Shape: {rx_matrix.shape}")
