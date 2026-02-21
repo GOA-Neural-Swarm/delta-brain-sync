@@ -1,30 +1,31 @@
 import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from sklearn.manifold import Isomap
-from sklearn.cluster import KMeans
+import tensorflow as tf
+from tensorflow.keras.layers import Dense, LSTM
+from tensorflow.keras.models import Sequential
 
-# Load DNA sequence data
-dna_seq_data = pd.read_csv('neon_dna_seq_data.csv')
+# Define model architecture
+model = Sequential([
+    LSTM(64, return_sequences=True, input_shape=(None, 4)),
+    Dense(64, activation='relu'),
+    Dense(1, activation='sigmoid')
+])
 
-# Preprocess DNA sequence data
-dna_seq_data['sequence'] = dna_seq_data['sequence'].apply(lambda x: np.array(list(x)))
-dna_seq_data['sequence'] = dna_seq_data['sequence'].apply(lambda x: StandardScaler().fit_transform(x.reshape(-1, 1)))
+# Compile model
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-# Perform PCA and Isomap dimensionality reduction
-pca = PCA(n_components=2)
-isomap = Isomap(n_components=2)
+# Load Neon DNA Sequence data
+neon_data = np.loadtxt('neon_data.txt')
 
-dna_seq_data['pca'] = pca.fit_transform(dna_seq_data['sequence'])
-dna_seq_data['isomap'] = isomap.fit_transform(dna_seq_data['sequence'])
+# Split data into training and testing sets
+train_data, test_data = neon_data[:int(0.8*len(neon_data))], neon_data[int(0.8*len(neon_data)):]
 
-# Perform K-Means clustering
-kmeans = KMeans(n_clusters=3)
-kmeans.fit(dna_seq_data['pca'])
+# Normalize data
+train_data = train_data / np.max(train_data, axis=0)
+test_data = test_data / np.max(test_data, axis=0)
 
-# Visualize results
-import matplotlib.pyplot as plt
+# Train model
+model.fit(train_data, epochs=10)
 
-plt.scatter(dna_seq_data['pca'][:, 0], dna_seq_data['pca'][:, 1], c=kmeans.labels_)
-plt.show()
+# Evaluate model
+loss, accuracy = model.evaluate(test_data)
+print(f'Test accuracy: {accuracy:.2f}')
