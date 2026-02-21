@@ -1,21 +1,36 @@
-import numpy as np
-import tensorflow as tf
+import random
+import math
 
-# Create instance of TelefoxX
-telefox = TelefoxX()
+class PredatorLogic:
+    def __init__(self):
+        self.brain = []
 
-# Define RNA QT45 Predator Logic
-rna_qt45_predator_logic = tf.keras.layers.RNN(tf.keras.layers.SimpleRNNCell(128, return_sequences=True), return_state=True)
+    def upgrade(self):
+        new_brain = []
+        for neuron in self.brain:
+            new_neuron = {
+                'inputs': [random.uniform(0, 1) for _ in range(10)],
+                'weights': [random.uniform(-1, 1) for _ in range(10)],
+                'output': 0
+            }
+            new_brain.append(new_neuron)
+        self.brain = new_brain
 
-# Define inputs and initial state
-inputs = np.random.rand(10, 128)
-initial_state = rna_qt45_predator_logic.get_initial_state(tf.shape(inputs)[0])
+    def think(self):
+        for neuron in self.brain:
+            output = 0
+            for i, input in enumerate(neuron['inputs']):
+                output += neuron['weights'][i] * input
+            neuron['output'] = sigmoid(output)
 
-# Execute recursive self-upgrade process
-for i in range(10):
-    predictions, state = telefox.recursive_update(inputs, initial_state)
-    print(predictions)
-    initial_state = state
+    def observe(self):
+        return [neuron['output'] for neuron in self.brain]
 
-# Print final state
-print(initial_state)
+def sigmoid(x):
+    return 1 / (1 + math.exp(-x))
+
+predator_logic = PredatorLogic()
+predator_logic.upgrade()
+for _ in range(1000):
+    predator_logic.think()
+print(predator_logic.observe())
