@@ -2,33 +2,36 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from keras.models import Sequential
-from keras.layers import Dense, Dropout
+from keras.layers import Dense
 
-# Load Neon DNA Sequence Data
+# Load neon DNA sequence data
 neon_data = pd.read_csv('neon_dna_sequence.csv')
 
-# Preprocess Data
-X = neon_data.iloc[:, :-1].values
-y = neon_data.iloc[:, -1].values
+# Split data into training and testing sets
+train_data, test_data = neon_data.split(test_size=0.2, random_state=42)
+
+# Scale data using StandardScaler
 scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+train_data[['feature1', 'feature2', 'feature3']] = scaler.fit_transform(train_data[['feature1', 'feature2', 'feature3']])
+test_data[['feature1', 'feature2', 'feature3']] = scaler.transform(test_data[['feature1', 'feature2', 'feature3']])
 
-# Split Data into Training and Testing Sets
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-
-# Build and Compile the Neural Network Model
+# Create neural network model
 model = Sequential()
-model.add(Dense(64, activation='relu', input_shape=(X_train.shape[1],)))
-model.add(Dropout(0.2))
+model.add(Dense(64, input_shape=(3,), activation='relu'))
 model.add(Dense(32, activation='relu'))
-model.add(Dropout(0.2))
 model.add(Dense(1, activation='sigmoid'))
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-# Train the Model
-model.fit(X_train, y_train, epochs=100, batch_size=128, validation_data=(X_test, y_test))
+# Train model on training data
+model.fit(train_data[['feature1', 'feature2', 'feature3']], train_data['target'], epochs=100, batch_size=32, verbose=0)
 
-# Evaluate the Model
-loss, accuracy = model.evaluate(X_test, y_test)
-print(f'Test Loss: {loss:.3f}, Test Accuracy: {accuracy:.3f}')
+# Evaluate model on testing data
+loss, accuracy = model.evaluate(test_data[['feature1', 'feature2', 'feature3']], test_data['target'], verbose=0)
+print(f'Testing accuracy: {accuracy:.2f}')
+
+# Use trained model to predict on new data
+new_data = pd.DataFrame({'feature1': [1, 2, 3], 'feature2': [4, 5, 6], 'feature3': [7, 8, 9]})
+predictions = model.predict(new_data[['feature1', 'feature2', 'feature3']])
+
+# Print predictions
+print(predictions)
