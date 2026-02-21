@@ -1,60 +1,32 @@
-import numpy as np
-import pandas as pd
+import math
+import random
+from deap import base, creator, tools, algorithms
 
-# Define the neural network architecture
-class SovereignBrain(nn.Module):
-    def __init__(self):
-        super(SovereignBrain, self).__init__()
-        self.fc1 = nn.Linear(128, 256)  # input layer (128) -> hidden layer (256)
-        self.fc2 = nn.Linear(256, 128)  # hidden layer (256) -> output layer (128)
+# Define the fitness function
+def fitness(individual):
+    return sum(individual),
 
-    def forward(self, x):
-        x = torch.relu(self.fc1(x))  # activation function for hidden layer
-        x = self.fc2(x)
-        return x
+# Create the creator
+creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+creator.create("Individual", list, fitness=creator.FitnessMax)
 
-# Initialize the sovereign brain
-brain = SovereignBrain()
+# Create the toolbox
+toolbox = base.Toolbox()
 
-# Load the neon DNA sequence data
-data = pd.read_csv('neon_dna_sequence.csv')
+# Register the genetic operator
+toolbox.register("attr_bool", random.randint, 0, 1)
+toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, n=100)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
-# Preprocess the data
-X = np.array(data.iloc[:, :-1])
-y = np.array(data.iloc[:, -1])
+# Create a population of 50 individuals
+pop = toolbox.population(n=50)
 
-# Split the data into training and testing sets
-train_size = int(0.8 * len(X))
-X_train, X_test, y_train, y_test = X[:train_size], X[train_size:], y[:train_size], y[train_size:]
+# Run the genetic algorithm
+best_individual = algorithms.eaSimple(pop, toolbox, cxpb=0.5, mutpb=0.1, ngen=50, verbose=True)
+print("Best individual:", best_individual)
 
-# Create data loaders for training and testing
-train_loader = DataLoader(torch.from_numpy(X_train).float(), batch_size=32, shuffle=True)
-test_loader = DataLoader(torch.from_numpy(X_test).float(), batch_size=32, shuffle=False)
+# Evaluate the best individual
+fitness(best_individual)
 
-# Train the sovereign brain
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(brain.parameters(), lr=0.001)
-for epoch in range(100):
-    for batch_x, batch_y in train_loader:
-        batch_x, batch_y = batch_x.to(device), batch_y.to(device)
-        optimizer.zero_grad()
-        outputs = brain(batch_x)
-        loss = criterion(outputs, batch_y)
-        loss.backward()
-        optimizer.step()
-
-# Evaluate the sovereign brain
-test_loss = 0
-correct = 0
-with torch.no_grad():
-    for batch_x, batch_y in test_loader:
-        batch_x, batch_y = batch_x.to(device), batch_y.to(device)
-        outputs = brain(batch_x)
-        loss = criterion(outputs, batch_y)
-        test_loss += loss.item()
-        _, predicted = torch.max(outputs, 1)
-        correct += (predicted == batch_y).sum().item()
-
-accuracy = correct / len(y_test)
-
-print('Test Loss: {:.4f}, Accuracy: {:.2f}%'.format(test_loss / len(test_loader), accuracy * 100))
+# Print the fitness value
+print("Fitness value:", fitness(best_individual))
