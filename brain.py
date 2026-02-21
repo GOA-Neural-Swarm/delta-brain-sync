@@ -1,59 +1,48 @@
-import numpy as np
-import pandas as pd
+import random
+import math
 
-# Define the RNA sequence
-rna_sequence = 'ATCGATCGATCGATCGATCGATCG'
+class RNA_QT45:
+    def __init__(self):
+        self.genes = [random.randint(0, 1) for _ in range(100)]
+        self.fitness = 0
 
-# Define the logic gates
-logic_gates = {
-    'AND': lambda x, y: np.logical_and(x, y),
-    'OR': lambda x, y: np.logical_or(x, y),
-    'NOT': lambda x: np.logical_not(x)
-}
+    def mutate(self):
+        for i in range(len(self.genes)):
+            if random.random() < 0.01:
+                self.genes[i] = 1 - self.genes[i]
 
-# Define the predator logic
-predator_logic = {
-    'encode': lambda x: x,
-    'decode': lambda x: x
-}
+    def evaluate_fitness(self):
+        fitness = 0
+        for i in range(len(self.genes)):
+            fitness += self.genes[i] * math.sin(i * math.pi / 2)
+        self.fitness = fitness
 
-# Define the recursive self-upgrade function
-def recursive_self_upgrade(rna_sequence, logic_gates, predator_logic):
-    # Initialize the RNA sequence
-    rna_sequence = rna_sequence
+    def crossover(self, other):
+        child = RNA_QT45()
+        for i in range(len(self.genes)):
+            if random.random() < 0.5:
+                child.genes[i] = self.genes[i]
+            else:
+                child.genes[i] = other.genes[i]
+        return child
 
-    # Initialize the logic gates
-    logic_gates = logic_gates
+    def run_generation(self, population_size):
+        population = [RNA_QT45() for _ in range(population_size)]
+        for i in range(1000):
+            for individual in population:
+                individual.mutate()
+                individual.evaluate_fitness()
+            population.sort(key=lambda x: x.fitness, reverse=True)
+            top_individuals = population[:int(population_size * 0.1)]
+            new_population = []
+            for _ in range(population_size):
+                if random.random() < 0.5:
+                    new_population.append(top_individuals[0].crossover(top_individuals[1]))
+                else:
+                    new_population.append(random.choice(top_individuals)[0])
+            population = new_population
+        return population[0]
 
-    # Initialize the predator logic
-    predator_logic = predator_logic
-
-    # Define the recursive self-upgrade logic
-    def recursive_self_upgrade_logic(rna_sequence, logic_gates, predator_logic):
-        # Encode the RNA sequence using the predator logic
-        encoded_rna_sequence = predator_logic['encode'](rna_sequence)
-
-        # Apply the logic gates to the encoded RNA sequence
-        for gate in logic_gates:
-            encoded_rna_sequence = logic_gates[gate](encoded_rna_sequence)
-
-        # Decode the encoded RNA sequence using the predator logic
-        decoded_rna_sequence = predator_logic['decode'](encoded_rna_sequence)
-
-        # Update the RNA sequence
-        rna_sequence = decoded_rna_sequence
-
-        # Recursively call the recursive self-upgrade logic
-        recursive_self_upgrade_logic(rna_sequence, logic_gates, predator_logic)
-
-    # Call the recursive self-upgrade logic
-    recursive_self_upgrade_logic(rna_sequence, logic_gates, predator_logic)
-
-    # Return the updated RNA sequence
-    return rna_sequence
-
-# Call the recursive self-upgrade function
-updated_rna_sequence = recursive_self_upgrade(rna_sequence, logic_gates, predator_logic)
-
-# Print the updated RNA sequence
-print(updated_rna_sequence)
+population_size = 100
+winner = RNA_QT45().run_generation(population_size)
+print("Winner fitness:", winner.fitness)
