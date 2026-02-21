@@ -1,40 +1,31 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import tensorflow as tf
 
-# Define the DNA sequence
-dna_sequence = np.array(['A', 'C', 'G', 'T'])
+# Define the neural network architecture
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Dense(64, activation='relu', input_shape=(1,)),
+    tf.keras.layers.Dense(32, activation='relu'),
+    tf.keras.layers.Dense(1, activation='sigmoid')
+])
 
-# Define the logic gates
-logic_gates = [
-    {'A': 'A', 'C': 'C', 'G': 'G', 'T': 'T'},  # AND
-    {'A': 'T', 'C': 'T', 'G': 'T', 'T': 'T'},  # OR
-    {'A': 'T', 'C': 'C', 'G': 'G', 'T': 'T'}  # XOR
-]
+# Compile the model
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-# Define the recursive self-upgrade function
-def recursive_self_upgrade(dna_sequence, logic_gates):
-    # Initialize the upgraded DNA sequence
-    upgraded_dna_sequence = dna_sequence.copy()
+# Load the DNA sequence data
+DNA_data = np.load('DNA_sequence.npy')
 
-    # Apply the logic gates recursively
-    for i in range(len(dna_sequence)):
-        for j in range(len(logic_gates)):
-            if dna_sequence[i] in logic_gates[j]:
-                upgraded_dna_sequence[i] = logic_gates[j][dna_sequence[i]]
-                break
+# Preprocess the data
+DNA_data = DNA_data / 255.0
 
-    # Return the upgraded DNA sequence
-    return upgraded_dna_sequence
+# Train the model
+model.fit(DNA_data, epochs=1000)
 
-# Apply the recursive self-upgrade function
-upgraded_dna_sequence = recursive_self_upgrade(dna_sequence, logic_gates)
+# Evaluate the model
+loss, accuracy = model.evaluate(DNA_data)
+print(f'Loss: {loss:.4f}, Accuracy: {accuracy:.4f}')
 
-# Print the upgraded DNA sequence
-print(upgraded_dna_sequence)
+# Use the model to predict the DNA sequence
+predictions = model.predict(DNA_data)
 
-# Visualize the upgraded DNA sequence using matplotlib
-plt.bar(range(len(upgraded_dna_sequence)), upgraded_dna_sequence)
-plt.xlabel('Position')
-plt.ylabel('DNA Sequence')
-plt.title('Upgraded DNA Sequence')
-plt.show()
+# Print the predictions
+print(predictions)
