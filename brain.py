@@ -1,26 +1,20 @@
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 
-# Load DNA sequence data
-dna_sequence = pd.read_csv('neon_dna_sequence.csv')
+# Define the DNA sequence
+dna_sequence = "ATCGATCGATCGATCGATCG"
 
-# Perform ML synthesis and optimization
-model = Sequential()
-model.add(LSTM(64, input_shape=(dna_sequence.shape[1], 1)))
-model.add(Dense(1))
-model.compile(optimizer='adam', loss='mean_squared_error')
+# Initialize the quantum flux analysis matrix
+qfa_matrix = np.zeros((len(dna_sequence), len(dna_sequence)))
 
-# Train the model
-model.fit(dna_sequence, epochs=100, verbose=0)
+# Iterate through the DNA sequence
+for i in range(len(dna_sequence)):
+    for j in range(len(dna_sequence)):
+        # Calculate the quantum flux value
+        qfa_value = np.exp(-np.abs(i-j)**2)
+        qfa_matrix[i, j] = qfa_value
 
-# Evaluate the model
-mse = model.evaluate(dna_sequence)
-print(f'MSE: {mse:.4f}')
-
-# Visualize the results
-plt.plot(dna_sequence)
-plt.xlabel('Sequence Index')
-plt.ylabel('Neon DNA Value')
-plt.title('Neon DNA Sequence Analysis')
+# Visualize the quantum flux analysis matrix
+plt.imshow(qfa_matrix, cmap='hot', interpolation='nearest')
+plt.title("Quantum Flux Analysis Matrix")
 plt.show()
