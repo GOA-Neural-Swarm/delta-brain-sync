@@ -1,27 +1,35 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 
-# Load dataset
-df = pd.read_csv('neon_dna_sequence.csv')
+# Define the neural network architecture
+from keras.models import Sequential
+from keras.layers import Dense
 
-# Normalize data
-scaler = MinMaxScaler()
-df[['sequence']] = scaler.fit_transform(df[['sequence']])
+# Load the dataset
+data = pd.read_csv('neon_dna_sequence_analysis.csv')
 
-# Define RNA QT45 Predator Logic
-def recursive_self_upgrade(x):
-    if x > 0.5:
-        return x * (1 + (np.sin(np.pi * x) + 1) / 2)
-    else:
-        return x * (1 - (np.cos(np.pi * x) - 1) / 2)
+# Preprocess the data
+scaler = StandardScaler()
+data[['sequence']] = scaler.fit_transform(data[['sequence']])
 
-# Apply RNA QT45 Predator Logic to DNA sequence
-df['predicted_sequence'] = df['sequence'].apply(recursive_self_upgrade)
+# Split the data into training and testing sets
+train_data, test_data = data.split(test_size=0.2, random_state=42)
 
-# Visualize results
-plt.plot(df['sequence'], label='Original Sequence')
-plt.plot(df['predicted_sequence'], label='Predicted Sequence')
-plt.legend()
-plt.show()
+# Create the neural network model
+model = Sequential()
+model.add(Dense(64, activation='relu', input_shape=(data.shape[1],)))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
+
+# Compile the model
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Train the model
+model.fit(train_data, epochs=10, verbose=0)
+
+# Evaluate the model
+loss, accuracy = model.evaluate(test_data, verbose=0)
+
+print(f'Test loss: {loss:.3f}')
+print(f'Test accuracy: {accuracy:.3f}')
