@@ -1,45 +1,38 @@
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
 from keras.models import Sequential
-from keras.layers import Dense, Dropout
+from keras.layers import Dense
 
-# Load Neon DNA Sequence Data
-neon_data = pd.read_csv('neon_dna_sequence.csv')
-
-# Standardize DNA sequence data
-scaler = StandardScaler()
-neon_data[['sequence']] = scaler.fit_transform(neon_data[['sequence']])
-
-# Perform Principal Component Analysis (PCA) on standardized data
-pca = PCA(n_components=50)
-neon_pca_data = pca.fit_transform(neon_data[['sequence']])
-
-# Split data into training and testing sets
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(neon_pca_data, neon_data['target'], test_size=0.2, random_state=42)
-
-# Define the neural network model
+# Define the model architecture
 model = Sequential()
-model.add(Dense(64, input_shape=(50,), activation='relu'))
-model.add(Dropout(0.2))
-model.add(Dense(64, activation='relu'))
-model.add(Dropout(0.2))
+model.add(Dense(64, input_shape=(1,), activation='relu'))
+model.add(Dense(32, activation='relu'))
 model.add(Dense(1, activation='sigmoid'))
 
 # Compile the model
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-# Train the model
-model.fit(X_train, y_train, epochs=10, batch_size=128, verbose=1)
+# Load the DNA sequence data
+dna_data = pd.read_csv('dna_sequence_data.csv')
 
-# Evaluate the model
-y_pred = model.predict(X_test)
-y_pred_class = (y_pred > 0.5).astype(int)
+# Convert the DNA sequence data into a numerical representation
+dna_data['sequence'] = dna_data['sequence'].apply(lambda x: np.array(list(x)))
 
-# Perform recursive self-upgrade via RNA QT45 Predator Logic
-from keras.models import load_model
-model.save('optimized_model.h5')
-new_model = load_model('optimized_model.h5')
-new_model.fit(X_train, y_train, epochs=10, batch_size=128, verbose=1)
+# Normalize the DNA sequence data
+dna_data[['sequence']] = dna_data[['sequence']].apply(lambda x: x / np.max(x))
+
+# Split the data into training and testing sets
+train_data, test_data = dna_data.split(test_size=0.2, random_state=42)
+
+# Train the model on the training data
+model.fit(train_data['sequence'], train_data['label'], epochs=100, batch_size=32, verbose=1)
+
+# Evaluate the model on the testing data
+loss, accuracy = model.evaluate(test_data['sequence'], test_data['label'])
+print(f'Test loss: {loss}, Test accuracy: {accuracy}')
+
+# Use the trained model to make predictions on new DNA sequences
+new_sequence = 'ATCGATCGATCG'
+new_sequence = np.array(list(new_sequence)) / np.max(new_sequence)
+prediction = model.predict(new_sequence)
+print(f'Prediction: {prediction}')
