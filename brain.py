@@ -1,39 +1,35 @@
 import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM, Embedding
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
 
-# Define neural network model
-model = Sequential([
-    Embedding(input_dim=256, output_dim=128, input_length=32),
-    LSTM(128, dropout=0.2, recurrent_dropout=0.2),
-    Dense(64, activation='relu'),
-    Dense(32, activation='softmax')
-])
+# Load the DNA sequence data
+dna_seq_data = pd.read_csv('dna_sequence_data.csv')
 
-# Compile model
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+# Preprocess the data
+scaler = MinMaxScaler()
+dna_seq_data[['A', 'C', 'G', 'T']] = scaler.fit_transform(dna_seq_data[['A', 'C', 'G', 'T']])
 
-# Load and preprocess data
-data = np.load('neon_dna.npy')
-X = data[:, :32]
-y = data[:, 32:]
+# Create a neural network model
+from keras.models import Sequential
+from keras.layers import Dense
 
-# Train model
-model.fit(X, y, epochs=10, batch_size=32, verbose=2)
+model = Sequential()
+model.add(Dense(64, activation='relu', input_shape=(dna_seq_data.shape[1],)))
+model.add(Dense(64, activation='relu'))
+model.add(Dense(1))
 
-# Make predictions
-predictions = model.predict(X)
+# Compile the model
+model.compile(optimizer='adam', loss='mean_squared_error')
 
-# Evaluate model
-accuracy = model.evaluate(X, y, verbose=0)
-print(f'Accuracy: {accuracy[1]}')
+# Train the model
+model.fit(dna_seq_data[['A', 'C', 'G', 'T']], dna_seq_data['label'], epochs=100, batch_size=32, verbose=0)
 
-# Generate synthetic DNA sequence
-synthetic_dna = np.random.randint(0, 256, size=(1, 32))
-synthetic_dna = tf.convert_to_tensor(synthetic_dna, dtype=tf.float32)
-synthetic_dna = model.predict(synthetic_dna)
-synthetic_dna = tf.argmax(synthetic_dna, axis=1).numpy()
+# Evaluate the model
+loss = model.evaluate(dna_seq_data[['A', 'C', 'G', 'T']], dna_seq_data['label'])
+print(f'Test loss: {loss:.4f}')
 
-# Print synthetic DNA sequence
-print(synthetic_dna)
+# Use the trained model to make predictions on new DNA sequences
+new_dna_seq_data = pd.read_csv('new_dna_sequence_data.csv')
+new_dna_seq_data[['A', 'C', 'G', 'T']] = scaler.transform(new_dna_seq_data[['A', 'C', 'G', 'T']])
+predictions = model.predict(new_dna_seq_data[['A', 'C', 'G', 'T']])
