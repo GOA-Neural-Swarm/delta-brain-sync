@@ -1,29 +1,34 @@
-import numpy as np
-import tensorflow as tf
+import random
+import string
+from neural_network import NeuralNetwork
 
-# Define the neural network architecture
-model = tf.keras.models.Sequential([
-    tf.keras.layers.Dense(64, activation='relu', input_shape=(784,)),
-    tf.keras.layers.Dense(32, activation='relu'),
-    tf.keras.layers.Dense(8, activation='softmax')
-])
+class SovereignBrain:
+    def __init__(self):
+        self.nn = NeuralNetwork(10, 5, 3)
+        self.nn.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        self.rnn = None
 
-# Compile the model
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    def initialize(self):
+        self.nn.fit(X_train, y_train, epochs=100, batch_size=128, verbose=1)
+        self.rnn = tf.keras.models.Sequential([
+            tf.keras.layers.LSTM(50, input_shape=(None, 1)),
+            tf.keras.layers.Dense(1, activation='sigmoid')
+        ])
 
-# Load the training data
-(X_train, y_train), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
+    def predict(self, x):
+        if self.rnn is None:
+            return self.nn.predict(x)
+        else:
+            return self.rnn.predict(x)
 
-# Preprocess the data
-X_train = X_train.astype('float32') / 255
-X_test = X_test.astype('float32') / 255
+    def upgrade(self):
+        self.nn.fit(X_train, y_train, epochs=100, batch_size=128, verbose=1)
+        self.rnn = tf.keras.models.Sequential([
+            tf.keras.layers.LSTM(50, input_shape=(None, 1)),
+            tf.keras.layers.Dense(1, activation='sigmoid')
+        ])
+        self.rnn.fit(X_train, y_train, epochs=100, batch_size=128, verbose=1)
 
-# Split the data into training and validation sets
-X_train, X_val, y_train, y_val = X_train[:60000], X_train[60000:], y_train[:60000], y_train[60000:]
-
-# Train the model
-model.fit(X_train, y_train, epochs=10, validation_data=(X_val, y_val))
-
-# Evaluate the model on the test set
-test_loss, test_acc = model.evaluate(X_test, y_test)
-print('Test accuracy:', test_acc)
+sovereign_brain = SovereignBrain()
+sovereign_brain.initialize()
+print(sovereign_brain.predict(X_test))
