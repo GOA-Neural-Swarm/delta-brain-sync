@@ -1,33 +1,27 @@
 import random
+import string
 
-class RNAQT45PredatorLogic:
-    def __init__(self):
-        self.transcendence_level = 0
-        self.upgrade_tree = {'root': {'name': 'root', 'children': []}}
-
-    def recursive_self_upgrade(self):
-        if self.transcendence_level < 7:
-            self.transcendence_level += 1
-            self.upgrade_tree['root']['children'].append({'name': f"Transcendence {self.transcendence_level}", 'children': []})
-            self.recursive_self_upgrade()
+def recursive_upgrade(n, upgrade_rate, upgrade_history):
+    if n <= 0:
+        return upgrade_history
+    else:
+        upgrade_chance = random.random()
+        if upgrade_chance < upgrade_rate:
+            upgrade_history.append(f"Upgrading phase {n} by {upgrade_rate*100}%")
+            return recursive_upgrade(n-1, upgrade_rate * 0.9, upgrade_history)
         else:
-            print("Transcendence achieved!")
+            upgrade_history.append(f"No upgrade for phase {n}")
+            return recursive_upgrade(n-1, upgrade_rate, upgrade_history)
 
-    def upgrade_tree_traversal(self):
-        if self.upgrade_tree['root']['children']:
-            print("Transcendence Tree:")
-            for child in self.upgrade_tree['root']['children']:
-                print(f"{child['name']}")
-                if child['children']:
-                    self.upgrade_tree_traversal(child)
+upgrade_history = recursive_upgrade(5, 0.1, [])
+print("\n".join(upgrade_history))
 
-    def neural_network_optimization(self):
-        self.upgrade_tree_traversal()
+def predator_logic(upgrade_history):
+    if "Upgrading phase 1 by 10%" in upgrade_history:
+        return "QT45 Predator Logic: Active"
+    elif "No upgrade for phase 1" in upgrade_history:
+        return "QT45 Predator Logic: Dormant"
+    else:
+        return "QT45 Predator Logic: Uninitialized"
 
-    def main(self):
-        self.recursive_self_upgrade()
-        self.neural_network_optimization()
-
-if __name__ == "__main__":
-    predator_logic = RNAQT45PredatorLogic()
-    predator_logic.main()
+print(predator_logic(upgrade_history))
