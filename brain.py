@@ -1,27 +1,47 @@
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 
-# Define the RNA sequence
-rna_sequence = np.array(['A', 'T', 'C', 'G'])
+# Define neural network architecture
+class SovereignBrain(nn.Module):
+    def __init__(self):
+        super(SovereignBrain, self).__init__()
+        self.fc1 = nn.Linear(64, 128)  # input layer (64) -> hidden layer (128)
+        self.fc2 = nn.Linear(128, 64)  # hidden layer (128) -> output layer (64)
 
-# Define the neural network architecture
-nn_architecture = {
-    'input_dim': len(rna_sequence),
-    'hidden_dim': 128,
-    'output_dim': 1
-}
+    def forward(self, x):
+        x = torch.relu(self.fc1(x))  # activation function for hidden layer
+        x = self.fc2(x)
+        return x
 
-# Define the neural network model
-model = tf.keras.models.Sequential([
-    tf.keras.layers.Dense(nn_architecture['hidden_dim'], activation='relu', input_shape=(nn_architecture['input_dim'],)),
-    tf.keras.layers.Dense(nn_architecture['output_dim'])
-])
+# Load neon DNA sequence data
+neon_data = pd.read_csv('neon_dna.csv')
 
-# Compile the model
-model.compile(optimizer='adam', loss='mean_squared_error')
+# Preprocess data
+scaler = StandardScaler()
+neon_data[['sequence']] = scaler.fit_transform(neon_data[['sequence']])
 
-# Train the model
-model.fit(rna_sequence, epochs=1000)
+# Initialize PCA
+pca = PCA(n_components=64)
+neon_data[['pca_sequence']] = pca.fit_transform(neon_data[['sequence']])
 
-# Evaluate the model
-model.evaluate(rna_sequence)
+# Train SovereignBrain
+brain = SovereignBrain()
+criterion = nn.MSELoss()
+optimizer = torch.optim.Adam(brain.parameters(), lr=0.001)
+for epoch in range(1000):
+    optimizer.zero_grad()
+    outputs = brain(torch.tensor(neon_data[['pca_sequence']], dtype=torch.float32))
+    loss = criterion(outputs, torch.tensor(neon_data[['sequence']], dtype=torch.float32))
+    loss.backward()
+    optimizer.step()
+    print(f'Epoch {epoch+1}, Loss: {loss.item()}')
+
+# Evaluate SovereignBrain
+eval_outputs = brain(torch.tensor(neon_data[['pca_sequence']], dtype=torch.float32))
+eval_loss = criterion(eval_outputs, torch.tensor(neon_data[['sequence']], dtype=torch.float32))
+print(f'Evaluation Loss: {eval_loss.item()}')
+
+# Save SovereignBrain
+torch.save(brain.state_dict(),'sovereign_brain.pth')
