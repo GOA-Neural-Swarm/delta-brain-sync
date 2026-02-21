@@ -1,47 +1,41 @@
-import re
 import numpy as np
-import tensorflow as tf
+import pandas as pd
+from keras.models import Sequential
+from keras.layers import LSTM, Dense
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
+from keras.callbacks import EarlyStopping
 
-# Define the neural network architecture
-model = tf.keras.models.Sequential([
-    tf.keras.layers.Dense(64, activation='relu', input_shape=(1,)),
-    tf.keras.layers.Dense(32, activation='relu'),
-    tf.keras.layers.Dense(1, activation='sigmoid')
-])
+# Load Data
+data = pd.read_csv('neon_dna_sequence_analysis.csv')
 
-# Compile the model
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+# Preprocess Data
+tokenizer = Tokenizer(num_words=1000)
+tokenizer.fit_on_texts(data['sequence'])
+sequences = tokenizer.texts_to_sequences(data['sequence'])
+padded_sequences = pad_sequences(sequences, maxlen=100)
 
-# Load the data
-data = np.loadtxt('neon_dna_sequence.txt')
+# Split Data
+train_sequences = padded_sequences[:int(0.8*len(padded_sequences))]
+test_sequences = padded_sequences[int(0.8*len(padded_sequences)):]
 
-# Preprocess the data
-data = data[:, np.newaxis]
+# Create Model
+model = Sequential()
+model.add(LSTM(128, input_shape=(100, 1)))
+model.add(Dense(128, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
 
-# Split the data into training and testing sets
-train_data, test_data = data[:int(0.8*len(data))], data[int(0.8*len(data)):]
-train_labels, test_labels = np.zeros(int(0.8*len(data))), np.ones(int(0.2*len(data)))
+# Compile Model
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-# Train the model
-model.fit(train_data, train_labels, epochs=100, batch_size=32, verbose=0)
+# Train Model
+early_stopping = EarlyStopping(monitor='val_loss', patience=3, min_delta=0.001)
+model.fit(train_sequences, epochs=10, validation_data=test_sequences, callbacks=[early_stopping])
 
-# Evaluate the model
-loss, accuracy = model.evaluate(test_data, test_labels)
+# Evaluate Model
+loss, accuracy = model.evaluate(test_sequences, test_sequences)
 print(f'Test loss: {loss}, Test accuracy: {accuracy}')
 
-# Use the model to make predictions
-predictions = model.predict(test_data)
-
-# Optimize the model using the predictions
-optimized_model = tf.keras.models.Sequential([
-    tf.keras.layers.Dense(64, activation='relu', input_shape=(1,)),
-    tf.keras.layers.Dense(32, activation='relu'),
-    tf.keras.layers.Dense(1, activation='sigmoid')
-])
-
-optimized_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-optimized_model.fit(test_data, test_labels, epochs=100, batch_size=32, verbose=0)
-
-# Print the optimized model's performance
-loss, accuracy = optimized_model.evaluate(test_data, test_labels)
-print(f'Optimized test loss: {loss}, Optimized test accuracy: {accuracy}')
+# Use Model for Prediction
+prediction = model.predict(test_sequences)
+print(f'Prediction: {prediction}')
