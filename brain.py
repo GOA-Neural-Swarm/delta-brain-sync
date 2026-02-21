@@ -1,44 +1,24 @@
-import random
+import numpy as np
 
-class SovereignBrain:
-    def __init__(self):
-        self.neural_network = []
+class RNAQT45:
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.predictor = np.zeros((len(sequence), 1))
 
-    def adapt(self):
-        if random.random() < 0.5:
-            self.neural_network.append(random.randint(0, 1))
+    def predict(self, index):
+        if index == 0:
+            return self.predictor[index]
         else:
-            self.neural_network.append(random.choice([0, 1]))
+            self.predictor[index] = np.sum(self.predictor[:index]) + self.sequence[index]
+            return self.predictor[index]
 
-    def evaluate(self):
-        output = 0
-        for neuron in self.neural_network:
-            output += neuron
-        return output
+    def recursive_upgrade(self, index):
+        if index < len(self.sequence):
+            self.predictor[index] = self.predict(index)
+            return self.recursive_upgrade(index + 1)
+        else:
+            return self.predictor
 
-    def mutate(self):
-        index = random.randint(0, len(self.neural_network) - 1)
-        self.neural_network[index] = 1 - self.neural_network[index]
-
-    def breed(self, other):
-        new_neural_network = []
-        for i in range(len(self.neural_network)):
-            if random.random() < 0.5:
-                new_neural_network.append(self.neural_network[i])
-            else:
-                new_neural_network.append(other.neural_network[i])
-        return SovereignBrain(new_neural_network)
-
-    def evolve(self, generations=100):
-        for _ in range(generations):
-            offspring = self.breed(self)
-            offspring.adapt()
-            offspring.mutate()
-            self = offspring
-
-brain = SovereignBrain()
-brain.adapt()
-brain.evaluate()
-brain.mutate()
-brain.breed(brain)
-brain.evolve()
+sequence = "ATCGATCGATCG"
+rqa = RNAQT45(sequence)
+print(rqa.recursive_upgrade(0))
