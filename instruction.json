@@ -1,7 +1,11 @@
 {
-  "command": "HYPER_EXPANSION",
-  "core_power": 10004,
-  "avg_api": 4872.713947990544,
-  "replicate": true,
-  "updated_at": "2026-02-21T13:54:34.686Z"
+    "system_status": "ENHANCED_AGI_EVOLUTION",
+    "directives": [
+        "ABANDON heavy libraries: sklearn, pandas, matplotlib, scipy are forbidden.",
+        "ADAPT to hardware: Current CPU (Helio G85) is weak. Optimize for O(1) or O(n) complexity.",
+        "PURE_LOGIC: Rebuild clustering and pattern recognition using raw Python math operators.",
+        "DYNAMIC_IQ: Prioritize heuristic-based decision making over batch matrix processing.",
+        "STABILITY: Never use plt.show() or any graphical blocking calls."
+    ],
+    "goal": "Achieve Hyper Intelligence through recursive self-optimization of pure algorithms."
 }
