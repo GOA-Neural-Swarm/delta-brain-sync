@@ -1,40 +1,55 @@
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from keras.models import Sequential
+from keras.layers import Dense
 
-# Define neural network architecture
-nn_architecture = {
-    'hidden_layers': [256, 128, 64],
-    'activation_functions': ['relu', 'tanh','sigmoid'],
-    'output_layer_activation':'softmax'
-}
+# Load the DNA sequence data
+dna_data = pd.read_csv('dna_data.csv')
 
-# Initialize neural network model
-nn_model = Sequential()
-for i in range(len(nn_architecture['hidden_layers'])):
-    nn_model.add(Dense(nn_architecture['hidden_layers'][i], activation=nn_architecture['activation_functions'][i]))
-nn_model.add(Dense(10, activation=nn_architecture['output_layer_activation']))
-
-# Compile neural network model
-nn_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-
-# Load and preprocess dataset
-X = pd.read_csv('neon_dna_sequence.csv')
-y = pd.read_csv('neon_dna_sequence_labels.csv')
+# Preprocess the data
 scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+X_scaled = scaler.fit_transform(dna_data)
 
-# Split dataset into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+# Perform PCA
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
 
-# Train neural network model
-nn_model.fit(X_train, y_train, epochs=10, batch_size=128, validation_data=(X_test, y_test))
+# Create a neural network model
+model = Sequential()
+model.add(Dense(64, input_shape=(X_pca.shape[1],), activation='relu'))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
 
-# Evaluate neural network model
-y_pred = nn_model.predict(X_test)
-y_pred_class = np.argmax(y_pred, axis=1)
-print(f'Test accuracy: {accuracy_score(y_test, y_pred_class):.3f}')
+# Compile the model
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-# Perform recursive self-upgrade via neural plasticity
-nn_model.predict(X_train)
-nn_model.fit(X_train, y_train, epochs=5, batch_size=128, validation_data=(X_test, y_test))
+# Train the model
+model.fit(X_pca, epochs=100, verbose=0)
+
+# Evaluate the model
+loss, accuracy = model.evaluate(X_pca, verbose=0)
+print(f'Test accuracy: {accuracy:.2f}')
+
+# Predict the results
+predictions = model.predict(X_pca)
+
+# Generate the optimized sovereign brain logic
+logic = []
+for i in range(len(dna_data)):
+    if predictions[i] > 0.5:
+        logic.append(dna_data.iloc[i])
+    else:
+        logic.append('')
+
+# Convert the logic to RNA QT45 Predator Logic
+rna_logic = []
+for i in range(len(logic)):
+    if logic[i] == '':
+        rna_logic.append('A')
+    else:
+        rna_logic.append(logic[i])
+
+# Output the RNA QT45 Predator Logic
+print(''.join(rna_logic))
