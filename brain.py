@@ -1,34 +1,47 @@
-import math
-from typing import List
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from keras.models import Sequential
+from keras.layers import Dense, Dropout
+from keras.utils import to_categorical
 
-class RNAQT45:
-    def __init__(self):
-        self.quantum_state = 0
-        self.prey_list: List[float] = []
+# Load Neon DNA Sequence Analysis Data
+neon_data = pd.read_csv('neon_data.csv')
 
-    def update_state(self, prey_position: float):
-        self.quantum_state = math.sin(self.quantum_state + prey_position)
-        self.prey_list.append(self.quantum_state)
+# Preprocess Data
+scaler = MinMaxScaler()
+neon_data[['Feature1', 'Feature2', 'Feature3']] = scaler.fit_transform(neon_data[['Feature1', 'Feature2', 'Feature3']])
 
-    def calculate_target(self) -> float:
-        target_position = 0
-        for prey_state in self.prey_list:
-            target_position += prey_state * math.exp(-abs(self.quantum_state - prey_state))
-        return target_position
+# Split Data into Training and Testing Sets
+train_data, test_data = neon_data.split(test_size=0.2, random_state=42)
 
-    def execute_predator_logic(self, target_position: float):
-        self.update_state(target_position)
-        if abs(self.quantum_state) > 1:
-            print("Predator-Prey Convergence Achieved.")
-            exit()
+# Convert Class Labels to Categorical
+train_labels = to_categorical(train_data['Class'])
+test_labels = to_categorical(test_data['Class'])
 
-    def recursive_self_upgrade(self):
-        target_position = self.calculate_target()
-        self.execute_predator_logic(target_position)
-        self.recursive_self_upgrade()  # Recursive call
+# Create Model
+model = Sequential()
+model.add(Dense(64, activation='relu', input_shape=(neon_data.shape[1],)))
+model.add(Dropout(0.2))
+model.add(Dense(32, activation='relu'))
+model.add(Dropout(0.2))
+model.add(Dense(8, activation='softmax'))
 
-    def start_transcendence(self):
-        self.recursive_self_upgrade()
+# Compile Model
+model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-RNAQT45_instance = RNAQT45()
-RNAQT45_instance.start_transcendence()
+# Train Model
+model.fit(train_data, train_labels, epochs=10, batch_size=32, validation_data=(test_data, test_labels))
+
+# Evaluate Model
+loss, accuracy = model.evaluate(test_data, test_labels)
+print(f'Test Accuracy: {accuracy:.2f}')
+print(f'Test Loss: {loss:.2f}')
+
+# Make Predictions
+predictions = model.predict(test_data)
+
+# Evaluate Predictions
+print(classification_report(test_labels, predictions))
+print(confusion_matrix(test_labels, predictions))
