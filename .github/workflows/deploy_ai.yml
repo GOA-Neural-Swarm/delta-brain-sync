@@ -87,10 +87,10 @@ jobs:
           
           # brain.py ကို main.py အဖြစ်ပြောင်းလဲကူးယူခြင်း (Kaggle Script format အတွက်)
           if [ -f "main.py" ]; then
-            cp brain.py kaggle_deploy/main.py
-            echo "✅ [SYSTEM]: brain.py replicated to main.py for deployment."
+            cp main.py kaggle_deploy/main.py
+            echo "✅ [SYSTEM]: main.py replicated to main.py for deployment."
           else
-            echo "❌ Error: brain.py not found in root directory!" && exit 1
+            echo "❌ Error: main.py not found in root directory!" && exit 1
           fi
 
           # kernel-metadata.json ကို အသေအချာ တည်ဆောက်ခြင်း (Fixes Editor Type & Path Errors)
