@@ -1,29 +1,37 @@
 import numpy as np
-import tensorflow as tf
-from tensorflow.keras.layers import Dense, Conv2D, MaxPooling2D, Flatten, Dropout
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+from sklearn.metrics import calinski_harabasz_score
 
-# Define the neural network architecture
-model = tf.keras.models.Sequential([
-    Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
-    MaxPooling2D((2, 2)),
-    Conv2D(64, (3, 3), activation='relu'),
-    MaxPooling2D((2, 2)),
-    Conv2D(128, (3, 3), activation='relu'),
-    MaxPooling2D((2, 2)),
-    Flatten(),
-    Dense(128, activation='relu'),
-    Dropout(0.2),
-    Dense(10, activation='softmax')
-])
+# Load the dataset
+data = pd.read_csv('neon_dna_sequence_analysis.csv')
 
-# Compile the model
-model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+# Standardize the data
+scaler = StandardScaler()
+data[['seq_len', 'GC_content','sequence']] = scaler.fit_transform(data[['seq_len', 'GC_content','sequence']])
 
-# Train the model
-model.fit(X_train, y_train, epochs=10, validation_data=(X_test, y_test))
+# Apply PCA
+pca = PCA(n_components=3)
+data_pca = pca.fit_transform(data[['seq_len', 'GC_content','sequence']])
 
-# Evaluate the model
-model.evaluate(X_test, y_test)
+# Apply K-Means clustering
+kmeans = KMeans(n_clusters=5)
+data_pca['cluster'] = kmeans.fit_predict(data_pca)
 
-# Save the model
-model.save('optimized_model.h5')
+# Evaluate the clustering
+silhouette = silhouette_score(data_pca, data_pca['cluster'])
+calinski_harabasz = calinski_harabasz_score(data_pca, data_pca['cluster'])
+
+print(f"Silhouette score: {silhouette:.4f}")
+print(f"Calinski-Harabasz score: {calinski_harabasz:.4f}")
+
+# Visualize the results
+plt.scatter(data_pca[:, 0], data_pca[:, 1], c=data_pca['cluster'])
+plt.title("K-Means Clustering of Neon DNA Sequence Analysis")
+plt.xlabel("Principal Component 1")
+plt.ylabel("Principal Component 2")
+plt.show()
