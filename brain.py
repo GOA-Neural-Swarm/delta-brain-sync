@@ -1,54 +1,52 @@
-import numpy as np
-import pandas as pd
+import random
+import math
 
-# Load RNA QT45 Predator Logic dataset
-qt45_data = pd.read_csv('qt45_predator_logic.csv')
+class RNAQT45:
+    def __init__(self, init_population_size=1000, mutation_rate=0.01, crossover_rate=0.5):
+        self.population_size = init_population_size
+        self.mutation_rate = mutation_rate
+        self.crossover_rate = crossover_rate
+        self.population = [random.randint(0, 255) for _ in range(self.population_size)]
 
-# Initialize recursive self-upgrade parameters
-self_upgrade_params = {'iterations': 1000, 'learning_rate': 0.01, 'batch_size': 32}
+    def evolve(self, generations=100):
+        for _ in range(generations):
+            self.population = self.select_fittest(self.population)
+            self.population = self.mutate(self.population, self.mutation_rate)
+            self.population = self.crossover(self.population, self.crossover_rate)
+        return self.population
 
-# Define neural network architecture
-def neural_network(x):
-    # Hidden layer
-    hidden_layer = np.tanh(np.dot(x, np.random.rand(10, 10)))
-    # Output layer
-    output_layer = np.dot(hidden_layer, np.random.rand(10, 1))
-    return output_layer
+    def select_fittest(self, population):
+        fittest = max(population, key=lambda x: self.fitness(x))
+        return [x for x in population if x == fittest]
 
-# Define recursive self-upgrade logic
-def recursive_self_upgrade(qt45_data, self_upgrade_params):
-    # Initialize neural network weights
-    neural_network_weights = np.random.rand(10, 10)
-    neural_network_bias = np.zeros((10, 1))
-    
-    # Iterate over self-upgrade iterations
-    for i in range(self_upgrade_params['iterations']):
-        # Select a random batch of samples
-        batch_indices = np.random.choice(qt45_data.shape[0], size=self_upgrade_params['batch_size'], replace=False)
-        batch_x = qt45_data.iloc[batch_indices]
-        batch_y = qt45_data.iloc[batch_indices].values
-        
-        # Calculate gradients
-        gradients = np.zeros((10, 10))
-        for j in range(batch_y.shape[0]):
-            output_layer = neural_network(batch_x[j])
-            error = batch_y[j] - output_layer
-            gradients += error * (1 - np.tanh(output_layer)) * (1 + np.tanh(output_layer))
-        
-        # Update neural network weights
-        neural_network_weights -= self_upgrade_params['learning_rate'] * gradients
-        neural_network_bias -= self_upgrade_params['learning_rate'] * np.mean(gradients, axis=0)
-        
-        # Check for convergence
-        if np.linalg.norm(gradients) < 1e-6:
-            break
-    
-    # Return updated neural network weights
-    return neural_network_weights, neural_network_bias
+    def fitness(self, individual):
+        return math.exp(-math.sqrt(sum((x - 128) ** 2 for x in individual)) / len(individual))
 
-# Perform recursive self-upgrade
-qt45_predator_logic_weights, qt45_predator_logic_bias = recursive_self_upgrade(qt45_data, self_upgrade_params)
+    def mutate(self, population, mutation_rate):
+        mutated = []
+        for individual in population:
+            if random.random() < mutation_rate:
+                mutated.append([random.randint(0, 255) for _ in range(len(individual))])
+            else:
+                mutated.append(individual)
+        return mutated
 
-# Save updated neural network weights
-np.save('qt45_predator_logic_weights.npy', qt45_predator_logic_weights)
-np.save('qt45_predator_logic_bias.npy', qt45_predator_logic_bias)
+    def crossover(self, population, crossover_rate):
+        crossovered = []
+        for i in range(0, len(population), 2):
+            if random.random() < crossover_rate:
+                parent1 = population[i]
+                parent2 = population[i + 1]
+                crossovered.append([x for x in parent1 if random.random() < 0.5])
+                crossovered.append([x for x in parent2 if random.random() < 0.5])
+            else:
+                crossovered.append(parent1)
+                crossovered.append(parent2)
+        return crossovered
+
+# Initialize and evolve RNA QT45 Predator Logic
+rq45 = RNAQT45()
+final_population = rq45.evolve(generations=1000)
+
+# Print final population
+print([x for x in final_population])
