@@ -1,42 +1,39 @@
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from keras.models import Sequential
-from keras.layers import Dense, Dropout
 
-# Load DNA sequence data
-dna_data = pd.read_csv('dna_sequence_data.csv')
+# Define the DNA sequence analysis function
+def neon_dna_analysis(dna_sequence):
+    # Initialize the result dictionary
+    result = {}
 
-# Preprocess DNA sequence data
-scaler = StandardScaler()
-dna_data['sequence'] = scaler.fit_transform(dna_data['sequence'])
+    # Extract the base composition
+    base_composition = pd.Series([dna_sequence.count('A'), dna_sequence.count('C'), dna_sequence.count('G'), dna_sequence.count('T')])
 
-# Split data into training and testing sets
-train_data, test_data = dna_data.split(test_size=0.2, random_state=42)
+    # Calculate the GC content
+    gc_content = (base_composition['G'] + base_composition['C']) / len(dna_sequence)
 
-# Create neural network model
-model = Sequential()
-model.add(Dense(64, activation='relu', input_shape=(dna_data.shape[1],)))
-model.add(Dropout(0.2))
-model.add(Dense(32, activation='relu'))
-model.add(Dropout(0.2))
-model.add(Dense(1, activation='sigmoid'))
+    # Calculate the AT content
+    at_content = (base_composition['A'] + base_composition['T']) / len(dna_sequence)
 
-# Compile model
-model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+    # Calculate the A-T richness
+    at_richness = at_content * (at_content - 0.5)
 
-# Train model
-model.fit(train_data, epochs=10, batch_size=32, verbose=1)
+    # Calculate the G-C richness
+    gc_richness = gc_content * (gc_content - 0.5)
 
-# Evaluate model
-loss, accuracy = model.evaluate(test_data)
-print(f'Test loss: {loss:.3f}')
-print(f'Test accuracy: {accuracy:.3f}')
+    # Store the results in the dictionary
+    result['GC_content'] = gc_content
+    result['AT_content'] = at_content
+    result['AT_richness'] = at_richness
+    result['GC_richness'] = gc_richness
 
-# Use model to make predictions on new data
-new_data = pd.DataFrame({'sequence': ['ATCGATCG', 'TAGCGTAG', 'CGATCGAT']})
-new_data['sequence'] = scaler.transform(new_data['sequence'])
-predictions = model.predict(new_data)
+    return result
 
-# Print predictions
-print(predictions)
+# Load the DNA sequence data
+dna_sequence = "ATCGATCGATCGATCGATCG"
+
+# Perform the DNA sequence analysis
+result = neon_dna_analysis(dna_sequence)
+
+# Print the results
+print(result)
