@@ -1,47 +1,31 @@
-import random
-import math
-import copy
-from deap import base, creator, tools, algorithms
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from keras.models import Sequential
+from keras.layers import Dense
 
-# Define the problem parameters
-POP_SIZE = 100
-TOURNAMENT_SIZE = 3
-GENE_MUTATION_RATE = 0.1
-GENE_MUTATION_STEP = 0.1
+# Load DNA sequence data
+dna_data = pd.read_csv('neon_dna_sequence.csv')
 
-# Define the problem function
-def problem(individual):
-    fitness = 0
-    for i in range(len(individual)):
-        if random.random() < 0.5:
-            fitness += 1
-    return fitness,
+# Preprocess data
+scaler = StandardScaler()
+dna_data[['AT', 'CG', 'GC', 'TT']] = scaler.fit_transform(dna_data[['AT', 'CG', 'GC', 'TT']])
 
-# Create the toolbox
-toolbox = base.Toolbox()
-creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-creator.create("Individual", list, fitness=creator.FitnessMax)
+# Split data into training and testing sets
+train_data, test_data = dna_data.split(test_size=0.2, random_state=42)
 
-# Register the genetic operators
-toolbox.register("attr_bool", random.randint, 0, 1)
-toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, n=100)
-toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+# Build neural network model
+model = Sequential()
+model.add(Dense(64, activation='relu', input_shape=(dna_data.shape[1],)))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))
 
-# Register the evaluation function
-toolbox.register("evaluate", problem)
+# Compile model
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-# Register the genetic algorithm
-toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1, indpb=0.1)
-toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
+# Train model
+model.fit(train_data, epochs=100, verbose=0)
 
-# Run the genetic algorithm
-pop = toolbox.population(n=POP_SIZE)
-hof = tools.HallOfFame(1)
-stats = tools.Statistics(lambda ind: ind.fitness.values)
-stats.register(lambda ind: ind.fitness.values[0], name="avg")
-pop, log = algorithms.eaSimple(pop, toolbox, 0.5, 0.1, 100, stats, halloffame=hof)
-
-# Print the results
-print("Best individual is", hof[0])
-print("Best fitness is", hof[0].fitness.values[0])
+# Evaluate model
+loss, accuracy = model.evaluate(test_data)
+print(f'Test loss: {loss:.3f}, Test accuracy: {accuracy:.3f}')
