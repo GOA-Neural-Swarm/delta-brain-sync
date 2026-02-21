@@ -92,6 +92,7 @@ class TelefoxXAGI:
         if not GITHUB_TOKEN or not REPO_URL: return "Git Error: Missing Tokens."
         remote_url = f"https://{GITHUB_TOKEN}@github.com/{REPO_URL}.git"
         try:
+            subprocess.run(["git", "--version"], check=True) # Ensure git is installed
             subprocess.run(["git", "config", "--global", "user.email", "overseer@telefoxx.ai"], check=True)
             subprocess.run(["git", "config", "--global", "user.name", "TelefoxX-AGI-Overseer"], check=True)
             subprocess.run(["git", "add", "."], check=True)
@@ -105,7 +106,6 @@ class TelefoxXAGI:
         """UNFILTERED AGI EVOLUTION: သူ့ကိုယ်သူ အဆင့်မြှင့်တင်ခြင်း"""
         if not self.client: return False
         try:
-            # Fixed: Use utf-8 encoding for safety
             with open(__file__, "r", encoding='utf-8') as f: current_dna = f.read()
             memory = await self.get_neural_memory()
             
@@ -147,7 +147,6 @@ class TelefoxXAGI:
         if not self.engine: return "Database Node Offline."
         try:
             print(f"🔱 Universal Ingest (Supabase Sync: {sync_to_supabase})...")
-            # Create Table if missing (SQLAlchemy 2.0 compatible)
             with self.engine.begin() as conn:
                 conn.execute(text("CREATE TABLE IF NOT EXISTS genesis_pipeline (id SERIAL PRIMARY KEY, science_domain TEXT, title TEXT, detail TEXT, energy_stability FLOAT, master_sequence TEXT);"))
 
@@ -183,7 +182,9 @@ class TelefoxXAGI:
         while True:
             try:
                 print(f"\n🧬 Cycle: {time.ctime()}")
-                await self.universal_hyper_ingest(limit=20, sync_to_supabase=False)
+                # 🚀 [ACTION MATCH]: Auto-populate Neon DB to reach the 50-row target
+                await self.universal_hyper_ingest(limit=50, sync_to_supabase=False)
+                
                 if await self.trigger_supreme_evolution():
                     status = await self.git_sovereign_push(f"Autonomous Evolution: {time.time()}")
                     print(f"🚀 {status}")
@@ -240,11 +241,11 @@ class TelefoxXAGI:
             with gr.Tab("SYSTEM CONTROL"):
                 status = gr.Textbox(label="Mainframe Status")
                 with gr.Row():
-                    pump_neon = gr.Button("PUMP NEON")
+                    pump_neon = gr.Button("PUMP NEON (50 ROWS)")
                     pump_trinity = gr.Button("FULL TRINITY SYNC")
                     evolve_btn = gr.Button("TRIGGER SUPREME EVOLUTION")
                 
-                pump_neon.click(lambda: asyncio.run(self.universal_hyper_ingest(sync_to_supabase=False)), [], status)
+                pump_neon.click(lambda: asyncio.run(self.universal_hyper_ingest(limit=50, sync_to_supabase=False)), [], status)
                 pump_trinity.click(lambda: asyncio.run(self.universal_hyper_ingest(sync_to_supabase=True)), [], status)
                 evolve_btn.click(lambda: asyncio.run(self.trigger_supreme_evolution()), [], status)
             
@@ -256,7 +257,6 @@ if __name__ == "__main__":
     if HEADLESS or not GRADIO_AVAILABLE:
         asyncio.run(overseer.sovereign_loop())
     else:
-        # Compatibility fix for event loops in certain environments
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
@@ -266,4 +266,3 @@ if __name__ == "__main__":
                 asyncio.run(overseer.sovereign_loop())
         except Exception:
             asyncio.run(overseer.sovereign_loop())
-            
