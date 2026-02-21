@@ -1,38 +1,16 @@
 import numpy as np
-import pandas as pd
-from keras.models import Sequential
-from keras.layers import Dense
+import tensorflow as tf
 
-# Define the model architecture
-model = Sequential()
-model.add(Dense(64, input_shape=(1,), activation='relu'))
-model.add(Dense(32, activation='relu'))
-model.add(Dense(1, activation='sigmoid'))
+class PredatorLogic(tf.keras.Model):
+    def __init__(self):
+        super().__init__()
+        self.RNA_Modification = tf.keras.layers.Lambda(lambda x: x + np.random.normal(loc=0, scale=0.1, size=(1, 100)))
 
-# Compile the model
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    def call(self, inputs):
+        return self.RNA_Modification(inputs)
 
-# Load the DNA sequence data
-dna_data = pd.read_csv('dna_sequence_data.csv')
+telefoxx_overseer = PredatorLogic()
 
-# Convert the DNA sequence data into a numerical representation
-dna_data['sequence'] = dna_data['sequence'].apply(lambda x: np.array(list(x)))
+telefoxx_overseer.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
 
-# Normalize the DNA sequence data
-dna_data[['sequence']] = dna_data[['sequence']].apply(lambda x: x / np.max(x))
-
-# Split the data into training and testing sets
-train_data, test_data = dna_data.split(test_size=0.2, random_state=42)
-
-# Train the model on the training data
-model.fit(train_data['sequence'], train_data['label'], epochs=100, batch_size=32, verbose=1)
-
-# Evaluate the model on the testing data
-loss, accuracy = model.evaluate(test_data['sequence'], test_data['label'])
-print(f'Test loss: {loss}, Test accuracy: {accuracy}')
-
-# Use the trained model to make predictions on new DNA sequences
-new_sequence = 'ATCGATCGATCG'
-new_sequence = np.array(list(new_sequence)) / np.max(new_sequence)
-prediction = model.predict(new_sequence)
-print(f'Prediction: {prediction}')
+telefoxx_overseer.fit(np.random.rand(1000, 100), epochs=1000, verbose=0)
