@@ -1,38 +1,47 @@
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
-from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
+import random
+import math
+import copy
+from deap import base, creator, tools, algorithms
 
-# Load the Neon DNA Sequence data
-neon_data = pd.read_csv('neon_dna_sequence.csv')
+# Define the problem parameters
+POP_SIZE = 100
+TOURNAMENT_SIZE = 3
+GENE_MUTATION_RATE = 0.1
+GENE_MUTATION_STEP = 0.1
 
-# Preprocess the data
-scaler = StandardScaler()
-neon_data[['sequence']] = scaler.fit_transform(neon_data[['sequence']])
+# Define the problem function
+def problem(individual):
+    fitness = 0
+    for i in range(len(individual)):
+        if random.random() < 0.5:
+            fitness += 1
+    return fitness,
 
-# Apply PCA for dimensionality reduction
-pca = PCA(n_components=2)
-neon_data[['sequence_pca']] = pca.fit_transform(neon_data[['sequence']])
+# Create the toolbox
+toolbox = base.Toolbox()
+creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+creator.create("Individual", list, fitness=creator.FitnessMax)
 
-# Apply t-SNE for visualization
-tsne = TSNE(n_components=2, random_state=42)
-neon_data[['sequence_tsne']] = tsne.fit_transform(neon_data[['sequence_pca']])
+# Register the genetic operators
+toolbox.register("attr_bool", random.randint, 0, 1)
+toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, n=100)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
-# Perform K-Means clustering
-kmeans = KMeans(n_clusters=5, random_state=42)
-neon_data[['cluster']] = kmeans.fit_predict(neon_data[['sequence_tsne']])
+# Register the evaluation function
+toolbox.register("evaluate", problem)
 
-# Calculate silhouette scores
-silhouette_scores = silhouette_score(neon_data[['sequence_tsne']], neon_data[['cluster']])
-print("Silhouette score:", silhouette_scores)
+# Register the genetic algorithm
+toolbox.register("mate", tools.cxTwoPoint)
+toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=1, indpb=0.1)
+toolbox.register("select", tools.selTournament, tournsize=TOURNAMENT_SIZE)
 
-# Visualize the results
-import matplotlib.pyplot as plt
-plt.scatter(neon_data[['sequence_tsne']].iloc[:, 0], neon_data[['sequence_tsne']].iloc[:, 1], c=neon_data[['cluster']])
-plt.xlabel('t-SNE Dimension 1')
-plt.ylabel('t-SNE Dimension 2')
-plt.title('K-Means Clustering on Neon DNA Sequence')
-plt.show()
+# Run the genetic algorithm
+pop = toolbox.population(n=POP_SIZE)
+hof = tools.HallOfFame(1)
+stats = tools.Statistics(lambda ind: ind.fitness.values)
+stats.register(lambda ind: ind.fitness.values[0], name="avg")
+pop, log = algorithms.eaSimple(pop, toolbox, 0.5, 0.1, 100, stats, halloffame=hof)
+
+# Print the results
+print("Best individual is", hof[0])
+print("Best fitness is", hof[0].fitness.values[0])
