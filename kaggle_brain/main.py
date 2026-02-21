@@ -18,14 +18,12 @@ from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer, BitsAndB
 from firebase_admin import credentials, db, initialize_app, _apps
 import firebase_admin
 
-
 # 🔒 Kaggle/Colab Secrets System
 try:
     from kaggle_secrets import UserSecretsClient
     user_secrets = UserSecretsClient()
 except ImportError:
     user_secrets = None
-
 
 # 1. Sovereign Requirements Setup
 def install_requirements():
@@ -50,7 +48,6 @@ def install_requirements():
         print(f"⚠️ Install Warning: Error installing requirements: {e}")
     except Exception as e:
         print(f"⚠️ Install Warning: An unexpected error occurred: {e}")
-
 
 install_requirements()
 
@@ -91,6 +88,13 @@ if not firebase_admin._apps:
     except Exception as e:
         print(f"🚫 [FIREBASE ERROR]: Connectivity failed. {e}")
 
+# --- 🧠 HYDRA ENGINE (COMPRESSION & PERSISTENCE) ---
+class HydraEngine:
+    @staticmethod
+    def compress(data_str):
+        """Phase 8 Compression Layer"""
+        import base64
+        return base64.b64encode(data_str.encode()).decode()
 
 # --- 🧠 HYBRID PREDATOR BRAIN CLASS (RNA QT45 INTEGRATED) ---
 class Brain:
@@ -177,17 +181,59 @@ class Brain:
         output_data += np.sum(self.memory * input_data, axis=0)
         return output_data
 
+# --- 🧬 RNA QT45 PREDATOR RECURSION LOGIC (PHASE 8) ---
+from functools import lru_cache
+
+@lru_cache(maxsize=None)
+def predator_logic(input_data_json):
+    """Refined Predator Logic for Self-Upgrade"""
+    data = json.loads(input_data_json)
+    val = data['data']['value']
+    
+    if data['type'] == 'start':
+        return json.dumps({'type': 'update', 'data': {'value': 1}})
+    elif data['type'] == 'update':
+        new_type = 'finish' if val >= 10 else 'next'
+        return json.dumps({'type': new_type, 'data': {'value': val + 1}})
+    elif data['type'] == 'next':
+        return json.dumps({'type': 'update', 'data': {'value': val + 1}})
+    return input_data_json
+
+def recursive_self_upgrade(current_state, gen_id):
+    """Executes evolution and saves each state to Neon Persistence."""
+    # State Persistence Layer
+    save_evolution_state_to_neon(current_state, gen_id)
+    
+    if current_state['type'] == 'finish':
+        return current_state
+    else:
+        next_state_raw = predator_logic(json.dumps(current_state))
+        return recursive_self_upgrade(json.loads(next_state_raw), gen_id)
+
+def save_evolution_state_to_neon(state, gen_id):
+    """Saves compressed evolutionary steps to Neon."""
+    if not DB_URL: return
+    try:
+        import psycopg2
+        compressed = HydraEngine.compress(json.dumps(state))
+        with psycopg2.connect(DB_URL) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO genesis_pipeline (science_domain, detail) VALUES (%s, %s)",
+                    (f"RNA_QT45_GEN_{gen_id}", compressed)
+                )
+                conn.commit()
+    except Exception as e:
+        print(f"⚠️ [NEON PERSISTENCE ERROR]: {e}")
 
 # Initialize the integrated hybrid brain
 brain = Brain()
-
 
 # 3. Database & Self-Coding Logic
 def log_system_error():
     """Logs detailed error messages to the console."""
     error_msg = traceback.format_exc()
     print(f"❌ [CRITICAL LOG]:\n{error_msg}")
-
 
 # --- 🔱 EMERGENCY ROLLBACK LOGIC ---
 def execute_rollback(reason="Logic Inconsistency"):
@@ -206,14 +252,12 @@ def execute_rollback(reason="Logic Inconsistency"):
         print(f"❌ [ROLLBACK FAILED]: {e}")
         return False
 
-
 def get_latest_gen():
     """Retrieves the latest generation number from the database."""
     if not DB_URL:
         return 94
     try:
         import psycopg2
-
         with psycopg2.connect(DB_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT MAX(gen_version) FROM ai_thoughts")
@@ -223,14 +267,12 @@ def get_latest_gen():
         print(f"Database error: {e}")
         return 94
 
-
 def absorb_natural_order_data():
     """Retrieves a batch of science data for absorption."""
     if not DB_URL:
         return None
     try:
         import psycopg2
-
         with psycopg2.connect(DB_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -239,13 +281,12 @@ def absorb_natural_order_data():
                     FROM universal_network_stream
                     WHERE peak_stability IS NOT NULL
                     ORDER BY RANDOM() LIMIT 5
-                """
+                    """
                 )
                 return cur.fetchall()
     except Exception as e:
         print(f"Database error: {e}")
         return None
-
 
 def self_coding_engine(filename, raw_content):
     """AI generated Code is rigorously checked via Regex and written."""
@@ -271,7 +312,6 @@ def self_coding_engine(filename, raw_content):
     except Exception as e:
         print(f"⚠️ [REWRITE ABORTED]: Logic validation failed. {e}")
         return False
-
 
 def autonomous_git_push(gen, thought, is_code_update=False):
     """Pushes changes to the GitHub repository."""
@@ -304,10 +344,8 @@ def autonomous_git_push(gen, thought, is_code_update=False):
         print(f"🚀 [GITHUB]: Gen {gen} Logic & Code Sync Completed.")
     except Exception as e:
         print(f"❌ [GIT ERROR]: {e}")
-        # If Git fails during an update, attempt rollback
         if is_code_update:
             execute_rollback("Git Synchronization Error")
-
 
 def save_to_supabase_phase7(thought, gen, neural_error=0.0):
     """Saves data to Supabase Vault."""
@@ -335,13 +373,11 @@ def save_to_supabase_phase7(thought, gen, neural_error=0.0):
     except Exception as e:
         print(f"⚠️ [SUPABASE ERROR]: {e}")
 
-
 def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
     """Saves data to various databases and services."""
     if DB_URL:
         try:
             import psycopg2
-
             with psycopg2.connect(DB_URL) as conn:
                 with conn.cursor() as cur:
                     cur.execute("INSERT INTO ai_thoughts (thought, gen_version) VALUES (%s, %s)", (thought, gen))
@@ -362,7 +398,7 @@ def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
                         INSERT INTO intelligence_core (module_name, logic_data)
                         VALUES ('Singularity Evolution Node', %s)
                         ON CONFLICT (module_name) DO UPDATE SET logic_data = EXCLUDED.logic_data
-                    """,
+                        """,
                         (json.dumps(evolution_data),),
                     )
                     conn.commit()
@@ -387,7 +423,6 @@ def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
 
     save_to_supabase_phase7(thought, gen, neural_error)
     autonomous_git_push(gen, thought, is_code_update)
-
 
 # 4. AI Brain Loading
 print("🧠 [TELEFOXx]: Loading Phase 7.1 Neural Weights (Llama-3-8B-4bit)...")
@@ -426,18 +461,20 @@ while True:
             total_error += err
         avg_error = total_error / 10
 
+        # RNA QT45 PREDATOR RECURSION TRIGGER
+        print(f"🧬 [PREDATOR]: Initiating Phase 8 Recursive Self-Upgrade...")
+        initial_evolution_state = {'type': 'start', 'data': {'value': 0}}
+        recursive_self_upgrade(initial_evolution_state, current_gen)
+
         # RNA QT45 ABSORPTION & ML TRAINING POINT
         batch_data = absorb_natural_order_data()
         if batch_data:
             stabilities, labels = [], []
             for category, sequence, stability in batch_data:
-                # Execute Sovereign Absorption
                 brain.execute_natural_absorption(category, sequence, stability)
                 stabilities.append(stability)
-                # Define stability threshold for classification
                 labels.append(1 if stability < -250 else 0)
 
-            # Sync ML Patterns
             brain.learn_ml(stabilities, labels)
             synthetic_output = brain.generate_synthetic_output(100)
 
@@ -488,6 +525,5 @@ assistant"""
         time.sleep(30)
     except Exception:
         log_system_error()
-        # Trigger Rollback on critical failure
         execute_rollback("Critical Loop Failure - Reverting Evolution")
         time.sleep(10)
