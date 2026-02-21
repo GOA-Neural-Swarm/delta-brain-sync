@@ -1,61 +1,50 @@
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
-
-# Neural Network Parameters
-n_inputs = 128
-n_hidden = 256
-n_outputs = 1
-n_epochs = 100
-learning_rate = 0.01
-
-# Load Data
-data = pd.read_csv("neon_dna_sequence_analysis.csv")
-
-# Preprocess Data
-X = data.drop("target", axis=1)
-y = data["target"]
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
-
-# Train Neural Network
-from keras.models import Sequential
-from keras.layers import Dense
-
-model = Sequential([
-    Dense(n_inputs, input_shape=(X_scaled.shape[1],), activation='relu'),
-    Dense(n_hidden, activation='relu'),
-    Dense(n_outputs, activation='sigmoid')
-])
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-model.fit(X_scaled, y, epochs=n_epochs, verbose=0)
-
-# Evaluate Model
-loss, accuracy = model.evaluate(X_scaled, y, verbose=0)
-print(f"Model Evaluation: Loss = {loss:.4f}, Accuracy = {accuracy:.4f}")
-
-# Upgrade Sovereign Brain Logic
 import random
-from keras.models import load_model
+import string
+import os
 
-# Load Model Weights
-model_weights = model.get_weights()
+class NeuralNetwork:
+    def __init__(self, input_size, hidden_size, output_size):
+        self.weights1 = np.random.rand(input_size, hidden_size)
+        self.weights2 = np.random.rand(hidden_size, output_size)
 
-# Create a new model with the same architecture
-new_model = Sequential([
-    Dense(n_inputs, input_shape=(X_scaled.shape[1],), activation='relu'),
-    Dense(n_hidden, activation='relu'),
-    Dense(n_outputs, activation='sigmoid')
-])
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-# Set the weights of the new model to the weights of the old model
-new_model.set_weights(model_weights)
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-# Compile the new model
-new_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    def train(self, X, y):
+        self.X = X
+        self.y = y
+        self.y = np.zeros_like(self.y)
+        self.error = np.zeros_like(self.y)
 
-# Evaluate the new model
-new_loss, new_accuracy = new_model.evaluate(X_scaled, y, verbose=0)
-print(f"New Model Evaluation: Loss = {new_loss:.4f}, Accuracy = {new_accuracy:.4f}")
+        for i in range(self.X.shape[0]):
+            output = self.forward(self.X[i])
+            self.error[i] = (output - self.y[i]) ** 2
+            self.weights1 += self.X[i].T * (output - self.y[i]) * self.sigmoid_derivative(output)
+            self.weights2 += output.T * (output - self.y[i]) * self.sigmoid_derivative(output)
 
-# Upgrade Sovereign Brain Logic Complete
+    def forward(self, x):
+        layer1 = sigmoid(np.dot(x, self.weights1))
+        layer2 = sigmoid(np.dot(layer1, self.weights2))
+        return layer2
+
+    def predict(self, x):
+        return self.forward(x)
+
+# Generate random input data
+X = np.random.rand(100, 10)
+y = np.random.rand(100, 1)
+
+# Initialize the neural network
+nn = NeuralNetwork(10, 10, 1)
+
+# Train the neural network
+nn.train(X, y)
+
+# Make predictions
+predictions = nn.predict(X)
+
+# Print the predictions
+print(predictions)
