@@ -1,4 +1,4 @@
-name: Sovereign Evolution & Trinity Sync 
+name: Sovereign Evolution & Trinity Sync (v2 Matched Master)
 
 on:
   push:
@@ -63,7 +63,7 @@ jobs:
             echo "⚠️ sync_data.py not found, skipping specific Neon sync."
           fi
 
-      - name: Step 6 - Push to Kaggle  (The Ironclad Fix)
+      - name: Step 6 - Push to Kaggle v2 (The Ironclad Fix)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
@@ -100,8 +100,8 @@ jobs:
           # kernel-metadata.json matching screenshot
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
-            "id": "$KAGGLE_USERNAME/delta-brain-sync",
-            "title": "delta-brain-sync",
+            "id": "$KAGGLE_USERNAME/delta-brain-sync-v2",
+            "title": "delta-brain-sync-v2",
             "code_file": "main.py",
             "language": "python",
             "kernel_type": "script",
