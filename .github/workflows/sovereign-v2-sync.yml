@@ -9,7 +9,7 @@ on:
       - 'main.py'
       - 'brain.py'
   schedule:
-    - cron: '*/10 * * * *' # ၁၀ မိနစ်တစ်ကြိမ် ပုံမှန် Run မည်
+    - cron: '*/10 * * * *' # ၁၀ မိနဈတဈကွိမျ ပုံမှနျ Run မညျ
   workflow_dispatch:
 
 permissions:
@@ -69,12 +69,13 @@ jobs:
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
           mkdir -p ~/.kaggle
+          # 🛡️ 401 Error ကို ဖွရှေငျးရနျ printf ဖွင့ျ JSON Format အတိအကြ တညျဆောကျခွငျး
           printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
           
           mkdir -p kaggle_deploy
 
-          # [INTEGRATED AUTO-MATCH LOGIC]: kaggle_brain/main.py ကို ဦးစားပေးသည်
+          # 🧬 [INTEGRATED AUTO-MATCH LOGIC]: kaggle_brain/main.py ကို ဦးစားပေးသညျ
           if [ -f "kaggle_brain/main.py" ]; then
             cp kaggle_brain/main.py kaggle_deploy/main.py
             cp kaggle_brain/main.py main.py
@@ -112,9 +113,10 @@ jobs:
           }
           EOF
           
-          # 🚀 [COMMAND FIX]: PATH ကို update လုပ်ပြီး kaggle command ကို တိုက်ရိုက်သုံးခြင်း
+          # 🚀 [THE FINAL FIX]: PATH setup နှင့ျ 'create' command အစား 'push' ကိုသာ သုံးခွငျး
           export PATH=$PATH:/home/runner/.local/bin
-          kaggle kernels push -p kaggle_deploy || kaggle kernels create -p kaggle_deploy
+          echo "🚀 Pushing Sovereign Core to Kaggle Scripting Engine..."
+          kaggle kernels push -p kaggle_deploy
 
       - name: Step 7 - Run Evolution Engine (Self-Coding & Ingestion)
         timeout-minutes: 15
@@ -136,7 +138,7 @@ jobs:
           HEADLESS_MODE: "true"
         run: |
           mkdir -p /tmp/sovereign_repo_sync
-          # app.py သို့မဟုတ် main.py ကို ဦးစားပေး run မည်
+          # app.py သို့မဟုတျ main.py ကို ဦးစားပေး run မညျ
           if [ -f "app.py" ]; then
             python app.py
           elif [ -f "main.py" ]; then
