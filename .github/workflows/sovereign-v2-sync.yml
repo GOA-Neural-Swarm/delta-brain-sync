@@ -1,0 +1,82 @@
+name: Sovereign Evolution & Trinity Sync (v2 Matched)
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  evolve_and_sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Step 1 - Checkout Sovereign Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0
+
+      - name: Step 2 - Python & Node Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Step 3 - Global Git Config (For main.py)
+        run: |
+          git config --global user.name 'Sovereign-AI-Bot'
+          git config --global user.email 'bot@sovereign.ai'
+          git config --global pull.rebase false
+
+      - name: Step 4 - Install Multi-Engine Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install datasets pandas sqlalchemy psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv huggingface_hub diffusers transformers accelerate bitsandbytes numpy scikit-learn firebase-admin gitpython
+          npm install pg @supabase/supabase-js firebase-admin
+
+      - name: Step 5 - Push to Kaggle v2 (RNA QT45 Trigger)
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          mkdir -p ~/.kaggle
+          printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+          
+          mkdir -p kaggle_deploy
+          cp main.py kaggle_deploy/main.py
+          # Metadata Alignment with v2
+          cat <<EOF > kaggle_deploy/kernel-metadata.json
+          {
+            "id": "$KAGGLE_USERNAME/delta-brain-sync-v2",
+            "title": "delta-brain-sync-v2",
+            "code_file": "main.py",
+            "language": "python",
+            "kernel_type": "script",
+            "is_private": true,
+            "enable_gpu": true,
+            "enable_internet": true,
+            "dataset_sources": [],
+            "competition_sources": [],
+            "kernel_sources": []
+          }
+          EOF
+          kaggle kernels push -p kaggle_deploy
+
+      - name: Step 6 - Run Evolution Engine (main.py)
+        timeout-minutes: 15
+        env:
+          # main.py ရဲ့ လိုအပ်ချက်များနဲ့ အတိအကျ match လုပ်ထားသည်
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # main.py က REPO_PATH ကို သုံးလို့ရအောင် folder create လုပ်ပေးခြင်း
+          mkdir -p /tmp/sovereign_repo_sync
+          python main.py
