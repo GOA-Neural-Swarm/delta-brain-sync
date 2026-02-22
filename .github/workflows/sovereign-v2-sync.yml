@@ -81,12 +81,15 @@ jobs:
             echo "✅ Found main.py in kaggle_brain/"
           elif [ -f "main.py" ]; then
             cp main.py kaggle_deploy/main.py
+            echo "✅ Found main.py in root"
           elif [ -f "brain.py" ]; then
             cp brain.py kaggle_deploy/main.py
             cp brain.py main.py
+            echo "✅ Found brain.py"
           elif [ -f "app.py" ]; then
             cp app.py kaggle_deploy/main.py
             cp app.py main.py
+            echo "✅ Found app.py"
           else
             echo "❌ Critical Error: No logic file found!" && exit 1
           fi
@@ -109,7 +112,9 @@ jobs:
           }
           EOF
           
-          python -m kaggle kernels push -p kaggle_deploy || python -m kaggle kernels create -p kaggle_deploy
+          # 🚀 [COMMAND FIX]: PATH ကို update လုပ်ပြီး kaggle command ကို တိုက်ရိုက်သုံးခြင်း
+          export PATH=$PATH:/home/runner/.local/bin
+          kaggle kernels push -p kaggle_deploy || kaggle kernels create -p kaggle_deploy
 
       - name: Step 7 - Run Evolution Engine (Self-Coding & Ingestion)
         timeout-minutes: 15
