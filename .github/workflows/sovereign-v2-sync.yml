@@ -9,7 +9,7 @@ on:
       - 'main.py'
       - 'brain.py'
   schedule:
-    - cron: '*/10 * * * *' # ၁၀ မိနဈတဈကွိမျ ပုံမှနျ Run မညျ
+    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -63,39 +63,41 @@ jobs:
             echo "⚠️ sync_data.py not found, skipping specific Neon sync."
           fi
 
-      - name: Step 6 - Push to Kaggle v2 (RNA QT45 Trigger & Auto-Match)
+      - name: Step 6 - Push to Kaggle v2 (The Ironclad Fix)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
+          # 🛡️ Authenticity Fix: Legacy Credentials injection
           mkdir -p ~/.kaggle
-          # 🛡️ 401 Error ကို ဖွရှေငျးရနျ printf ဖွင့ျ JSON Format အတိအကြ တညျဆောကျခွငျး
-          printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
+          cat <<EOF > ~/.kaggle/kaggle.json
+          {
+            "username":"$KAGGLE_USERNAME",
+            "key":"$KAGGLE_KEY"
+          }
+          EOF
           chmod 600 ~/.kaggle/kaggle.json
           
           mkdir -p kaggle_deploy
 
-          # 🧬 [INTEGRATED AUTO-MATCH LOGIC]: kaggle_brain/main.py ကို ဦးစားပေးသညျ
+          # 🧬 Auto-Match Logic
           if [ -f "kaggle_brain/main.py" ]; then
             cp kaggle_brain/main.py kaggle_deploy/main.py
             cp kaggle_brain/main.py main.py
             echo "✅ Found main.py in kaggle_brain/"
           elif [ -f "main.py" ]; then
             cp main.py kaggle_deploy/main.py
-            echo "✅ Found main.py in root"
           elif [ -f "brain.py" ]; then
             cp brain.py kaggle_deploy/main.py
             cp brain.py main.py
-            echo "✅ Found brain.py"
           elif [ -f "app.py" ]; then
             cp app.py kaggle_deploy/main.py
             cp app.py main.py
-            echo "✅ Found app.py"
           else
             echo "❌ Critical Error: No logic file found!" && exit 1
           fi
 
-          # kernel-metadata.json Construction
+          # kernel-metadata.json matching screenshot
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
             "id": "$KAGGLE_USERNAME/delta-brain-sync-v2",
@@ -113,9 +115,7 @@ jobs:
           }
           EOF
           
-          # 🚀 [THE FINAL FIX]: PATH setup နှင့ျ 'create' command အစား 'push' ကိုသာ သုံးခွငျး
           export PATH=$PATH:/home/runner/.local/bin
-          echo "🚀 Pushing Sovereign Core to Kaggle Scripting Engine..."
           kaggle kernels push -p kaggle_deploy
 
       - name: Step 7 - Run Evolution Engine (Self-Coding & Ingestion)
@@ -137,8 +137,6 @@ jobs:
           REPO_URL: ${{ github.repository }}
           HEADLESS_MODE: "true"
         run: |
-          mkdir -p /tmp/sovereign_repo_sync
-          # app.py သို့မဟုတျ main.py ကို ဦးစားပေး run မညျ
           if [ -f "app.py" ]; then
             python app.py
           elif [ -f "main.py" ]; then
