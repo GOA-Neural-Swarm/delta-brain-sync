@@ -120,4 +120,6 @@ jobs:
 
           # Kaggle သို့ အတင်းအကြပ် Push လုပ်ခြင်း
           echo "🚀 Pushing Sovereign Core (RNA QT45) to Kaggle Scripting Engine..."
-          kaggle kernels push -p kaggle_deploy
+          # 🔱 [SAFETY INJECTION]: အဟောင်းက Ghost record ဖြစ်နေရင် push မရတဲ့အတွက် 
+          # push လို့မရရင် create လုပ်မယ်ဆိုတဲ့ logic လေးပဲ ပေါင်းထည့်ထားတယ် (ဒါက အလုပ်ဖြစ်စေမှာ)
+          kaggle kernels push -p kaggle_deploy || kaggle kernels create -p kaggle_deploy
