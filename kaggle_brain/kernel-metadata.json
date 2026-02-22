@@ -1,20 +1,14 @@
-import json
-import os
-
-K_ID = "yewintthetlwin/delta-brain-sync"
-
-metadata = {
-  "id": K_ID,
-  "title": "delta-brain-sync",
-  "code_file": "main.py",
-  "language": "python",
-  "kernel_type": "script",
-  "is_private": True,
-  "enable_gpu": True,
-  "enable_internet": True
+{
+  "id": "yewintthetlwin/delta-brain-sync", 
+  "title": "delta-brain-sync",
+  "code_file": "main.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
 }
-
-with open("kernel-metadata.json", "w") as f:
-    json.dump(metadata, f, indent=2)
-
-!kaggle kernels push -p .
