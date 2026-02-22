@@ -3,7 +3,7 @@
   "title": "delta-brain-sync",
   "code_file": "main.py",
   "language": "python",
-  "kernel_type": "notebook",
+  "kernel_type": "script",
   "is_private": true,
   "enable_gpu": true,
   "enable_internet": true,
