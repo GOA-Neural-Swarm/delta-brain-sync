@@ -1,9 +1,25 @@
-name: Sovereign Evolution & Trinity Sync (v2 Matched)
+name: Sovereign Evolution & Trinity Sync (v2 Matched Master)
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'kaggle_brain/**'
+      - 'app.py'
+      - 'main.py'
+      - 'brain.py'
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/10 * * * *' # ၁၀ မိနစ်တစ်ကြိမ် ပုံမှန် Run မည်
   workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   evolve_and_sync:
@@ -15,7 +31,7 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
           fetch-depth: 0
 
-      - name: Step 2 - Python & Node Setup
+      - name: Step 2 - Environment Setup (Python 3.10 & Node 20)
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -23,19 +39,31 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Step 3 - Global Git Config (For main.py)
+      - name: Step 3 - Global Git Config & Sync Setup
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
           git config --global pull.rebase false
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
 
       - name: Step 4 - Install Multi-Engine Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install datasets pandas sqlalchemy psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv huggingface_hub diffusers transformers accelerate bitsandbytes numpy scikit-learn firebase-admin gitpython
+          pip install datasets pandas sqlalchemy psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv huggingface_hub diffusers transformers accelerate bitsandbytes numpy scikit-learn firebase-admin gitpython safetensors Pillow kaggle
           npm install pg @supabase/supabase-js firebase-admin
 
-      - name: Step 5 - Push to Kaggle v2 (RNA QT45 Trigger with Auto-Match)
+      - name: Step 5 - Neon Data Sync (Sovereign Mode)
+        env:
+          NEON_URL: ${{ secrets.NEON_URL }}
+          NEON_KEY: ${{ secrets.NEON_KEY }}
+        run: |
+          if [ -f "sync_data.py" ]; then
+            python sync_data.py
+          else
+            echo "⚠️ sync_data.py not found, skipping specific Neon sync."
+          fi
+
+      - name: Step 6 - Push to Kaggle v2 (RNA QT45 Trigger & Auto-Match)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
@@ -46,9 +74,12 @@ jobs:
           
           mkdir -p kaggle_deploy
 
-          # 🧬 [INTEGRATED AUTO-MATCH LOGIC]: 
-          # မူလ cp main.py နေရာမှာ ဘယ်ဖိုင်ရှိရှိ main.py အဖြစ်ပြောင်းလဲပေးမယ့် logic ထည့်သွင်းထားသည်
-          if [ -f "main.py" ]; then
+          # [INTEGRATED AUTO-MATCH LOGIC]: kaggle_brain/main.py ကို ဦးစားပေးသည်
+          if [ -f "kaggle_brain/main.py" ]; then
+            cp kaggle_brain/main.py kaggle_deploy/main.py
+            cp kaggle_brain/main.py main.py
+            echo "✅ Found main.py in kaggle_brain/"
+          elif [ -f "main.py" ]; then
             cp main.py kaggle_deploy/main.py
           elif [ -f "brain.py" ]; then
             cp brain.py kaggle_deploy/main.py
@@ -56,14 +87,11 @@ jobs:
           elif [ -f "app.py" ]; then
             cp app.py kaggle_deploy/main.py
             cp app.py main.py
-          elif [ -f "kaggle_brain/main.py" ]; then
-            cp kaggle_brain/main.py kaggle_deploy/main.py
-            cp kaggle_brain/main.py main.py
           else
             echo "❌ Critical Error: No logic file found!" && exit 1
           fi
 
-          # Metadata Alignment with v2
+          # kernel-metadata.json Construction
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
             "id": "$KAGGLE_USERNAME/delta-brain-sync-v2",
@@ -76,29 +104,62 @@ jobs:
             "enable_internet": true,
             "dataset_sources": [],
             "competition_sources": [],
-            "kernel_sources": []
+            "kernel_sources": [],
+            "model_sources": []
           }
           EOF
-          kaggle kernels push -p kaggle_deploy
+          
+          python -m kaggle kernels push -p kaggle_deploy || python -m kaggle kernels create -p kaggle_deploy
 
-      - name: Step 6 - Run Evolution Engine (main.py)
+      - name: Step 7 - Run Evolution Engine (Self-Coding & Ingestion)
         timeout-minutes: 15
         env:
+          DATABASE_URL: ${{ secrets.NEON_KEY }}
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
+          NEON_KEY: ${{ secrets.NEON_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          REPO_URL: ${{ github.repository }}
+          HEADLESS_MODE: "true"
         run: |
-          # main.py က REPO_PATH ကို သုံးလို့ရအောင် folder create လုပ်ပေးခြင်း
           mkdir -p /tmp/sovereign_repo_sync
-          
-          # Step 5 က Auto-match လုပ်ပေးထားတဲ့ main.py ကို run မည်
-          if [ -f "main.py" ]; then
+          # app.py သို့မဟုတ် main.py ကို ဦးစားပေး run မည်
+          if [ -f "app.py" ]; then
+            python app.py
+          elif [ -f "main.py" ]; then
             python main.py
+          fi
+
+      - name: Step 8 - Run Trinity Sync Engine (Delta Sync)
+        env:
+          NEON_KEY: ${{ secrets.NEON_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          if [ -f "delta_sync.js" ]; then
+            node delta_sync.js
+          fi
+
+      - name: Step 9 - GitHub Auto-Commit (Autonomous Evolution)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git add .
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "🧬 Phase 8 Stability Sync: $(date) [Autonomous Evolution]"
+            git fetch origin main
+            git reset --soft origin/main
+            git push origin main --force
           else
-            echo "❌ Execution failed: main.py still not found!" && exit 1
+            echo "No changes to commit."
           fi
