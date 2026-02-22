@@ -35,7 +35,7 @@ jobs:
           pip install datasets pandas sqlalchemy psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv huggingface_hub diffusers transformers accelerate bitsandbytes numpy scikit-learn firebase-admin gitpython
           npm install pg @supabase/supabase-js firebase-admin
 
-      - name: Step 5 - Push to Kaggle v2 (RNA QT45 Trigger)
+      - name: Step 5 - Push to Kaggle v2 (RNA QT45 Trigger with Auto-Match)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
@@ -45,7 +45,24 @@ jobs:
           chmod 600 ~/.kaggle/kaggle.json
           
           mkdir -p kaggle_deploy
-          cp main.py kaggle_deploy/main.py
+
+          # 🧬 [INTEGRATED AUTO-MATCH LOGIC]: 
+          # မူလ cp main.py နေရာမှာ ဘယ်ဖိုင်ရှိရှိ main.py အဖြစ်ပြောင်းလဲပေးမယ့် logic ထည့်သွင်းထားသည်
+          if [ -f "main.py" ]; then
+            cp main.py kaggle_deploy/main.py
+          elif [ -f "brain.py" ]; then
+            cp brain.py kaggle_deploy/main.py
+            cp brain.py main.py
+          elif [ -f "app.py" ]; then
+            cp app.py kaggle_deploy/main.py
+            cp app.py main.py
+          elif [ -f "kaggle_brain/main.py" ]; then
+            cp kaggle_brain/main.py kaggle_deploy/main.py
+            cp kaggle_brain/main.py main.py
+          else
+            echo "❌ Critical Error: No logic file found!" && exit 1
+          fi
+
           # Metadata Alignment with v2
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
@@ -67,7 +84,6 @@ jobs:
       - name: Step 6 - Run Evolution Engine (main.py)
         timeout-minutes: 15
         env:
-          # main.py ရဲ့ လိုအပ်ချက်များနဲ့ အတိအကျ match လုပ်ထားသည်
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -79,4 +95,10 @@ jobs:
         run: |
           # main.py က REPO_PATH ကို သုံးလို့ရအောင် folder create လုပ်ပေးခြင်း
           mkdir -p /tmp/sovereign_repo_sync
-          python main.py
+          
+          # Step 5 က Auto-match လုပ်ပေးထားတဲ့ main.py ကို run မည်
+          if [ -f "main.py" ]; then
+            python main.py
+          else
+            echo "❌ Execution failed: main.py still not found!" && exit 1
+          fi
