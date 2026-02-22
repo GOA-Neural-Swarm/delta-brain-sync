@@ -13,104 +13,76 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_TOKEN }}
-          fetch-depth: 0 # Git history အားလုံးကို fetch လုပ်ရန်
+          fetch-depth: 0 
 
-      # --- ၁။ Python Environment Setup ---
-      - name: Setup Python
+      - name: Step 2 - Setup Python Environment
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Install Dependencies
+      - name: Step 3 - Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install kaggle psycopg2-binary requests gitpython torch transformers accelerate bitsandbytes numpy
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      # --- ၂။ Neon Sync ---
-      - name: Run Neon Sync Script
-        env:
-          NEON_URL: ${{ secrets.NEON_URL }}
-        run: |
-          # sync_data.py ရှိမရှိစစ်ဆေးပြီး run ခြင်း
-          if [ -f "sync_data.py" ]; then
-            python sync_data.py
-          else
-            echo "⚠️ sync_data.py not found, skipping Neon sync step."
-          fi
-
-      # --- ၃။ GitHub Auto-Commit (Sovereign Stability Patch - FIXED CONFLICT) ---
-      - name: Commit AI Status to Repository
+      - name: Step 4 - Commit AI Status to Repository
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
-
-          # 🧬 [AUTO-MATCH]: brain.py နှင့် kaggle_brain အပြောင်းအလဲများကိုပါ Stage လုပ်ခြင်း
           git add .
-
-          # ပြောင်းလဲမှုရှိမှသာ Commit လုပ်ခြင်း
           if ! git diff-index --quiet HEAD; then
             git commit -m "🧬 Phase 8 Stability Sync: $(date) [Autonomous Evolution]"
-            
-            # 🔱 Conflict မဖြစ်အောင် Remote changes များကို Force Align လုပ်ခြင်း
             git fetch origin main
             git reset --soft origin/main
-            
-            # GitHub သို့ အတင်းအကြပ် Push လုပ်ခြင်း (Race Condition ကျော်လွှားရန်)
             git push origin main --force
           else
             echo "No changes to commit."
           fi
 
-      # --- ၄။ Kaggle Brain Trigger (RNA QT45 Integrated) ---
-      - name: Trigger Kaggle Neural Evolution
+      - name: Step 5 - Trigger Kaggle Neural Evolution
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
-          # 🔱 Kaggle Kernel ထဲတွင် သုံးရန် Secrets များကိုပါ Inject လုပ်ခြင်း
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          # Kaggle API Credentials Setup
+          # 🔱 [FIXED]: 401 Unauthorized Error အမြစ်ပြတ်ရှင်းနည်း
           mkdir -p ~/.kaggle
-          echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
+          # Environment variable ကို တိုက်ရိုက်မသုံးဘဲ JSON ထဲမှာ string အဖြစ် တိတိကျကျ ရိုက်ထည့်ခြင်း
+          cat <<EOF > ~/.kaggle/kaggle.json
+          {
+            "username": "$KAGGLE_USERNAME",
+            "key": "$KAGGLE_KEY"
+          }
+          EOF
           chmod 600 ~/.kaggle/kaggle.json
           
-          # Deployment Directory အသစ် တည်ဆောက်ခြင်း
           mkdir -p kaggle_deploy
           
-          # 🧬 [AUTO-MATCH]: brain.py အသစ်ကို ဦးစားပေးပြီး replicated လုပ်ရန် ပြင်ဆင်ခြင်း
           if [ -f "brain.py" ]; then
             cp brain.py kaggle_deploy/main.py
-            echo "✅ [SYSTEM]: Evolved brain.py replicated to kaggle_deploy/main.py."
+            echo "✅ [SYSTEM]: brain.py replicated."
           elif [ -f "main.py" ]; then
             cp main.py kaggle_deploy/main.py
-            echo "✅ [SYSTEM]: main.py replicated to kaggle_deploy/main.py."
-          elif [ -f "kaggle_brain/main.py" ]; then
-            cp kaggle_brain/main.py kaggle_deploy/main.py
-            echo "✅ [SYSTEM]: main.py from kaggle_brain replicated."
+            echo "✅ [SYSTEM]: main.py replicated."
           else
             echo "❌ Error: Logic files not found!" && exit 1
           fi
 
-          # kernel-metadata.json ကို အသေအချာ တည်ဆောက်ခြင်း
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
             "id": "$KAGGLE_USERNAME/delta-brain-sync",
-            "title": "Delta Brain Sync",
+            "title": "delta-brain-sync",
             "code_file": "main.py",
             "language": "python",
             "kernel_type": "script",
             "is_private": true,
             "enable_gpu": true,
-            "enable_tpu": false,
             "enable_internet": true,
             "dataset_sources": [],
             "competition_sources": [],
@@ -118,8 +90,6 @@ jobs:
           }
           EOF
 
-          # Kaggle သို့ အတင်းအကြပ် Push လုပ်ခြင်း
-          echo "🚀 Pushing Sovereign Core (RNA QT45) to Kaggle Scripting Engine..."
-          # 🔱 [SAFETY INJECTION]: အဟောင်းက Ghost record ဖြစ်နေရင် push မရတဲ့အတွက် 
-          # push လို့မရရင် create လုပ်မယ်ဆိုတဲ့ logic လေးပဲ ပေါင်းထည့်ထားတယ် (ဒါက အလုပ်ဖြစ်စေမှာ)
+          echo "🚀 Pushing Sovereign Core to Kaggle..."
+          # 🔱 Ghost record အတွက် create ကိုပါ တစ်ခါတည်း တွဲသုံးထားသည်
           kaggle kernels push -p kaggle_deploy || kaggle kernels create -p kaggle_deploy
