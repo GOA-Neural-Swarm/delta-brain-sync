@@ -1,14 +1,38 @@
-{
-  "id": "yewintthetlwin/delta-brain-sync",
-  "title": "delta-brain-sync",
-  "code_file": "main.py",
-  "language": "python",
-  "kernel_type": "script",
-  "is_private": true,
-  "enable_gpu": true,
-  "enable_internet": true,
-  "dataset_sources": [],
-  "competition_sources": [],
-  "kernel_sources": [],
-  "model_sources": []
-}
+- name: Push to Kaggle
+      env:
+        KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+        KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+      run: |
+        # Kaggle Auth setup
+        mkdir -p ~/.kaggle
+        echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
+        chmod 600 ~/.kaggle/kaggle.json
+        
+        # Folder structure creation
+        mkdir -p kaggle_brain
+        
+        # Ensure main.py exists in the push folder
+        if [ -f "main.py" ]; then
+          cp main.py kaggle_brain/
+        fi
+
+        # Force write a clean metadata file to avoid "Not Found" error
+        cat <<EOF > kaggle_brain/kernel-metadata.json
+        {
+          "id": "yewintthetlwin/delta-brain-sync",
+          "title": "delta-brain-sync",
+          "code_file": "main.py",
+          "language": "python",
+          "kernel_type": "script",
+          "is_private": true,
+          "enable_gpu": true,
+          "enable_internet": true,
+          "dataset_sources": [],
+          "competition_sources": [],
+          "kernel_sources": [],
+          "model_sources": []
+        }
+        EOF
+
+        # Launch Push
+        kaggle kernels push -p ./kaggle_brain
