@@ -99,8 +99,8 @@ jobs:
           # 🎯 [DIRECT FORMAT FIX]: Variable sign ($) ကို ဖယ်ရှားပြီး telefox လို့ တိုက်ရိုက် သတ်မှတ်သည်
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
-            "id": "telefox/delta-brain-sync",
-            "title": "delta-brain-sync",
+            "id": "yewintthetlwin/delta-brain-sync-v2",
+            "title": "delta-brain-sync-v2",
             "code_file": "main.py",
             "language": "python",
             "kernel_type": "script",
