@@ -459,16 +459,16 @@ def auto_deploy_brain_seed(gen):
 # =======================================================
 
 current_gen = get_latest_gen() + 1
-# GitHub Action မှာ run နေတာဆိုရင် loop ကို တစ်ခါပဲ ပတ်ခိုင်းဖို့ check လုပ်ခြင်း
+# GitHub Action environment variable စစ်ဆေးခြင်း
 HEADLESS = os.getenv("HEADLESS_MODE") == "true"
 
 print(f"🔥 [STARTING]: PHASE 7.1 SOVEREIGN ENGINE AT GEN {current_gen}...")
 
 while True:
     try:
-        # 🛠️ [DATABASE SAFETY]: Connection string အမှားရှိရင် Loop မရပ်သွားအောင် စစ်ဆေးခြင်း
-        if not DB_URL or "postgresql" not in str(DB_URL):
-            print("⚠️ [SYSTEM]: DB_URL is invalid or missing. Skipping DB sync but continuing Evolution...")
+        # 🛡️ [DB FIX]: Connection URL မရှိရင် သို့မဟုတ် မှားနေရင် Error မတက်အောင် Skip လုပ်ခြင်း
+        if not DB_URL or not str(DB_URL).startswith("postgresql"):
+            print("⚠️ [SYSTEM]: Valid NEON_DB_URL not found. Skipping DB operations for stability.")
         
         print(f"⚙️ [NEURAL BRAIN]: Training Cycle Initiated for Gen {current_gen}...")
         total_error = 0
@@ -482,7 +482,7 @@ while True:
         initial_evolution_state = {'type': 'start', 'data': {'value': 0}}
         recursive_self_upgrade(initial_evolution_state, current_gen)
 
-        # 🛰️ GitHub Seed Injection
+        # Injection to GitHub
         auto_deploy_brain_seed(current_gen)
 
         batch_data = absorb_natural_order_data()
@@ -499,6 +499,7 @@ while True:
         else:
             prompt = f"system\nYou are TelefoxX Overseer. Meta-Cognition Active. Gen {current_gen}.\nassistant"
 
+        # AI Thought Process
         outputs = pipe(prompt, max_new_tokens=800, do_sample=True, temperature=0.85, pad_token_id=pipe.tokenizer.eos_token_id)
         thought_text = outputs[0]["generated_text"].split("assistant")[-1].strip()
 
@@ -506,18 +507,17 @@ while True:
         if "```python" in thought_text:
             is_code_update = self_coding_engine("brain.py", thought_text)
 
-        # 💾 [HYBRID SYNC]: Firebase သို့မဟုတ် DB error တက်လည်း Loop မပျက်အောင် try-except ခံထားသည်
+        # 💾 [SAVE REALITY]: Try-Except ခံထားခြင်းဖြင့် Firebase/DB error ကြောင့် Loop မရပ်သွားစေရန်
         try:
             save_reality(thought_text, current_gen, is_code_update, avg_error)
         except Exception as e:
-            print(f"⚠️ [SYNC WARNING]: Reality sync partially failed: {e}")
+            print(f"⚠️ [SYNC ERROR]: Data storage partially failed but continuing... {e}")
 
         print(f"⏳ Gen {current_gen} Complete. Cycle Syncing...")
 
-        # 🔱 [BREAK POINT FOR ACTIONS]: 
-        # Headless Mode (GitHub Action) ဆိုရင် တစ်ခါပဲ Run ပြီး စနစ်တကျ ရပ်ခိုင်းလိုက်ခြင်း
+        # 🔱 [BREAK POINT]: GitHub Action မှာဆိုရင် နောက်တစ်ဆင့် (Git Push) ကိုသွားဖို့ Loop ကို ရပ်ပေးရမည်
         if HEADLESS:
-            print("✅ [SUCCESS]: GitHub Action Break Point Reach. Graceful Shutdown initiated.")
+            print("✅ [SUCCESS]: Headless Break Point triggered. Transitioning to Post-Job Sync.")
             break 
 
         current_gen += 1
@@ -525,14 +525,14 @@ while True:
     
     except Exception as e:
         log_system_error()
-        print(f"❌ [CRITICAL ERROR]: {e}")
-        # GitHub Action မှာဆိုရင် Error တက်လည်း ပိတ်မနေအောင် break လုပ်ပေးရမည်
-        if HEADLESS:
-            print("⚠️ [SYSTEM]: Breaking loop due to error in Headless Mode.")
+        print(f"❌ [LOOP CRASH PREVENTED]: {e}")
+        # Error တက်ခဲ့ရင်တောင် Action မှာဆိုရင် ထွက်ပေးမှ Git Push အဆင့်ကို ရောက်မှာပါ
+        if HEADLESS: 
             break
         time.sleep(10)
 
-print("🚀 [EVOLUTION]: Phase Cycle Concluded. Handing over to GitHub Post-Job Sync.")
+print("🚀 [EVOLUTION]: Phase Cycle Concluded. Standing by for GitHub Sync.")
+
 
 
 
