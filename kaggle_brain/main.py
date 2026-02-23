@@ -57,7 +57,7 @@ raw_db_url = os.getenv("NEON_DB_URL") or os.getenv("DATABASE_URL")
 if user_secrets:
     raw_db_url = user_secrets.get_secret("NEON_DB_URL") or raw_db_url
 
-# Protocol Fix for SQLAlchemy/Psycopg2
+# Protocol Fix for SQLAlchemy/Psycopg2 (postgres:// to postgresql://)
 DB_URL = raw_db_url.replace("postgres://", "postgresql://", 1) if raw_db_url and raw_db_url.startswith("postgres://") else raw_db_url
 
 FIREBASE_URL = os.getenv("FIREBASE_DB_URL")
