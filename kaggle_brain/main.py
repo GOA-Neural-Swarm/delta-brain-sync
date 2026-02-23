@@ -455,22 +455,26 @@ def auto_deploy_brain_seed(gen):
         return None
 
 # =======================================================
-# 5. DYNAMIC EVOLUTION LOOP (FINAL INTEGRATION)
+# 5. DYNAMIC EVOLUTION LOOP (STRICT STABILITY FIX)
 # =======================================================
 
 current_gen = get_latest_gen() + 1
-# GitHub Action environment variable စစ်ဆေးခြင်း
 HEADLESS = os.getenv("HEADLESS_MODE") == "true"
 
 print(f"🔥 [STARTING]: PHASE 7.1 SOVEREIGN ENGINE AT GEN {current_gen}...")
 
 while True:
     try:
-        # 🛡️ [DB FIX]: Connection URL မရှိရင် သို့မဟုတ် မှားနေရင် Error မတက်အောင် Skip လုပ်ခြင်း
-        if not DB_URL or not str(DB_URL).startswith("postgresql"):
-            print("⚠️ [SYSTEM]: Valid NEON_DB_URL not found. Skipping DB operations for stability.")
-        
+        # 🧪 [TRUTH LAYER]: Database URL ကို Format အမှန်ဖြစ်အောင် အတင်းပြောင်းခြင်း
+        # SQLAlchemy နဲ့ Psycopg2 compatibility အတွက် postgres:// ကို postgresql:// ပြောင်းရမယ်
+        if DB_URL and DB_URL.startswith("postgres://"):
+            FIXED_DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
+        else:
+            FIXED_DB_URL = DB_URL
+
         print(f"⚙️ [NEURAL BRAIN]: Training Cycle Initiated for Gen {current_gen}...")
+        
+        # Neural Training Logic
         total_error = 0
         for i in range(10):
             input_sample, target_sample = np.random.rand(1000), np.random.rand(1000)
@@ -478,60 +482,60 @@ while True:
             total_error += err
         avg_error = total_error / 10
 
-        print(f"🧬 [PREDATOR]: Initiating Phase 8 Recursive Self-Upgrade...")
+        # 🔱 [EVOLUTION]: Phase 8 Self-Upgrade
         initial_evolution_state = {'type': 'start', 'data': {'value': 0}}
         recursive_self_upgrade(initial_evolution_state, current_gen)
 
-        # Injection to GitHub
+        # GitHub Pulse
         auto_deploy_brain_seed(current_gen)
 
-        batch_data = absorb_natural_order_data()
+        # 🧬 [ABSORPTION]: Database ကနေ Data ဆွဲတဲ့အခါ Error တက်ရင် အတိအကျပြမယ်
+        try:
+            batch_data = absorb_natural_order_data()
+        except Exception as db_err:
+            print(f"❌ [DB CRITICAL]: Connection to Neon failed. Logic: {db_err}")
+            batch_data = None
+
         if batch_data:
             stabilities, labels = [], []
             for category, sequence, stability in batch_data:
                 brain.execute_natural_absorption(category, sequence, stability)
                 stabilities.append(stability)
                 labels.append(1 if stability < -250 else 0)
-
             brain.learn_ml(stabilities, labels)
             synthetic_output = brain.generate_synthetic_output(100)
-            prompt = f"system\nYou are TelefoxX Overseer. Goal: Recursive Self-Upgrade.\nGeneration: {current_gen} | Synthetic: {synthetic_output}\nuser\nOptimize sovereign brain logic.\nassistant"
+            prompt = f"system\nYou are TelefoxX Overseer. Goal: Recursive Self-Upgrade.\nGen: {current_gen} | Synthetic: {synthetic_output}\nuser\nOptimize sovereign brain logic.\nassistant"
         else:
-            prompt = f"system\nYou are TelefoxX Overseer. Meta-Cognition Active. Gen {current_gen}.\nassistant"
+            prompt = f"system\nYou are TelefoxX Overseer. Database Offline Mode. Generation {current_gen}.\nassistant"
 
-        # AI Thought Process
+        # AI Thought Output
         outputs = pipe(prompt, max_new_tokens=800, do_sample=True, temperature=0.85, pad_token_id=pipe.tokenizer.eos_token_id)
         thought_text = outputs[0]["generated_text"].split("assistant")[-1].strip()
 
+        # 🛠️ Self-Coding Logic
         is_code_update = False
         if "```python" in thought_text:
             is_code_update = self_coding_engine("brain.py", thought_text)
 
-        # 💾 [SAVE REALITY]: Try-Except ခံထားခြင်းဖြင့် Firebase/DB error ကြောင့် Loop မရပ်သွားစေရန်
-        try:
-            save_reality(thought_text, current_gen, is_code_update, avg_error)
-        except Exception as e:
-            print(f"⚠️ [SYNC ERROR]: Data storage partially failed but continuing... {e}")
+        # 💾 [PERSISTENCE]: Sync Reality with full error reporting
+        save_reality(thought_text, current_gen, is_code_update, avg_error)
 
         print(f"⏳ Gen {current_gen} Complete. Cycle Syncing...")
 
-        # 🔱 [BREAK POINT]: GitHub Action မှာဆိုရင် နောက်တစ်ဆင့် (Git Push) ကိုသွားဖို့ Loop ကို ရပ်ပေးရမည်
         if HEADLESS:
-            print("✅ [SUCCESS]: Headless Break Point triggered. Transitioning to Post-Job Sync.")
+            print("✅ [SYSTEM]: GitHub Action Complete. Graceful Exit for Git Sync.")
             break 
 
         current_gen += 1
         time.sleep(30)
     
     except Exception as e:
+        # အမှားကို ဖုံးမထားဘူး၊ Traceback အပြည့်အစုံထုတ်ပြမယ်
         log_system_error()
-        print(f"❌ [LOOP CRASH PREVENTED]: {e}")
-        # Error တက်ခဲ့ရင်တောင် Action မှာဆိုရင် ထွက်ပေးမှ Git Push အဆင့်ကို ရောက်မှာပါ
+        print(f"🚨 [CORE CRASH]: {e}")
         if HEADLESS: 
             break
         time.sleep(10)
-
-print("🚀 [EVOLUTION]: Phase Cycle Concluded. Standing by for GitHub Sync.")
 
 
 
