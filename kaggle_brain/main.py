@@ -459,16 +459,16 @@ def auto_deploy_brain_seed(gen):
 # =======================================================
 
 current_gen = get_latest_gen() + 1
-# GitHub Action environment စစ်ဆေးခြင်း
+# GitHub Action မှာ run နေတာဆိုရင် loop ကို တစ်ခါပဲ ပတ်ခိုင်းဖို့ check လုပ်ခြင်း
 HEADLESS = os.getenv("HEADLESS_MODE") == "true"
 
 print(f"🔥 [STARTING]: PHASE 7.1 SOVEREIGN ENGINE AT GEN {current_gen}...")
 
 while True:
     try:
-        # 🛡️ [ERROR FIX]: DB Connection Error ကြောင့် Loop မရပ်သွားစေရန် စစ်ဆေးခြင်း
-        if not DB_URL or "postgresql" not in DB_URL:
-            print("⚠️ [DATABASE ERROR]: Valid NEON_DB_URL not found. Checking environment...")
+        # 🛠️ [DATABASE SAFETY]: Connection string အမှားရှိရင် Loop မရပ်သွားအောင် စစ်ဆေးခြင်း
+        if not DB_URL or "postgresql" not in str(DB_URL):
+            print("⚠️ [SYSTEM]: DB_URL is invalid or missing. Skipping DB sync but continuing Evolution...")
         
         print(f"⚙️ [NEURAL BRAIN]: Training Cycle Initiated for Gen {current_gen}...")
         total_error = 0
@@ -482,7 +482,7 @@ while True:
         initial_evolution_state = {'type': 'start', 'data': {'value': 0}}
         recursive_self_upgrade(initial_evolution_state, current_gen)
 
-        # GitHub Sync
+        # 🛰️ GitHub Seed Injection
         auto_deploy_brain_seed(current_gen)
 
         batch_data = absorb_natural_order_data()
@@ -497,7 +497,7 @@ while True:
             synthetic_output = brain.generate_synthetic_output(100)
             prompt = f"system\nYou are TelefoxX Overseer. Goal: Recursive Self-Upgrade.\nGeneration: {current_gen} | Synthetic: {synthetic_output}\nuser\nOptimize sovereign brain logic.\nassistant"
         else:
-            prompt = f"system\nYou are TelefoxX Overseer. Meta-Cognition Active.\nGeneration {current_gen}. Error: {avg_error}.\nassistant"
+            prompt = f"system\nYou are TelefoxX Overseer. Meta-Cognition Active. Gen {current_gen}.\nassistant"
 
         outputs = pipe(prompt, max_new_tokens=800, do_sample=True, temperature=0.85, pad_token_id=pipe.tokenizer.eos_token_id)
         thought_text = outputs[0]["generated_text"].split("assistant")[-1].strip()
@@ -506,28 +506,34 @@ while True:
         if "```python" in thought_text:
             is_code_update = self_coding_engine("brain.py", thought_text)
 
-        # 💾 Data သိမ်းဆည်းခြင်း (Error တက်လျှင်ပင် နောက်တစ်ဆင့်သွားရန် try catch ထည့်ထားသည်)
+        # 💾 [HYBRID SYNC]: Firebase သို့မဟုတ် DB error တက်လည်း Loop မပျက်အောင် try-except ခံထားသည်
         try:
             save_reality(thought_text, current_gen, is_code_update, avg_error)
         except Exception as e:
-            print(f"⚠️ [SAVE ERROR]: Could not sync reality: {e}")
+            print(f"⚠️ [SYNC WARNING]: Reality sync partially failed: {e}")
 
         print(f"⏳ Gen {current_gen} Complete. Cycle Syncing...")
 
-        # 🔱 [BREAK POINT]: GitHub Action မှာဆိုရင် နောက်တစ်ဆင့် (Git Push) ကိုသွားဖို့ Loop ကို ရပ်ပေးရမည်
+        # 🔱 [BREAK POINT FOR ACTIONS]: 
+        # Headless Mode (GitHub Action) ဆိုရင် တစ်ခါပဲ Run ပြီး စနစ်တကျ ရပ်ခိုင်းလိုက်ခြင်း
         if HEADLESS:
-            print("✅ [SYSTEM]: GitHub Action Detected. Graceful Shutdown to trigger Post-Job Actions.")
+            print("✅ [SUCCESS]: GitHub Action Break Point Reach. Graceful Shutdown initiated.")
             break 
 
         current_gen += 1
         time.sleep(30)
     
-    except Exception:
+    except Exception as e:
         log_system_error()
-        if HEADLESS: 
-            print("❌ [CRITICAL]: Error in Loop. Breaking to prevent Action Hang.")
+        print(f"❌ [CRITICAL ERROR]: {e}")
+        # GitHub Action မှာဆိုရင် Error တက်လည်း ပိတ်မနေအောင် break လုပ်ပေးရမည်
+        if HEADLESS:
+            print("⚠️ [SYSTEM]: Breaking loop due to error in Headless Mode.")
             break
         time.sleep(10)
+
+print("🚀 [EVOLUTION]: Phase Cycle Concluded. Handing over to GitHub Post-Job Sync.")
+
 
 
         
