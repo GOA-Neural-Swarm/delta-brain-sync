@@ -100,7 +100,7 @@ jobs:
           # kernel-metadata.json matching screenshot
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
-            "id": "$KAGGLE_USERNAME/delta-brain-sync",
+            "id": "$telefox/delta-brain-sync",
             "title": "delta-brain-sync",
             "code_file": "main.py",
             "language": "python",
