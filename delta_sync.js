@@ -129,7 +129,7 @@ async function manageSwarm(decision, power) {
 
 // 🔱 6. Main Execution (Trinity + Evolution + Neural)
 async function executeAutonomousTrinity() {
-    const neon = new Client({ connectionString: process.env.NEON_KEY + "&sslmode=verify-full" });
+    const neon = new Client({ connectionString: process.env.NEON_DB_URL + "&sslmode=verify-full" });
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
     try {
