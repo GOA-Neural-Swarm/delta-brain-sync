@@ -53,7 +53,13 @@ def install_requirements():
 install_requirements()
 
 # 2. Infrastructure Connectivity & GitHub Secrets (Hybrid Ingestion)
-DB_URL = os.getenv("NEON_DB_URL")
+raw_db_url = os.getenv("NEON_DB_URL") or os.getenv("DATABASE_URL")
+if user_secrets:
+    raw_db_url = user_secrets.get_secret("NEON_DB_URL") or raw_db_url
+
+# Protocol Fix for SQLAlchemy/Psycopg2
+DB_URL = raw_db_url.replace("postgres://", "postgresql://", 1) if raw_db_url and raw_db_url.startswith("postgres://") else raw_db_url
+
 FIREBASE_URL = os.getenv("FIREBASE_DB_URL")
 FB_JSON_STR = os.getenv("FIREBASE_SERVICE_ACCOUNT")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -61,7 +67,6 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 GH_TOKEN = os.getenv("GH_TOKEN")
 
 if user_secrets:
-    DB_URL = user_secrets.get_secret("NEON_DB_URL") or DB_URL
     FIREBASE_URL = user_secrets.get_secret("FIREBASE_DB_URL") or FIREBASE_URL
     FB_JSON_STR = user_secrets.get_secret("FIREBASE_SERVICE_ACCOUNT") or FB_JSON_STR
     SUPABASE_URL = user_secrets.get_secret("SUPABASE_URL") or SUPABASE_URL
