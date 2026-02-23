@@ -12,7 +12,8 @@ const CORE_REPO = "delta-brain-sync";
 if (!admin.apps.length) {
     try {
         admin.initializeApp({
-            credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY))
+            credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY)),
+            databaseURL: process.env.FIREBASE_DB_URL
         });
         console.log("🔥 Firebase Connected.");
     } catch (e) {
