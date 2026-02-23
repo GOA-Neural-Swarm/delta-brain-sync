@@ -54,7 +54,7 @@ jobs:
 
       - name: Step 5 - Neon Data Sync (Sovereign Mode)
         env:
-          NEON_URL: ${{ secrets.NEON_URL }}
+          NEON_DB-URL: ${{ secrets.NEON_DB-URL }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
         run: |
           if [ -f "sync_data.py" ]; then
@@ -120,7 +120,7 @@ jobs:
       - name: Step 7 - Run Evolution Engine (Self-Coding & Ingestion)
         timeout-minutes: 15
         env:
-          DATABASE_URL: ${{ secrets.NEON_KEY }}
+          DATABASE_URL: ${{ secrets.NEON_DB_URL }}
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
