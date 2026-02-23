@@ -33,7 +33,8 @@ except ImportError:
     Client = None
 
 # 🛰️ System Credentials
-NEON_URL = os.environ.get("NEON_KEY") or os.environ.get("DATABASE_URL")
+raw_db_url = os.environ.get("NEON_DB_URL") or os.environ.get("DATABASE_URL")
+NEON_URL = raw_db_url.replace("postgres://", "postgresql://", 1) if raw_db_url and raw_db_url.startswith("postgres://") else raw_db_url
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 HF_TOKEN = os.environ.get("HF_TOKEN")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
