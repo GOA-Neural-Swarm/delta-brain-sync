@@ -68,7 +68,7 @@ jobs:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
-          # 🛡️ Authenticity Fix: Legacy Credentials injection
+          # 🛡️ Authenticity Fix: Credentials injection
           mkdir -p ~/.kaggle
           cat <<EOF > ~/.kaggle/kaggle.json
           {
@@ -79,7 +79,6 @@ jobs:
           chmod 600 ~/.kaggle/kaggle.json
           
           mkdir -p kaggle_deploy
-
           # 🧬 Auto-Match Logic
           if [ -f "kaggle_brain/main.py" ]; then
             cp kaggle_brain/main.py kaggle_deploy/main.py
@@ -97,10 +96,10 @@ jobs:
             echo "❌ Critical Error: No logic file found!" && exit 1
           fi
 
-          # kernel-metadata.json matching screenshot
+          # 🎯 [DIRECT FORMAT FIX]: Variable sign ($) ကို ဖယ်ရှားပြီး telefox လို့ တိုက်ရိုက် သတ်မှတ်သည်
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
-            "id": "$telefox/delta-brain-sync",
+            "id": "telefox/delta-brain-sync",
             "title": "delta-brain-sync",
             "code_file": "main.py",
             "language": "python",
