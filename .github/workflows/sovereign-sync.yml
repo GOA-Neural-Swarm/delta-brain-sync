@@ -54,7 +54,7 @@ jobs:
 
       - name: Step 5 - Neon Data Sync (Sovereign Mode)
         env:
-          NEON_DB-URL: ${{ secrets.NEON_DB-URL }}
+          NEON_URL: ${{ secrets.NEON_DB_URL }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
         run: |
           if [ -f "sync_data.py" ]; then
