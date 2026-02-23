@@ -62,13 +62,8 @@ class TelefoxXAGI:
         # 🔱 Neon Engine: Stability Focused (Standardized Pool)
         try:
             if NEON_URL:
-                self.engine = create_engine(
-                    NEON_URL,
-                    poolclass=QueuePool,
-                    pool_size=15,
-                    max_overflow=30,
-                    pool_timeout=60
-                )
+                final_url = NEON_URL.replace("postgres://", "postgresql://", 1) if NEON_URL.startswith("postgres://") else NEON_URL
+                self.engine = create_engine(final_url, poolclass=QueuePool, pool_size=15, max_overflow=30, pool_timeout=60)
             else:
                 self.engine = None
         except Exception as e:
