@@ -52,13 +52,18 @@ def install_requirements():
 
 install_requirements()
 
-# 2. Infrastructure Connectivity & GitHub Secrets (Hybrid Ingestion)
+# --- အပေါ်ပိုင်းက DB_URL သတ်မှတ်တဲ့နေရာမှာ ဒါကို အစားထိုးပါ ---
 raw_db_url = os.getenv("NEON_DB_URL") or os.getenv("DATABASE_URL")
 if user_secrets:
     raw_db_url = user_secrets.get_secret("NEON_DB_URL") or raw_db_url
 
-# Protocol Fix for SQLAlchemy/Psycopg2 (postgres:// to postgresql://)
-DB_URL = raw_db_url.replace("postgres://", "postgresql://", 1) if raw_db_url and raw_db_url.startswith("postgres://") else raw_db_url
+# Protocol Fix ကို Global မှာ တစ်ခါတည်းလုပ်မယ်
+if raw_db_url and raw_db_url.startswith("postgres://"):
+    DB_URL = raw_db_url.replace("postgres://", "postgresql://", 1)
+else:
+    DB_URL = raw_db_url
+
+FIXED_DB_URL = DB_URL  # အောက်က function တွေ လှမ်းသုံးလို့ရအောင် Global သတ်မှတ်လိုက်တာ
 
 FIREBASE_URL = os.getenv("FIREBASE_DB_URL")
 FB_JSON_STR = os.getenv("FIREBASE_SERVICE_ACCOUNT")
