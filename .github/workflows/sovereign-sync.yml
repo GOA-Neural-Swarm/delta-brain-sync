@@ -1,4 +1,4 @@
-name: Sovereign Evolution & Trinity Sync 
+name: Sovereign Evolution & Trinity Sync
 
 on:
   push:
@@ -53,30 +53,28 @@ jobs:
           pip install datasets pandas sqlalchemy psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv huggingface_hub diffusers transformers accelerate bitsandbytes numpy scikit-learn firebase-admin gitpython safetensors Pillow kaggle
           npm install pg @supabase/supabase-js firebase-admin
 
-      - name: Step 5 - Neon Data Sync (Sovereign Mode)
+      - name: Step 5 - Neon Data Sync (Sovereign Mode - FIXED)
         env:
-          NEON_URL: ${{ secrets.NEON_DB_URL }}
+          # 🛡️ Python Script က os.environ.get('NEON_DB_URL') ကို အရင်ရှာတာမို့ 
+          # ဒီမှာ နာမည်ကို NEON_DB_URL လို့ပဲ အတိအကျပေးလိုက်တယ်
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
         run: |
           if [ -f "sync_data.py" ]; then
+            # URL ထဲမှာ space ပါနေရင် strip() လုပ်ဖို့ Python ဘက်မှာ logic ထည့်ထားရမယ်
             python sync_data.py
           else
             echo "⚠️ sync_data.py not found, skipping specific Neon sync."
           fi
 
-      - name: Step 6 - Push to Kaggle  (The Ironclad Fix)
+      - name: Step 6 - Push to Kaggle (The Ironclad Fix)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
           # 🛡️ Authenticity Fix: Credentials injection
           mkdir -p ~/.kaggle
-          cat <<EOF > ~/.kaggle/kaggle.json
-          {
-            "username":"$KAGGLE_USERNAME",
-            "key":"$KAGGLE_KEY"
-          }
-          EOF
+          printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
           
           mkdir -p kaggle_deploy
@@ -97,7 +95,7 @@ jobs:
             echo "❌ Critical Error: No logic file found!" && exit 1
           fi
 
-          # 🎯 [DIRECT FORMAT FIX]: Variable sign ($) ကို ဖယ်ရှားပြီး telefox လို့ တိုက်ရိုက် သတ်မှတ်သည်
+          # 🎯 Kaggle Metadata Setup
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
             "id": "telefox/delta-brain-sync",
