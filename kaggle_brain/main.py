@@ -539,17 +539,19 @@ Database is offline. Focus on optimizing the internal core logic of main.py and 
 assistant
 """
 
-        # AI Thought Output
-        outputs = pipe(prompt, max_new_tokens=800, do_sample=True, temperature=0.85, pad_token_id=pipe.tokenizer.eos_token_id)
+        # --- PHASE 8 EXECUTION LOGIC ---
+        outputs = pipe(prompt, max_new_tokens=1000, do_sample=True, temperature=0.9, pad_token_id=pipe.tokenizer.eos_token_id)
         thought_text = outputs[0]["generated_text"].split("assistant")[-1].strip()
 
-        # 🛠️ Self-Coding Logic
-        is_code_update = False
-        if "```python" in thought_text:
-            is_code_update = self_coding_engine("brain.py", thought_text)
+        # Modified: AI can now target both main.py and brain.py
+        is_updated, files_changed = self_coding_engine(thought_text)
 
-        # 💾 [PERSISTENCE]: Sync Reality with full error reporting
-        save_reality(thought_text, current_gen, is_code_update, avg_error)
+        # [PERSISTENCE]: Original save_reality function with Phase 8 updates
+        save_reality(thought_text, current_gen, is_updated, avg_error)
+        
+        # [GIT PUSH]: New autonomous push with [skip ci]
+        if is_updated:
+            autonomous_git_push(current_gen, thought_text, files_changed)
 
         print(f"⏳ Gen {current_gen} Complete. Cycle Syncing...")
 
@@ -559,9 +561,9 @@ assistant
 
         current_gen += 1
         time.sleep(30)
-    
+        
     except Exception as e:
-        # အမှားကို ဖုံးမထားဘူး၊ Traceback အပြည့်အစုံထုတ်ပြမယ်
+        # Full Error Reporting kept from original
         log_system_error()
         print(f"🚨 [CORE CRASH]: {e}")
         if HEADLESS: 
