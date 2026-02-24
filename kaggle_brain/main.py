@@ -518,9 +518,25 @@ while True:
                 labels.append(1 if stability < -250 else 0)
             brain.learn_ml(stabilities, labels)
             synthetic_output = brain.generate_synthetic_output(100)
-            prompt = f"system\nYou are TelefoxX Overseer. Goal: Recursive Self-Upgrade.\nGen: {current_gen} | Synthetic: {synthetic_output}\nuser\nOptimize sovereign brain logic.\nassistant"
+            
+            prompt = f"""system
+You are Sovereign AI Overseer. Goal: Recursive Self-Upgrade.
+You MUST provide code updates in blocks starting with '# TARGET: filename'.
+Current Gen: {current_gen} | Synthetic: {synthetic_output} | Error: {avg_error}
+user
+Optimize sovereign brain logic and infrastructure. 
+If you want to modify the sync engine or core loop, target main.py.
+assistant
+"""
         else:
-            prompt = f"system\nYou are TelefoxX Overseer. Database Offline Mode. Generation {current_gen}.\nassistant"
+            prompt = f"""system
+You are Sovereign AI Overseer. DATABASE OFFLINE MODE.
+You MUST provide code updates in blocks starting with '# TARGET: filename'.
+Current Gen: {current_gen} | Neural Error: {avg_error}
+user
+Database is offline. Focus on optimizing the internal core logic of main.py and brain.py for stability.
+assistant
+"""
 
         # AI Thought Output
         outputs = pipe(prompt, max_new_tokens=800, do_sample=True, temperature=0.85, pad_token_id=pipe.tokenizer.eos_token_id)
