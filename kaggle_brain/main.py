@@ -281,55 +281,64 @@ def absorb_natural_order_data():
         print(f"Database error: {e}")
         return None
 
-def self_coding_engine(filename, raw_content):
-    """AI generated Code is rigorously checked via Regex and written."""
+def self_coding_engine(raw_content):
     try:
         code_blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
-        clean_code = (
-            code_blocks[0].strip()
-            if code_blocks
-            else (raw_content.strip() if "import " in raw_content and "def " in raw_content else None)
-        )
+        if not code_blocks:
+            return False, []
 
-        if not clean_code or len(clean_code) < 50:
-            return False
-
-        # [CRITICAL]: Syntax Validation before writing
-        compile(clean_code, filename, "exec")
-        
-        # Write locally first
-        with open(filename, "w") as f:
-            f.write(clean_code)
+        modified_files = []
+        for block in code_blocks:
+            target_match = re.search(r"# TARGET:\s*(\S+)", block)
+            filename = target_match.group(1) if target_match else "brain.py"
             
-        # Write to repo path for git sync
-        target_file = os.path.join(REPO_PATH, filename)
-        with open(target_file, "w") as f:
-            f.write(clean_code)
-
-        print(f"🛠️ [SELF-CODE]: {filename} modified with 7.1 Syntax-Aware Logic.")
-        return True
+            clean_code = block.strip()
+            
+            try:
+                compile(clean_code, filename, "exec")
+                
+                with open(filename, "w") as f:
+                    f.write(clean_code)
+                
+                if os.path.exists(REPO_PATH):
+                    target_path = os.path.join(REPO_PATH, filename)
+                    with open(target_path, "w") as f:
+                        f.write(clean_code)
+                
+                modified_files.append(filename)
+                print(f"🛠️ [EVOLUTION]: {filename} self-coded and validated.")
+            except Exception as syntax_err:
+                print(f"⚠️ [SYNTAX REJECTED]: {filename} validation failed: {syntax_err}")
+                
+        return True, modified_files
     except Exception as e:
-        print(f"⚠️ [REWRITE ABORTED]: Logic validation failed. {e}")
-        return False
+        print(f"❌ [ENGINE ERROR]: {e}")
+        return False, []
 
-# --- 🛰️ [MATCHED RETURN PUSH LOGIC] ---
-def autonomous_git_push(gen, thought, is_code_update=False):
-    """Pushes changes to the GitHub repository from any environment (Kaggle/Action)."""
-    if not GH_TOKEN:
-        print("⚠️ [GIT]: GH_TOKEN missing.")
-        return
+def autonomous_git_push(gen, thought, modified_files):
+    if not GH_TOKEN: return
     try:
         remote_url = f"https://{GH_TOKEN}@{REPO_URL}.git"
         if not os.path.exists(REPO_PATH):
             repo = git.Repo.clone_from(remote_url, REPO_PATH)
         else:
             repo = git.Repo(REPO_PATH)
-            repo.remotes.origin.set_url(remote_url)
-            try:
-                repo.git.config("pull.rebase", "false")
-                repo.remotes.origin.pull("main")
-            except Exception as e:
-                print(f"⚠️ [GIT]: Pull info: {e}")
+        
+        repo.remotes.origin.pull("main")
+
+        for file in modified_files:
+            if os.path.exists(file):
+                import shutil
+                shutil.copy(file, os.path.join(REPO_PATH, file))
+
+        repo.git.add(all=True)
+        if repo.is_dirty():
+            commit_msg = f"🧬 Gen {gen} Evolution: {', '.join(modified_files)} upgraded [skip ci]"
+            repo.index.commit(commit_msg)
+            repo.remotes.origin.push("main")
+            print(f"🚀 [HYPER-SYNC]: Evolution pushed to GitHub successfully.")
+    except Exception as e:
+        print(f"❌ [GIT ERROR]: {e}")
 
         # Sync local files to repo folder
         for file in ["main.py", "brain.py"]:
