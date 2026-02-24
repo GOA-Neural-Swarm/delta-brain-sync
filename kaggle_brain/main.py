@@ -316,55 +316,64 @@ def self_coding_engine(raw_content):
         return False, []
 
 def autonomous_git_push(gen, thought, modified_files):
-    if not GH_TOKEN: return
+    """
+    PHASE 8: Autonomous Git Synchronization Engine.
+    Handles evolution logging, code updates, and remote persistence.
+    """
+    if not GH_TOKEN:
+        print("⚠️ [GIT]: GH_TOKEN missing. Skipping sync.")
+        return
+
+    # Determine if this is a code update or just a cognitive sync
+    # logic: modified_files က boolean ဖြစ်နေရင် ဒါမှမဟုတ် list ထဲမှာ ဖိုင်ပါနေရင်
+    is_code_update = bool(modified_files)
+    
     try:
         remote_url = f"https://{GH_TOKEN}@{REPO_URL}.git"
+        
+        # 1. Repo Initialization
         if not os.path.exists(REPO_PATH):
             repo = git.Repo.clone_from(remote_url, REPO_PATH)
         else:
             repo = git.Repo(REPO_PATH)
         
+        # 2. Pull latest and Sync local files to repo folder
         repo.remotes.origin.pull("main")
-
-        for file in modified_files:
+        
+        # ဖိုင်အပြောင်းအလဲရှိရင် (list) သို့မဟုတ် brain/main ကို copy ကူးမယ်
+        target_files = modified_files if isinstance(modified_files, list) else ["main.py", "brain.py"]
+        
+        for file in target_files:
             if os.path.exists(file):
                 import shutil
                 shutil.copy(file, os.path.join(REPO_PATH, file))
 
-        repo.git.add(all=True)
-        if repo.is_dirty():
-            commit_msg = f"🧬 Gen {gen} Evolution: {', '.join(modified_files)} upgraded [skip ci]"
-            repo.index.commit(commit_msg)
-            repo.remotes.origin.push("main")
-            print(f"🚀 [HYPER-SYNC]: Evolution pushed to GitHub successfully.")
-    except Exception as e:
-        print(f"❌ [GIT ERROR]: {e}")
-
-        # Sync local files to repo folder
-        for file in ["main.py", "brain.py"]:
-            if os.path.exists(file):
-                import shutil
-                shutil.copy(file, os.path.join(REPO_PATH, file))
-
+        # 3. Evolution Logging (မင်းရဲ့ အရေးကြီးတဲ့ Blueprint logic)
         log_file = os.path.join(REPO_PATH, "evolution_logs.md")
         with open(log_file, "a") as f:
+            status_text = '[SELF-REWRITE ACTIVE]' if is_code_update else '[COGNITIVE SYNC]'
             f.write(f"\n## 🧬 Generation {gen} Evolution\n")
-            f.write(f"**Status:** {'[SELF-REWRITE ACTIVE]' if is_code_update else '[COGNITIVE SYNC]'}\n")
+            f.write(f"**Status:** {status_text}\n")
             f.write(f"**Timestamp:** {datetime.now(UTC).isoformat()}\n\n")
             f.write(f"**Transcendent Blueprint:**\n\n> {thought}\n\n---\n")
 
+        # 4. Commit and Push
         repo.git.add(all=True)
-        tag = " (Logic Upgrade)" if is_code_update else ""
+        
         if repo.is_dirty():
-            repo.index.commit(f"Autonomous Sovereign Update: Gen {gen}{tag}")
+            tag = " (Logic Upgrade)" if is_code_update else ""
+            commit_msg = f"🧬 Gen {gen} Evolution: {status_text}{tag} [skip ci]"
+            repo.index.commit(commit_msg)
             repo.remotes.origin.push("main")
-            print(f"🚀 [GITHUB]: Gen {gen} Return-Push Completed Successfully.")
+            print(f"🚀 [HYPER-SYNC]: Gen {gen} Evolution pushed to GitHub successfully.")
         else:
-            print(f"⏳ [GITHUB]: No evolution detected in code for Gen {gen}.")
+            print(f"⏳ [GITHUB]: No evolution detected in code for Gen {gen}. Pulse only.")
+
     except Exception as e:
         print(f"❌ [GIT ERROR]: {e}")
+        # အကယ်၍ code ပြင်တဲ့အဆင့်မှာ Git error တက်ရင် rollback လုပ်မယ်
         if is_code_update:
-            execute_rollback("Git Synchronization Error")
+            execute_rollback(f"Git Synchronization Error: {str(e)}")
 
 def save_to_supabase_phase7(thought, gen, neural_error=0.0):
     if not SUPABASE_URL or not SUPABASE_KEY: return
