@@ -59,14 +59,12 @@ jobs:
       - name: Run Evolution Engine (Self-Coding & Ingestion)
         timeout-minutes: 10
         env:
-          # 🛡️ NEON_KEY ရော NEON_DB_URL ရော နှစ်ခုလုံးကို DATABASE_URL ဆီ ချိတ်ပေးလိုက်တယ်
           DATABASE_URL: ${{ secrets.NEON_DB_URL || secrets.NEON_KEY }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
-          # Supabase Key နှစ်မျိုးလုံး ထည့်ပေးထားတယ်
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
