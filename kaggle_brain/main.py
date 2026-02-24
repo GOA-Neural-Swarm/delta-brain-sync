@@ -188,16 +188,12 @@ from functools import lru_cache
 
 @lru_cache(maxsize=None)
 def predator_logic(input_data_json):
-    """Refined Predator Logic for Self-Upgrade"""
     data = json.loads(input_data_json)
     val = data['data']['value']
-    
     if data['type'] == 'start':
         return json.dumps({'type': 'update', 'data': {'value': 1}})
-    elif data['type'] == 'update':
+    elif data['type'] in ['update', 'next']:
         new_type = 'finish' if val >= 10 else 'next'
-        return json.dumps({'type': new_type, 'data': {'value': val + 1}})
-    elif data['type'] == 'next':
         return json.dumps({'type': new_type, 'data': {'value': val + 1}})
     return input_data_json
 
