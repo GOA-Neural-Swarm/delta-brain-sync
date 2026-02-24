@@ -1,0 +1,170 @@
+name: Sovereign Evolution & Trinity Sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'kaggle_brain/**'
+      - 'app.py'
+      - 'main.py'
+      - 'brain.py'
+      - 'sync_data.py'
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evolve_and_sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Step 1 - Checkout Sovereign Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0
+
+      - name: Step 2 - Environment Setup (Python 3.10 & Node 20)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Step 3 - Global Git Config & Sync Setup
+        run: |
+          git config --global user.name 'Sovereign-AI-Bot'
+          git config --global user.email 'bot@sovereign.ai'
+          git config --global pull.rebase false
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
+
+      - name: Step 4 - Install Multi-Engine Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install datasets pandas sqlalchemy psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv huggingface_hub diffusers transformers accelerate bitsandbytes numpy scikit-learn firebase-admin gitpython safetensors Pillow kaggle
+          npm install pg @supabase/supabase-js firebase-admin
+
+      - name: Step 5 - Neon Data Sync (Sovereign Mode - FIXED)
+        env:
+          # 🛡️ Python Script က os.environ.get('NEON_DB_URL') ကို အရင်ရှာတာမို့ 
+          # ဒီမှာ နာမည်ကို NEON_DB_URL လို့ပဲ အတိအကျပေးလိုက်တယ်
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
+          NEON_KEY: ${{ secrets.NEON_KEY }}
+        run: |
+          if [ -f "sync_data.py" ]; then
+            # URL ထဲမှာ space ပါနေရင် strip() လုပ်ဖို့ Python ဘက်မှာ logic ထည့်ထားရမယ်
+            python sync_data.py
+          else
+            echo "⚠️ sync_data.py not found, skipping specific Neon sync."
+          fi
+
+      - name: Step 6 - Push to Kaggle (The Ironclad Fix)
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          # 🛡️ Authenticity Fix: Credentials injection
+          mkdir -p ~/.kaggle
+          printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+          
+          mkdir -p kaggle_deploy
+          # 🧬 Auto-Match Logic
+          if [ -f "kaggle_brain/main.py" ]; then
+            cp kaggle_brain/main.py kaggle_deploy/main.py
+            cp kaggle_brain/main.py main.py
+            echo "✅ Found main.py in kaggle_brain/"
+          elif [ -f "main.py" ]; then
+            cp main.py kaggle_deploy/main.py
+          elif [ -f "brain.py" ]; then
+            cp brain.py kaggle_deploy/main.py
+            cp brain.py main.py
+          elif [ -f "app.py" ]; then
+            cp app.py kaggle_deploy/main.py
+            cp app.py main.py
+          else
+            echo "❌ Critical Error: No logic file found!" && exit 1
+          fi
+
+          # 🎯 Kaggle Metadata Setup
+          cat <<EOF > kaggle_deploy/kernel-metadata.json
+          {
+            "id": "telefox/delta-brain-sync",
+            "title": "delta-brain-sync",
+            "code_file": "main.py",
+            "language": "python",
+            "kernel_type": "script",
+            "is_private": true,
+            "enable_gpu": true,
+            "enable_internet": true,
+            "dataset_sources": [],
+            "competition_sources": [],
+            "kernel_sources": [],
+            "model_sources": []
+          }
+          EOF
+          
+          export PATH=$PATH:/home/runner/.local/bin
+          kaggle kernels push -p kaggle_deploy
+
+      - name: Step 7 - Run Evolution Engine (Self-Coding & Ingestion)
+        timeout-minutes: 15
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DB_URL }}
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
+          NEON_KEY: ${{ secrets.NEON_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          REPO_URL: ${{ github.repository }}
+          HEADLESS_MODE: "true"
+        run: |
+          if [ -f "app.py" ]; then
+            python app.py
+          elif [ -f "main.py" ]; then
+            python main.py
+          fi
+
+      - name: Step 8 - Run Trinity Sync Engine (Delta Sync)
+        env:
+          NEON_KEY: ${{ secrets.NEON_KEY }}
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          if [ -f "delta_sync.js" ]; then
+            node delta_sync.js
+          fi
+
+      - name: Step 9 - GitHub Auto-Commit (Autonomous Evolution)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git add .
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "🧬 Phase 8 Stability Sync: $(date) [Autonomous Evolution]"
+            git fetch origin main
+            git reset --soft origin/main
+            git push origin main --force
+          else
+            echo "No changes to commit."
+          fi
