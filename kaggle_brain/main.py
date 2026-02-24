@@ -510,6 +510,7 @@ while True:
             print(f"❌ [DB CRITICAL]: Connection to Neon failed. Logic: {db_err}")
             batch_data = None
 
+        # --- PHASE 8 HYPER-PROMPT LOGIC ---
         if batch_data:
             stabilities, labels = [], []
             for category, sequence, stability in batch_data:
