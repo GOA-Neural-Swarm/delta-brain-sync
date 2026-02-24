@@ -8,6 +8,7 @@ on:
       - 'app.py'
       - 'main.py'
       - 'brain.py'
+      - 'sync_data.py'
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
