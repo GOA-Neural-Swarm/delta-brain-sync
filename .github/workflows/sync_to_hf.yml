@@ -25,12 +25,14 @@ jobs:
     steps:
       - name: Checkout Sovereign Code
         uses: actions/checkout@v4
+        with:
+          # Git Push ပြန်လုပ်နိုင်ဖို့ Token ထည့်ပေးထားတယ်
+          token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Environment Setup (Python 3.10 & Node 20)
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -47,7 +49,8 @@ jobs:
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
           mkdir -p ~/.kaggle
-          echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
+          # printf သုံးတာက JSON format ပိုငြိမ်တယ်
+          printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
           if [ -d "kaggle_brain" ]; then
             kaggle kernels push -p ./kaggle_brain
@@ -56,12 +59,17 @@ jobs:
       - name: Run Evolution Engine (Self-Coding & Ingestion)
         timeout-minutes: 10
         env:
-          DATABASE_URL: ${{ secrets.NEON_KEY }}
+          # 🛡️ NEON_KEY ရော NEON_DB_URL ရော နှစ်ခုလုံးကို DATABASE_URL ဆီ ချိတ်ပေးလိုက်တယ်
+          DATABASE_URL: ${{ secrets.NEON_DB_URL || secrets.NEON_KEY }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+          # Supabase Key နှစ်မျိုးလုံး ထည့်ပေးထားတယ်
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO_URL: ${{ github.repository }}
           HEADLESS_MODE: "true"
@@ -69,14 +77,16 @@ jobs:
 
       - name: Run Delta Sync (Neon to Supabase/Firebase)
         env:
+          # 🛡️ Sync အတွက် လိုအပ်တဲ့ URL နဲ့ Keys တွေကို အစုံအလင် ဖြည့်ပေးထားတယ်
           NEON_KEY: ${{ secrets.NEON_KEY }}
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -f "delta_sync.js" ]; then
             node delta_sync.js
           fi
-
