@@ -32,7 +32,7 @@ jobs:
       # --- ၂။ Neon Sync ---
       - name: Run Neon Sync Script
         env:
-          NEON_URL: ${{ secrets.NEON_URL }}
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
         run: |
           # sync_data.py ရှိမရှိစစ်ဆေးပြီး run ခြင်း
           if [ -f "sync_data.py" ]; then
