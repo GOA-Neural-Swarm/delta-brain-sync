@@ -2,23 +2,27 @@ import psycopg2
 import json
 import os
 
-# NEON_URL ကို ယူမယ်၊ မရှိရင် NEON_KEY ကို ရှာမယ်
-raw_url = os.environ.get('NEON_DB_URL') or os.environ.get('NEON_KEY')
+# NEON_DB_URL ကို ယူမယျ၊ strip() သုံးပွီး ကှကျလပျတှကေို ဖယျထုတျမယျ
+raw_url = os.environ.get('NEON_DB_URL') or os.environ.get('NEON_URL') or os.environ.get('NEON_KEY')
 
 def fetch_and_deploy():
     if not raw_url:
         print("❌ Error: NEON_DB_URL not found in environment.")
         return
 
-    # 🛠️ Protocol Fix: postgres:// ကို postgresql:// ပြောင်းခြင်း
-    db_url = raw_url.replace("postgres://", "postgresql://", 1) if raw_url.startswith("postgres://") else raw_url
+    # 🛠️ Fix 1: .strip() ထည့ျပွီး clean လုပျခွငျး
+    db_url = raw_url.strip()
+
+    # 🛠️ Fix 2: Protocol Fix (postgres:// ကို postgresql:// ပွောငျးခွငျး)
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
 
     try:
-        # Database ချိတ်ဆက်ခြင်း
+        # Database ခြိတျဆကျခွငျး
         conn = psycopg2.connect(db_url)
         cur = conn.cursor()
         
-        # Table ရှိမရှိ အရင်စစ်မယ် (Safety Check)
+        # Table ရှိမရှိ အရငျစဈမယျ
         cur.execute("SELECT logic_data FROM intelligence_core WHERE module_name = 'Singularity Evolution Node';")
         row = cur.fetchone()
         
@@ -30,9 +34,11 @@ def fetch_and_deploy():
         else:
             print("⚠️ No data found in intelligence_core table.")
             
+        cur.close()
         conn.close()
     except Exception as e:
-        print(f"❌ Error during sync: {e}")
+        # Error message အပွည့ျအစုံကို ပွမယျ
+        print(f"❌ Error during sync: {str(e)}")
 
 if __name__ == "__main__":
     fetch_and_deploy()
