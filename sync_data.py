@@ -3,7 +3,7 @@ import json
 import os
 
 # NEON_URL ကို ယူမယ်၊ မရှိရင် NEON_KEY ကို ရှာမယ်
-raw_url = os.environ.get('NEON_DB_URL') or os.environ.get('NEON_KEY')
+raw_url = os.environ.get('NEON_URL') or os.environ.get('NEON_KEY')
 
 def fetch_and_deploy():
     if not raw_url:
