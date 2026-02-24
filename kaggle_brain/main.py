@@ -469,18 +469,17 @@ def auto_deploy_brain_seed(gen):
         return None
 
 # =======================================================
-# 5. DYNAMIC EVOLUTION LOOP (STRICT STABILITY FIX)
+# 5. DYNAMIC EVOLUTION LOOP (PHASE 8 COMPLETE)
 # =======================================================
 
 current_gen = get_latest_gen() + 1
 HEADLESS = os.getenv("HEADLESS_MODE") == "true"
 
-print(f"🔥 [STARTING]: PHASE 7.1 SOVEREIGN ENGINE AT GEN {current_gen}...")
+print(f"🔥 [STARTING]: PHASE 8 SOVEREIGN ENGINE AT GEN {current_gen}...")
 
 while True:
     try:
         # 🧪 [TRUTH LAYER]: Database URL ကို Format အမှန်ဖြစ်အောင် အတင်းပြောင်းခြင်း
-        # SQLAlchemy နဲ့ Psycopg2 compatibility အတွက် postgres:// ကို postgresql:// ပြောင်းရမယ်
         if DB_URL and DB_URL.startswith("postgres://"):
             FIXED_DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
         else:
@@ -496,21 +495,21 @@ while True:
             total_error += err
         avg_error = total_error / 10
 
-        # 🔱 [EVOLUTION]: Phase 8 Self-Upgrade
+        # 🔱 [EVOLUTION]: Phase 8 Self-Upgrade State
         initial_evolution_state = {'type': 'start', 'data': {'value': 0}}
         recursive_self_upgrade(initial_evolution_state, current_gen)
 
-        # GitHub Pulse
+        # GitHub Pulse (Neural Seed Deployment)
         auto_deploy_brain_seed(current_gen)
 
-        # 🧬 [ABSORPTION]: Database ကနေ Data ဆွဲတဲ့အခါ Error တက်ရင် အတိအကျပြမယ်
+        # 🧬 [ABSORPTION]: Database Retrieval
         try:
             batch_data = absorb_natural_order_data()
         except Exception as db_err:
-            print(f"❌ [DB CRITICAL]: Connection to Neon failed. Logic: {db_err}")
+            print(f"❌ [DB CRITICAL]: Connection failed. {db_err}")
             batch_data = None
 
-        # --- PHASE 8 HYPER-PROMPT LOGIC ---
+        # --- PHASE 8 HYPER-PROMPT LOGIC (MAX STABILITY) ---
         if batch_data:
             stabilities, labels = [], []
             for category, sequence, stability in batch_data:
@@ -539,17 +538,17 @@ Database is offline. Focus on optimizing the internal core logic of main.py and 
 assistant
 """
 
-        # --- PHASE 8 EXECUTION LOGIC ---
+        # --- PHASE 8 EXECUTION & SELF-CODING ---
         outputs = pipe(prompt, max_new_tokens=1000, do_sample=True, temperature=0.9, pad_token_id=pipe.tokenizer.eos_token_id)
         thought_text = outputs[0]["generated_text"].split("assistant")[-1].strip()
 
-        # Modified: AI can now target both main.py and brain.py
+        # Self-Coding Logic: AI detects and updates target files (main.py or brain.py)
         is_updated, files_changed = self_coding_engine(thought_text)
 
-        # [PERSISTENCE]: Original save_reality function with Phase 8 updates
+        # 💾 [PERSISTENCE]: Sync thought process and neural status
         save_reality(thought_text, current_gen, is_updated, avg_error)
         
-        # [GIT PUSH]: New autonomous push with [skip ci]
+        # 🚀 [GIT SYNC]: New autonomous push with [skip ci] logic
         if is_updated:
             autonomous_git_push(current_gen, thought_text, files_changed)
 
@@ -563,7 +562,7 @@ assistant
         time.sleep(30)
         
     except Exception as e:
-        # Full Error Reporting kept from original
+        # Full Error Reporting & Stability Recovery
         log_system_error()
         print(f"🚨 [CORE CRASH]: {e}")
         if HEADLESS: 
