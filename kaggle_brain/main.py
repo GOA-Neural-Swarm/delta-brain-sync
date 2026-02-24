@@ -558,9 +558,6 @@ assistant
         # 💾 [PERSISTENCE]: Sync thought process and neural status
         save_reality(thought_text, current_gen, is_updated, avg_error)
         
-        # 🚀 [GIT SYNC]: New autonomous push with [skip ci] logic
-        if is_updated:
-            autonomous_git_push(current_gen, thought_text, files_changed)
 
         print(f"⏳ Gen {current_gen} Complete. Cycle Syncing...")
 
