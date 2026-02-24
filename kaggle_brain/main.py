@@ -209,11 +209,11 @@ def recursive_self_upgrade(current_state, gen_id):
 
 def save_evolution_state_to_neon(state, gen_id):
     """Saves compressed evolutionary steps to Neon."""
-    if not DB_URL: return
+    if not FIXED_DB_URL: return
     try:
         import psycopg2
         compressed = HydraEngine.compress(json.dumps(state))
-        with psycopg2.connect(DB_URL) as conn:
+        with psycopg2.connect(FIXED_DB_URL, connect_timeout=10) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "INSERT INTO genesis_pipeline (science_domain, detail) VALUES (%s, %s)",
