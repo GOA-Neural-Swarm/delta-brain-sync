@@ -490,10 +490,10 @@ print(f"🔥 [STARTING]: PHASE 8 SOVEREIGN ENGINE AT GEN {current_gen}...")
 while True:
     try:
         # 🧪 [TRUTH LAYER]: Database URL ကို Format အမှန်ဖြစ်အောင် အတင်းပြောင်းခြင်း
-        if DB_URL and DB_URL.startswith("postgres://"):
-            FIXED_DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
-        else:
-            FIXED_DB_URL = DB_URL
+        
+            
+        
+            
 
         print(f"⚙️ [NEURAL BRAIN]: Training Cycle Initiated for Gen {current_gen}...")
         
@@ -509,8 +509,8 @@ while True:
         initial_evolution_state = {'type': 'start', 'data': {'value': 0}}
         recursive_self_upgrade(initial_evolution_state, current_gen)
 
-        # GitHub Pulse (Neural Seed Deployment)
-        auto_deploy_brain_seed(current_gen)
+        
+        
 
         # 🧬 [ABSORPTION]: Database Retrieval
         try:
