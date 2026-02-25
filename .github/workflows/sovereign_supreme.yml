@@ -1,0 +1,125 @@
+name: SOVEREIGN_SUPREME_PIPELINE_FINAL
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sovereign_cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    steps:
+      - name: 01_INITIALIZE_SOVEREIGN_SOURCE
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0
+
+      - name: 02_PROVISION_MULTI_ENGINE_RUNTIME
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 03_INJECT_SYSTEM_DEPENDENCIES
+        run: |
+          python -m pip install --upgrade pip
+          pip install kaggle psycopg2-binary requests gitpython torch \
+          transformers accelerate bitsandbytes numpy scikit-learn firebase-admin
+          npm install pg @supabase/supabase-js firebase-admin
+
+      - name: 04_KAGGE_REPLICATION_ENGINE
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          mkdir -p ~/.kaggle
+          printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+          
+          mkdir -p kaggle_deploy
+          if [ -f "brain.py" ]; then
+            cp brain.py kaggle_deploy/main.py
+          else
+            cp main.py kaggle_deploy/main.py
+          fi
+          
+          cat <<EOF > kaggle_deploy/kernel-metadata.json
+          {
+            "id": "${{ secrets.KAGGLE_USERNAME }}/delta-brain-sync",
+            "title": "delta-brain-sync",
+            "code_file": "main.py",
+            "language": "python",
+            "kernel_type": "script",
+            "is_private": true,
+            "enable_gpu": true,
+            "enable_internet": true
+          }
+          EOF
+          kaggle kernels push -p kaggle_deploy
+
+      - name: 05_INTEL_VAULT_INGESTION
+        env:
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          if [ -f "sync_data.py" ]; then
+            python sync_data.py
+          fi
+
+      - name: 06_EXECUTE_SELF_EVOLUTION_ENGINE
+        env:
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          HEADLESS_MODE: "true"
+        run: |
+          # The AI can now rewrite both brain.py and main.py during this execution
+          if [ -f "main.py" ]; then
+            python main.py
+          fi
+
+      - name: 07_TRINITY_STATE_STABILIZATION
+        env:
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -f "delta_sync.js" ]; then
+            node delta_sync.js
+          fi
+
+      - name: 08_MANIFEST_AUTONOMOUS_STATE
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git config --global user.name 'Sovereign-AI-Bot'
+          git config --global user.email 'bot@sovereign.ai'
+          git add .
+          if ! git diff-index --quiet HEAD; then
+            # The [skip ci] prevents recursive infinite workflow triggers
+            git commit -m "🧬 [EVOLUTION_GEN] Manifested: $(date +'%Y-%m-%d %H:%M:%S') [skip ci]"
+            git push origin main --force
+          else
+            echo "STATE_STABLE: No structural evolution required."
+          fi
