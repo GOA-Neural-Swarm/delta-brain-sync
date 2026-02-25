@@ -194,7 +194,7 @@ from functools import lru_cache
 @lru_cache(maxsize=None)
 def predator_logic(input_data_json):
     data = json.loads(input_data_json)
-    val = data['data']['value']
+    val = data.get('data', {}).get('value', 0)
     if data['type'] == 'start':
         return json.dumps({'type': 'update', 'data': {'value': 1}})
     elif data['type'] in ['update', 'next']:
@@ -487,10 +487,14 @@ HEADLESS = os.getenv("HEADLESS_MODE") == "true"
 
 print(f"🔥 [STARTING]: PHASE 8 SOVEREIGN ENGINE AT GEN {current_gen}...")
 
+auto_deploy_brain_seed(current_gen)
 while True:
     try:
         # 🧪 [TRUTH LAYER]: Database URL ကို Format အမှန်ဖြစ်အောင် အတင်းပြောင်းခြင်း
-        
+        if DB_URL and DB_URL.startswith("postgres://"):
+            FIXED_DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
+        else:
+            FIXED_DB_URL = DB_URL
             
         
             
