@@ -1,10 +1,10 @@
-name: SOVEREIGN_SUPREME_PIPELINE_FINAL
+name: SOVEREIGN_HYPER_AUTONOMOUS_LOOP
 
 on:
   push:
     branches: [main]
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/30 * * * *' # ၃၀ မိနစ်တစ်ခါ loop ပတ်မယ်
   workflow_dispatch:
 
 permissions:
@@ -16,18 +16,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  sovereign_cycle:
+  evolution_cycle:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    
+
     steps:
-      - name: 01_INITIALIZE_SOVEREIGN_SOURCE
+      - name: Step 1 - Initialize Sovereign Source
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_TOKEN }}
           fetch-depth: 0
 
-      - name: 02_PROVISION_MULTI_ENGINE_RUNTIME
+      - name: Step 2 - Provision Multi-Engine Runtime
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -35,14 +35,16 @@ jobs:
         with:
           node-version: '20'
 
-      - name: 03_INJECT_SYSTEM_DEPENDENCIES
+      - name: Step 3 - Inject Multi-Engine Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install kaggle psycopg2-binary requests gitpython torch \
-          transformers accelerate bitsandbytes numpy scikit-learn firebase-admin
+          pip install kaggle psycopg2-binary requests gitpython torch transformers \
+          accelerate bitsandbytes numpy scikit-learn firebase-admin datasets pandas \
+          sqlalchemy groq sentence-transformers "gradio<6.0.0" python-dotenv \
+          huggingface_hub diffusers safetensors Pillow
           npm install pg @supabase/supabase-js firebase-admin
 
-      - name: 04_KAGGE_REPLICATION_ENGINE
+      - name: Step 4 - Trigger Kaggle Evolution (Step 1 & 2)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
@@ -52,11 +54,9 @@ jobs:
           chmod 600 ~/.kaggle/kaggle.json
           
           mkdir -p kaggle_deploy
-          if [ -f "brain.py" ]; then
-            cp brain.py kaggle_deploy/main.py
-          else
-            cp main.py kaggle_deploy/main.py
-          fi
+          # Logic Files Discovery (main.py နဲ့ brain.py ကို Kaggle ဆီ ပို့မယ်)
+          if [ -f "main.py" ]; then cp main.py kaggle_deploy/main.py; fi
+          if [ -f "brain.py" ]; then cp brain.py kaggle_deploy/brain.py; fi
           
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
@@ -72,53 +72,41 @@ jobs:
           EOF
           kaggle kernels push -p kaggle_deploy
 
-      - name: 05_INTEL_VAULT_INGESTION
-        env:
-          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
-          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: |
-          if [ -f "sync_data.py" ]; then
-            python sync_data.py
-          fi
-
-      - name: 06_EXECUTE_SELF_EVOLUTION_ENGINE
-        env:
-          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
-          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          HEADLESS_MODE: "true"
-        run: |
-          # The AI can now rewrite both brain.py and main.py during this execution
-          if [ -f "main.py" ]; then
-            python main.py
-          fi
-
-      - name: 07_TRINITY_STATE_STABILIZATION
+      - name: Step 5 - Trinity Cloud Sync (Step 4: GitHub -> Multi-Cloud)
         env:
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
         run: |
-          if [ -f "delta_sync.js" ]; then
-            node delta_sync.js
-          fi
+          # Firebase JSON String ကို file မဆောက်ဘဲ Direct Inject လုပ်ဖို့ delta_sync.js က သုံးမယ်
+          if [ -f "sync_data.py" ]; then python sync_data.py; fi
+          if [ -f "delta_sync.js" ]; then node delta_sync.js; fi
 
-      - name: 08_MANIFEST_AUTONOMOUS_STATE
+      - name: Step 6 - Self-Evolution Engine (Step 5: Autonomous Self-Coding)
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DB_URL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          # ဒီနေရာမှာ AI က main.py နဲ့ brain.py ကို rewrite လုပ်ခွင့်ရှိတယ်
+          if [ -f "app.py" ]; then python app.py;
+          elif [ -f "brain.py" ]; then python brain.py;
+          elif [ -f "main.py" ]; then python main.py; fi
+
+      - name: Step 7 - Manifest Autonomous State (Step 3: Push to GitHub)
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
+          
           git add .
           if ! git diff-index --quiet HEAD; then
-            # The [skip ci] prevents recursive infinite workflow triggers
-            git commit -m "🧬 [EVOLUTION_GEN] Manifested: $(date +'%Y-%m-%d %H:%M:%S') [skip ci]"
+            # [skip ci] ထည့်ထားလို့ loop အဆုံးမရှိ ပတ်တာကို တားပေးတယ်
+            git commit -m "🧬 [HYPER_EVOLUTION] Manifested: $(date +'%Y-%m-%d %H:%M:%S') [skip ci]"
             git push origin main --force
           else
             echo "STATE_STABLE: No structural evolution required."
