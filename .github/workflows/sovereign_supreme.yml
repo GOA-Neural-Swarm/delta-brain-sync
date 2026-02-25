@@ -54,7 +54,6 @@ jobs:
           chmod 600 ~/.kaggle/kaggle.json
           
           mkdir -p kaggle_brain
-          # Source files တွေကို kaggle_brain folder ထဲ အရင်စုမယ်
           if [ -f "main.py" ]; then cp main.py kaggle_brain/main.py; fi
           if [ -f "brain.py" ]; then cp brain.py kaggle_brain/brain.py; fi
           
@@ -74,10 +73,12 @@ jobs:
 
       - name: Step 5 - Trinity Cloud Sync
         env:
-          # မင်းပြောတဲ့ Secret Names တွေအတိုင်း အတိအကျ ချိတ်ပေးထားတယ်
+          # Screenshot ထဲက Secret Names အသစ်များ အားလုံး ပါဝင်သည်
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
+          NEON_KEY: ${{ secrets.NEON_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} # Fallback
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
@@ -88,7 +89,9 @@ jobs:
       - name: Step 6 - Self-Evolution Engine
         env:
           DATABASE_URL: ${{ secrets.NEON_DB_URL }}
+          NEON_KEY: ${{ secrets.NEON_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           if [ -f "app.py" ]; then
@@ -101,7 +104,6 @@ jobs:
 
       - name: Step 7 - Manifest Autonomous State
         env:
-          # GitHub Push အတွက် GH_TOKEN ကို သုံးရမယ်
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
