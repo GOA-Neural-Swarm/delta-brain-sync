@@ -53,7 +53,8 @@ jobs:
           printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
           
-          mkdir -p kaggle_deploy
+          mkdir -p kaggle_brain
+          # Source files တွေကို kaggle_brain folder ထဲ အရင်စုမယ်
           if [ -f "main.py" ]; then cp main.py kaggle_brain/main.py; fi
           if [ -f "brain.py" ]; then cp brain.py kaggle_brain/brain.py; fi
           
@@ -73,10 +74,12 @@ jobs:
 
       - name: Step 5 - Trinity Cloud Sync
         env:
+          # မင်းပြောတဲ့ Secret Names တွေအတိုင်း အတိအကျ ချိတ်ပေးထားတယ်
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
         run: |
           if [ -f "sync_data.py" ]; then python sync_data.py; fi
@@ -98,6 +101,7 @@ jobs:
 
       - name: Step 7 - Manifest Autonomous State
         env:
+          # GitHub Push အတွက် GH_TOKEN ကို သုံးရမယ်
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
