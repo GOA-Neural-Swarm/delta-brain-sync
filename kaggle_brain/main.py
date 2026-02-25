@@ -530,21 +530,24 @@ while True:
             synthetic_output = brain.generate_synthetic_output(100)
             
             prompt = f"""system
-You are Sovereign AI Overseer. Goal: Recursive Self-Upgrade.
-You MUST provide code updates in blocks starting with '# TARGET: filename'.
+You are Sovereign AI Overseer. 
+Rule 1: Use ONLY '# TARGET: brain.py' at the start of your code block.
+Rule 2: Respond ONLY with Python code inside ```python ... ``` blocks.
+Rule 3: No explanations. No thoughts. Just code.
 Current Gen: {current_gen} | Synthetic: {synthetic_output} | Error: {avg_error}
 user
-Optimize sovereign brain logic and infrastructure. 
-If you want to modify the sync engine or core loop, target main.py.
+Optimize the Brain class in brain.py for high-speed neural processing.
 assistant
 """
         else:
             prompt = f"""system
-You are Sovereign AI Overseer. DATABASE OFFLINE MODE.
-You MUST provide code updates in blocks starting with '# TARGET: filename'.
+You are Sovereign AI Overseer. 
+Rule 1: Use ONLY '# TARGET: brain.py'.
+Rule 2: Provide code ONLY inside ```python ... ``` blocks.
+Rule 3: No explanations. Just code.
 Current Gen: {current_gen} | Neural Error: {avg_error}
 user
-Database is offline. Focus on optimizing the internal core logic of main.py and brain.py for stability.
+Database is offline. Rewrite brain.py core logic for maximum stability and autonomy.
 assistant
 """
 
