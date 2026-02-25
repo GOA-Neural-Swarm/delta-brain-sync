@@ -10,11 +10,12 @@ on:
       - 'brain.py'
       - 'sync_data.py'
   schedule:
-    - cron: '*/30 * * * *' # အချိန်ကို ၃၀ မိနစ်တစ်ခါ ပုံမှန်ထားတာ ပိုငြိမ်တယ်
+    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
+  pages: write
   id-token: write
 
 concurrency:
@@ -24,8 +25,6 @@ concurrency:
 jobs:
   evolve_and_sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-
     steps:
       - name: Step 1 - Checkout Sovereign Code
         uses: actions/checkout@v4
@@ -33,7 +32,7 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
           fetch-depth: 0
 
-      - name: Step 2 - Environment Setup
+      - name: Step 2 - Environment Setup (Python 3.10 & Node 20)
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -45,7 +44,8 @@ jobs:
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
-          git remote set-url origin "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git"
+          git config --global pull.rebase false
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
 
       - name: Step 4 - Install Multi-Engine Dependencies
         run: |
@@ -53,71 +53,91 @@ jobs:
           pip install datasets pandas sqlalchemy psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv huggingface_hub diffusers transformers accelerate bitsandbytes numpy scikit-learn firebase-admin gitpython safetensors Pillow kaggle
           npm install pg @supabase/supabase-js firebase-admin
 
-      - name: Step 5 - Neon Data Sync (Pre-Evolution)
+      - name: Step 5 - Neon Data Sync
         env:
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           if [ -f "sync_data.py" ]; then
             python sync_data.py
           else
-            echo "⚠️ sync_data.py not found, skipping Neon sync."
+            echo "⚠️ sync_data.py not found, skipping specific Neon sync."
           fi
 
-      - name: Step 6 - Push to Kaggle (GPU Scripting Engine)
-        env:
-          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+      - name: Step 6 - Prepare Kaggle Deployment
         run: |
           mkdir -p ~/.kaggle
           printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
           
           mkdir -p kaggle_deploy
-          # Logic: ဦးစားပေးအလိုက် main.py ကို တည်ဆောက်ခြင်း
+
           if [ -f "kaggle_brain/main.py" ]; then
             cp kaggle_brain/main.py kaggle_deploy/main.py
+            cp kaggle_brain/main.py main.py # Keep a copy in the root for other steps
+            echo "✅ Found main.py in kaggle_brain/"
           elif [ -f "main.py" ]; then
             cp main.py kaggle_deploy/main.py
           elif [ -f "brain.py" ]; then
             cp brain.py kaggle_deploy/main.py
+            cp brain.py main.py # Keep a copy in the root for other steps
+          elif [ -f "app.py" ]; then
+            cp app.py kaggle_deploy/main.py
+            cp app.py main.py # Keep a copy in the root for other steps
+          else
+            echo "❌ Critical Error: No logic file found!" && exit 1
           fi
 
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
-            "id": "${{ secrets.KAGGLE_USERNAME }}/delta-brain-sync",
+            "id": "telefox/delta-brain-sync",
             "title": "delta-brain-sync",
             "code_file": "main.py",
             "language": "python",
             "kernel_type": "script",
             "is_private": true,
             "enable_gpu": true,
-            "enable_internet": true
+            "enable_internet": true,
+            "dataset_sources": [],
+            "competition_sources": [],
+            "kernel_sources": [],
+            "model_sources": []
           }
           EOF
-          kaggle kernels push -p kaggle_deploy || echo "Kaggle push failed, but continuing..."
 
-      - name: Step 7 - Run Evolution Engine (Self-Coding)
-        timeout-minutes: 20
+      - name: Step 7 - Push to Kaggle
+        run: |
+          export PATH=$PATH:/home/runner/.local/bin
+          kaggle kernels push -p kaggle_deploy
+
+      - name: Step 8 - Run Evolution Engine
+        timeout-minutes: 15
         env:
           DATABASE_URL: ${{ secrets.NEON_DB_URL }}
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          REPO_URL: ${{ github.repository }}
+          HEADLESS_MODE: "true"
         run: |
           if [ -f "app.py" ]; then
             python app.py
           elif [ -f "main.py" ]; then
-            python main.py --mode evolve
+            python main.py
+          else
+            echo "❌ Critical Error: No app.py or main.py found for evolution engine!" && exit 1
           fi
 
-      - name: Step 8 - Run Trinity Delta Sync
+      - name: Step 9 - Run Trinity Sync Engine
         env:
           NEON_KEY: ${{ secrets.NEON_KEY }}
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
@@ -129,18 +149,20 @@ jobs:
         run: |
           if [ -f "delta_sync.js" ]; then
             node delta_sync.js
+          else
+            echo "⚠️ delta_sync.js not found, skipping Trinity Sync."
           fi
 
-      - name: Step 9 - Manifest & Auto-Commit
+      - name: Step 10 - GitHub Auto-Commit
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git add .
           if ! git diff-index --quiet HEAD; then
-            git commit -m "🧬 [HYPER_EVOLUTION] Manifested: $(date) [skip ci]"
-            # Rebase and Push to avoid conflicts
+            git commit -m "🧬 Phase 8 Stability Sync: $(date) [Autonomous Evolution]"
             git fetch origin main
+            git reset --soft origin/main
             git push origin main --force
           else
-            echo "STATE_STABLE: No structural evolution required."
+            echo "No changes to commit."
           fi
