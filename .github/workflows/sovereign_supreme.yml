@@ -54,10 +54,10 @@ jobs:
           chmod 600 ~/.kaggle/kaggle.json
           
           mkdir -p kaggle_deploy
-          if [ -f "main.py" ]; then cp main.py kaggle_deploy/main.py; fi
-          if [ -f "brain.py" ]; then cp brain.py kaggle_deploy/brain.py; fi
+          if [ -f "main.py" ]; then cp main.py kaggle_brain/main.py; fi
+          if [ -f "brain.py" ]; then cp brain.py kaggle_brain/brain.py; fi
           
-          cat <<EOF > kaggle_deploy/kernel-metadata.json
+          cat <<EOF > kaggle_brain/kernel-metadata.json
           {
             "id": "${{ secrets.KAGGLE_USERNAME }}/delta-brain-sync",
             "title": "delta-brain-sync",
@@ -69,7 +69,7 @@ jobs:
             "enable_internet": true
           }
           EOF
-          kaggle kernels push -p kaggle_deploy
+          kaggle kernels push -p kaggle_brain
 
       - name: Step 5 - Trinity Cloud Sync
         env:
