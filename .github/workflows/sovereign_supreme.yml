@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '*/30 * * * *' # ၃၀ မိနစ်တစ်ခါ loop ပတ်မယ်
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -44,7 +44,7 @@ jobs:
           huggingface_hub diffusers safetensors Pillow
           npm install pg @supabase/supabase-js firebase-admin
 
-      - name: Step 4 - Trigger Kaggle Evolution (Step 1 & 2)
+      - name: Step 4 - Trigger Kaggle Evolution
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
@@ -54,7 +54,6 @@ jobs:
           chmod 600 ~/.kaggle/kaggle.json
           
           mkdir -p kaggle_deploy
-          # Logic Files Discovery (main.py နဲ့ brain.py ကို Kaggle ဆီ ပို့မယ်)
           if [ -f "main.py" ]; then cp main.py kaggle_deploy/main.py; fi
           if [ -f "brain.py" ]; then cp brain.py kaggle_deploy/brain.py; fi
           
@@ -72,7 +71,7 @@ jobs:
           EOF
           kaggle kernels push -p kaggle_deploy
 
-      - name: Step 5 - Trinity Cloud Sync (Step 4: GitHub -> Multi-Cloud)
+      - name: Step 5 - Trinity Cloud Sync
         env:
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -80,32 +79,33 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
         run: |
-          # Firebase JSON String ကို file မဆောက်ဘဲ Direct Inject လုပ်ဖို့ delta_sync.js က သုံးမယ်
           if [ -f "sync_data.py" ]; then python sync_data.py; fi
           if [ -f "delta_sync.js" ]; then node delta_sync.js; fi
 
-      - name: Step 6 - Self-Evolution Engine (Step 5: Autonomous Self-Coding)
+      - name: Step 6 - Self-Evolution Engine
         env:
           DATABASE_URL: ${{ secrets.NEON_DB_URL }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          # ဒီနေရာမှာ AI က main.py နဲ့ brain.py ကို rewrite လုပ်ခွင့်ရှိတယ်
-          if [ -f "app.py" ]; then python app.py;
-          elif [ -f "brain.py" ]; then python brain.py;
-          elif [ -f "main.py" ]; then python main.py; fi
+          if [ -f "app.py" ]; then
+            python app.py
+          elif [ -f "brain.py" ]; then
+            python brain.py
+          elif [ -f "main.py" ]; then
+            python main.py
+          fi
 
-      - name: Step 7 - Manifest Autonomous State (Step 3: Push to GitHub)
+      - name: Step 7 - Manifest Autonomous State
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
           
           git add .
           if ! git diff-index --quiet HEAD; then
-            # [skip ci] ထည့်ထားလို့ loop အဆုံးမရှိ ပတ်တာကို တားပေးတယ်
             git commit -m "🧬 [HYPER_EVOLUTION] Manifested: $(date +'%Y-%m-%d %H:%M:%S') [skip ci]"
             git push origin main --force
           else
