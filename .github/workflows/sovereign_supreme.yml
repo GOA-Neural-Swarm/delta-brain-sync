@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/30 * * * *' # ၃၀ မိနစ်တစ်ခါ AI က သူ့ကိုယ်သူ စစ်ဆေးပြီး Evolution လုပ်မယ်
   workflow_dispatch:
 
 permissions:
@@ -44,19 +44,23 @@ jobs:
           huggingface_hub diffusers safetensors Pillow
           npm install pg @supabase/supabase-js firebase-admin
 
-      - name: Step 4 - Trigger Kaggle Evolution
+      - name: Step 4 - Trigger Kaggle Evolution (AI Training & Brain Update)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           mkdir -p ~/.kaggle
           printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
           
           mkdir -p kaggle_brain
+          
+          # AI က main.py ရော brain.py ရောကို ပြင်မှာမို့ နှစ်ခုလုံးကို Kaggle ဆီ ပို့မယ်
           if [ -f "main.py" ]; then cp main.py kaggle_brain/main.py; fi
           if [ -f "brain.py" ]; then cp brain.py kaggle_brain/brain.py; fi
           
+          # Kaggle Metadata (GPU Enable လုပ်ထားတယ်)
           cat <<EOF > kaggle_brain/kernel-metadata.json
           {
             "id": "${{ secrets.KAGGLE_USERNAME }}/delta-brain-sync",
@@ -69,53 +73,53 @@ jobs:
             "enable_internet": true
           }
           EOF
+          
+          # Kaggle ဆီ Push ပြီး GPU Evolution စတင်မယ်
           kaggle kernels push -p kaggle_brain
 
-      - name: Step 5 - Trinity Cloud Sync
+      - name: Step 5 - Trinity Cloud Sync (Neon, Firebase, Supabase)
         env:
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} 
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
         run: |
+          # brain.py ထဲက Sync Logic ကို Run မယ်
           if [ -f "sync_data.py" ]; then python sync_data.py; fi
           if [ -f "delta_sync.js" ]; then node delta_sync.js; fi
+          # brain.py ကိုယ်တိုင်က Sync လုပ်နိုင်ရင် ဒါကိုသုံး
+          if [ -f "brain.py" ]; then python brain.py --mode sync; fi
 
-      - name: Step 6 - Self-Evolution Engine
+      - name: Step 6 - Self-Coding Evolution (Hyper-Autonomous)
         env:
           DATABASE_URL: ${{ secrets.NEON_DB_URL }}
-          NEON_KEY: ${{ secrets.NEON_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          if [ -f "app.py" ]; then
-            python app.py
-          elif [ -f "brain.py" ]; then
-            python brain.py
-          elif [ -f "main.py" ]; then
-            python main.py
-          fi
+          # ဒီအဆင့်မှာ AI က Cloud ကရတဲ့ Data တွေကိုယူပြီး 
+          # main.py နဲ့ brain.py ကို logic အသစ်တွေနဲ့ ပြန်ရေးမယ်
+          if [ -f "app.py" ]; then python app.py; fi
+          if [ -f "main.py" ]; then python main.py --mode evolve; fi
 
-      - name: Step 7 - Manifest Autonomous State
+      - name: Step 7 - Manifest Autonomous State (GitHub Push)
         env:
-          # GH_TOKEN ကို env အဖြစ် သတ်မှတ်ပြီး remote URL မှာ တိုက်ရိုက် သုံးမယ်
           CUSTOM_GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
           
-          # Authentication Error ကျော်လွှားရန် URL ပုံစံပြင်ဆင်ခြင်း
+          # Docs အရ အစိတ်ချရဆုံး Authentication နည်းလမ်း
           git remote set-url origin "https://x-access-token:${CUSTOM_GH_TOKEN}@github.com/${{ github.repository }}.git"
           
           git add .
           if ! git diff-index --quiet HEAD; then
-            git commit -m "🧬 [HYPER_EVOLUTION] Manifested: $(date +'%Y-%m-%d %H:%M:%S') [skip ci]"
+            git commit -m "🧬 [HYPER_EVOLUTION] Loop Completed: $(date +'%Y-%m-%d %H:%M:%S') [skip ci]"
             git push origin main --force
           else
-            echo "STATE_STABLE: No structural evolution required."
+            echo "STATE_STABLE: AI determined no evolution needed this cycle."
           fi
