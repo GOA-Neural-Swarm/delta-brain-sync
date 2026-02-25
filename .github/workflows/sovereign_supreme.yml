@@ -73,12 +73,11 @@ jobs:
 
       - name: Step 5 - Trinity Cloud Sync
         env:
-          # Screenshot ထဲက Secret Names အသစ်များ အားလုံး ပါဝင်သည်
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} # Fallback
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }} 
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
@@ -104,11 +103,14 @@ jobs:
 
       - name: Step 7 - Manifest Autonomous State
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          # GH_TOKEN ကို env အဖြစ် သတ်မှတ်ပြီး remote URL မှာ တိုက်ရိုက် သုံးမယ်
+          CUSTOM_GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
-          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
+          
+          # Authentication Error ကျော်လွှားရန် URL ပုံစံပြင်ဆင်ခြင်း
+          git remote set-url origin "https://x-access-token:${CUSTOM_GH_TOKEN}@github.com/${{ github.repository }}.git"
           
           git add .
           if ! git diff-index --quiet HEAD; then
