@@ -4,7 +4,7 @@
         "mode": "PREDATOR_ABSORPTION",
         "status": "COMPLETED",
         "code_modified": true,
-        "neural_error_rate": 0.11903539336450089
+        "neural_error_rate": 0.15145782225372034
     },
-    "last_update_timestamp": "2026-02-26T09:43:15.958873+00:00"
+    "last_update_timestamp": "2026-02-26T10:27:58.291013+00:00"
 }
