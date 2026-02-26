@@ -1,18 +1,33 @@
+import numpy as np
+import numba
+
+@numba.jit(nopython=True)
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+@numba.jit(nopython=True)
+def sigmoid_derivative(x):
+    return x * (1 - x)
+
 class Brain:
-    def __init__(self):
-        self.neurons = {}
+    def __init__(self, neurons, layers):
+        self.layers = layers
+        self.neurons = neurons
+        self.synaptic_weights = np.random.uniform(size=(neurons, neurons))
 
-    def activate(self, input_data):
-        result = {}
-        for neuron_id, neuron in self.neurons.items():
-            if neuron_id in input_data:
-                result[neuron_id] = neuron['weight'] * input_data[neuron_id]
-            else:
-                result[neuron_id] = 0
-        return result
+    @numba.jit(nopython=True)
+    def think(self, inputs):
+        for layer in range(self.layers - 1):
+            inputs = sigmoid(np.dot(inputs, self.synaptic_weights[:, layer]))
+        return sigmoid(np.dot(inputs, self.synaptic_weights[:, self.layers - 1]))
 
-    def process(self, input_data):
-        output = input_data
-        for _ in range(10):  # Iterate 10 times for high-speed processing
-            output = self.activate(output)
-        return output
+    @numba.jit(nopython=True)
+    def train(self, inputs, targets, iterations):
+        for _ in range(iterations):
+            output = self.think(inputs)
+            error = targets - output
+            delta = error * sigmoid_derivative(output)
+            for layer in range(self.layers - 1, 0, -1):
+                delta = delta * sigmoid_derivative(output)
+                output = np.dot(delta, self.synaptic_weights[:, layer])
+                self.synaptic_weights[:, layer] += 0.1 * np.dot(inputs.T, output)
