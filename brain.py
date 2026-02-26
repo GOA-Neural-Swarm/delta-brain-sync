@@ -1,21 +1,48 @@
 import numba
-import numpy as np
-from numba import prange
+from numba.experimental import jitclass
 
-class Brain:
-    def __init__(self):
-        self.neurons = np.zeros((10000, 10000), dtype=int)
+@jitclass
+class Neuron:
+    def __init__(self, func):
+        self.func = func
 
-    @prange(10000)
-    def process(self):
-        for node in prange(10000):
-            for connected_node in prange(len(self.neurons[node])):
-                if random.random() < 0.5:
-                    self.neurons[connected_node][node] = 1
-                    self.neurons[node][connected_node] = 1
+    def __call__(self, inputs):
+        return self.func(inputs)
 
 brain = Brain()
-start_time = time.time()
-brain.process()
-end_time = time.time()
-print(f"Processing time: {end_time - start_time:.6f} seconds")
+brain.add_neuron('sigmoid', Neuron(sigmoid))
+brain.add_neuron('tanh', Neuron(tanh))
+brain.add_neuron('relu', Neuron(relu))
+
+inputs = np.array([1, 2, 3])
+outputs = brain(inputs)
+print(outputs)
+
+@numba.jit
+def process(neuron_dict, inputs):
+    outputs = {}
+    for id, neuron in neuron_dict.items():
+        outputs[id] = neuron(inputs)
+    return outputs
+
+brain = Brain()
+brain.add_neuron('sigmoid', sigmoid)
+brain.add_neuron('tanh', tanh)
+brain.add_neuron('relu', relu)
+
+inputs = np.array([1, 2, 3])
+outputs = process(brain.neurons, inputs)
+print(outputs)
+
+@numba.jit
+def __call__(self, inputs):
+    return self.process(inputs)
+
+brain = Brain()
+brain.add_neuron('sigmoid', sigmoid)
+brain.add_neuron('tanh', tanh)
+brain.add_neuron('relu', relu)
+
+inputs = np.array([1, 2, 3])
+outputs = brain(inputs)
+print(outputs)
