@@ -1,16 +1,23 @@
+import numpy as np
+from collections import defaultdict
 class Brain:
     def __init__(self):
-        self.neurons = {}
-
-    def add_neuron(self, name, value):
-        self.neurons[name] = value
-
-    def fire_synapse(self, source, target):
-        if source in self.neurons and target in self.neurons:
-            self.neurons[target] += self.neurons[source]
+        self.neurons = defaultdict(dict)
+        self.synapses = defaultdict(dict)
+    
+    def add_neuron(self, neuron_id):
+        self.neurons[neuron_id]['inputs'] = []
+        self.neurons[neuron_id]['output'] = 0
+    
+    def add_synapse(self, neuron_id, synapse_id):
+        self.synapses[(neuron_id, synapse_id)] = {'weight': 0, 'delay': 0}
+    
+    def fire_neuron(self, neuron_id):
+        neuron = self.neurons[neuron_id]
+        if neuron['inputs']:
+            neuron['output'] = np.sum([synapse['weight'] * self.get_synapse_output(synapse['delay']) for synapse in neuron['inputs']])
         else:
-            print("Invalid neuron names")
-
-    def update_neurons(self):
-        for neuron in self.neurons:
-            self.neurons[neuron] *= 0.95
+            neuron['output'] = 0
+    
+    def get_synapse_output(self, delay):
+        return self.synapses.get((delay, delay), {'weight': 0, 'delay': 0})['output']
