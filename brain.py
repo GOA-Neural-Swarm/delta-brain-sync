@@ -1,25 +1,17 @@
 class Brain:
-    def __init__(self, neurons, synapses):
-        self.neurons = neurons
-        self.synapses = synapses
-        self.deltas = [0] * len(neurons)
+    def __init__(self):
+        self.synapses = {}
 
-    def propagate(self, inputs):
-        for i, neuron in enumerate(self.neurons):
-            neuron['output'] = neuron.get('threshold', 0)  # cache threshold
-            for j, synapse in enumerate(self.synapses[i]):
-                neuron['output'] += synapse['weight'] * inputs[j]
-            if neuron['output'] > neuron.get('threshold', 0):
-                neuron['output'] = 1
-            else:
-                neuron['output'] = 0
+    def process(self, input_signal):
+        output_signal = 0
+        for synapse in self.synapses:
+            weight = self.synapses[synapse]['weight']
+            if synapse in input_signal:
+                output_signal += input_signal[synapse] * weight
+        return output_signal
 
-    def update(self, targets):
-        for i, neuron in enumerate(self.neurons):
-            error = targets[i] - neuron['output']
-            self.deltas[i] = error
-            for j, synapse in enumerate(self.synapses[i]):
-                synapse['weight'] += error * synapse['learning_rate'] * neuron['output']
-
-    def __repr__(self):
-        return f'Brain(neurons={len(self.neurons)}, synapses={len(self.synapses)})'
+    def train(self, input_signal, target_output):
+        for synapse in self.synapses:
+            weight = self.synapses[synapse]['weight']
+            if synapse in input_signal:
+                self.synapses[synapse]['weight'] += 0.1 * (target_output - input_signal[synapse] * weight)
