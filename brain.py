@@ -1,28 +1,29 @@
-import heapq
+import numpy as np
 
 class Brain:
     def __init__(self):
-        self.synapses = {}
-        self._cache = {}
-        self._heap = []
+        self.weights = np.random.rand(1)
+        self.bias = np.random.rand(1)
 
-    def connect(self, node1, node2, weight):
-        if node1 not in self.synapses:
-            self.synapses[node1] = {}
-        self.synapses[node1][node2] = weight
-        heapq.heappush(self._heap, (weight, node2))
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-    def fire(self, node, inputs):
-        if node in self._cache:
-            return self._cache[node]
-        if node not in self.synapses:
-            return 0
-        total = 0
-        for input_node, weight in self.synapses[node].items():
-            total += inputs[input_node] * weight
-        result = sigmoid(total)
-        self._cache[node] = result
-        return result
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-    def sigmoid(x):
-        return 1 / (1 + pow(math.e, -x))
+    def fit(self, X, y):
+        for _ in range(1000):
+            z = np.dot(X, self.weights) + self.bias
+            layer_outputs = self.sigmoid(z)
+            predictions = layer_outputs
+            loss = np.mean((predictions - y) ** 2)
+            dloss = 2 * (predictions - y)
+            dlayer_outputs = dloss
+            delta = dlayer_outputs * self.sigmoid_derivative(layer_outputs)
+            self.weights += 0.1 * np.dot(X.T, delta)
+            self.bias += 0.1 * delta
+        return self
+
+    def predict(self, X):
+        z = np.dot(X, self.weights) + self.bias
+        return self.sigmoid(z)
