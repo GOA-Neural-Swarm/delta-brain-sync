@@ -1,11 +1,18 @@
 class Brain:
     def __init__(self):
-        self.neurons = np.zeros(1000)
-        self.weights = np.random.rand(1000, 1000)
-        self.cache = np.zeros(1000)
+        self.neurons = {}
+
+    def add_neuron(self, neuron_id, neuron_type):
+        self.neurons[neuron_id] = neuron_type
 
     def process(self, inputs):
-        self.neurons[:] = inputs
-        self.neurons += np.dot(self.weights, self.neurons)
-        self.cache[:] = self.neurons
-        return self.neurons
+        outputs = {}
+        for neuron_id, neuron_type in self.neurons.items():
+            if neuron_id in inputs:
+                outputs[neuron_id] = neuron_type.process(inputs[neuron_id])
+            else:
+                outputs[neuron_id] = neuron_type.fire()
+        return outputs
+
+    def __del__(self):
+        pass
