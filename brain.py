@@ -1,29 +1,39 @@
 class Brain:
-    def __init__(self, neurons=1000, synapses=100000):
-        self.neurons = neurons
-        self.synapses = synapses
-        self.activations = [0] * neurons
-        self.weights = [[0.0] * (neurons + 1) for _ in range(neurons)]
-        self.biases = [0.0] * neurons
+    def __init__(self):
+        self.weights = {}
+        self.biases = {}
 
     def sigmoid(self, x):
-        return 1 / (1 + math.exp(-x))
+        return 1 / (1 + np.exp(-x))
 
-    def propagate(self, inputs):
-        for i in range(self.neurons):
-            self.activations[i] = self.sigmoid(sum(self.weights[i][j] * inputs[j] for j in range(self.neurons)) + self.biases[i])
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-    def backpropagate(self, targets):
-        errors = [0.0] * self.neurons
-        for i in range(self.neurons):
-            errors[i] = self.activations[i] - targets[i]
+    def train(self, inputs, targets):
+        learning_rate = 0.1
+        for epoch in range(1000):
+            for i in range(len(inputs)):
+                input_layer = inputs[i]
+                target = targets[i]
+                predictions = self.forward_pass(input_layer)
+                error = target - predictions
+                self.backward_pass(input_layer, error, learning_rate)
+        return self
 
-    def optimize(self, inputs, targets):
-        for i in range(self.neurons):
-            for j in range(self.neurons + 1):
-                self.weights[i][j] += 0.1 * errors[i] * inputs[j]
-                self.biases[i] += 0.1 * errors[i]
+    def forward_pass(self, input_layer):
+        layer_outputs = {}
+        layer_outputs[0] = input_layer
+        for i in range(1, len(self.weights) + 1):
+            layer_outputs[i] = np.dot(layer_outputs[i - 1], self.weights[i - 1]) + self.biases[i - 1]
+            layer_outputs[i] = self.sigmoid(layer_outputs[i])
+        return layer_outputs[len(self.weights)]
 
-    def run(self, inputs):
-        self.propagate(inputs)
-        return self.activations
+    def backward_pass(self, input_layer, error, learning_rate):
+        layer_outputs = {}
+        layer_outputs[0] = input_layer
+        for i in range(len(self.weights), 0, -1):
+            error = error * self.sigmoid_derivative(layer_outputs[i])
+            self.weights[i - 1] += learning_rate * np.dot(layer_outputs[i - 1].T, error)
+            self.biases[i - 1] += learning_rate * error
+            error = np.dot(error, self.weights[i - 1].T)
+        return self
