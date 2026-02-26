@@ -1,18 +1,25 @@
-import numpy as np
-
 class Brain:
-    def __init__(self, num_neurons, num_synapses):
-        self.num_neurons = num_neurons
-        self.num_synapses = num_synapses
-        self.neurons = np.zeros((num_neurons, num_synapses))
-        self.synapses = np.random.rand(num_synapses)
+    def __init__(self, neurons, synapses):
+        self.neurons = neurons
+        self.synapses = synapses
+        self.deltas = [0] * len(neurons)
 
-    def fire(self, inputs):
-        outputs = np.zeros(self.num_neurons)
-        for i in range(self.num_neurons):
-            outputs[i] = np.sum(self.synapses * self.neurons[i])
-        return outputs
+    def propagate(self, inputs):
+        for i, neuron in enumerate(self.neurons):
+            neuron['output'] = neuron.get('threshold', 0)  # cache threshold
+            for j, synapse in enumerate(self.synapses[i]):
+                neuron['output'] += synapse['weight'] * inputs[j]
+            if neuron['output'] > neuron.get('threshold', 0):
+                neuron['output'] = 1
+            else:
+                neuron['output'] = 0
 
-    def learn(self, inputs, outputs):
-        for i in range(self.num_neurons):
-            self.synapses[i] += np.dot(self.neurons[i], outputs[i]) * 0.1
+    def update(self, targets):
+        for i, neuron in enumerate(self.neurons):
+            error = targets[i] - neuron['output']
+            self.deltas[i] = error
+            for j, synapse in enumerate(self.synapses[i]):
+                synapse['weight'] += error * synapse['learning_rate'] * neuron['output']
+
+    def __repr__(self):
+        return f'Brain(neurons={len(self.neurons)}, synapses={len(self.synapses)})'
