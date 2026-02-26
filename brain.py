@@ -1,52 +1,33 @@
-import random
+import numpy as np
 
 class Brain:
     def __init__(self):
-        self.neurons = {}
+        self.weights = np.random.rand(10, 10)
+        self.biases = np.random.rand(10)
+        self.cache = []
 
-    def add_neuron(self, name, weights):
-        self.neurons[name] = weights
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-    def fire_neuron(self, name, inputs):
-        if name in self.neurons:
-            weights = self.neurons[name]
-            return sum(w * i for w, i in zip(weights, inputs))
-        else:
-            return None
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-    def optimize_weights(self, name, inputs):
-        if name in self.neurons:
-            weights = self.neurons[name]
-            learning_rate = 0.1
-            error = inputs - self.fire_neuron(name, inputs)
-            weights = [w + learning_rate * e for w, e in zip(weights, error)]
-            self.neurons[name] = weights
-        else:
-            return None
+    def forward_pass(self, inputs):
+        self.cache.append(inputs)
+        return np.dot(inputs, self.weights) + self.biases
 
-    def __str__(self):
-        return str(self.neurons)
+    def backward_pass(self):
+        gradients = []
+        for i in range(len(self.cache) - 1):
+            x = self.cache[-1 - i - 1]
+            y = self.cache[-1 - i]
+            gradients.append(np.dot(y.T, x))
+        return gradients[::-1]
 
-    def mutate_weights(self, name, mutation_rate):
-        if name in self.neurons:
-            weights = self.neurons[name]
-            for i, w in enumerate(weights):
-                if random.random() < mutation_rate:
-                    weights[i] = random.uniform(-1, 1)
-            self.neurons[name] = weights
-        else:
-            return None
-
-    def crossover_weights(self, name1, name2, crossover_rate):
-        if name1 in self.neurons and name2 in self.neurons:
-            weights1 = self.neurons[name1]
-            weights2 = self.neurons[name2]
-            new_weights = []
-            for w1, w2 in zip(weights1, weights2):
-                if random.random() < crossover_rate:
-                    new_weights.append(w1)
-                else:
-                    new_weights.append(w2)
-            self.neurons[name1] = new_weights
-        else:
-            return None
+    def optimize(self, inputs, targets):
+        outputs = self.forward_pass(inputs)
+        errors = targets - outputs
+        gradients = self.backward_pass()
+        self.weights -= 0.1 * np.dot(self.cache[0].T, errors)
+        self.biases -= 0.1 * np.sum(errors, axis=0)
+        return outputs
