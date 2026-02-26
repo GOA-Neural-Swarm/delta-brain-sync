@@ -1,28 +1,29 @@
-import heapq
+import numpy as np
 
 class Brain:
     def __init__(self):
-        self.synapses = {}
-        self._cache = {}
-        self._heap = []
+        self.weights = np.random.rand(10, 10)
+        self.biases = np.random.rand(10)
 
-    def connect(self, node1, node2, weight):
-        if node1 not in self.synapses:
-            self.synapses[node1] = {}
-        self.synapses[node1][node2] = weight
-        heapq.heappush(self._heap, (weight, node2))
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-    def fire(self, node, inputs):
-        if node in self._cache:
-            return self._cache[node]
-        if node not in self.synapses:
-            return 0
-        total = 0
-        for input_node, weight in self.synapses[node].items():
-            total += inputs[input_node] * weight
-        result = sigmoid(total)
-        self._cache[node] = result
-        return result
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-    def sigmoid(x):
-        return 1 / (1 + pow(math.e, -x))
+    def train(self, inputs, targets):
+        inputs = np.array(inputs)
+        targets = np.array(targets)
+
+        for i in range(1000):
+            hidden_layer = np.dot(inputs, self.weights) + self.biases
+            outputs = self.sigmoid(hidden_layer)
+
+            error = targets - outputs
+            self.weights += np.dot(inputs.T, error * self.sigmoid_derivative(outputs))
+            self.biases += error.mean()
+
+    def think(self, inputs):
+        inputs = np.array(inputs)
+        hidden_layer = np.dot(inputs, self.weights) + self.biases
+        return self.sigmoid(hidden_layer)
