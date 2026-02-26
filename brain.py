@@ -1,18 +1,14 @@
-import numpy as np
+import numba
 
-class Brain:
-    def __init__(self, num_neurons, num_synapses):
-        self.num_neurons = num_neurons
-        self.num_synapses = num_synapses
-        self.synaptic_weights = np.random.rand(num_synapses)
+@numba.jit(nopython=True)
+def optimize_brain(brain):
+    neurons = brain.neurons
+    synapses = brain.synapses
+    for i in range(neurons.shape[0]):
+        for j in range(neurons.shape[1]):
+            neurons[i][j] += synapses[i][j]
+    return brain
 
-    def compute(self, inputs):
-        outputs = np.zeros(self.num_neurons)
-        for i in range(self.num_synapses):
-            outputs += self.synaptic_weights[i] * inputs[i]
-        return outputs
-
-    def mutate(self, mutation_rate):
-        for i in range(self.num_synapses):
-            if np.random.rand() < mutation_rate:
-                self.synaptic_weights[i] = np.random.rand()
+brain = Brain(1000, 1000)
+brain = optimize_brain(brain)
+brain.process(np.random.rand(1000))  # Use numba-optimized brain
