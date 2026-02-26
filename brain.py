@@ -1,31 +1,45 @@
-# TARGET: brain.py
+import numpy as np
+import numba
 
+@numba.jit(nopython=True)
 class Brain:
-    def __init__(self):
-        self.neurons = [None] * 1000000  # optimized for 1M neurons
-        self.cache = {}  # LRU cache for faster neuron access
-        self.cache_max_size = 10000  # cache size limit
-        self.cache_index = 0  # cache index
-        self.cache_lru_index = 0  # LRU cache index
+    def __init__(self, num_inputs, num_hidden, num_outputs):
+        self.num_inputs = num_inputs
+        self.num_hidden = num_hidden
+        self.num_outputs = num_outputs
+        self.weights1 = np.random.rand(num_inputs, num_hidden)
+        self.weights2 = np.random.rand(num_hidden, num_outputs)
 
-    def process(self, inputs):
-        for i in range(len(inputs)):
-            self.neurons[i] = inputs[i]
-        for j in range(len(self.neurons)):
-            self.neurons[j] += self.neurons[(j-1)%len(self.neurons)]  # optimized for efficient addition
-        return self.neurons
+    @numba.jit(nopython=True)
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-    def cache_get(self, index):
-        if index in self.cache:
-            self.cache_lru_index = (self.cache_lru_index + 1) % len(self.cache)
-            return self.cache[self.cache_lru_index]
-        else:
-            return self.neurons[index]
+    @numba.jit(nopython=True)
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-    def cache_set(self, index, value):
-        if self.cache_index < self.cache_max_size:
-            self.cache[self.cache_index] = value
-            self.cache_index += 1
-        else:
-            self.cache[self.cache_index % self.cache_max_size] = value
-            self.cache_index += 1
+    @numba.jit(nopython=True)
+    def predict(self, inputs):
+        hidden_layer = np.dot(inputs, self.weights1)
+        hidden_layer = self.sigmoid(hidden_layer)
+        output_layer = np.dot(hidden_layer, self.weights2)
+        output_layer = self.sigmoid(output_layer)
+        return output_layer
+
+    @numba.jit(nopython=True)
+    def train(self, inputs, targets, learning_rate):
+        hidden_layer = np.dot(inputs, self.weights1)
+        hidden_layer = self.sigmoid(hidden_layer)
+        output_layer = np.dot(hidden_layer, self.weights2)
+        output_layer = self.sigmoid(output_layer)
+
+        # Calculate the error
+        errors = targets - output_layer
+
+        # Calculate the hidden layer errors
+        hidden_layer_errors = np.dot(errors, self.weights2.T)
+        hidden_layer_errors *= self.sigmoid_derivative(hidden_layer)
+
+        # Calculate the weights update
+        self.weights1 += learning_rate * np.dot(inputs.T, hidden_layer_errors)
+        self.weights2 += learning_rate * np.dot(hidden_layer.T, errors)
