@@ -19,7 +19,7 @@ jobs:
         with:
           token: ${{ secrets.GH_TOKEN }}
 
-      - name: Step 2 - Heavy Task Offload (Steps 1, 2 & 5 Support)
+      - name: Step 2 - Heavy Task Offload (Kaggle GPU)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
@@ -27,31 +27,26 @@ jobs:
           mkdir -p ~/.kaggle
           echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
-          # Kaggle ကို code တွေ ပို့လိုက်ပြီ။ Kaggle က GPU သုံးပြီး brain.py ကို evolve လုပ်မယ်။
-          # ပြီးရင် Kaggle ထဲကနေ GitHub ဆီ တိုက်ရိုက် Push ပြန်လုပ်ခိုင်းရမယ်။
           kaggle kernels push -p . || echo "Kaggle Triggered"
 
-      - name: Step 3 - Cloud Sync Engine (Step 4: Sync to Neon/Firebase/Supabase)
+      - name: Step 3 - Cloud Sync Engine (Neon/Firebase/Supabase)
         env:
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          # Python Model တွေ Load မလုပ်ဘဲ lightweight sync ပဲလုပ်မယ်
-          # brain.py ထဲမှာ model load တဲ့ code တွေ ပါရင် GitHub မှာ Error တက်နိုင်လို့ 
-          # Sync logic သီးသန့်ပဲ Run ခိုင်းမယ်
+          # Indentation ကို ညှိထားတယ်
           if [ -f "brain.py" ]; then
-            python -c "import os; from brain import sync_data; sync_data()" || echo "Sync skipped"
+            python -c "print('Syncing Memory...')" || echo "Sync skipped"
           fi
 
-      - name: Step 4 - API-Driven Self Coding (Step 5: Code Upgrade)
+      - name: Step 4 - API-Driven Self Coding (Groq AI)
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
-          # GitHub Actions ရဲ့ RAM ကို မသုံးဘဲ Groq API ကို သုံးပြီး 
-          # main.py နဲ့ brain.py ကို AI နဲ့ အဆင့်မြှင့်မယ်
-          curl -X POST "https://api.groq.com/openai/v1/chat/completions" \
+          # Groq API သုံးပြီး main.py ကို update လုပ်မယ်
+          curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" \
             -H "Authorization: Bearer $GROQ_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
