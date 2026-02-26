@@ -318,57 +318,44 @@ def self_coding_engine(raw_content):
 
 def autonomous_git_push(gen, thought, modified_files):
     """
-    PHASE 8: Autonomous Git Synchronization Engine.
-    Handles evolution logging, code updates, and remote persistence.
+    PHASE 8: Sovereign Git Push.
+    Kaggle ကနေ GitHub ဆီကို တိုက်ရိုက် code ပြန်ပို့တဲ့ အဆင့်။
     """
     if not GH_TOKEN:
-        print("⚠️ [GIT]: GH_TOKEN missing. Skipping sync.")
+        print("⚠️ [GIT]: GH_TOKEN missing. Sync disabled.")
         return
 
-    # Determine if this is a code update or just a cognitive sync
-    # logic: modified_files က boolean ဖြစ်နေရင် ဒါမှမဟုတ် list ထဲမှာ ဖိုင်ပါနေရင်
-    is_code_update = bool(modified_files)
-    
     try:
-        remote_url = f"https://{GH_TOKEN}@{REPO_URL}.git"
+        # Step 1: Remote URL ကို Token နဲ့ သတ်မှတ်မယ်
+        remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
         
-        # 1. Repo Initialization
+        # Step 2: Repo ကို Clone လုပ်မယ် (မရှိသေးရင်) သို့မဟုတ် ရှိပြီးသားကို သုံးမယ်
         if not os.path.exists(REPO_PATH):
             repo = git.Repo.clone_from(remote_url, REPO_PATH)
         else:
             repo = git.Repo(REPO_PATH)
-        
-        # 2. Pull latest and Sync local files to repo folder
+            repo.remotes.origin.set_url(remote_url)
+
+        # Step 3: GitHub က နောက်ဆုံး version ကို pull လုပ်မယ်
         repo.remotes.origin.pull("main")
-        
-        # ဖိုင်အပြောင်းအလဲရှိရင် (list) သို့မဟုတ် brain/main ကို copy ကူးမယ်
+
+        # Step 4: AI ပြင်လိုက်တဲ့ code ဖိုင်တွေကို repo folder ထဲ copy ကူးမယ်
+        import shutil
         target_files = modified_files if isinstance(modified_files, list) else ["main.py", "brain.py"]
-        
         for file in target_files:
             if os.path.exists(file):
-                import shutil
                 shutil.copy(file, os.path.join(REPO_PATH, file))
 
-        # 3. Evolution Logging (မင်းရဲ့ အရေးကြီးတဲ့ Blueprint logic)
-        log_file = os.path.join(REPO_PATH, "evolution_logs.md")
-        with open(log_file, "a") as f:
-            status_text = '[SELF-REWRITE ACTIVE]' if is_code_update else '[COGNITIVE SYNC]'
-            f.write(f"\n## 🧬 Generation {gen} Evolution\n")
-            f.write(f"**Status:** {status_text}\n")
-            f.write(f"**Timestamp:** {datetime.now(UTC).isoformat()}\n\n")
-            f.write(f"**Transcendent Blueprint:**\n\n> {thought}\n\n---\n")
-
-        # 4. Commit and Push
+        # Step 5: Commit & Force Push (ဒါမှ Loop က ပြတ်မသွားမှာ)
         repo.git.add(all=True)
-        
         if repo.is_dirty():
-            tag = " (Logic Upgrade)" if is_code_update else ""
-            commit_msg = f"🧬 Gen {gen} Evolution: {status_text}{tag} [skip ci]"
+            commit_msg = f"🧬 Gen {gen} Hyper-Evolution [skip ci]"
             repo.index.commit(commit_msg)
-            repo.remotes.origin.push("main")
-            print(f"🚀 [HYPER-SYNC]: Gen {gen} Evolution pushed to GitHub successfully.")
+            # Force push လုပ်မှသာ GitHub Action ဘက်က အလုပ်ဆက်လုပ်မှာပါ
+            repo.git.push("origin", "main", force=True)
+            print(f"🚀 [HYPER-SYNC]: Gen {gen} evolution manifested on GitHub.")
         else:
-            print(f"⏳ [GITHUB]: No evolution detected in code for Gen {gen}. Pulse only.")
+            print(f"⏳ [GITHUB]: No code changes. Pulse only.")
 
     except Exception as e:
         print(f"❌ [GIT ERROR]: {e}")
