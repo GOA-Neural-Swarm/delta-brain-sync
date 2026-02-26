@@ -3,8 +3,8 @@
     "internal_buffer_dump": {
         "mode": "PREDATOR_ABSORPTION",
         "status": "COMPLETED",
-        "code_modified": true,
-        "neural_error_rate": 0.15145782225372034
+        "code_modified": false,
+        "neural_error_rate": 0.1527435006327229
     },
-    "last_update_timestamp": "2026-02-26T10:27:58.291013+00:00"
+    "last_update_timestamp": "2026-02-26T10:40:13.206841+00:00"
 }
