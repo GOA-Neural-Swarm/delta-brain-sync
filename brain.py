@@ -1,17 +1,29 @@
+import numpy as np
+
 class Brain:
-    def __init__(self):
-        self.synapses = {}
+    def __init__(self, num_inputs, num_hidden, num_outputs):
+        self.weights_i_h = np.random.rand(num_inputs, num_hidden)
+        self.weights_h_o = np.random.rand(num_hidden, num_outputs)
+        self.biases_i_h = np.zeros((1, num_hidden))
+        self.biases_h_o = np.zeros((1, num_outputs))
 
-    def process(self, input_signal):
-        output_signal = 0
-        for synapse in self.synapses:
-            weight = self.synapses[synapse]['weight']
-            if synapse in input_signal:
-                output_signal += input_signal[synapse] * weight
-        return output_signal
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-    def train(self, input_signal, target_output):
-        for synapse in self.synapses:
-            weight = self.synapses[synapse]['weight']
-            if synapse in input_signal:
-                self.synapses[synapse]['weight'] += 0.1 * (target_output - input_signal[synapse] * weight)
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
+
+    def train(self, inputs, targets):
+        outputs = self.predict(inputs)
+        error = targets - outputs
+        self.weights_i_h += np.dot(inputs.T, error * self.sigmoid_derivative(outputs))
+        self.weights_h_o += np.dot(error * self.sigmoid_derivative(outputs).reshape(-1, 1), outputs.reshape(1, -1))
+        self.biases_i_h += error * self.sigmoid_derivative(outputs)
+        self.biases_h_o += error * self.sigmoid_derivative(outputs)
+
+    def predict(self, inputs):
+        hidden_layer = np.dot(inputs, self.weights_i_h) + self.biases_i_h
+        hidden_layer = self.sigmoid(hidden_layer)
+        output_layer = np.dot(hidden_layer, self.weights_h_o) + self.biases_h_o
+        output_layer = self.sigmoid(output_layer)
+        return output_layer
