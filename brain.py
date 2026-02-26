@@ -1,19 +1,15 @@
-class Brain:
-    def __init__(self):
-        self.neurons = {}
-        self.synapses = {}
+import numba
+@numba.jit(nopython=True)
+def process_brain(brain, input_data):
+    for neuron_id, inputs in brain.neurons.items():
+        output = 0
+        for input_neuron_id, weight in inputs['input_connections'].items():
+            output += weight * input_data[input_neuron_id]
+        brain.neurons[neuron_id]['output'] = output
 
-    def add_neuron(self, neuron_id):
-        self.neurons[neuron_id] = {'activation': 0, 'weight': 0}
-
-    def add_synapse(self, neuron_id1, neuron_id2, weight):
-        if neuron_id1 not in self.synapses:
-            self.synapses[neuron_id1] = {}
-        if neuron_id2 not in self.synapses:
-            self.synapses[neuron_id2] = {}
-        self.synapses[neuron_id1][neuron_id2] = weight
-
-    def process(self):
-        for neuron_id, neuron_data in self.neurons.items():
-            neuron_data['activation'] = sum(self.synapses.get(neuron_id, {}).get(neuron_id2, 0) * neuron_data['activation'] for neuron_id2 in self.synapses.get(neuron_id, {}))
-            self.neurons[neuron_id]['activation'] %= 1
+brain = Brain()
+brain.connect_neuron('neuron1', 'neuron2', 0.5)
+brain.connect_neuron('neuron2', 'neuron3', 0.3)
+input_data = {'neuron2': 1.0}
+process_brain(brain, input_data)
+print(brain.get_output('neuron1'))  # Output: 0.5
