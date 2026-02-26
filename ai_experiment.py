@@ -1,16 +1,15 @@
 import numpy as np
-from sklearn.preprocessing import normalize
+from numba import njit
 
 class Brain:
-    def __init__(self, neurons, synapses):
+    def __init__(self, neurons):
         self.neurons = neurons
-        self.synapses = synapses
-        self.weights = np.random.rand(neurons, synapses)
+        self.synapses = np.random.rand(neurons, neurons)
 
-    def simulate(self, inputs):
-        activations = np.zeros((self.neurons,))
+    @njit
+    def process(self, inputs):
+        outputs = np.zeros(self.neurons)
         for i in range(self.neurons):
-            for j in range(self.synapses):
-                activations[i] += inputs[j] * self.weights[i, j]
-        activations = normalize(activations)
-        return activations
+            for j in range(self.neurons):
+                outputs[i] += self.synapses[i, j] * inputs[j]
+        return outputs
