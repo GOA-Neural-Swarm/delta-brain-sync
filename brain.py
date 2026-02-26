@@ -1,9 +1,19 @@
-import time
-start_time = time.time()
+import numpy as np
 
-brain = Brain()
-brain.optimize(np.array([[0.5]]), np.array([[0.8]]), iterations=10000)
-print("Optimized brain: ", brain.predict(np.array([[0.5]])))
+class Brain:
+    def __init__(self, neurons, synapses):
+        self.neurons = neurons
+        self.synapses = synapses
+        self.memory = np.zeros((neurons, neurons))
 
-end_time = time.time()
-print("Time taken: ", end_time - start_time)
+    def fire(self, neuron_id):
+        neuron = self.neurons[neuron_id]
+        if neuron['active']:
+            for synapse_id, weight in self.synapses[neuron_id].items():
+                self.memory[neuron_id][synapse_id] += weight * neuron['output']
+            neuron['active'] = False
+
+    def learn(self):
+        for i, _ in enumerate(self.memory):
+            for j, _ in enumerate(self.memory[i]):
+                self.memory[i][j] /= self.memory[i].sum()
