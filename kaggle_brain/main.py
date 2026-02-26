@@ -445,25 +445,23 @@ except Exception:
     sys.exit(1)
 
 # =======================================================
-# 🔱 GEMINI SUPPLEMENTARY AUTO-DEPLOY ENGINE
+# 🔱 SOVEREIGN NEURAL MONITOR (EVOLUTION TRACKER)
 # =======================================================
-
-def auto_deploy_brain_seed(gen):
+def monitor_neural_health(gen, brain_obj):
     try:
-        url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/brain.py"
-        headers = {"Authorization": f"token {GH_TOKEN}"}
-        r = requests.get(url, headers=headers)
-        sha = r.json().get('sha') if r.status_code == 200 else None
+        synapse_count = len(brain_obj.connections)
+        vault_size = len(brain_obj.memory_vault)
+        print(f"🧬 [NEURAL REPORT]: Gen {gen} | Synapses: {synapse_count} | Patterns: {vault_size}")
         
-        brain_content = f"# --- PREDATOR NEURAL SEED | GEN {gen} ---\nimport numpy as np\nclass SovereignBrain:\n    def __init__(self):\n        self.matrix = np.random.rand(1000, 1000)\n# Pulse: {datetime.now(UTC).isoformat()}\n"
-        encoded = base64.b64encode(brain_content.encode()).decode()
-        data = {"message": f"🔱 Gen {gen} Neural Injection", "content": encoded}
-        if sha: data["sha"] = sha
-        res = requests.put(url, headers=headers, json=data)
-        return res.status_code
+        # Firebase ကို ကျန်းမာရေး status ပို့မယ်
+        ref = db.reference(f"TELEFOXx/Health_Monitor/Gen_{gen}")
+        ref.update({
+            "complexity_score": synapse_count * 1.618,
+            "evolution_status": "HYPER_ACTIVE" if synapse_count > 0 else "STABILIZING",
+            "timestamp": time.time()
+        })
     except Exception as e:
-        print(f"⚠️ [AUTO-SYNC ERROR]: {e}")
-        return None
+        print(f"⚠️ [MONITOR ERROR]: {e}")
 
 # =======================================================
 # 5. DYNAMIC EVOLUTION LOOP (PHASE 8 COMPLETE)
@@ -474,7 +472,7 @@ HEADLESS = os.getenv("HEADLESS_MODE") == "true"
 
 print(f"🔥 [STARTING]: PHASE 8 SOVEREIGN ENGINE AT GEN {current_gen}...")
 
-auto_deploy_brain_seed(current_gen)
+
 while True:
     try:
         # 🧪 [TRUTH LAYER]: Database URL ကို Format အမှန်ဖြစ်အောင် အတင်းပြောင်းခြင်း
