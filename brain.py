@@ -1,14 +1,20 @@
-import numpy as np
-
 class Brain:
     def __init__(self):
-        self.synaptic_weights = np.random.rand(3, 3)
-        self.threshold = 0.5
+        self.neurons = {}
+        self.synapses = {}
 
-    def think(self, inputs):
-        output = np.dot(inputs, self.synaptic_weights)
-        return np.where(output > self.threshold, 1, 0)
+    def add_neuron(self, name):
+        self.neurons[name] = {'inputs': [], 'outputs': []}
 
-    def learn(self, inputs, output):
-        adjustments = np.dot(inputs.T, output - self.think(inputs))
-        self.synaptic_weights += adjustments
+    def add_synapse(self, from_neuron, to_neuron):
+        self.synapses.setdefault(from_neuron, []).append(to_neuron)
+        self.synapses.setdefault(to_neuron, []).append(from_neuron)
+
+    def fire(self, neuron):
+        if neuron in self.neurons:
+            outputs = self.neurons[neuron]['outputs']
+            for synapse in self.synapses.get(neuron, []):
+                if synapse in self.neurons:
+                    outputs.extend(self.neurons[synapse]['outputs'])
+            return outputs
+        return []
