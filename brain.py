@@ -2,29 +2,26 @@ import numpy as np
 
 class Brain:
     def __init__(self):
-        self.neurons = np.zeros(1000000)
-        self.connections = {}
-        self.weights = {}
+        self.synapses = {}
 
-    def add_neuron(self):
-        neuron_id = len(self.neurons)
-        self.neurons[neuron_id] = 0
-        return neuron_id
+    def connect(self, neuron1, neuron2, weight):
+        if neuron1 not in self.synapses:
+            self.synapses[neuron1] = {}
+        self.synapses[neuron1][neuron2] = weight
 
-    def add_connection(self, neuron1, neuron2, weight):
-        if neuron1 not in self.connections:
-            self.connections[neuron1] = {}
-        if neuron2 not in self.connections:
-            self.connections[neuron2] = {}
-        self.connections[neuron1][neuron2] = weight
-        self.connections[neuron2][neuron1] = weight
-        self.weights[neuron1, neuron2] = weight
+    def fire(self, neuron):
+        if neuron not in self.synapses:
+            return np.zeros(())
+        sum = 0
+        for connected_neuron, weight in self.synapses[neuron].items():
+            sum += weight * self.fire(connected_neuron)
+        if sum > 0:
+            return np.ones(() * sum)
+        else:
+            return np.zeros(())
 
-    def fire(self, neuron_id):
-        neuron_id %= len(self.neurons)
-        self.neurons[neuron_id] = 1
-        for connection in self.connections.get(neuron_id, []):
-            self.neurons[connection] = 1
-
-    def get_output(self):
-        return np.where(self.neurons == 1)[0].tolist()
+    def process(self, inputs):
+        outputs = {}
+        for neuron, input_value in inputs.items():
+            outputs[neuron] = self.fire(neuron) * input_value
+        return outputs
