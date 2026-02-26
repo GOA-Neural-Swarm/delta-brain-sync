@@ -1,48 +1,14 @@
-import numba
-from numba.experimental import jitclass
+class Brain:
+    def __init__(self):
+        self.neurons = {}
+        self.connections = []
 
-@jitclass
-class Neuron:
-    def __init__(self, func):
-        self.func = func
+    def add_neuron(self, id, value):
+        self.neurons[id] = value
 
-    def __call__(self, inputs):
-        return self.func(inputs)
+    def add_connection(self, from_neuron, to_neuron, weight):
+        self.connections.append((from_neuron, to_neuron, weight))
 
-brain = Brain()
-brain.add_neuron('sigmoid', Neuron(sigmoid))
-brain.add_neuron('tanh', Neuron(tanh))
-brain.add_neuron('relu', Neuron(relu))
-
-inputs = np.array([1, 2, 3])
-outputs = brain(inputs)
-print(outputs)
-
-@numba.jit
-def process(neuron_dict, inputs):
-    outputs = {}
-    for id, neuron in neuron_dict.items():
-        outputs[id] = neuron(inputs)
-    return outputs
-
-brain = Brain()
-brain.add_neuron('sigmoid', sigmoid)
-brain.add_neuron('tanh', tanh)
-brain.add_neuron('relu', relu)
-
-inputs = np.array([1, 2, 3])
-outputs = process(brain.neurons, inputs)
-print(outputs)
-
-@numba.jit
-def __call__(self, inputs):
-    return self.process(inputs)
-
-brain = Brain()
-brain.add_neuron('sigmoid', sigmoid)
-brain.add_neuron('tanh', tanh)
-brain.add_neuron('relu', relu)
-
-inputs = np.array([1, 2, 3])
-outputs = brain(inputs)
-print(outputs)
+    def process(self):
+        for from_neuron, to_neuron, weight in self.connections:
+            self.neurons[to_neuron] += self.neurons[from_neuron] * weight
