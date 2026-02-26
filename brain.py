@@ -1,23 +1,25 @@
-import numpy as np
-
 class Brain:
     def __init__(self):
         self.synapses = {}
-        self.weights = {}
+        self.neurons = {}
 
-    def think(self, inputs):
-        outputs = []
-        for input_idx, input_value in enumerate(inputs):
-            if input_idx not in self.synapses:
-                self.synapses[input_idx] = np.zeros((10000, 10000))
-            output = np.dot(self.synapses[input_idx], input_value)
-            outputs.append(output)
-        return np.concatenate(outputs)
+    def connect(self, neuron1, neuron2):
+        if neuron1 not in self.synapses:
+            self.synapses[neuron1] = {}
+        if neuron2 not in self.synapses[neuron1]:
+            self.synapses[neuron1][neuron2] = 0
+        if neuron2 not in self.neurons:
+            self.neurons[neuron2] = 0
 
-    def learn(self, inputs, outputs):
-        for input_idx, input_value in enumerate(inputs):
-            if input_idx not in self.synapses:
-                self.synapses[input_idx] = np.zeros((10000, 10000))
-            self.synapses[input_idx][np.arange(10000), :] += input_value
-            self.weights[input_idx] = np.mean(self.synapses[input_idx], axis=0)
-        return self.weights
+    def fire(self, neuron):
+        if neuron in self.synapses:
+            for connected_neuron, strength in self.synapses[neuron].items():
+                self.neurons[connected_neuron] += strength
+        if neuron not in self.neurons:
+            self.neurons[neuron] = 0
+
+    def update(self):
+        for neuron, value in self.neurons.items():
+            if value > 1:
+                self.fire(neuron)
+                self.neurons[neuron] = 0
