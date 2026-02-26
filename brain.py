@@ -1,13 +1,12 @@
-import numpy as np
+def main():
+    brain = Brain()
+    brain.add_layer(Layer(np.array([[1, 2]]), np.array([1])))
+    brain.add_optimizer(Optimizer(0.01))
 
-class Brain:
-    def __init__(self, num_neurons, num_synapses):
-        self.num_neurons = num_neurons
-        self.num_synapses = num_synapses
-        self.neurons = np.random.rand(num_neurons)
-        self.synapses = np.random.rand(num_synapses)
+    inputs = np.array([[1, 2], [3, 4]])
+    targets = np.array([1, 2])
 
-    def process(self, input_data):
-        for i in range(self.num_neurons):
-            self.neurons[i] += np.sum(self.synapses[i] * input_data)
-        return self.neurons
+    brain.train(inputs, targets)
+
+if __name__ == "__main__":
+    main()
