@@ -1,19 +1,18 @@
 import numpy as np
-import numba
 
-@numba.jit(nopython=True)
 class Brain:
-    def __init__(self, size):
-        self.size = size
-        self.neurons = np.zeros((size, size), dtype=np.float32)
+    def __init__(self, num_neurons, num_synapses):
+        self.num_neurons = num_neurons
+        self.num_synapses = num_synapses
+        self.synaptic_weights = np.random.rand(num_synapses)
 
-    def process(self, inputs):
-        for i in range(self.size):
-            for j in range(self.size):
-                if inputs[j] > 0:
-                    self.neurons[i, j] += 1
-                else:
-                    self.neurons[i, j] -= 1
+    def compute(self, inputs):
+        outputs = np.zeros(self.num_neurons)
+        for i in range(self.num_synapses):
+            outputs += self.synaptic_weights[i] * inputs[i]
+        return outputs
 
-    def get_output(self):
-        return np.sum(self.neurons, axis=0)
+    def mutate(self, mutation_rate):
+        for i in range(self.num_synapses):
+            if np.random.rand() < mutation_rate:
+                self.synaptic_weights[i] = np.random.rand()
