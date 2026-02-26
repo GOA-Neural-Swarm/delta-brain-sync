@@ -1,32 +1,21 @@
-# TARGET: brain.py
-
-class OptimizedBrain(Brain):
+class Brain:
     def __init__(self):
-        super().__init__()
-        self.weights = collections.defaultdict(dict)
-        self.biases = collections.defaultdict(dict)
+        self.synapses = {}  # dict for fast lookup
 
-    def add_synapse(self, neuron_id1, neuron_id2, weight):
-        self.weights[neuron_id1][neuron_id2] = weight
+    def connect(self, neuron1, neuron2, weight):
+        self.synapses[(neuron1, neuron2)] = weight
 
-    def add_bias(self, neuron_id, bias):
-        self.biases[neuron_id] = bias
+    def fire(self, neuron):
+        for synapse, weight in self.synapses.items():
+            if synapse[0] == neuron:
+                self.synapses[synapse] = weight + 1
+                break
 
-# Use parallel processing for faster computation
-import concurrent.futures
+    def propagate(self, neuron):
+        for synapse, weight in self.synapses.items():
+            if synapse[1] == neuron:
+                self.synapses[synapse] = weight + 1
+                break
 
-class ParallelBrain(Brain):
-    def process(self, input_data):
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [executor.submit(sigmoid, neuron) for neuron in input_data]
-            processed_data = [future.result() for future in futures]
-        return processed_data
-
-# Use GPU acceleration for faster computation
-import tensorflow as tf
-
-class GPUBrain(Brain):
-    def process(self, input_data):
-        with tf.device('/GPU:0'):
-            processed_data = tf.map_elements(sigmoid, input_data)
-        return processed_data.numpy()
+    def get_weight(self, neuron1, neuron2):
+        return self.synapses.get((neuron1, neuron2), 0)
