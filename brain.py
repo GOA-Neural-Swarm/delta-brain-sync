@@ -2,26 +2,21 @@ import numpy as np
 
 class Brain:
     def __init__(self):
-        self.synapses = {}
+        self.synaptic_weights = 2 * np.random.random((3, 1)) - 1
+        self.learning_rate = 0.1
 
-    def connect(self, neuron1, neuron2, weight):
-        if neuron1 not in self.synapses:
-            self.synapses[neuron1] = {}
-        self.synapses[neuron1][neuron2] = weight
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-    def fire(self, neuron):
-        if neuron not in self.synapses:
-            return np.zeros(())
-        sum = 0
-        for connected_neuron, weight in self.synapses[neuron].items():
-            sum += weight * self.fire(connected_neuron)
-        if sum > 0:
-            return np.ones(() * sum)
-        else:
-            return np.zeros(())
+    def derivative(self, x):
+        return x * (1 - x)
 
-    def process(self, inputs):
-        outputs = {}
-        for neuron, input_value in inputs.items():
-            outputs[neuron] = self.fire(neuron) * input_value
-        return outputs
+    def think(self, inputs):
+        output = np.dot(inputs, self.synaptic_weights)
+        return self.sigmoid(output)
+
+    def train(self, inputs, output):
+        output = self.think(inputs)
+        error = output - output
+        adjustment = error * self.derivative(output) * self.learning_rate
+        self.synaptic_weights += adjustment
