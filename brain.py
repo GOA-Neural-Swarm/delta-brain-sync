@@ -1,25 +1,29 @@
+import numpy as np
+
 class Brain:
     def __init__(self):
-        self.weights = {}
-        self.biases = {}
-        self.neurons = {}
+        self.weights = np.random.rand(10, 10)
+        self.biases = np.random.rand(10)
 
-    def add_neuron(self, id):
-        self.neurons[id] = {'output': 0, 'weights': {}, 'bias': 0}
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-    def add_connection(self, neuron_id, target_id, weight):
-        if neuron_id not in self.neurons:
-            self.add_neuron(neuron_id)
-        if target_id not in self.neurons:
-            self.add_neuron(target_id)
-        self.neurons[neuron_id]['weights'][target_id] = weight
-        self.neurons[target_id]['weights'][neuron_id] = weight
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-    def propagate(self):
-        for neuron_id in self.neurons:
-            if neuron_id in self.neurons[neuron_id]['weights']:
-                for target_id, weight in self.neurons[neuron_id]['weights'].items():
-                    self.neurons[neuron_id]['output'] += self.neurons[target_id]['output'] * weight
-                self.neurons[neuron_id]['output'] += self.neurons[neuron_id]['bias']
-            else:
-                self.neurons[neuron_id]['output'] = self.neurons[neuron_id]['bias']
+    def train(self, inputs, targets):
+        inputs = np.array(inputs)
+        targets = np.array(targets)
+
+        for i in range(1000):
+            hidden_layer = np.dot(inputs, self.weights) + self.biases
+            outputs = self.sigmoid(hidden_layer)
+
+            error = targets - outputs
+            self.weights += np.dot(inputs.T, error * self.sigmoid_derivative(outputs))
+            self.biases += error.mean()
+
+    def think(self, inputs):
+        inputs = np.array(inputs)
+        hidden_layer = np.dot(inputs, self.weights) + self.biases
+        return self.sigmoid(hidden_layer)
