@@ -1,14 +1,11 @@
 import numpy as np
+from typing import List
 
 class Brain:
-    def __init__(self, neurons=1000, synapses=1000000):
-        self.neurons = np.random.rand(neurons)
-        self.synapses = np.random.rand(synapses)
+    def __init__(self, num_neurons: int):
+        self.neurons: List[np.ndarray] = [np.zeros((num_neurons,)) for _ in range(num_neurons)]
 
-    def process(self, inputs):
-        outputs = np.zeros_like(self.neurons)
-        for i in range(len(self.neurons)):
-            for j in range(len(self.synapses)):
-                if self.synapses[j] == i:
-                    outputs[i] += inputs[j]
-        return outputs
+    def process(self, inputs: List[float]) -> List[float]:
+        for i, input_value in enumerate(inputs):
+            self.neurons[i] += input_value
+        return [np.tanh(neuron) for neuron in self.neurons]
