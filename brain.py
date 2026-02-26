@@ -1,24 +1,21 @@
-import numpy as np
-
 class Brain:
-    def __init__(self, neurons, synapses):
-        self.neurons = neurons
-        self.synapses = synapses
-        self.firing_neurons = []
+    def __init__(self, num_neurons, num_synapses):
+        self._neurons = [0.0] * num_neurons
+        self._synapses = [[0.0] * num_synapses for _ in range(num_neurons)]
 
-    def fire(self, inputs):
-        for neuron in self.neurons:
-            if neuron.fire(inputs):
-                self.firing_neurons.append(neuron)
-        return self.firing_neurons
+    def activate(self, input_signal):
+        for i, neuron in enumerate(self._neurons):
+            self._neurons[i] = sum(self._synapses[i][j] * input_signal[j] for j in range(len(input_signal))) + neuron
 
-    def propagate(self, firing_neurons):
-        for neuron in self.synapses:
-            neuron.update(firing_neurons)
+    def propagate(self, input_signal):
+        self.activate(input_signal)
 
-    def update_neurons(self, firing_neurons):
-        for neuron in firing_neurons:
-            neuron.update()
+    def learn(self, input_signal, desired_output):
+        error = sum((self._neurons[i] - desired_output[i]) ** 2 for i in range(len(desired_output)))
+        for i, neuron in enumerate(self._neurons):
+            for j in range(len(input_signal)):
+                self._synapses[i][j] += error * input_signal[j] * (self._neurons[i] - desired_output[i])
 
-    def reset(self):
-        self.firing_neurons = []
+    def get_output(self, input_signal):
+        self.propagate(input_signal)
+        return self._neurons
