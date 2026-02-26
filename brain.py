@@ -1,12 +1,27 @@
+import numba
 import numpy as np
-class Neuron:
-    def __init__(self, activation):
-        self.activation = activation
-        self.weights = None
-    def __call__(self, inputs):
-        return np.tanh(np.dot(inputs, self.weights)) if self.weights else np.tanh(inputs[0])
 
-# Optimizations
-Brain.add_layer = np.vectorize(Brain.add_layer)
-Brain.connect_layers = np.vectorize(Brain.connect_layers)
-Brain.process = np.vectorize(Brain.process)
+@numba.jit(nopython=True)
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+class Brain:
+    def __init__(self):
+        self.synapses = {}
+
+    def process(self, inputs):
+        outputs = {}
+        for input_key, input_value in inputs.items():
+            if input_key in self.synapses:
+                output_value = self.synapses[input_key](input_value)
+                outputs[input_key] = output_value
+            else:
+                outputs[input_key] = input_value
+        return outputs
+
+    def add_synapse(self, input_key, input_function):
+        self.synapses[input_key] = input_function
+
+    def optimize_synapses(self):
+        for key, value in self.synapses.items():
+            self.synapses[key] = numba.jit(value)
