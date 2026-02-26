@@ -1,14 +1,11 @@
 class Brain:
     def __init__(self):
-        self.neurons = {}
-        self.connections = []
+        self.neurons = np.zeros(1000)
+        self.weights = np.random.rand(1000, 1000)
+        self.cache = np.zeros(1000)
 
-    def add_neuron(self, id, value):
-        self.neurons[id] = value
-
-    def add_connection(self, from_neuron, to_neuron, weight):
-        self.connections.append((from_neuron, to_neuron, weight))
-
-    def process(self):
-        for from_neuron, to_neuron, weight in self.connections:
-            self.neurons[to_neuron] += self.neurons[from_neuron] * weight
+    def process(self, inputs):
+        self.neurons[:] = inputs
+        self.neurons += np.dot(self.weights, self.neurons)
+        self.cache[:] = self.neurons
+        return self.neurons
