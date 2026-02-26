@@ -1,22 +1,23 @@
-from collections import defaultdict
-import math
-
 class Brain:
     def __init__(self):
-        self.memory = defaultdict(dict)
-        self.synapses = defaultdict(dict)
-        self.weights = defaultdict(dict)
+        self.synapses = {}
+        self.neurons = []
 
-    def process(self, input_data):
-        for neuron, value in input_data.items():
-            for connected_neuron, weight in self.weights[neuron].items():
-                self.synapses[neuron][connected_neuron] = value * weight
-            self.memory[neuron] = self.synapses[neuron]
-            self.synapses[neuron] = defaultdict(dict)
+    def create_synapse(self, neuron1, neuron2):
+        if (neuron1, neuron2) in self.synapses:
+            return
+        self.synapses[(neuron1, neuron2)] = 0
+        self.synapses[(neuron2, neuron1)] = 0
 
-    def retrieve(self, neuron):
-        return self.memory[neuron].copy()
+    def fire_synapse(self, neuron1, neuron2):
+        if (neuron1, neuron2) not in self.synapses:
+            return
+        self.synapses[(neuron1, neuron2)] += 1
+        if self.synapses[(neuron1, neuron2)] >= 10:
+            self.synapses[(neuron1, neuron2)] = 0
 
-    def update_weights(self, neuron, connected_neuron, weight):
-        self.weights[neuron][connected_neuron] = weight
-        self.synapses[neuron][connected_neuron] = self.memory[neuron][connected_neuron] * weight
+    def think(self):
+        for neuron in self.neurons:
+            for other in self.neurons:
+                if neuron!= other:
+                    self.fire_synapse(neuron, other)
