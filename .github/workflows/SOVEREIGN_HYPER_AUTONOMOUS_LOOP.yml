@@ -18,7 +18,7 @@ concurrency:
 jobs:
   evolution_cycle:
     runs-on: ubuntu-latest
-    timeout-minutes: 60 # AI Processing အတွက် ၁ နာရီအထိ တိုးပေးထားတယ်
+    timeout-minutes: 60
 
     steps:
       - name: Step 1 - Initialize Sovereign Source
@@ -44,10 +44,11 @@ jobs:
           huggingface_hub diffusers safetensors Pillow
           npm install pg @supabase/supabase-js firebase-admin
 
-      - name: Step 4 - Trigger Kaggle Evolution (Step 1 & 2: GPU Training)
+      - name: Step 4 - Trigger Kaggle Evolution (Steps 1, 2 & 3 Support)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          # Kaggle ကနေ GitHub ဆီ ပြန် Push ဖို့ Token ကို Environment မှာ ထည့်ပေးထားတယ်
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           mkdir -p ~/.kaggle
@@ -70,10 +71,9 @@ jobs:
             "enable_internet": true
           }
           EOF
-          # Kaggle ဆီ Push မယ် (GPU က brain.py ကို evolve လုပ်ပြီး GitHub ဆီ ပြန် push ဖို့ logic ကို main.py ထဲ ထည့်ထားရမယ်)
           kaggle kernels push -p kaggle_brain
 
-      - name: Step 5 - Run Trinity Sync Engine (Step 4: Cloud Data Ingestion)
+      - name: Step 5 - Run Trinity Sync Engine (Step 4: Sync to Neon/Firebase/Supabase)
         env:
           NEON_KEY: ${{ secrets.NEON_KEY }}
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
@@ -83,7 +83,7 @@ jobs:
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          # Kaggle က ပြန်ပို့လိုက်တဲ့ brain.py အသစ်ကို သုံးပြီး DB Sync လုပ်မယ်
+          # Kaggle ကနေ Evolution လုပ်ပြီး ပြန်ပို့လိုက်တဲ့ brain.py နဲ့ Sync လုပ်မယ်
           if [ -f "delta_sync.js" ]; then
             node delta_sync.js
           fi
@@ -91,32 +91,30 @@ jobs:
             python brain.py --mode sync || echo "Sync skipped"
           fi
 
-      - name: Step 6 - Self-Coding Evolution (Step 5: Hyper-Autonomous Self-Coding)
+      - name: Step 6 - Self-Coding Evolution (Step 5: Full Hyper-Autonomous Upgrade)
         timeout-minutes: 20
         env:
           DATABASE_URL: ${{ secrets.NEON_DB_URL }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          EXECUTION_ENV: "GITHUB_ACTIONS" # Hang မဖြစ်အောင် main.py ကို ဒါလှမ်းပြောမယ်
+          EXECUTION_ENV: "GITHUB_ACTIONS"
         run: |
-          # AI က Cloud ကရတဲ့ Data တွေကိုယူပြီး သူ့ကိုယ်သူ ပြန်ရေးမယ်
-          # Note: GitHub ပေါ်မှာဆိုရင် API (Groq/HF) သုံးပြီး code ပြင်ခိုင်းတာက RAM မစားဘဲ ပိုမြန်တယ်
+          # AI က Cloud DB တွေက data ကိုယူပြီး main.py နဲ့ brain.py ကို upgrade လုပ်မယ်
           if [ -f "app.py" ]; then python app.py || echo "App.py failed"; fi
           if [ -f "main.py" ]; then python main.py --mode evolve || echo "Evolution skipped"; fi
 
-      - name: Step 7 - Manifest Autonomous State (GitHub Push)
+      - name: Step 7 - Manifest Autonomous State (Final Push)
         env:
           CUSTOM_GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
-          
           git remote set-url origin "https://x-access-token:${CUSTOM_GH_TOKEN}@github.com/${{ github.repository }}.git"
           
           git add .
           if ! git diff-index --quiet HEAD; then
-            git commit -m "🧬 [HYPER_EVOLUTION] Loop Completed: $(date +'%Y-%m-%d %H:%M:%S') [skip ci]"
+            git commit -m "🧬 [HYPER_EVOLUTION] Cycle Completed: $(date +'%Y-%m-%d %H:%M:%S') [skip ci]"
             git push origin main --force
           else
             echo "STATE_STABLE: No structural evolution required."
