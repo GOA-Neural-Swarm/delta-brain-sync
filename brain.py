@@ -1,26 +1,27 @@
 import numpy as np
 
 class Brain:
-    def __init__(self):
-        self.synapses = {}
+    def __init__(self, layers):
+        self.layers = layers
+        self.weights = [np.random.rand(layers[i+1], layers[i]) for i in range(len(layers)-1)]
+        self.biases = [np.random.rand(layers[i+1], 1) for i in range(len(layers)-1)]
 
-    def connect(self, neuron1, neuron2):
-        if (neuron1, neuron2) in self.synapses:
-            self.synapses[(neuron1, neuron2)]['weight'] += 1
-        else:
-            self.synapses[(neuron1, neuron2)] = {'weight': 1}
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-    def fire(self, neuron):
-        fired_synapses = []
-        for synapse in self.synapses:
-            if synapse[0] == neuron:
-                fired_synapses.append(synapse)
-        for synapse in fired_synapses:
-            self.connect(synapse[0], synapse[1])
-        return np.sum([synapse['weight'] for synapse in fired_synapses])
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-    def run(self, neurons):
-        results = []
-        for neuron in neurons:
-            results.append(self.fire(neuron))
-        return results
+    def forward_pass(self, inputs):
+        outputs = inputs
+        for i in range(len(self.layers)-1):
+            outputs = self.sigmoid(np.dot(self.weights[i], outputs) + self.biases[i])
+        return outputs
+
+    def backpropagate(self, inputs, targets):
+        outputs = self.forward_pass(inputs)
+        errors = targets - outputs
+        for i in range(len(self.layers)-1, 0, -1):
+            errors = errors * self.sigmoid_derivative(outputs)
+            outputs = np.dot(self.weights[i-1].T, errors)
+        return errors
