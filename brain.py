@@ -1,24 +1,25 @@
-import numpy as np
-
 class Brain:
     def __init__(self, neurons, synapses):
         self.neurons = neurons
         self.synapses = synapses
-        self.firing_neurons = []
+        self.deltas = [0] * len(neurons)
 
-    def fire(self, inputs):
-        for neuron in self.neurons:
-            if neuron.fire(inputs):
-                self.firing_neurons.append(neuron)
-        return self.firing_neurons
+    def propagate(self, inputs):
+        for i, neuron in enumerate(self.neurons):
+            neuron['output'] = neuron.get('threshold', 0)  # cache threshold
+            for j, synapse in enumerate(self.synapses[i]):
+                neuron['output'] += synapse['weight'] * inputs[j]
+            if neuron['output'] > neuron.get('threshold', 0):
+                neuron['output'] = 1
+            else:
+                neuron['output'] = 0
 
-    def propagate(self, firing_neurons):
-        for neuron in self.synapses:
-            neuron.update(firing_neurons)
+    def update(self, targets):
+        for i, neuron in enumerate(self.neurons):
+            error = targets[i] - neuron['output']
+            self.deltas[i] = error
+            for j, synapse in enumerate(self.synapses[i]):
+                synapse['weight'] += error * synapse['learning_rate'] * neuron['output']
 
-    def update_neurons(self, firing_neurons):
-        for neuron in firing_neurons:
-            neuron.update()
-
-    def reset(self):
-        self.firing_neurons = []
+    def __repr__(self):
+        return f'Brain(neurons={len(self.neurons)}, synapses={len(self.synapses)})'
