@@ -1,37 +1,23 @@
+# TARGET: brain.py
+
 import numpy as np
-from scipy.optimize import minimize
 
 class Brain:
-    def __init__(self, neurons):
-        self.neurons = neurons
-        self.synaptic_weights = np.random.rand(neurons, neurons)
-        self.synaptic_thresholds = np.random.rand(neurons)
+    def __init__(self):
+        self.weights = np.random.rand(100, 100)
+        self.biases = np.random.rand(100)
 
-    def fire(self, input_array):
-        output_array = np.zeros(self.neurons)
-        for i in range(self.neurons):
-            output_array[i] = self.calculate_output(i, input_array)
-        return output_array
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-    def calculate_output(self, neuron_index, input_array):
-        sum_of_inputs = np.dot(self.synaptic_weights[neuron_index], input_array)
-        output = np.where(sum_of_inputs > self.synaptic_thresholds[neuron_index], 1, 0)
-        return output
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
-    def learn(self, input_array, target_output):
-        error = np.mean((self.fire(input_array) - target_output) ** 2)
-        gradients = np.zeros((self.neurons, self.neurons))
-        for i in range(self.neurons):
-            for j in range(self.neurons):
-                gradients[i, j] = -2 * (self.fire(input_array)[i] - target_output[i]) * self.fire(input_array)[j]
-        self.synaptic_weights -= 0.1 * gradients
-        return error
-
-    def optimize(self, input_array, target_output):
-        error = np.inf
-        while error > 1e-6:
-            error = self.learn(input_array, target_output)
-        return error
-
-    def generate_synaptic_weights(self):
-        return self.synaptic_weights
+    def train(self, inputs, outputs):
+        learning_rate = 0.01
+        for i in range(1000):
+            for j in range(len(inputs)):
+                layer_1 = self.sigmoid(np.dot(inputs[j], self.weights) + self.biases)
+                layer_2 = self.sigmoid(np.dot(layer_1, self.weights) + self.biases)
+                layer_2_error = outputs[j] - layer_2
+                layer_2_delta = layer_2_error
