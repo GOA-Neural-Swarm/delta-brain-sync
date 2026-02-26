@@ -1,27 +1,27 @@
-import numpy as np
+class Neuron:
+    def __init__(self, id):
+        self.id = id
+        self.output = 0
+        self.inputs = []
 
-class Brain:
-    def __init__(self):
-        self.neurons = []
-        self.connections = {}
+    def add_input(self, input_neuron):
+        self.inputs.append(input_neuron)
 
-    def add_neuron(self, neuron_id):
-        if neuron_id not in self.neurons:
-            self.neurons.append(neuron_id)
-            self.connections[neuron_id] = {}
+    def update(self):
+        self.output = self.calculate_output()
+        for input_neuron in self.inputs:
+            input_neuron.add_output(self)
 
-    def connect_neurons(self, neuron_id1, neuron_id2, weight):
-        if neuron_id1 in self.neurons and neuron_id2 in self.neurons:
-            self.connections[neuron_id1][neuron_id2] = weight
+    def calculate_output(self):
+        # Optimized calculation for high-speed neural processing
+        return sum(input_neuron.output for input_neuron in self.inputs)
 
-    def process(self, inputs):
-        for neuron_id, input_value in inputs.items():
-            if neuron_id in self.neurons:
-                if neuron_id not in self.connections:
-                    self.add_neuron(neuron_id)
-                output = np.dot([input_value], [self.connections.get(neuron_id, {}).get(neuron_id, 0)])
-                self.connections[neuron_id][neuron_id] = output
-                yield output
+class Connection:
+    def __init__(self, neuron1, neuron2):
+        self.neuron1 = neuron1
+        self.neuron2 = neuron2
+        self.weight = 1
 
-    def get_connections(self, neuron_id):
-        return self.connections.get(neuron_id, {})
+    def propagate(self):
+        self.neuron2.add_input(self.neuron1)
+        self.neuron1.output *= self.weight
