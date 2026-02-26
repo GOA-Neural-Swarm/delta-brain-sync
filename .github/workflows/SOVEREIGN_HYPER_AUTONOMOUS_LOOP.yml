@@ -3,6 +3,10 @@ name: SOVEREIGN_HYPER_AUTONOMOUS_LOOP
 on:
   push:
     branches: [main]
+    paths:
+      - 'main.py'
+      - 'brain.py'
+      - 'sync_data.py'
   schedule:
     - cron: '*/30 * * * *'
   workflow_dispatch:
@@ -19,44 +23,54 @@ jobs:
         with:
           token: ${{ secrets.GH_TOKEN }}
 
-      - name: Step 2 - Heavy Task Offload (Kaggle GPU)
+      - name: Step 2 - Heavy Task Offload (Kaggle GPU Evolution)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
           mkdir -p ~/.kaggle
-          echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
+          printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
+          # GitHub ကနေ Kaggle ဆီ Instruction လှမ်းပို့ပြီ
           kaggle kernels push -p . || echo "Kaggle Triggered"
 
-      - name: Step 3 - Cloud Sync Engine (Neon/Firebase/Supabase)
+      - name: Step 3 - Natural Sync Window (Kaggle to GitHub)
+        run: |
+          # Kaggle က brain.py ကို evolve လုပ်ပြီး GitHub ဆီ push ဖို့ အချိန်ခဏပေးမယ်
+          echo "Waiting for Kaggle Intelligence to manifest..."
+          sleep 45
+
+      - name: Step 4 - Trinity Sync Engine (Memory Ingestion)
         env:
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          # Indentation ကို ညှိထားတယ်
-          if [ -f "brain.py" ]; then
-            python -c "print('Syncing Memory...')" || echo "Sync skipped"
+          # Kaggle ကနေ ပြန်ရောက်လာတဲ့ intelligence (brain.py) နဲ့ DB Sync လုပ်မယ်
+          if [ -f "sync_data.py" ]; then
+            python sync_data.py
+          elif [ -f "brain.py" ]; then
+            python -c "try: from brain import sync_data; sync_data(); print('Sync Done'); except: print('Sync skipped')"
           fi
 
-      - name: Step 4 - API-Driven Self Coding (Groq AI)
+      - name: Step 5 - Hyper-Autonomous Self-Coding (Groq AI)
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
-          # Groq API သုံးပြီး main.py ကို update လုပ်မယ်
+          # Groq API နဲ့ main.py/brain.py ကို logic အဆင့်မြှင့်မယ်
+          # ဒါက RAM လုံးဝမစားဘဲ ဉာဏ်ရည်ကို အဆင့်မြှင့်တဲ့နည်းလမ်း
           curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" \
             -H "Authorization: Bearer $GROQ_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
               "model": "llama3-70b-8192",
-              "messages": [{"role": "user", "content": "Analyze existing main.py and brain.py. Upgrade their logic for better swarm intelligence and database sync. Output only the full code."}]
-            }' | jq -r '.choices[0].message.content' > main_new.py
+              "messages": [{"role": "user", "content": "Analyze existing main.py and brain.py. Based on DB schema, upgrade their logic for autonomous self-evolution. Output only full code."}]
+            }' | jq -r '.choices[0].message.content' > main_evolved.py
           
-          if [ -s main_new.py ]; then mv main_new.py main.py; fi
+          if [ -s main_evolved.py ]; then mv main_evolved.py main.py; fi
 
-      - name: Step 5 - Manifest Sovereign State
+      - name: Step 6 - Manifest Sovereign State (Final Push)
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
@@ -64,5 +78,7 @@ jobs:
           git config --global user.email 'bot@sovereign.ai'
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git add .
-          git commit -m "🧬 [HYPER_EVOLUTION] Full Cycle Manifested [skip ci]" || exit 0
-          git push origin main --force
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "🧬 [HYPER_EVOLUTION] Full Cycle Manifested: $(date) [skip ci]"
+            git push origin main --force
+          fi
