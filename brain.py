@@ -1,16 +1,14 @@
 import numpy as np
 
 class Brain:
-    def __init__(self, neurons):
-        self.neurons = neurons
-        self.weights = np.random.rand(neurons, neurons)
+    def __init__(self, neurons=1000, synapses=1000000):
+        self.neurons = np.random.rand(neurons)
+        self.synapses = np.random.rand(synapses)
 
-    def propagate(self, inputs):
-        outputs = np.dot(inputs, self.weights)
+    def process(self, inputs):
+        outputs = np.zeros_like(self.neurons)
+        for i in range(len(self.neurons)):
+            for j in range(len(self.synapses)):
+                if self.synapses[j] == i:
+                    outputs[i] += inputs[j]
         return outputs
-
-    def learn(self, inputs, targets):
-        outputs = self.propagate(inputs)
-        errors = targets - outputs
-        self.weights += np.dot(inputs.T, errors)
-        return outputs, errors
