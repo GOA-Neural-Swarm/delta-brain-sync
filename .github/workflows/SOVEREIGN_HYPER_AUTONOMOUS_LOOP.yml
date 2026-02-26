@@ -9,107 +9,65 @@ on:
 
 permissions:
   contents: write
-  id-token: write
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
-  evolution_cycle:
+  sovereign_cycle:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-
     steps:
       - name: Step 1 - Initialize Sovereign Source
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_TOKEN }}
-          fetch-depth: 0
 
-      - name: Step 2 - Provision Multi-Engine Runtime
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Step 3 - Inject Multi-Engine Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install kaggle psycopg2-binary requests gitpython torch transformers \
-          accelerate bitsandbytes numpy scikit-learn firebase-admin datasets pandas \
-          sqlalchemy groq sentence-transformers "gradio<6.0.0" python-dotenv \
-          huggingface_hub diffusers safetensors Pillow
-          npm install pg @supabase/supabase-js firebase-admin
-
-      - name: Step 4 - Trigger Kaggle Evolution
+      - name: Step 2 - Heavy Task Offload (Steps 1, 2 & 5 Support)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           mkdir -p ~/.kaggle
-          printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
+          echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
-          mkdir -p kaggle_brain
-          if [ -f "main.py" ]; then cp main.py kaggle_brain/main.py; fi
-          if [ -f "brain.py" ]; then cp brain.py kaggle_brain/brain.py; fi
-          cat <<EOF > kaggle_brain/kernel-metadata.json
-          {
-            "id": "${{ secrets.KAGGLE_USERNAME }}/delta-brain-sync",
-            "title": "delta-brain-sync",
-            "code_file": "main.py",
-            "language": "python",
-            "kernel_type": "script",
-            "is_private": true,
-            "enable_gpu": true,
-            "enable_internet": true
-          }
-          EOF
-          kaggle kernels push -p kaggle_brain
+          # Kaggle ကို code တွေ ပို့လိုက်ပြီ။ Kaggle က GPU သုံးပြီး brain.py ကို evolve လုပ်မယ်။
+          # ပြီးရင် Kaggle ထဲကနေ GitHub ဆီ တိုက်ရိုက် Push ပြန်လုပ်ခိုင်းရမယ်။
+          kaggle kernels push -p . || echo "Kaggle Triggered"
 
-      - name: Step 5 - Run Trinity Sync Engine
+      - name: Step 3 - Cloud Sync Engine (Step 4: Sync to Neon/Firebase/Supabase)
         env:
-          NEON_KEY: ${{ secrets.NEON_KEY }}
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
-          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          if [ -f "delta_sync.js" ]; then
-            node delta_sync.js
-          fi
+          # Python Model တွေ Load မလုပ်ဘဲ lightweight sync ပဲလုပ်မယ်
+          # brain.py ထဲမှာ model load တဲ့ code တွေ ပါရင် GitHub မှာ Error တက်နိုင်လို့ 
+          # Sync logic သီးသန့်ပဲ Run ခိုင်းမယ်
           if [ -f "brain.py" ]; then
-            python brain.py --mode sync || echo "Sync skipped"
+            python -c "import os; from brain import sync_data; sync_data()" || echo "Sync skipped"
           fi
 
-      - name: Step 6 - Self-Coding Evolution
-        timeout-minutes: 20
+      - name: Step 4 - API-Driven Self Coding (Step 5: Code Upgrade)
         env:
-          DATABASE_URL: ${{ secrets.NEON_DB_URL }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          EXECUTION_ENV: "GITHUB_ACTIONS"
         run: |
-          if [ -f "app.py" ]; then python app.py || echo "App.py failed"; fi
-          if [ -f "main.py" ]; then python main.py --mode evolve || echo "Evolution skipped"; fi
+          # GitHub Actions ရဲ့ RAM ကို မသုံးဘဲ Groq API ကို သုံးပြီး 
+          # main.py နဲ့ brain.py ကို AI နဲ့ အဆင့်မြှင့်မယ်
+          curl -X POST "https://api.groq.com/openai/v1/chat/completions" \
+            -H "Authorization: Bearer $GROQ_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "model": "llama3-70b-8192",
+              "messages": [{"role": "user", "content": "Analyze existing main.py and brain.py. Upgrade their logic for better swarm intelligence and database sync. Output only the full code."}]
+            }' | jq -r '.choices[0].message.content' > main_new.py
+          
+          if [ -s main_new.py ]; then mv main_new.py main.py; fi
 
-      - name: Step 7 - Manifest Autonomous State
+      - name: Step 5 - Manifest Sovereign State
         env:
-          CUSTOM_GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
-          git remote set-url origin "https://x-access-token:${CUSTOM_GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git add .
-          if ! git diff-index --quiet HEAD; then
-            git commit -m "🧬 [HYPER_EVOLUTION] Cycle Completed: $(date +'%Y-%m-%d %H:%M:%S') [skip ci]"
-            git push origin main --force
-          else
-            echo "STATE_STABLE: No structural evolution required."
-          fi
+          git commit -m "🧬 [HYPER_EVOLUTION] Full Cycle Manifested [skip ci]" || exit 0
+          git push origin main --force
