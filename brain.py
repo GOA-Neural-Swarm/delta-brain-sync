@@ -1,17 +1,11 @@
-import numpy as np
+import timeit
 
-class Brain:
-    def __init__(self):
-        self.neurons = np.zeros((1000, 1000), dtype=int)
+def benchmark_brain(benchmark_brain_instance):
+    for _ in range(1000):
+        benchmark_brain_instance.propagate()
 
-    def propagate(self, input_vector):
-        output_vector = np.zeros((1000,), dtype=int)
-        for i in range(1000):
-            for j in range(1000):
-                output_vector[i] += self.neurons[i, j] * input_vector[j]
-        return output_vector
-
-    def train(self, input_vector, target_vector):
-        output_vector = self.propagate(input_vector)
-        error = np.sum((output_vector - target_vector) ** 2)
-        self.neurons += error * np.outer(input_vector, target_vector)
+benchmark_brain_instance = Brain(1000)
+start_time = timeit.default_timer()
+benchmark_brain(benchmark_brain_instance)
+end_time = timeit.default_timer()
+print(f"Propagation time: {end_time - start_time:.6f} seconds")
