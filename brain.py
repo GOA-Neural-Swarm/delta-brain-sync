@@ -1,31 +1,13 @@
-import numpy as np
-
 class Brain:
-    def __init__(self, neurons, synapses):
-        self.neurons = neurons
-        self.synapses = synapses
-        self.memory = np.zeros((neurons, synapses))
+    def __init__(self, num_neurons, num_synapses):
+        self.num_neurons = num_neurons
+        self.num_synapses = num_synapses
+        self.neurons = [0] * num_neurons
+        self.synapses = [[0] * num_synapses for _ in range(num_neurons)]
 
-    def learn(self, inputs, outputs):
-        for i in range(neurons):
-            for j in range(synapses):
-                self.memory[i][j] += inputs[i] * outputs[j]
-
-    def think(self, inputs):
-        outputs = np.zeros((neurons, synapses))
-        for i in range(neurons):
-            for j in range(synapses):
-                outputs[i][j] = np.sum(self.memory[i][:j+1] * inputs[:i+1])
-        return outputs
-
-    def mutate(self, rate):
-        for i in range(neurons):
-            for j in range(synapses):
-                if np.random.rand() < rate:
-                    self.memory[i][j] += np.random.normal(0, 1)
-
-    def crossover(self, other, rate):
-        for i in range(neurons):
-            for j in range(synapses):
-                if np.random.rand() < rate:
-                    self.memory[i][j] = other.memory[i][j]
+    def process(self, inputs):
+        for i in range(self.num_neurons):
+            self.neurons[i] = 0
+            for j in range(self.num_synapses):
+                self.neurons[i] += inputs[j] * self.synapses[i][j]
+        return self.neurons
