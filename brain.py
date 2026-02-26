@@ -1,29 +1,29 @@
 import numpy as np
 
 class Brain:
-    def __init__(self, layers):
-        self.layers = layers
-        self.synapses = {}
-        for i in range(len(layers) - 1):
-            self.synapses[(i, i + 1)] = np.random.rand(layers[i], layers[i + 1])
+    def __init__(self):
+        self.weights = np.random.rand(10, 10)
+        self.biases = np.random.rand(10)
 
-    def forward_pass(self, inputs):
-        inputs = np.array(inputs)
-        outputs = inputs
-        for i, layer in enumerate(self.layers[1:]):
-            outputs = np.dot(outputs, self.synapses[(i, i + 1)])
-            outputs = self._activation(outputs)
-        return outputs
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
-    def _activation(self, x):
-        return np.tanh(x)
+    def sigmoid_derivative(self, x):
+        return x * (1 - x)
 
     def train(self, inputs, targets):
-        for i in range(len(self.layers) - 1):
-            layer_in = inputs
-            layer_out = self.synapses[(i, i + 1)]
-            layer_targets = targets
-            for j in range(len(layer_out)):
-                for k in range(len(layer_in)):
-                    error = layer_targets[j] - layer_out[j]
-                    self.synapses[(i, i + 1)][k, j] += 0.1 * error * layer_in[k]
+        inputs = np.array(inputs)
+        targets = np.array(targets)
+
+        for i in range(1000):
+            hidden_layer = np.dot(inputs, self.weights) + self.biases
+            outputs = self.sigmoid(hidden_layer)
+
+            error = targets - outputs
+            self.weights += np.dot(inputs.T, error * self.sigmoid_derivative(outputs))
+            self.biases += error.mean()
+
+    def think(self, inputs):
+        inputs = np.array(inputs)
+        hidden_layer = np.dot(inputs, self.weights) + self.biases
+        return self.sigmoid(hidden_layer)
