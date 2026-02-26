@@ -1,15 +1,29 @@
 import numpy as np
 
 class Brain:
-    def __init__(self, num_neurons, num_synapses):
-        self.num_neurons = num_neurons
-        self.num_synapses = num_synapses
-        self.synaptic_weights = np.random.rand(num_synapses, num_neurons)
+    def __init__(self):
+        self.synapses = {}
+        self.neurons = {}
 
-    def think(self, input_signal):
-        output_signal = np.dot(self.synaptic_weights, input_signal)
-        return output_signal
+    def add_synapse(self, neuron1, neuron2, weight):
+        if neuron1 not in self.synapses:
+            self.synapses[neuron1] = {}
+        self.synapses[neuron1][neuron2] = weight
 
-    def learn(self, input_signal, output_signal):
-        error = output_signal - self.think(input_signal)
-        self.synaptic_weights += error * input_signal
+    def add_neuron(self, neuron_id, activation_function):
+        self.neurons[neuron_id] = activation_function
+
+    def process_neural_signal(self, signal):
+        for neuron_id, activation_function in self.neurons.items():
+            if neuron_id in self.synapses:
+                for connected_neuron, weight in self.synapses[neuron_id].items():
+                    signal += weight * self.neurons[connected_neuron](signal)
+            else:
+                signal = self.neurons[neuron_id](signal)
+        return signal
+
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
+
+    def tanh(self, x):
+        return np.tanh(x)
