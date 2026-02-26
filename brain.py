@@ -1,19 +1,18 @@
 import numpy as np
-from typing import List, Tuple
 
 class Brain:
-    def __init__(self):
-        self.synapses: List[np.ndarray] = []
-        self.neurons: List[np.ndarray] = []
+    def __init__(self, num_neurons, num_synapses):
+        self.num_neurons = num_neurons
+        self.num_synapses = num_synapses
+        self.neurons = np.random.rand(num_neurons)
+        self.synapses = np.random.rand(num_synapses)
 
-    def add_synapse(self, synapse: np.ndarray):
-        self.synapses.append(synapse)
+    def process(self):
+        for i in range(self.num_neurons):
+            self.neurons[i] = np.sum(self.synapses[i] * self.neurons)
+        return self.neurons
 
-    def add_neuron(self, neuron: np.ndarray):
-        self.neurons.append(neuron)
-
-    def process(self) -> np.ndarray:
-        output = np.zeros_like(self.neurons[0])
-        for synapse, neuron in zip(self.synapses, self.neurons):
-            output += np.dot(synapse, neuron)
-        return output
+    def optimize(self):
+        for i in range(self.num_synapses):
+            self.synapses[i] = np.mean(self.synapses[i])
+        return self.synapses
