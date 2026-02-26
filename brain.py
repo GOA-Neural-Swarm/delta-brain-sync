@@ -1,20 +1,18 @@
 import numpy as np
-from numba import jit
 
 class Brain:
-    def __init__(self):
-        self.synapses = {}
+    def __init__(self, num_neurons, num_synapses):
+        self.num_neurons = num_neurons
+        self.num_synapses = num_synapses
+        self.neurons = np.zeros((num_neurons, num_synapses))
+        self.synapses = np.random.rand(num_synapses)
 
-    def connect(self, neuron1, neuron2):
-        if neuron1 not in self.synapses:
-            self.synapses[neuron1] = {}
-        self.synapses[neuron1][neuron2] = np.random.rand()
-
-    @jit(nopython=True)
-    def propagate(self, inputs):
-        outputs = {}
-        for neuron, value in inputs.items():
-            outputs[neuron] = 0
-            for synapse, strength in self.synapses.get(neuron, {}).items():
-                outputs[neuron] += strength * value
+    def fire(self, inputs):
+        outputs = np.zeros(self.num_neurons)
+        for i in range(self.num_neurons):
+            outputs[i] = np.sum(self.synapses * self.neurons[i])
         return outputs
+
+    def learn(self, inputs, outputs):
+        for i in range(self.num_neurons):
+            self.synapses[i] += np.dot(self.neurons[i], outputs[i]) * 0.1
