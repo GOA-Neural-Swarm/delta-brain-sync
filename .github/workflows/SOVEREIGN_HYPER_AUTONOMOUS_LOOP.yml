@@ -3,10 +3,6 @@ name: SOVEREIGN_HYPER_AUTONOMOUS_LOOP
 on:
   push:
     branches: [main]
-    paths:
-      - 'main.py'
-      - 'brain.py'
-      - 'sync_data.py'
   schedule:
     - cron: '*/30 * * * *'
   workflow_dispatch:
@@ -23,7 +19,15 @@ jobs:
         with:
           token: ${{ secrets.GH_TOKEN }}
 
-      - name: Step 2 - Heavy Task Offload (Kaggle GPU Evolution)
+      - name: Step 2 - Inject Multi-Engine Dependencies
+        run: |
+          # အဓိက လိုအပ်တဲ့ Tools တွေကို အရင်သွင်းမယ် (ဒါမှ Error မတက်မှာ)
+          python -m pip install --upgrade pip
+          pip install kaggle psycopg2-binary requests groq
+          # Kaggle command ကို path ထဲ ရောက်အောင် လုပ်မယ်
+          echo "export PATH=$PATH:/home/runner/.local/bin" >> $GITHUB_ENV
+
+      - name: Step 3 - Heavy Task Offload (Kaggle GPU Evolution)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
@@ -31,46 +35,44 @@ jobs:
           mkdir -p ~/.kaggle
           printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
-          # GitHub ကနေ Kaggle ဆီ Instruction လှမ်းပို့ပြီ
-          kaggle kernels push -p . || echo "Kaggle Triggered"
+          # Kaggle ကို Push မယ် (Kaggle command အလုပ်လုပ်ပြီ)
+          kaggle kernels push -p . || echo "Kaggle Busy"
 
-      - name: Step 3 - Natural Sync Window (Kaggle to GitHub)
+      - name: Step 4 - Natural Sync Window
         run: |
-          # Kaggle က brain.py ကို evolve လုပ်ပြီး GitHub ဆီ push ဖို့ အချိန်ခဏပေးမယ်
-          echo "Waiting for Kaggle Intelligence to manifest..."
+          echo "Waiting for Kaggle to push evolved brain.py..."
           sleep 45
 
-      - name: Step 4 - Trinity Sync Engine (Memory Ingestion)
+      - name: Step 5 - Trinity Sync Engine (Memory Ingestion)
         env:
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          # Kaggle ကနေ ပြန်ရောက်လာတဲ့ intelligence (brain.py) နဲ့ DB Sync လုပ်မယ်
+          # Psycopg2 သွင်းထားလို့ အခု Sync_data.py အလုပ်လုပ်ပြီ
           if [ -f "sync_data.py" ]; then
             python sync_data.py
           elif [ -f "brain.py" ]; then
-            python -c "try: from brain import sync_data; sync_data(); print('Sync Done'); except: print('Sync skipped')"
+            python -c "try: from brain import sync_data; sync_data(); except: print('Skipped')"
           fi
 
-      - name: Step 5 - Hyper-Autonomous Self-Coding (Groq AI)
+      - name: Step 6 - Hyper-Autonomous Self-Coding (Groq AI)
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           # Groq API နဲ့ main.py/brain.py ကို logic အဆင့်မြှင့်မယ်
-          # ဒါက RAM လုံးဝမစားဘဲ ဉာဏ်ရည်ကို အဆင့်မြှင့်တဲ့နည်းလမ်း
           curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" \
             -H "Authorization: Bearer $GROQ_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
               "model": "llama3-70b-8192",
-              "messages": [{"role": "user", "content": "Analyze existing main.py and brain.py. Based on DB schema, upgrade their logic for autonomous self-evolution. Output only full code."}]
+              "messages": [{"role": "user", "content": "Analyze existing main.py and brain.py. Based on DB schema, upgrade their logic. Output only full code."}]
             }' | jq -r '.choices[0].message.content' > main_evolved.py
           
           if [ -s main_evolved.py ]; then mv main_evolved.py main.py; fi
 
-      - name: Step 6 - Manifest Sovereign State (Final Push)
+      - name: Step 7 - Manifest Sovereign State (Final Push)
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
