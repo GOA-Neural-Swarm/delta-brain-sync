@@ -31,32 +31,31 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Step 3 - Inject Multi-Engine Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install kaggle psycopg2-binary requests gitpython torch transformers accelerate bitsandbytes numpy scikit-learn firebase-admin datasets pandas sqlalchemy groq sentence-transformers "gradio<6.0.0" python-dotenv huggingface_hub diffusers safetensors Pillow
+          pip install kaggle psycopg2-binary requests gitpython torch transformers \
+          accelerate bitsandbytes numpy scikit-learn firebase-admin datasets pandas \
+          sqlalchemy groq sentence-transformers "gradio<6.0.0" python-dotenv \
+          huggingface_hub diffusers safetensors Pillow
           npm install pg @supabase/supabase-js firebase-admin
 
-      - name: Step 4 - Trigger Kaggle Evolution (Step 1 & 2: GPU Training)
+      - name: Step 4 - Trigger Kaggle Evolution
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           mkdir -p ~/.kaggle
-          echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
+          printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
-          
           mkdir -p kaggle_brain
-          cp -f main.py kaggle_brain/main.py || true
-          cp -f brain.py kaggle_brain/brain.py || true
-          
+          if [ -f "main.py" ]; then cp main.py kaggle_brain/main.py; fi
+          if [ -f "brain.py" ]; then cp brain.py kaggle_brain/brain.py; fi
           cat <<EOF > kaggle_brain/kernel-metadata.json
           {
             "id": "${{ secrets.KAGGLE_USERNAME }}/delta-brain-sync",
@@ -71,7 +70,7 @@ jobs:
           EOF
           kaggle kernels push -p kaggle_brain
 
-      - name: Step 5 - Run Trinity Sync Engine (Step 4: Cloud Data Ingestion)
+      - name: Step 5 - Run Trinity Sync Engine
         env:
           NEON_KEY: ${{ secrets.NEON_KEY }}
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
@@ -88,7 +87,7 @@ jobs:
             python brain.py --mode sync || echo "Sync skipped"
           fi
 
-      - name: Step 6 - Self-Coding Evolution (Step 5: Hyper-Autonomous Self-Coding)
+      - name: Step 6 - Self-Coding Evolution
         timeout-minutes: 20
         env:
           DATABASE_URL: ${{ secrets.NEON_DB_URL }}
@@ -100,18 +99,16 @@ jobs:
           if [ -f "app.py" ]; then python app.py || echo "App.py failed"; fi
           if [ -f "main.py" ]; then python main.py --mode evolve || echo "Evolution skipped"; fi
 
-      - name: Step 7 - Manifest Autonomous State (GitHub Push)
+      - name: Step 7 - Manifest Autonomous State
         env:
           CUSTOM_GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
-          
           git remote set-url origin "https://x-access-token:${CUSTOM_GH_TOKEN}@github.com/${{ github.repository }}.git"
-          
           git add .
-          if ! git diff --quiet; then
-            git commit -m "🧬 [HYPER_EVOLUTION] Loop Completed: $(date +'%Y-%m-%d %H:%M:%S') [skip ci]"
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "🧬 [HYPER_EVOLUTION] Cycle Completed: $(date +'%Y-%m-%d %H:%M:%S') [skip ci]"
             git push origin main --force
           else
             echo "STATE_STABLE: No structural evolution required."
