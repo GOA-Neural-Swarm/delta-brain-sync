@@ -1,22 +1,21 @@
+import numba
 import numpy as np
+
+@numba.jit(nopython=True)
+def process(input_data):
+    return np.dot(input_data, np.random.rand(input_data.shape[1], 1))
 
 class Brain:
     def __init__(self):
-        self.synaptic_weights = 2 * np.random.random((3, 1)) - 1
-        self.learning_rate = 0.1
+        self.layers = []
+        self.optimizers = []
 
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
+    def add_layer(self, layer):
+        self.layers.append(layer)
 
-    def derivative(self, x):
-        return x * (1 - x)
+    def add_optimizer(self, optimizer):
+        self.optimizers.append(optimizer)
 
-    def think(self, inputs):
-        output = np.dot(inputs, self.synaptic_weights)
-        return self.sigmoid(output)
-
-    def train(self, inputs, output):
-        output = self.think(inputs)
-        error = output - output
-        adjustment = error * self.derivative(output) * self.learning_rate
-        self.synaptic_weights += adjustment
+    def process(self, input_data):
+        input_data = process(input_data)
+        return input_data
