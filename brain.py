@@ -1,16 +1,22 @@
-import numpy as np
-from scipy.optimize import minimize
+from collections import defaultdict
+import math
 
 class Brain:
-    def __init__(self, num_neurons):
-        self.num_neurons = num_neurons
-        self.synaptic_weights = np.random.rand(num_neurons, num_neurons)
+    def __init__(self):
+        self.memory = defaultdict(dict)
+        self.synapses = defaultdict(dict)
+        self.weights = defaultdict(dict)
 
-    def think(self, input_array):
-        return np.dot(input_array, self.synaptic_weights)
+    def process(self, input_data):
+        for neuron, value in input_data.items():
+            for connected_neuron, weight in self.weights[neuron].items():
+                self.synapses[neuron][connected_neuron] = value * weight
+            self.memory[neuron] = self.synapses[neuron]
+            self.synapses[neuron] = defaultdict(dict)
 
-    def learn(self, input_array, output_array):
-        def objective(weights):
-            return np.mean((np.dot(input_array, weights) - output_array) ** 2)
-        result = minimize(objective, self.synaptic_weights.flatten(), method="SLSQP")
-        self.synaptic_weights = result.x.reshape(self.synaptic_weights.shape)
+    def retrieve(self, neuron):
+        return self.memory[neuron].copy()
+
+    def update_weights(self, neuron, connected_neuron, weight):
+        self.weights[neuron][connected_neuron] = weight
+        self.synapses[neuron][connected_neuron] = self.memory[neuron][connected_neuron] * weight
