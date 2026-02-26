@@ -77,22 +77,20 @@ jobs:
           # Kaggle ဆီ Push ပြီး GPU Evolution စတင်မယ်
           kaggle kernels push -p kaggle_brain
 
-      - name: Step 5 - Trinity Cloud Sync (Neon, Firebase, Supabase)
+      
+      - name: Step 5 - Run Trinity Sync Engine (Delta Sync)
         env:
-          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          # brain.py ထဲက Sync Logic ကို Run မယ်
-          if [ -f "sync_data.py" ]; then python sync_data.py; fi
-          if [ -f "delta_sync.js" ]; then node delta_sync.js; fi
-          # brain.py ကိုယ်တိုင်က Sync လုပ်နိုင်ရင် ဒါကိုသုံး
-          if [ -f "brain.py" ]; then python brain.py --mode sync; fi
+          if [ -f "delta_sync.js" ]; then
+            node delta_sync.js
+          fi
 
       - name: Step 6 - Self-Coding Evolution (Hyper-Autonomous)
         env:
