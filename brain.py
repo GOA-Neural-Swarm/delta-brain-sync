@@ -1,29 +1,24 @@
-import numpy as np
+import math
 
 class Brain:
     def __init__(self):
-        self.synapses = {}
         self.neurons = {}
+        self.connections = {}
 
-    def add_synapse(self, neuron1, neuron2, weight):
-        if neuron1 not in self.synapses:
-            self.synapses[neuron1] = {}
-        self.synapses[neuron1][neuron2] = weight
+    def add_neuron(self, neuron_id):
+        self.neurons[neuron_id] = {'weight': 0.0, 'bias': 0.0, 'output': 0.0}
 
-    def add_neuron(self, neuron_id, activation_function):
-        self.neurons[neuron_id] = activation_function
+    def add_connection(self, neuron_id1, neuron_id2, weight):
+        self.connections[(neuron_id1, neuron_id2)] = weight
 
-    def process_neural_signal(self, signal):
-        for neuron_id, activation_function in self.neurons.items():
-            if neuron_id in self.synapses:
-                for connected_neuron, weight in self.synapses[neuron_id].items():
-                    signal += weight * self.neurons[connected_neuron](signal)
-            else:
-                signal = self.neurons[neuron_id](signal)
-        return signal
+    def update_neurons(self):
+        for neuron_id in self.neurons:
+            output = self.neurons[neuron_id]['bias']
+            for connection in self.connections:
+                if connection[0] == neuron_id:
+                    output += self.connections[connection]*(self.neurons[connection[1]]['output'])
+            self.neurons[neuron_id]['output'] = sigmoid(output)
 
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
-
-    def tanh(self, x):
-        return np.tanh(x)
+    def process(self):
+        self.update_neurons()
+        return '\n'.join(f'Neuron {neuron_id}: output={self.neurons[neuron_id]["output"]}' for neuron_id in self.neurons)
