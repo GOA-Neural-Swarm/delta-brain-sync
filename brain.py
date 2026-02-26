@@ -1,22 +1,21 @@
 import numpy as np
 
 class Brain:
-    def __init__(self, neurons, synapses):
-        self.neurons = np.zeros((neurons, neurons), dtype=int)
-        self.synapses = np.zeros((synapses, synapses), dtype=int)
+    def __init__(self, num_neurons, num_synapses):
+        self.num_neurons = num_neurons
+        self.num_synapses = num_synapses
+        self.synaptic_weights = np.random.rand(num_neurons, num_synapses)
+        self.neuron_activations = np.zeros(num_neurons)
+        self.cache = {}
 
-    def process(self, inputs):
-        outputs = np.zeros((self.neurons.shape[0],))
-        for i in range(self.neurons.shape[0]):
-            for j in range(self.neurons.shape[0]):
-                self.neurons[i][j] += inputs[j]
-                if self.neurons[i][j] > 1:
-                    outputs[i] = 1
-        return outputs
+    def forward_pass(self, input_array):
+        self.neuron_activations[:] = 0
+        for i in range(self.num_synapses):
+            for j in range(self.num_neurons):
+                self.neuron_activations[j] += input_array[i] * self.synaptic_weights[j, i]
+        return np.tanh(self.neuron_activations)
 
-    def learn(self, inputs, outputs):
-        for i in range(self.neurons.shape[0]):
-            for j in range(self.neurons.shape[0]):
-                self.synapses[i][j] += inputs[i] * outputs[j]
-                if self.synapses[i][j] > 1:
-                    self.synapses[i][j] = 1
+    def backward_pass(self, error_array):
+        for i in range(self.num_synapses):
+            for j in range(self.num_neurons):
+                self.synaptic_weights[j, i] += error_array[j] * input_array[i]
