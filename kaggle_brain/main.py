@@ -284,34 +284,34 @@ def absorb_natural_order_data():
 
 def self_coding_engine(raw_content):
     try:
+        # AI ရဲ့ output ထဲက ```python ... ``` block ကို ပိုသေချာအောင် ရှာမယ်
         code_blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
+        
         if not code_blocks:
-            return False, []
+            # တကယ်လို့ block မပါရင် စာသားအကုန်လုံးထဲက code ကိုပဲ ဆွဲထုတ်ဖို့ ကြိုးစားမယ်
+            clean_content = re.sub(r"system|user|assistant|Note:.*", "", raw_content, flags=re.IGNORECASE).strip()
+            code_blocks = [clean_content] if len(clean_content) > 20 else []
 
         modified_files = []
         for block in code_blocks:
-            target_match = re.search(r"# TARGET:\s*(\S+)", block)
+            # ပိုလျှံနေတဲ့ စာသားတွေကို ဖယ်ထုတ်မယ် (Validation အဆင့်)
+            lines = block.split('\n')
+            # ပထမဆုံး စာကြောင်းမှာ code မဟုတ်တာတွေ ပါနေရင် ဖယ်ပစ်မယ်
+            valid_code = "\n".join([line for line in lines if not line.strip().startswith(("Here is", "Certainly", "Optimization"))])
+            
+            target_match = re.search(r"# TARGET:\s*(\S+)", valid_code)
             filename = target_match.group(1) if target_match else "brain.py"
             
-            clean_code = block.strip()
-            
             try:
-                compile(clean_code, filename, "exec")
-                
+                compile(valid_code, filename, "exec") # Syntax စစ်မယ်
                 with open(filename, "w") as f:
-                    f.write(clean_code)
-                
-                if os.path.exists(REPO_PATH):
-                    target_path = os.path.join(REPO_PATH, filename)
-                    with open(target_path, "w") as f:
-                        f.write(clean_code)
-                
+                    f.write(valid_code)
                 modified_files.append(filename)
                 print(f"🛠️ [EVOLUTION]: {filename} self-coded and validated.")
             except Exception as syntax_err:
-                print(f"⚠️ [SYNTAX REJECTED]: {filename} validation failed: {syntax_err}")
+                print(f"⚠️ [SYNTAX REJECTED]: {filename} at Line 1: {syntax_err}")
                 
-        return True, modified_files
+        return (len(modified_files) > 0), modified_files
     except Exception as e:
         print(f"❌ [ENGINE ERROR]: {e}")
         return False, []
