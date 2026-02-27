@@ -1,4 +1,10 @@
-import json
-with open("evolution_logic.json", "w") as f:
-    json.dump({"status": "initialized", "version": 1.0}, f)
-print("✅ evolution_logic.json created.")
+{
+  "last_evolution": {
+    "gen": 0,
+    "status": "RESTORED",
+    "timestamp": "2026-02-27T03:50:00Z",
+    "stability_score": 1.0
+  },
+  "active_nodes": [],
+  "error_logs": []
+}
