@@ -157,26 +157,28 @@ class TelefoxXAGI:
 
             if new_dna:
                 try:
-                    # 🛡️ STEP 1: Syntax Check (Code အသစ်က Run လို့ရမရ အရင်စစ်မယ်)
-                    # compile() က အမှားပါရင် Exception ထုတ်ပေးမှာဖြစ်လို့ file ထဲ ရေးတာကို တားပေးတယ်
+                    # VALIDATION LAYER: Check for syntax errors before committing change
                     compile(new_dna, __file__, "exec")
                     
-                    # 🛡️ STEP 2: Safe Write (Syntax မှန်မှသာ ဖိုင်ထဲကို သိမ်းမယ်)
                     with open(__file__, "w", encoding='utf-8') as f:
                         f.write(new_dna)
                     
                     print("✅ [EVOLUTION]: New DNA validated and written to system.")
                     return True
-                except SyntaxError as syntax_err:
-                    # Code က Syntax မှားနေတဲ့အခါ (ဥပမာ: Indentation error)
-                    print(f"⚠️ [REJECTED]: AI generated invalid Python syntax: {syntax_err}")
-                    return False
-                except Exception as e:
-                    # တခြား error တစ်ခုခု (ဥပမာ: Permission issue)
-                    print(f"⚠️ [FAILED]: Could not commit evolution: {e}")
+                except Exception as syntax_err:
+                    print(f"⚠️ [REJECTED]: Invalid Python code detected: {syntax_err}")
                     return False
             
+            return False # if new_dna မရှိရင် False ပြန်မယ်
+
+        except Exception as e:
+            print(f"Evolution Crash: {e}")
             return False
+
+    # 🔱 ဤနေရာမှစ၍ နောက် function ကို indentation အမှန်အတိုင်း ပြန်စပါ (Class ထဲမှာပဲ ရှိရမယ်)
+    async def universal_hyper_ingest(self, limit=100, sync_to_supabase=False):
+            
+            
 
     async def universal_hyper_ingest(self, limit=100, sync_to_supabase=False):
         """Trinity Sync Logic: Neon + Supabase + HuggingFace"""
