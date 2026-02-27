@@ -61,16 +61,27 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
-          # Groq API နဲ့ main.py/brain.py ကို logic အဆင့်မြှင့်မယ်
-          curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" \
+          # Groq API ကို ခေါျမယျ
+          RESPONSE=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" \
             -H "Authorization: Bearer $GROQ_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
               "model": "llama3-70b-8192",
-              "messages": [{"role": "user", "content": "Analyze existing main.py and brain.py. Based on DB schema, upgrade their logic. Output only full code."}]
-            }' | jq -r '.choices[0].message.content' > main_evolved.py
+              "messages": [{"role": "user", "content": "Analyze existing main.py and brain.py. Based on DB schema, upgrade their logic. Output only full code without markdown formatting."}]
+            }')
+
+          # 'null' ဟုတျမဟုတျ နဲ့ code ပါမပါ စဈမယျ
+          CONTENT=$(echo $RESPONSE | jq -r '.choices[0].message.content // empty')
+
+          if [ ! -z "$CONTENT" ] && [ "$CONTENT" != "null" ]; then
+            echo "$CONTENT" > main_evolved.py
+            mv main_evolved.py main.py
+            echo "Evolution successful."
+          else
+            echo "AI returned null or empty. Skipping evolution to prevent corruption."
+          fi
+        
           
-          if [ -s main_evolved.py ]; then mv main_evolved.py main.py; fi
 
       - name: Step 7 - Manifest Sovereign State (Final Push)
         env:
