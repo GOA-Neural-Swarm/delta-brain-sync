@@ -133,10 +133,18 @@ class TelefoxXAGI:
                 except Exception: continue
 
             if new_dna:
-                with open(__file__, "w", encoding='utf-8') as f: f.write(new_dna)
-                return True
-        except Exception as e: print(f"Evolution Crash: {e}")
-        return False
+                try:
+                    # VALIDATION LAYER: Check for syntax errors before committing change
+                    compile(new_dna, __file__, "exec")
+                    
+                    with open(__file__, "w", encoding='utf-8') as f:
+                        f.write(new_dna)
+                    
+                    print("✅ [EVOLUTION]: New DNA validated and written to system.")
+                    return True
+                except Exception as syntax_err:
+                    print(f"⚠️ [REJECTED]: Invalid Python code detected: {syntax_err}")
+                    return False
 
     async def universal_hyper_ingest(self, limit=100, sync_to_supabase=False):
         """Trinity Sync Logic: Neon + Supabase + HuggingFace"""
