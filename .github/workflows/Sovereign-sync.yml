@@ -74,18 +74,17 @@ jobs:
           chmod 600 ~/.kaggle/kaggle.json
           
           mkdir -p kaggle_deploy
+          
+          # Prioritize kaggle_brain/main.py, then main.py, then brain.py, then app.py
           if [ -f "kaggle_brain/main.py" ]; then
             cp kaggle_brain/main.py kaggle_deploy/main.py
-            cp kaggle_brain/main.py main.py
             echo "✅ Found main.py in kaggle_brain/"
           elif [ -f "main.py" ]; then
             cp main.py kaggle_deploy/main.py
           elif [ -f "brain.py" ]; then
             cp brain.py kaggle_deploy/main.py
-            cp brain.py main.py
           elif [ -f "app.py" ]; then
             cp app.py kaggle_deploy/main.py
-            cp app.py main.py
           else
             echo "❌ Critical Error: No logic file found!" && exit 1
           fi
@@ -129,6 +128,7 @@ jobs:
           REPO_URL: ${{ github.repository }}
           HEADLESS_MODE: "true"
         run: |
+          # Prioritize app.py, then main.py
           if [ -f "app.py" ]; then
             python app.py
           elif [ -f "main.py" ]; then
@@ -149,16 +149,10 @@ jobs:
             node delta_sync.js
           fi
 
-      - name: Step 9 - GitHub Auto-Commit (Autonomous Evolution)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Step 9 - GitHub Auto-Commit
         run: |
           git add .
-          if ! git diff-index --quiet HEAD; then
-            git commit -m "🧬 Phase 8 Stability Sync: $(date) [Autonomous Evolution]"
-            git fetch origin main
-            git reset --soft origin/main
-            git push origin main --force
-          else
-            echo "No changes to commit."
-          fi
+          git commit -m "🧬 Hyper-Autonomous Sync: AI-Modified Core & Brain"
+          git fetch origin main
+          git reset --soft origin/main
+          git push origin main --force
