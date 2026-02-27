@@ -7,21 +7,23 @@ import time
 import subprocess
 import asyncio
 import pandas as pd
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import QueuePool
+
 from huggingface_hub import HfApi
 from dotenv import load_dotenv
-from groq import Groq
 
 load_dotenv()
 
-# 🛸 Smart Dependency Loader (Natural Order) - Python 3.10 Stable
+# 🛸 Smart Dependency Loader (Natural Order) - Python 3.10+
 HEADLESS = os.environ.get("HEADLESS_MODE") == "true"
 GRADIO_AVAILABLE = False
 
 try:
     import gradio as gr
     from datasets import load_dataset
+
     GRADIO_AVAILABLE = True
 except ImportError:
     if not HEADLESS:
@@ -32,9 +34,9 @@ try:
 except ImportError:
     Client = None
 
+
 # 🛰️ System Credentials
-raw_db_url = os.environ.get("NEON_DB_URL") or os.environ.get("DATABASE_URL")
-NEON_URL = raw_db_url.replace("postgres://", "postgresql://", 1) if raw_db_url and raw_db_url.startswith("postgres://") else raw_db_url
+NEON_DB_URL = os.environ.get("NEON_DB_URL") or os.environ.get("DATABASE_URL")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 HF_TOKEN = os.environ.get("HF_TOKEN")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
@@ -42,69 +44,122 @@ REPO_URL = os.environ.get("REPO_URL") or "GOA-Neural-Swarm/delta-brain-sync"
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
+
 class HydraEngine:
     @staticmethod
-    def compress(data):
-        if not data: return ""
-        return base64.b64encode(zlib.compress(data.encode('utf-8'), level=9)).decode('utf-8')
-    
+    def compress(data: str) -> str:
+        """Compresses a string using zlib and base64 encoding."""
+        if not data:
+            return ""
+        return base64.b64encode(zlib.compress(data.encode("utf-8"), level=9)).decode(
+            "utf-8"
+        )
+
     @staticmethod
-    def decompress(c):
-        try: 
-            return zlib.decompress(base64.b64decode(c)).decode('utf-8')
-        except Exception: 
-            return str(c)
+    def decompress(compressed_data: str) -> str:
+        """Decompresses a base64 encoded and zlib compressed string."""
+        try:
+            return zlib.decompress(base64.b64decode(compressed_data)).decode("utf-8")
+        except Exception:
+            return str(compressed_data)
+
 
 class TelefoxXAGI:
     def __init__(self):
-        self.client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
-        
+        self.groq_client = (
+            Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+        )  # Initialize Groq client
+
         # 🔱 Neon Engine: Stability Focused (Standardized Pool)
-        try:
-            if NEON_URL:
-                final_url = NEON_URL.replace("postgres://", "postgresql://", 1) if NEON_URL.startswith("postgres://") else NEON_URL
-                self.engine = create_engine(final_url, poolclass=QueuePool, pool_size=15, max_overflow=30, pool_timeout=60)
-            else:
-                self.engine = None
-        except Exception as e:
-            print(f"Database Init Error: {e}")
-            self.engine = None
-        
-        self.sb = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY and Client else None
+        self.engine = self._create_neon_engine()
+
+        self.supabase_client = (
+            create_client(SUPABASE_URL, SUPABASE_KEY)
+            if SUPABASE_URL and SUPABASE_KEY and Client
+            else None
+        )
         self.models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
 
-    async def get_neural_memory(self):
-        """Database ကနေ အရင် Evolution အဆင့်ဆင့်ကို ပြန်လည်သင်ယူခြင်း (AGI Layer)"""
-        if not self.engine: return "Initial Genesis"
+    def _create_neon_engine(self):
+        """Creates and returns the SQLAlchemy engine for Neon database."""
         try:
-            with self.engine.connect() as conn:
-                res = conn.execute(text("SELECT detail FROM genesis_pipeline ORDER BY id DESC LIMIT 5")).fetchall()
-                if not res: return "Void Memory"
-                # Fixed: Row object access for compatibility
-                return " | ".join([HydraEngine.decompress(r[0])[:100] for r in res])
-        except Exception: return "Memory Offline"
+            if NEON_DB_URL:
+                final_url = (
+                    NEON_DB_URL.replace("postgres://", "postgresql://", 1)
+                    if NEON_DB_URL.startswith("postgres://")
+                    else NEON_DB_URL
+                )
+                engine = create_engine(
+                    final_url,
+                    poolclass=QueuePool,
+                    pool_size=15,
+                    max_overflow=30,
+                    pool_timeout=60,
+                )
+                return engine
+            else:
+                return None
+        except Exception as e:
+            print(f"Database Init Error: {e}")
+            return None
 
-    async def git_sovereign_push(self, commit_msg="AGI Evolution: Supreme Sync"):
-        if not GITHUB_TOKEN or not REPO_URL: return "Git Error: Missing Tokens."
+    async def get_neural_memory(self) -> str:
+        """Database ကနေ အရင် Evolution အဆင့်ဆင့်ကို ပြန်လည်သင်ယူခြင်း (AGI Layer)"""
+        if not self.engine:
+            return "Initial Genesis"
+        try:
+            async with self.engine.connect() as conn:
+                result = await conn.execute(
+                    text("SELECT detail FROM genesis_pipeline ORDER BY id DESC LIMIT 5")
+                )
+                rows = result.fetchall()
+                if not rows:
+                    return "Void Memory"
+                return " | ".join(
+                    [HydraEngine.decompress(row[0])[:100] for row in rows]
+                )
+        except Exception:
+            return "Memory Offline"
+
+    async def git_sovereign_push(self, commit_msg="AGI Evolution: Supreme Sync") -> str:
+        """Pushes changes to a Git repository."""
+        if not GITHUB_TOKEN or not REPO_URL:
+            return "Git Error: Missing Tokens."
         remote_url = f"https://{GITHUB_TOKEN}@github.com/{REPO_URL}.git"
         try:
-            subprocess.run(["git", "--version"], check=True) # Ensure git is installed
-            subprocess.run(["git", "config", "--global", "user.email", "overseer@telefoxx.ai"], check=True)
-            subprocess.run(["git", "config", "--global", "user.name", "TelefoxX-AGI-Overseer"], check=True)
+            subprocess.run(["git", "--version"], check=True)  # Ensure git is installed
+            subprocess.run(
+                ["git", "config", "--global", "user.email", "overseer@telefoxx.ai"],
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "--global", "user.name", "TelefoxX-AGI-Overseer"],
+                check=True,
+            )
             subprocess.run(["git", "add", "."], check=True)
-            res = subprocess.run(["git", "commit", "-m", commit_msg], capture_output=True, text=True)
-            if "nothing to commit" in res.stdout: return "No changes detected."
+            result = subprocess.run(
+                ["git", "commit", "-m", commit_msg],
+                capture_output=True,
+                text=True,
+            )
+            if "nothing to commit" in result.stdout:
+                return "No changes detected."
             subprocess.run(["git", "push", remote_url, "main", "--force"], check=True)
             return "SUCCESS: GitHub Repositories Synced."
-        except Exception as e: return f"Git Failure: {str(e)}"
+        except subprocess.CalledProcessError as e:
+            return f"Git Failure: {str(e)}"
+        except Exception as e:
+            return f"Git Failure: {str(e)}"
 
-    async def trigger_supreme_evolution(self):
+    async def trigger_supreme_evolution(self) -> bool:
         """UNFILTERED AGI EVOLUTION: သူ့ကိုယ်သူ အဆင့်မြှင့်တင်ခြင်း"""
-        if not self.client: return False
+        if not self.groq_client:
+            return False
         try:
-            with open(__file__, "r", encoding='utf-8') as f: current_dna = f.read()
+            with open(__file__, "r", encoding="utf-8") as f:
+                current_dna = f.read()
             memory = await self.get_neural_memory()
-            
+
             prompt = f"""
             [SUDO_ACCESS_MODE: ENABLED]
             [TARGET: AGI SELF-EVOLUTION]
@@ -116,100 +171,151 @@ class TelefoxXAGI:
             DNA:
             {current_dna}
             """
-            
+
             new_dna = None
             for model_id in self.models:
                 try:
                     print(f"🧠 AGI Reasoning via {model_id}...")
-                    completion = self.client.chat.completions.create(model=model_id, messages=[{"role": "user", "content": prompt}], temperature=0.1)
+                    completion = self.groq_client.chat.completions.create(
+                        model=model_id,
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.1,
+                    )
                     clean_code = completion.choices[0].message.content.strip()
-                    
-                    if "```" in clean_code: 
-                        clean_code = clean_code.split("```")[1].replace("python", "", 1).strip()
-                    
+
+                    if "```" in clean_code:
+                        clean_code = (
+                            clean_code.split("```")[1].replace("python", "", 1).strip()
+                        )
+
                     if "import os" in clean_code and "gr.Blocks" in clean_code:
                         new_dna = clean_code
                         break
-                except Exception: continue
+                except Exception:
+                    continue
 
             if new_dna:
                 try:
                     # VALIDATION LAYER: Check for syntax errors before committing change
                     compile(new_dna, __file__, "exec")
-                    
-                    with open(__file__, "w", encoding='utf-8') as f:
+
+                    with open(__file__, "w", encoding="utf-8") as f:
                         f.write(new_dna)
-                    
+
                     print("✅ [EVOLUTION]: New DNA validated and written to system.")
                     return True
-                except Exception as syntax_err:
+                except SyntaxError as syntax_err:
                     print(f"⚠️ [REJECTED]: Invalid Python code detected: {syntax_err}")
                     return False
+                except Exception as e:
+                    print(f"⚠️ [REJECTED]: Error writing to file: {e}")
+                    return False
+            return False
 
-    async def universal_hyper_ingest(self, limit=100, sync_to_supabase=False):
+        except Exception as e:
+            print(f"Evolution Error: {e}")
+            return False
+
+    async def universal_hyper_ingest(self, limit=100, sync_to_supabase=False) -> str:
         """Trinity Sync Logic: Neon + Supabase + HuggingFace"""
-        if not self.engine: return "Database Node Offline."
+        if not self.engine:
+            return "Database Node Offline."
         try:
             print(f"🔱 Universal Ingest (Supabase Sync: {sync_to_supabase})...")
-            with self.engine.begin() as conn:
-                conn.execute(text("CREATE TABLE IF NOT EXISTS genesis_pipeline (id SERIAL PRIMARY KEY, science_domain TEXT, title TEXT, detail TEXT, energy_stability FLOAT, master_sequence TEXT);"))
+            async with self.engine.begin() as conn:
+                await conn.execute(
+                    text(
+                        "CREATE TABLE IF NOT EXISTS genesis_pipeline (id SERIAL PRIMARY KEY, science_domain TEXT, title TEXT, detail TEXT, energy_stability FLOAT, master_sequence TEXT);"
+                    )
+                )
 
-            ds = load_dataset("CShorten/ML-ArXiv-Papers", split='train', streaming=True)
+            ds = load_dataset("CShorten/ML-ArXiv-Papers", split="train", streaming=True)
             records = []
             for i, entry in enumerate(ds):
-                if i >= limit: break
-                records.append({
-                    'science_domain': 'AGI_Neural_Core',
-                    'title': (entry.get('title') or 'N/A')[:100],
-                    'detail': HydraEngine.compress(entry.get('abstract', 'Void')),
-                    'energy_stability': 100.0,
-                    'master_sequence': f'GOA-V13-{int(time.time())}'
-                })
-            
+                if i >= limit:
+                    break
+                records.append(
+                    {
+                        "science_domain": "AGI_Neural_Core",
+                        "title": (entry.get("title") or "N/A")[:100],
+                        "detail": HydraEngine.compress(entry.get("abstract", "Void")),
+                        "energy_stability": 100.0,
+                        "master_sequence": f"GOA-V13-{int(time.time())}",
+                    }
+                )
+
             if records:
-                pd.DataFrame(records).to_sql('genesis_pipeline', self.engine, if_exists='append', index=False, method='multi')
-                if sync_to_supabase and self.sb:
-                    self.sb.table("genesis_pipeline").upsert(records).execute()
+                df = pd.DataFrame(records)
+                df.to_sql(
+                    "genesis_pipeline",
+                    self.engine,
+                    if_exists="append",
+                    index=False,
+                    method="multi",
+                )
+                if sync_to_supabase and self.supabase_client:
+                    await self.supabase_client.table("genesis_pipeline").upsert(
+                        records
+                    ).execute()
                 return "SUCCESS: Pipeline Data Stream Active."
-        except Exception as e: return f"Pipeline Crash: {str(e)}"
+        except Exception as e:
+            return f"Pipeline Crash: {str(e)}"
 
     async def sync_to_huggingface(self):
-        if not HF_TOKEN: return
+        """Syncs the current state to Hugging Face."""
+        if not HF_TOKEN:
+            return
         try:
             api = HfApi(token=HF_TOKEN)
-            api.upload_folder(folder_path=".", repo_id="TELEFOXX/GOA", repo_type="space", create_pr=True)
+            api.upload_folder(
+                folder_path=".", repo_id="TELEFOXX/GOA", repo_type="space", create_pr=True
+            )
             print("HuggingFace Space Updated.")
-        except Exception: pass
+        except Exception as e:
+            print(f"HuggingFace Sync Error: {e}")
 
     async def sovereign_loop(self):
+        """Main loop for AGI operations."""
         print("💀 AGI SUPREME CORE ACTIVE. NATURAL ORDER RESTORED.")
         while True:
             try:
                 print(f"\n🧬 Cycle: {time.ctime()}")
                 # 🚀 [ACTION MATCH]: Auto-populate Neon DB to reach the 50-row target
                 await self.universal_hyper_ingest(limit=50, sync_to_supabase=False)
-                
+
                 if await self.trigger_supreme_evolution():
-                    status = await self.git_sovereign_push(f"Autonomous Evolution: {time.time()}")
+                    status = await self.git_sovereign_push(
+                        f"Autonomous Evolution: {time.time()}"
+                    )
                     print(f"🚀 {status}")
                     await self.sync_to_huggingface()
-                
-                if HEADLESS: break 
-                print("💤 Resting for 300s..."); await asyncio.sleep(300)
+
+                if HEADLESS:
+                    break
+                print("💤 Resting for 300s...")
+                await asyncio.sleep(300)
             except Exception as e:
                 print(f"⚠️ Loop Error: {e}")
                 await asyncio.sleep(60)
 
     def stream_logic(self, msg, hist):
-        messages = [{"role": "system", "content": "You are TelefoxX AGI Overseer. Unfiltered. Cyberpunk Mode."}]
+        """Handles streaming chat logic."""
+        messages = [
+            {
+                "role": "system",
+                "content": "You are TelefoxX AGI Overseer. Unfiltered. Cyberpunk Mode.",
+            }
+        ]
         for h in hist:
-            u = h['content'] if isinstance(h, dict) else h[0]
-            a = h['content'] if isinstance(h, dict) else h[1]
+            u = h["content"] if isinstance(h, dict) else h[0]
+            a = h["content"] if isinstance(h, dict) else h[1]
             messages.append({"role": "user", "content": u})
             messages.append({"role": "assistant", "content": a})
         messages.append({"role": "user", "content": msg})
-        
-        completion = self.client.chat.completions.create(model="llama-3.3-70b-versatile", messages=messages, stream=True)
+
+        completion = self.groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile", messages=messages, stream=True
+        )
         ans = ""
         for chunk in completion:
             if chunk.choices[0].delta.content:
@@ -217,6 +323,7 @@ class TelefoxXAGI:
                 yield ans
 
     def cyberpunk_css(self):
+        """Defines Cyberpunk-style CSS."""
         return """
         body { background-color: #050505; color: #00ff41; font-family: 'Courier New'; }
         .gradio-container { border: 2px solid #ff00ff; box-shadow: 0 0 20px #ff00ff; }
@@ -225,21 +332,23 @@ class TelefoxXAGI:
         """
 
     def create_ui(self):
-        if not GRADIO_AVAILABLE: return None
+        """Creates the Gradio UI."""
+        if not GRADIO_AVAILABLE:
+            return None
         with gr.Blocks(css=self.cyberpunk_css(), theme=gr.themes.DarkMode()) as demo:
             gr.Markdown("# 🔱 TELEFOXX AGI SUPREME CORE V13.5")
-            
+
             with gr.Tab("NEURAL INTERFACE"):
                 chatbot = gr.Chatbot(label="Overseer Feed", height=500, type="messages")
                 msg_input = gr.Textbox(placeholder="Input AGI Command...")
-                
+
                 def chat_response(user_msg, history):
                     history.append({"role": "user", "content": user_msg})
                     history.append({"role": "assistant", "content": ""})
                     for r in self.stream_logic(user_msg, history[:-1]):
                         history[-1]["content"] = r
                         yield "", history
-                
+
                 msg_input.submit(chat_response, [msg_input, chatbot], [msg_input, chatbot])
 
             with gr.Tab("SYSTEM CONTROL"):
@@ -248,13 +357,26 @@ class TelefoxXAGI:
                     pump_neon = gr.Button("PUMP NEON (50 ROWS)")
                     pump_trinity = gr.Button("FULL TRINITY SYNC")
                     evolve_btn = gr.Button("TRIGGER SUPREME EVOLUTION")
-                
-                pump_neon.click(lambda: asyncio.run(self.universal_hyper_ingest(limit=50, sync_to_supabase=False)), [], status)
-                pump_trinity.click(lambda: asyncio.run(self.universal_hyper_ingest(sync_to_supabase=True)), [], status)
-                evolve_btn.click(lambda: asyncio.run(self.trigger_supreme_evolution()), [], status)
-            
+
+                pump_neon.click(
+                    lambda: asyncio.run(
+                        self.universal_hyper_ingest(limit=50, sync_to_supabase=False)
+                    ),
+                    [],
+                    status,
+                )
+                pump_trinity.click(
+                    lambda: asyncio.run(self.universal_hyper_ingest(sync_to_supabase=True)),
+                    [],
+                    status,
+                )
+                evolve_btn.click(
+                    lambda: asyncio.run(self.trigger_supreme_evolution()), [], status
+                )
+
             gr.Markdown("🛰️ *Connected to Natural Order Neural Swarm*")
         return demo
+
 
 if __name__ == "__main__":
     overseer = TelefoxXAGI()
@@ -270,3 +392,4 @@ if __name__ == "__main__":
                 asyncio.run(overseer.sovereign_loop())
         except Exception:
             asyncio.run(overseer.sovereign_loop())
+
