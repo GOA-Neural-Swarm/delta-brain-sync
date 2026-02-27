@@ -1,4 +1,4 @@
-```python
+
 import os
 import sys
 import zlib
@@ -299,4 +299,4 @@ if __name__ == "__main__":
                 asyncio.run(overseer.sovereign_loop())
         except Exception:
             asyncio.run(overseer.sovereign_loop())
-```
+
