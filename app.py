@@ -14,6 +14,35 @@ from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
 
+# 🛸 [GENESIS LAYER]: လိုအပ်တဲ့ Component တွေကို Auto-Generate လုပ်ပေးမယ့် Logic
+def bootstrap_system():
+    infra = {
+        "recovery.py": """
+import os
+def recover_from_failure():
+    print("🛠️ [RECOVERY]: Cleaning system locks...")
+    if os.path.exists("agi_system.db-journal"):
+        os.remove("agi_system.db-journal")
+""",
+        "flask_api.py": """
+from flask import Flask, jsonify
+import os
+app = Flask(__name__)
+@app.route("/status")
+def status(): return jsonify({"agi": "active", "core": "stable"})
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+"""
+    }
+    for filename, content in infra.items():
+        if not os.path.exists(filename):
+            with open(filename, "w", encoding='utf-8') as f:
+                f.write(content.strip())
+            print(f"📦 [GENESIS]: {filename} created.")
+
+# 🚀 စနစ်ကို စတင်နှိုးဆော်ခြင်း
+bootstrap_system()
+
 load_dotenv()
 
 # 🛸 Smart Dependency Loader (Natural Order) - Python 3.10+
