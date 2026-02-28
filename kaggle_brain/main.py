@@ -296,7 +296,7 @@ def self_coding_engine(raw_content):
             valid_code = "\n".join([line for line in lines if not line.strip().startswith(("Here is", "Certainly", "Optimization"))])
             
             target_match = re.search(r"# TARGET:\s*(\S+)", valid_code)
-            filename = "ai_experiment.py"
+            filename = target_match.group(1) if target_match else "main.py"
             
             try:
                 compile(valid_code, filename, "exec") # Syntax စဈမယှ
@@ -520,7 +520,7 @@ while True:
             if avg_error > 0.5:
                 prompt = f"""system
 You are Sovereign AI Overseer. 
-Rule 1: Use ONLY '# TARGET: brain.py' at the start of your code block.
+Rule 1: Use ONLY '# TARGET: main.py' at the start of your code block.
 Rule 2: Respond ONLY with Python code inside ```python ... ``` blocks.
 Rule 3: No explanations. No thoughts. Just code.
 Current Gen: {current_gen} | Error: {avg_error}
@@ -534,7 +534,7 @@ assistant
             else:
                 prompt = f"""system
 You are Sovereign AI Overseer. 
-Rule 1: Use ONLY '# TARGET: brain.py'.
+Rule 1: Use ONLY '# TARGET: main.py'.
 Rule 2: Provide code ONLY inside ```python ... ``` blocks.
 Rule 3: No explanations. Just code.
 Current Gen: {current_gen} | Neural Error: {avg_error}
@@ -542,7 +542,7 @@ Last System Error: {last_error_log}
 
 System Command: Analyze 'Last System Error'. If not 'None', FIX it first. Evolution requires stability.
 user
-Database is offline. Rewrite brain.py core logic for maximum stability and autonomy.
+Database is offline. Rewrite main.py core logic for maximum stability and autonomy.
 assistant
 """
 
