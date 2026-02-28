@@ -196,7 +196,7 @@ class TelefoxXAGI:
         with open("instruction.json", "w", encoding='utf-8') as f:
             json.dump(instruction, f, indent=4)
         
-        await self.git_sovereign_push(["instruction.json"])
+        await self.git_sovereign_push(["instruction.json", "brain_history.txt"])
         print(f"📡 [SWARM]: Command '{command}' manifested.")
     
     def self_coding_engine(self, raw_content):
