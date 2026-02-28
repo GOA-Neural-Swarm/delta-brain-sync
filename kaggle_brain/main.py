@@ -616,8 +616,13 @@ assistant
         # 💾 [PERSISTENCE]: Sync thought process and neural status
         save_reality(thought_text, current_gen, is_code_update=is_updated, neural_error=avg_error)
         
+        swarm_cmd = "HYPER_EXPANSION" if avg_error < 0.2 else "NORMAL_GROWTH"
+        await self.broadcast_swarm_instruction(swarm_cmd) 
 
-        print(f"⏳ Gen {current_gen} Complete. Cycle Syncing...")
+        print(f"⏳ Gen {current_gen} Complete.")
+
+        
+        print(f"⏳ Gen {current_gen} Complete. Cycle Syncing...")
 
         if HEADLESS:
             print("✅ [SYSTEM]: GitHub Action Complete. Graceful Exit for Git Sync.")
