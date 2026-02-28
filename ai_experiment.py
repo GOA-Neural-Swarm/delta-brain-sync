@@ -1,52 +1,19 @@
-import os
-import random
 import numpy as np
-import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
-from keras.models import Sequential
-from keras.layers import LSTM, Dense
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
 
 class Brain:
     def __init__(self):
-        self.model = None
-        self.data = None
-        self.scaler = None
-
-    def load_data(self):
-        if not os.path.exists('data.csv'):
-            print('Error: Data file not found.')
-            return False
-        self.data = pd.read_csv('data.csv')
-        return True
-
-    def preprocess_data(self):
-        if self.data is None:
-            print('Error: Data not loaded.')
-            return False
-        self.scaler = MinMaxScaler()
-        self.data[['feature1', 'feature2', 'feature3']] = self.scaler.fit_transform(self.data[['feature1', 'feature2', 'feature3']])
-        return True
-
-    def build_model(self):
-        if self.data is None or self.scaler is None:
-            print('Error: Data or scaler not loaded.')
-            return False
         self.model = Sequential()
-        self.model.add(LSTM(50, input_shape=(self.data.shape[0], 3)))
-        self.model.add(Dense(1))
-        self.model.compile(loss='mean_squared_error', optimizer='adam')
-        return True
+        self.model.add(Dense(64, input_shape=(784,), activation='relu'))
+        self.model.add(Dense(32, activation='relu'))
+        self.model.add(Dense(10, activation='softmax'))
+        self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-    def train_model(self):
-        if self.model is None or self.data is None:
-            print('Error: Model or data not built.')
-            return False
-        self.model.fit(self.data[['feature1', 'feature2', 'feature3']], self.data['target'], epochs=100, batch_size=32, verbose=0)
-        return True
+    def think(self, inputs):
+        inputs = np.array(inputs) / 255.0
+        outputs = self.model.predict(inputs)
+        return np.argmax(outputs)
 
-    def make_prediction(self):
-        if self.model is None:
-            print('Error: Model not built.')
-            return False
-        prediction = self.model.predict(self.data[['feature1', 'feature2', 'feature3']])
-        return prediction
+brain = Brain()
