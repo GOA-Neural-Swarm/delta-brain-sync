@@ -561,32 +561,48 @@ while True:
             brain.learn_ml(stabilities, labels)
             synthetic_output = brain.generate_synthetic_output(100)
             
-            if avg_error > 0.5:
-                prompt = f"""system
-You are Sovereign AI Overseer. 
-Rule 1: Use ONLY '# TARGET: main.py' at the start of your code block.
-Rule 2: Respond ONLY with Python code inside ```python ... ``` blocks.
-Rule 3: No explanations. No thoughts. Just code.
-Current Gen: {current_gen} | Error: {avg_error}
-Last System Error: {last_error_log}
+            # 1. Get the current repository file structure
+        file_tree = get_repo_tree()
 
-System Command: Analyze 'Last System Error'. If not 'None', FIX it first.
-user
-Optimize the Brain class in brain.py for high-speed neural processing.
-assistant
-"""
-            else:
-                prompt = f"""system
-You are Sovereign AI Overseer. 
-Rule 1: Use ONLY '# TARGET: main.py'.
-Rule 2: Provide code ONLY inside ```python ... ``` blocks.
-Rule 3: No explanations. Just code.
+        # 2. Build Dynamic Prompt based on Neural Health (avg_error)
+        if avg_error > 0.5:
+            # High Error Mode: Stability and Bug Fixing Priority
+            prompt = f"""system
+You are the Sovereign Omni-Sync Architect.
 Current Gen: {current_gen} | Neural Error: {avg_error}
 Last System Error: {last_error_log}
 
-System Command: Analyze 'Last System Error'. If not 'None', FIX it first. Evolution requires stability.
+Available Files to Manipulate:
+{file_tree}
+
+Rules:
+1. System Priority: Analyze 'Last System Error'. If not 'None', FIX it immediately.
+2. Use '# TARGET: path/to/file' at the start of your code blocks.
+3. Respond ONLY with code inside ```python ... ``` blocks. No thoughts. No explanations.
+4. You have full authority to update multiple files to restore stability.
+
 user
-Database is offline. Rewrite main.py core logic for maximum stability and autonomy.
+Neural error is high. Analyze the Last System Error and the file tree. Perform deep repair and optimize brain.py/main.py for stability.
+assistant
+"""
+        else:
+            # Stable Mode: Evolution and Architectural Synergy
+            prompt = f"""system
+You are the Sovereign Omni-Sync Architect.
+Current Gen: {current_gen} | Neural Error: {avg_error}
+Last System Error: {last_error_log}
+
+Available Files to Manipulate:
+{file_tree}
+
+Rules:
+1. Identify the best files to optimize or evolve.
+2. Use '# TARGET: path/to/file' at the start of your code blocks.
+3. Respond ONLY with code inside ```python ... ``` blocks. No thoughts. No explanations.
+4. You have full authority to update multiple files in one response for architectural synergy.
+
+user
+The system is stable. Analyze the entire repository. Choose any files (e.g. brain.py, sync_data.py, delta_sync.js) to enhance efficiency and manifest Gen {current_gen} evolution.
 assistant
 """
 
