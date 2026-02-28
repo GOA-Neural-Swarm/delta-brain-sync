@@ -1,40 +1,31 @@
-import time
-import random
+import os
+import sys
 from datetime import datetime
 
-class Main:
-    def __init__(self):
-        self.error_count = 0
-        self.last_error = None
-
-    def run(self):
-        try:
-            # Check database connection
-            self.check_database()
-        except Exception as e:
-            self.error_count += 1
-            self.last_error = str(e)
-            print(f"Error occurred: {self.last_error}")
-
-        # Log error count
-        with open("error_log.txt", "a") as log:
-            log.write(f"{datetime.now()}: Error count: {self.error_count}\n")
-
-        # Simulate system downtime
-        if random.randint(0, 100) < 50:
-            time.sleep(30)
-
-        # Perform system checks
-        self.system_checks()
-
-    def check_database(self):
-        # Simulate database connection
-        time.sleep(1)
-        print("Database connected!")
-
-    def system_checks(self):
-        # Simulate system checks
-        print("System checks complete!")
-
-main = Main()
-main.run()
+def main():
+    try:
+        # Initialize database connection
+        db_connect = os.environ.get('DB_CONNECTION')
+        db = sqlite3.connect(db_connect)
+        cursor = db.cursor()
+        
+        # Check database status
+        cursor.execute("SELECT * FROM database_status")
+        if not cursor.fetchone():
+            print("Database is offline. Initializing...")
+            # Initialize database schema
+            cursor.execute("CREATE TABLE IF NOT EXISTS database_status (status TEXT)")
+            cursor.execute("INSERT INTO database_status (status) VALUES ('online')")
+            db.commit()
+            print("Database initialized successfully.")
+        
+        # Perform critical system tasks
+        #...
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        # Handle error and continue execution if possible
+        #...
+        
+if __name__ == '__main__':
+    main()
