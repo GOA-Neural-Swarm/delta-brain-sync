@@ -1,27 +1,30 @@
 import logging
-from sqlalchemy import create_engine
-from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
+import sqlite3
 
-app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///db.sqlite"
-db = SQLAlchemy(app)
+# Set up logging
+logging.basicConfig(level=logging.INFO)
 
-@app.route("/api/health", methods=["GET"])
-def health():
-    return jsonify({"status": "healthy"})
+# Connect to database (fallback to memory storage if database is offline)
+try:
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+except sqlite3.Error:
+    logging.info('Database offline. Falling back to memory storage.')
+    cursor = None
 
-@app.route("/api/commands", methods=["POST"])
-def commands():
-    if request.is_json:
-        data = request.get_json()
-        if data.get("command") == "analyze":
-            # TO DO: Implement analysis logic here
-            return jsonify({"result": "analysis_in_progress"})
-        elif data.get("command") == "report":
-            # TO DO: Implement reporting logic here
-            return jsonify({"result": "report_generated"})
-    return jsonify({"error": "invalid_request"}), 400
+# Core logic
+def main():
+    if cursor:
+        # Perform database operations
+        cursor.execute('SELECT * FROM table')
+        results = cursor.fetchall()
+    else:
+        # Use memory storage
+        results = []
 
-if __name__ == "__main__":
-    app.run(debug=True)
+    # Process results
+    for result in results:
+        logging.info(f'Processed result: {result}')
+
+if __name__ == '__main__':
+    main()
