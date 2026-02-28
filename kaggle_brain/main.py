@@ -279,38 +279,46 @@ def absorb_natural_order_data():
         return None
 
 def self_coding_engine(raw_content):
-    try:
-        # AI ရဲ့ output ထဲက ```python ... ``` block ကို ပိုသခှောအောငှ ရှာမယှ
-        code_blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
-        
-        if not code_blocks:
-            # တကယလှို့ block မပါရငှ စာသားအကုနလှုံးထဲက code ကိုပဲ ဆှဲထုတဖှို့ ကှိုးစားမယှ
-            clean_content = re.sub(r"system|user|assistant|Note:.*", "", raw_content, flags=re.IGNORECASE).strip()
-            code_blocks = [clean_content] if len(clean_content) > 20 else []
+    try:
+        # 1. Code block ရှာမယ်
+        code_blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
+        
+        if not code_blocks:
+            clean_content = re.sub(r"system|user|assistant|Note:.*", "", raw_content, flags=re.IGNORECASE).strip()
+            # အနည်းဆုံး စာလုံး ၁၀၀ ကျော်မှသာ code အဖြစ် သတ်မှတ်မယ် (Null/Short Text ကာကွယ်ရန်)
+            code_blocks = [clean_content] if len(clean_content) > 100 else []
 
-        modified_files = []
-        for block in code_blocks:
-            # ပိုလှှံနတေဲ့ စာသားတှကေို ဖယထှုတမှယှ (Validation အဆင့ှ)
-            lines = block.split('\n')
-            # ပထမဆုံး စာကှောငှးမှာ code မဟုတတှာတှေ ပါနရငှေ ဖယပှဈမယှ
-            valid_code = "\n".join([line for line in lines if not line.strip().startswith(("Here is", "Certainly", "Optimization"))])
-            
-            target_match = re.search(r"# TARGET:\s*(\S+)", valid_code)
-            filename = target_match.group(1) if target_match else "main.py"
-            
-            try:
-                compile(valid_code, filename, "exec") # Syntax စဈမယှ
-                with open(filename, "w") as f:
-                    f.write(valid_code)
-                modified_files.append(filename)
-                print(f"🛠️ [EVOLUTION]: {filename} self-coded and validated.")
-            except Exception as syntax_err:
-                print(f"⚠️ [SYNTAX REJECTED]: {filename} at Line 1: {syntax_err}")
-            
-        return (len(modified_files) > 0), modified_files
-    except Exception as e:
-        print(f"❌ [ENGINE ERROR]: {e}")
-        return False, []
+        modified_files = []
+        for block in code_blocks:
+            lines = block.split('\n')
+            valid_code = "\n".join([line for line in lines if not line.strip().startswith(("Here is", "Certainly", "Optimization"))])
+            
+            # [CRITICAL SAFETY]: Code ထဲမှာ အရေးကြီးတဲ့ keyword တွေ ပါ၊ မပါ စစ်မယ်
+            # အကယ်၍ အရေးကြီးတဲ့ imports တွေ မပါလာရင် အဲ့ဒီ code ကို ပယ်ချမယ် (Overwrite မလုပ်ဘူး)
+            essential_keywords = ["import os", "class Brain", "def"]
+            if not any(key in valid_code for key in essential_keywords):
+                print("⚠️ [REJECTED]: Missing core logic in new code. Aborting to save existing main.py.")
+                continue
+
+            target_match = re.search(r"# TARGET:\s*(\S+)", valid_code)
+            filename = target_match.group(1) if target_match else "main.py"
+            
+            try:
+                # Syntax Check ကို အပြင်မှာ အရင်လုပ်မယ်
+                compile(valid_code, filename, "exec") 
+                
+                # Syntax မှန်မှသာ ဖိုင်ကို ဖွင့်ပြီး ရေးမယ်
+                with open(filename, "w") as f:
+                    f.write(valid_code)
+                modified_files.append(filename)
+                print(f"🛠️ [EVOLUTION]: {filename} self-coded safely.")
+            except Exception as syntax_err:
+                print(f"⚠️ [SYNTAX REJECTED]: {syntax_err}")
+            
+        return (len(modified_files) > 0), modified_files
+    except Exception as e:
+        print(f"❌ [ENGINE ERROR]: {e}")
+        return False, []
 
 def autonomous_git_push(gen, thought, modified_files):
     is_code_update = bool(modified_files)
