@@ -18,7 +18,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_TOKEN }}
-
+          submodules: false
+      
       - name: Step 2 - Inject Multi-Engine Dependencies
         run: |
           # အဓိက လိုအပ်တဲ့ Tools တွေကို အရင်သွင်းမယ် (ဒါမှ Error မတက်မှာ)
