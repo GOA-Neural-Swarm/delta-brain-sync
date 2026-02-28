@@ -1,5 +1,15 @@
 const admin = require('firebase-admin');
 const { Client } = require('pg');
+const fs = require('fs');
+
+function getInstruction() {
+    try {
+        if (fs.existsSync('instruction.json')) {
+            return JSON.parse(fs.readFileSync('instruction.json', 'utf8'));
+        }
+    } catch (e) { console.log("⚠️ No instruction yet."); }
+    return { command: "NORMAL_GROWTH" };
+}
 
 async function sync() {
     try {
