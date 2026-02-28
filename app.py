@@ -325,19 +325,34 @@ assistant
         while True:
             try:
                 print(f"\n🧬 Cycle: {time.ctime()}")
-                # Auto-populate Neon DB
+
+                # 📝 [LOGGING LAYER]: brain_history.txt ထဲကို data ရေးသွင်းခြင်း
+                log_entry = f"[{time.ctime()}] Gen: {self.current_gen} | Status: Active | Error: {self.avg_error}\n"
+                with open("brain_history.txt", "a", encoding='utf-8') as f:
+                    f.write(log_entry)
+                print(f"📝 [LOG]: brain_history.txt updated.")
+
+                # 1. Auto-populate Neon DB (မူလ logic)
                 await self.universal_hyper_ingest(limit=50, sync_to_supabase=False)
 
+                # 2. Trigger Evolution & Sync (မူလ logic)
                 if await self.trigger_supreme_evolution():
                     await self.sync_to_huggingface()
 
+                # 3. Swarm Instruction Logic (မူလ logic + brain_history.txt update ပါအောင်လုပ်ထားသည်)
                 swarm_cmd = "HYPER_EXPANSION" if self.avg_error < 0.2 else "NORMAL_GROWTH"
                 await self.broadcast_swarm_instruction(swarm_cmd)
                 
                 if HEADLESS: break
                 await asyncio.sleep(300)
+
             except Exception as e:
                 print(f"⚠️ Loop Error: {e}")
+                # Error ဖြစ်ရင်လည်း Log ထဲမှာ မှတ်တမ်းတင်မယ်
+                try:
+                    with open("brain_history.txt", "a", encoding='utf-8') as f:
+                        f.write(f"[{time.ctime()}] ERROR: {str(e)}\n")
+                except: pass
                 await asyncio.sleep(60)
 
     async def stream_logic(self, msg, hist):
