@@ -1,7 +1,7 @@
 {
-  "command": "NORMAL_GROWTH",
-  "core_power": 10004,
-  "avg_api": 3918.53452685422,
-  "replicate": true,
-  "updated_at": "2026-02-28T19:46:35.535Z"
+    "command": "HYPER_EXPANSION",
+    "core_power": 10001,
+    "avg_api": 5000,
+    "replicate": true,
+    "updated_at": "Sat Feb 28 20:01:54 2026 (Python Core Sync)"
 }
