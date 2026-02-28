@@ -1,18 +1,30 @@
-import os
 import logging
-from flask import Flask, jsonify
-from flask_sqlalchemy import SQLAlchemy
+import sqlite3
 
-app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+# Set up logging
+logging.basicConfig(level=logging.INFO)
 
-db = SQLAlchemy(app)
+# Connect to database (fallback to memory storage if database is offline)
+try:
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+except sqlite3.Error:
+    logging.info('Database offline. Falling back to memory storage.')
+    cursor = None
 
-@app.route("/api/data", methods=["GET"])
-def get_data():
-    data = db.session.query("SELECT * FROM table").all()
-    return jsonify([dict(row) for row in data])
+# Core logic
+def main():
+    if cursor:
+        # Perform database operations
+        cursor.execute('SELECT * FROM table')
+        results = cursor.fetchall()
+    else:
+        # Use memory storage
+        results = []
 
-if __name__ == "__main__":
-    app.run(debug=True)
+    # Process results
+    for result in results:
+        logging.info(f'Processed result: {result}')
+
+if __name__ == '__main__':
+    main()
