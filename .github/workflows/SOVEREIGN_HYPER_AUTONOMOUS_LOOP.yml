@@ -66,7 +66,7 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{
               "model": "llama3-70b-8192",
-              "messages": [{"role": "user", "content": "Analyze existing ai_experiment.py. The Brain class expects 784 inputs but data.csv is missing or incompatible. Rewrite ai_experiment.py to: 1. Use synthetic data generation (numpy) to create 100 samples with 784 features each. 2. Ensure the model trains on this data. 3. Output only the full, clean Python code without markdown or explanations."}]
+              "messages": [{"role": "user", "content": "The Brain class in main.py expects 784 inputs but data.csv is missing or incompatible. Rewrite main.py to: 1. Use synthetic data generation (numpy) to create 100 samples with 784 features each. 2. Ensure the model trains on this data within the script. 3. Output only the full, clean Python code for main.py without markdown or explanations."}]
             }')
 
           # Content ကို ဆွဲထုတ်ပြီး Invisible character (U+00A0) တွေကို ရှင်းထုတ်မယ်
