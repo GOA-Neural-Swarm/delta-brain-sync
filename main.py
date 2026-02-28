@@ -1,23 +1,27 @@
 import logging
-from database import Database
+from sqlalchemy import create_engine
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
 
-logging.basicConfig(level=logging.INFO)
+app = Flask(__name__)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///db.sqlite"
+db = SQLAlchemy(app)
 
-class Main:
-    def __init__(self):
-        self.db = Database()
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify({"status": "healthy"})
 
-    def run(self):
-        try:
-            self.db.connect()
-            # Database operations
-        except Exception as e:
-            logging.error(f"Error: {e}")
-
-    def main_loop(self):
-        while True:
-            self.run()
+@app.route("/api/commands", methods=["POST"])
+def commands():
+    if request.is_json:
+        data = request.get_json()
+        if data.get("command") == "analyze":
+            # TO DO: Implement analysis logic here
+            return jsonify({"result": "analysis_in_progress"})
+        elif data.get("command") == "report":
+            # TO DO: Implement reporting logic here
+            return jsonify({"result": "report_generated"})
+    return jsonify({"error": "invalid_request"}), 400
 
 if __name__ == "__main__":
-    main = Main()
-    main.main_loop()
+    app.run(debug=True)
