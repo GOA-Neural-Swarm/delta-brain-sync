@@ -280,94 +280,119 @@ def absorb_natural_order_data():
 
 def self_coding_engine(raw_content):
     try:
-        # 1. Code block ရှာမယ်
-        code_blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
+        # 1. Markdown code block အားလုံးကို ရှာမယ် (python, js, json, yaml, etc.)
+        # Language tag မပါရင်လည်း မိအောင် (?: ... )? သုံးထားပါတယ်
+        code_blocks = re.findall(r"```(?:\w+)?\n(.*?)\n```", raw_content, re.DOTALL)
         
         if not code_blocks:
+            # Block မပါရင် စာသားအရှည်ကို ကြည့်ပြီး code ဟုတ်မဟုတ် ခန့်မှန်းမယ်
             clean_content = re.sub(r"system|user|assistant|Note:.*", "", raw_content, flags=re.IGNORECASE).strip()
             # အနည်းဆုံး စာလုံး ၁၀၀ ကျော်မှသာ code အဖြစ် သတ်မှတ်မယ် (Null/Short Text ကာကွယ်ရန်)
             code_blocks = [clean_content] if len(clean_content) > 100 else []
 
         modified_files = []
+        
         for block in code_blocks:
+            # ပိုလျှံနေတဲ့ စာသားတွေကို ဖယ်ထုတ်မယ် (Validation)
             lines = block.split('\n')
-            valid_code = "\n".join([line for line in lines if not line.strip().startswith(("Here is", "Certainly", "Optimization"))])
+            block_content = "\n".join([line for line in lines if not line.strip().startswith(("Here is", "Certainly", "Optimization"))])
             
-            # [CRITICAL SAFETY]: Code ထဲမှာ အရေးကြီးတဲ့ keyword တွေ ပါ၊ မပါ စစ်မယ်
-            # အကယ်၍ အရေးကြီးတဲ့ imports တွေ မပါလာရင် အဲ့ဒီ code ကို ပယ်ချမယ် (Overwrite မလုပ်ဘူး)
-            essential_keywords = ["import os", "class Brain", "def"]
-            if not any(key in valid_code for key in essential_keywords):
-                print("⚠️ [REJECTED]: Missing core logic in new code. Aborting to save existing main.py.")
-                continue
+            # Target filename ကို ရှာမယ်
+            target_match = re.search(r"# TARGET:\s*(\S+)", block_content)
+            filename = target_match.group(1).strip() if target_match else "main.py"
+            
+            # File ထဲ သိမ်းမယ့် code ထဲကနေ # TARGET: လိုင်းကို ပြန်ဖယ်မယ်
+            valid_code = re.sub(r"# TARGET:.*", "", block_content).strip()
 
-            target_match = re.search(r"# TARGET:\s*(\S+)", valid_code)
-            filename = target_match.group(1) if target_match else "main.py"
-            
+            # --- 🛡️ SAFETY LAYER ---
+            # main.py သို့မဟုတ် brain.py ဆိုရင် အရေးကြီး logic တွေ ပါ၊ မပါ အရင်စစ်မယ် (Brain-wipe ကာကွယ်ရန်)
+            if filename in ["main.py", "brain.py"]:
+                essential_keywords = ["import os", "class Brain", "def"]
+                if not any(key in valid_code for key in essential_keywords):
+                    print(f"⚠️ [REJECTED]: Missing core logic for {filename}. Aborting overwrite.")
+                    continue
+
+            # --- 🔍 SYNTAX VALIDATION ---
+            # Python ဖိုင်ဖြစ်ရင် Syntax မှား၊ မမှား အရင် စစ်မယ်
+            if filename.endswith(".py"):
+                try:
+                    compile(valid_code, filename, "exec")
+                except Exception as syntax_err:
+                    print(f"⚠️ [SYNTAX REJECTED]: {filename} at {syntax_err}")
+                    continue
+
+            # --- 🛠️ FILE MANIPULATION ---
             try:
-                # Syntax Check ကို အပြင်မှာ အရင်လုပ်မယ်
-                compile(valid_code, filename, "exec") 
+                # Folder မရှိရင် အလိုအလျောက် ဆောက်ပေးမယ်
+                os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
                 
-                # Syntax မှန်မှသာ ဖိုင်ကို ဖွင့်ပြီး ရေးမယ်
+                # Syntax နဲ့ Safety အားလုံးအောင်မြင်မှ ဖိုင်ကို ဖွင့်ပြီး ရေးမယ်
                 with open(filename, "w") as f:
                     f.write(valid_code)
+                
                 modified_files.append(filename)
-                print(f"🛠️ [EVOLUTION]: {filename} self-coded safely.")
-            except Exception as syntax_err:
-                print(f"⚠️ [SYNTAX REJECTED]: {syntax_err}")
+                print(f"🛠️ [EVOLUTION]: {filename} self-coded and validated.")
+            except Exception as write_err:
+                print(f"❌ [WRITE ERROR]: {filename} - {write_err}")
             
         return (len(modified_files) > 0), modified_files
+
     except Exception as e:
         print(f"❌ [ENGINE ERROR]: {e}")
         return False, []
 
 def autonomous_git_push(gen, thought, modified_files):
-    is_code_update = bool(modified_files)
-    """
-    PHASE 8: Sovereign Git Push.
-    Kaggle ကနေ GitHub ဆီကို တိုကရှိုကှ code ပှနပှို့တဲ့ အဆင့ှ။
-    """
-    if not GH_TOKEN:
-        print("⚠️ [GIT]: GH_TOKEN missing. Sync disabled.")
-        return
+    is_code_update = bool(modified_files)
+    """
+    PHASE 8: Sovereign Git Push.
+    Kaggle ကနေ GitHub ဆီကို တိုက်ရိုက် code ပြန်ပို့တဲ့ အဆင့်။
+    ဖိုင်အားလုံးကို dynamic sync လုပ်နိုင်ရန် အဆင့်မြှင့်ထားသည်။
+    """
+    if not GH_TOKEN:
+        print("⚠️ [GIT]: GH_TOKEN missing. Sync disabled.")
+        return
 
-    try:
-        # Step 1: Remote URL ကို Token နဲ့ သတမှှတမှယှ
-        remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
-        
-        # Step 2: Repo ကို Clone လုပမှယှ (မရှိသေးရငှ) သို့မဟုတှ ရှိပှီးသားကို သုံးမယှ
-        if not os.path.exists(REPO_PATH):
-            repo = git.Repo.clone_from(remote_url, REPO_PATH)
-        else:
-            repo = git.Repo(REPO_PATH)
-            repo.remotes.origin.set_url(remote_url)
+    try:
+        # Step 1: Remote URL ကို Token နဲ့ သတ်မှတ်မယ်
+        remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
+        
+        # Step 2: Repo ကို Clone လုပ်မယ် (မရှိသေးရင်) သို့မဟုတ် ရှိပြီးသားကို သုံးမယ်
+        if not os.path.exists(REPO_PATH):
+            repo = git.Repo.clone_from(remote_url, REPO_PATH)
+        else:
+            repo = git.Repo(REPO_PATH)
+            repo.remotes.origin.set_url(remote_url)
 
-        # Step 3: GitHub က နောကဆှုံး version ကို pull လုပမှယှ
-        repo.git.fetch("origin", "main")
-        repo.git.reset("--hard", "origin/main")
+        # Step 3: GitHub က နောက်ဆုံး version ကို pull လုပ်မယ်
+        repo.git.fetch("origin", "main")
+        repo.git.reset("--hard", "origin/main")
 
-       # Step 4: AI ပှငလှိုကတှဲ့ code ဖိုငတှှကေို repo folder ထဲ copy ကူးမယှ
-        import shutil
-        target_files = ["main.py", "brain.py", "ai_experiment.py"]
-        for file in target_files:
-            if os.path.exists(file):
-                shutil.copy(file, os.path.join(REPO_PATH, file))
+        # Step 4: [HYPER-SYNC]: AI ပြင်လိုက်တဲ့ ဖိုင်အားလုံးကို repo folder ထဲ copy ကူးမယ်
+        import shutil
+        if modified_files:
+            for file in modified_files:
+                if os.path.exists(file):
+                    dest_path = os.path.join(REPO_PATH, file)
+                    # Sub-folders တွေပါခဲ့ရင် အလိုအလျောက် ဆောက်ပေးမယ်
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    shutil.copy(file, dest_path)
 
-        # Step 5: Commit & Force Push (ဒါမှ Loop က ပှတမှသှားမှာ)
-        repo.git.add(all=True)
-        if repo.is_dirty():
-            commit_msg = f"🧬 Gen {gen} Hyper-Evolution [skip ci]"
-            repo.index.commit(commit_msg)
-            # Force push လုပမှှသာ GitHub Action ဘကကှ အလုပဆှကလှုပမှှာပါ
-            repo.git.push("origin", "main", force=True)
-            print(f"🚀 [HYPER-SYNC]: Gen {gen} evolution manifested on GitHub.")
-        else:
-            print(f"⏳ [GITHUB]: No code changes. Pulse only.")
+        # Step 5: Commit & Force Push (ဒါမှ Loop က ပြတ်မသွားမှာ)
+        repo.git.add(all=True)
+        if repo.is_dirty():
+            commit_msg = f"🧬 Gen {gen} Hyper-Evolution [skip ci]"
+            repo.index.commit(commit_msg)
+            # Force push လုပ်မှသာ GitHub Action ဘက်က အလုပ်ဆက်လုပ်မှာပါ
+            repo.git.push("origin", "main", force=True)
+            print(f"🚀 [HYPER-SYNC]: Gen {gen} evolution ({len(modified_files)} files) manifested on GitHub.")
+        else:
+            print(f"⏳ [GITHUB]: No code changes. Pulse only.")
 
-    except Exception as e:
-        print(f"❌ [GIT ERROR]: {e}")
-        # အကယှ၍ code ပှငတှဲ့အဆင့မှှာ Git error တကရှငှ rollback လုပမှယှ
-        if is_code_update:
-            execute_rollback(f"Git Synchronization Error: {str(e)}")
+    except Exception as e:
+        print(f"❌ [GIT ERROR]: {e}")
+        # အကယ်၍ code ပြင်တဲ့အဆင့်မှာ Git error တက်ရင် rollback လုပ်မယ်
+        if is_code_update:
+            execute_rollback(f"Git Synchronization Error: {str(e)}")
 
 def save_to_supabase_phase7(thought, gen, neural_error=0.0):
     if not SUPABASE_URL or not SUPABASE_KEY: return
@@ -478,6 +503,17 @@ HEADLESS = os.getenv("HEADLESS_MODE") == "true"
 
 print(f"🔥 [STARTING]: PHASE 8 SOVEREIGN ENGINE AT GEN {current_gen}...")
 last_error_log = "None (System Healthy)"
+
+def get_repo_tree():
+    """လက်ရှိ repository ထဲမှာ ရှိသမျှ ဖိုင်စာရင်းကို AI ဖတ်ဖို့ ထုတ်ပေးတာပါ"""
+    excluded = ['.git', '__pycache__', 'sovereign_repo_sync', 'venv']
+    tree = []
+    for root, dirs, files in os.walk("."):
+        dirs[:] = [d for d in dirs if d not in excluded]
+        for file in files:
+            if not file.startswith('.'):
+                tree.append(os.path.join(root, file))
+    return "\n".join(tree)
 
 while True:
     try:
