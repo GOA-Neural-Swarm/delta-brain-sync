@@ -31,7 +31,8 @@ jobs:
         with:
           token: ${{ secrets.GH_TOKEN }}
           fetch-depth: 0
-
+          submodules: false
+      
       - name: Step 2 - Environment Setup (Python 3.10 & Node 20)
         uses: actions/setup-python@v5
         with:
