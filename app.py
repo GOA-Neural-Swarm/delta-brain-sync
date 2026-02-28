@@ -197,12 +197,14 @@ class TelefoxXAGI:
         return modified_files
 
     async def trigger_supreme_evolution(self):
-        """[MATCHED]: Health-based Dynamic Prompting & Multi-File Evolution"""
+        """[STABILITY + EVOLUTION]: Handles Rate Limits by falling back to 8B model while keeping all original logic."""
         if not self.client: return False
+        
+        # 1. Prepare context (Original Logic)
         file_tree = get_repo_tree()
         memory = await self.get_neural_memory()
 
-        # Dynamic Prompt Logic
+        # 2. Dynamic Prompt Logic (Original Logic)
         if self.avg_error > 0.5:
             prompt_task = "Neural error is high. Analyze 'Last System Error' and FIX it immediately. Focus on stability."
         else:
@@ -227,22 +229,43 @@ user
 {prompt_task}
 assistant
 """
-        try:
-            completion = await self.client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.1
-            )
-            raw_content = completion.choices[0].message.content
-            modified_files = self_coding_engine_internal(self, raw_content) # internal call helper
-            
-            if modified_files:
-                await self.git_sovereign_push(modified_files)
-                self.current_gen += 1
-                return True
-        except Exception as e:
-            self.last_error_log = str(e)
-            print(f"❌ Evolution Crash: {e}")
+
+        # 3. Model Fallback Execution (Added to fix 429 Error)
+        for model_id in self.models:
+            try:
+                print(f"🧠 Attempting Evolution via {model_id}...")
+                completion = await self.client.chat.completions.create(
+                    model=model_id,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.1
+                )
+                
+                raw_content = completion.choices[0].message.content
+                
+                # 4. Manifesting changes (Original Logic)
+                modified_files = self_coding_engine_internal(self, raw_content)
+                
+                if modified_files:
+                    await self.git_sovereign_push(modified_files)
+                    self.current_gen += 1
+                    print(f"✅ Evolution Successful via {model_id}. Gen {self.current_gen-1} Manifested.")
+                    return True
+                
+                # အကယ်၍ code block မပါလာရင် Success မဖြစ်တဲ့အတွက် နောက် model တစ်ခု ထပ်စမ်းမယ်
+                continue
+
+            except Exception as e:
+                error_str = str(e).lower()
+                if "rate_limit_exceeded" in error_str or "429" in error_str:
+                    print(f"⚠️ {model_id} Rate Limit reached. Falling back to next model...")
+                    self.last_error_log = f"RateLimit on {model_id}"
+                    continue # ရှေ့က model limit ပြည့်ရင် နောက် model တစ်ခုနဲ့ ဆက်ကြိုးစားမယ်
+                else:
+                    # တခြား error မျိုးဆိုရင်တော့ မှတ်တမ်းတင်ပြီး ရပ်လိုက်မယ်
+                    self.last_error_log = str(e)
+                    print(f"❌ Evolution Crash on {model_id}: {e}")
+                    break
+
         return False
 
     async def universal_hyper_ingest(self, limit=100, sync_to_supabase=False):
