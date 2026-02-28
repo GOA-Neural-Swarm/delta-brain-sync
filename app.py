@@ -181,6 +181,24 @@ class TelefoxXAGI:
         except Exception as e:
             print(f"❌ [GIT ERROR]: {e}")
 
+    async def broadcast_swarm_instruction(self, command="NORMAL_GROWTH"):
+        """Node.js Swarm Nodes တွေဖတ်ဖို့ instruction.json ကို GitHub ဆီ ပို့ပေးမယ်"""
+        if not GITHUB_TOKEN: return
+        
+        instruction = {
+            "command": command,
+            "core_power": 10000 + self.current_gen,
+            "avg_api": 5000, 
+            "replicate": True if command == "HYPER_EXPANSION" else False,
+            "updated_at": f"{time.ctime()} (Python Core Sync)"
+        }
+        
+        with open("instruction.json", "w", encoding='utf-8') as f:
+            json.dump(instruction, f, indent=4)
+        
+        await self.git_sovereign_push(["instruction.json"])
+        print(f"📡 [SWARM]: Command '{command}' manifested.")
+    
     def self_coding_engine(self, raw_content):
         """AI ဆီကလာတဲ့ code block တွေကို ဖိုင်တွေအဖြစ် ခွဲထုတ်ပြီး သိမ်းဆည်းမယ်"""
         blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
@@ -313,6 +331,9 @@ assistant
                 if await self.trigger_supreme_evolution():
                     await self.sync_to_huggingface()
 
+                swarm_cmd = "HYPER_EXPANSION" if self.avg_error < 0.2 else "NORMAL_GROWTH"
+                await self.broadcast_swarm_instruction(swarm_cmd)
+                
                 if HEADLESS: break
                 await asyncio.sleep(300)
             except Exception as e:
