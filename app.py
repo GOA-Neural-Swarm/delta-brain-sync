@@ -151,6 +151,12 @@ class TelefoxXAGI:
     async def git_sovereign_push(self, modified_files):
         """[MATCHED]: ဖိုင်အားလုံးကို GitHub ဆီ တိုက်ရိုက် Force Push လုပ်မယ်"""
         if not GITHUB_TOKEN or not modified_files: return
+        
+        import random
+        wait_time = random.randint(30, 300)
+        print(f"🛡️ [PREVENTING CLASH]: Waiting {wait_time}s for traffic clearance...")
+        await asyncio.sleep(wait_time)
+        
         try:
             remote_url = f"https://x-access-token:{GITHUB_TOKEN}@github.com/{REPO_URL}.git"
             
