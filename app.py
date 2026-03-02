@@ -153,7 +153,7 @@ class TelefoxXAGI:
         if not GITHUB_TOKEN or not modified_files: return
         
         import random
-        wait_time = random.randint(30, 300)
+        wait_time = random.randint(60, 600)
         print(f"🛡️ [PREVENTING CLASH]: Waiting {wait_time}s for traffic clearance...")
         await asyncio.sleep(wait_time)
         
