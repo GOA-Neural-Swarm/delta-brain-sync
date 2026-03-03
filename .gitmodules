@@ -1,0 +1,3 @@
+[submodule "repo_sync"]
+	path = repo_sync
+	url = https://github.com/GOA-neurons/repo_sync.git
