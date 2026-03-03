@@ -1,4 +1,4 @@
-import os 
+import os
 import subprocess
 import sys
 import time
@@ -53,15 +53,15 @@ def install_requirements():
 
 install_requirements()
 
-# --- အပေါပှိုငှးက DB_URL သတမှှတတှဲ့နရောမှာ ဒါကို အစားထိုးပါ ---
+# --- အပေါပွိုငွးက DB_URL သတမွှတတွဲ့နရောမှာ ဒါကို အစားထိုးပါ ---
 raw_db_url = os.getenv("NEON_DB_URL") or os.getenv("DATABASE_URL")
 if user_secrets:
     raw_db_url = user_secrets.get_secret("NEON_DB_URL") or raw_db_url
 
-# Protocol Fix ကို Global မှာ တဈခါတညှးလုပမှယှ
+# Protocol Fix ကို Global မှာ တဈခါတညွးလုပမွယွ
 DB_URL = raw_db_url.replace("postgres://", "postgresql://", 1) if raw_db_url and raw_db_url.startswith("postgres://") else raw_db_url
 
-FIXED_DB_URL = DB_URL  # အောကကှ function တှေ လှမှးသုံးလို့ရအောငှ Global သတမှှတလှိုကတှာ
+FIXED_DB_URL = DB_URL  # အောကကွ function တှေ လှမွးသုံးလို့ရအောငွ Global သတမွှတလွိုကတွာ
 
 FIREBASE_URL = os.getenv("FIREBASE_DB_URL")
 FB_JSON_STR = os.getenv("FIREBASE_SERVICE_ACCOUNT")
@@ -81,7 +81,7 @@ REPO_OWNER = "GOA-Neural-Swarm"
 REPO_NAME = "delta-brain-sync"
 REPO_URL = f"github.com/{REPO_OWNER}/{REPO_NAME}"
 # [HYPER-AUTONOMOUS FIX]: Kaggle supports /kaggle/working/ as persistent space
-REPO_PATH = "./repo_sync"
+REPO_PATH = "/kaggle/working/sovereign_repo_sync" if user_secrets else "/tmp/sovereign_repo_sync"
 
 # --- 🔱 FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
@@ -279,162 +279,111 @@ def absorb_natural_order_data():
         return None
 
 def self_coding_engine(raw_content):
-    try:
-        # 1. Markdown code block အားလုံးကို ရှာမယ် (python, js, json, yaml, etc.)
-        # Language tag မပါရင်လည်း မိအောင် (?: ... )? သုံးထားပါတယ်
-        code_blocks = re.findall(r"```(?:\w+)?\n(.*?)\n```", raw_content, re.DOTALL)
-        
-        if not code_blocks:
-            # Block မပါရင် စာသားအရှည်ကို ကြည့်ပြီး code ဟုတ်မဟုတ် ခန့်မှန်းမယ်
-            clean_content = re.sub(r"system|user|assistant|Note:.*", "", raw_content, flags=re.IGNORECASE).strip()
-            # အနည်းဆုံး စာလုံး ၁၀၀ ကျော်မှသာ code အဖြစ် သတ်မှတ်မယ် (Null/Short Text ကာကွယ်ရန်)
-            code_blocks = [clean_content] if len(clean_content) > 100 else []
+    try:
+        # AI ရဲ့ output ထဲက ```python ... ``` block ကို ပိုသခှောအောငွ ရှာမယွ
+        code_blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
+        
+        if not code_blocks:
+            # တကယလွို့ block မပါရငွ စာသားအကုနလွုံးထဲက code ကိုပဲ ဆှဲထုတဖွို့ ကှိုးစားမယွ
+            clean_content = re.sub(r"system|user|assistant|Note:.*", "", raw_content, flags=re.IGNORECASE).strip()
+            code_blocks = [clean_content] if len(clean_content) > 20 else []
 
-        modified_files = []
-        
-        for block in code_blocks:
-            # ပိုလျှံနေတဲ့ စာသားတွေကို ဖယ်ထုတ်မယ် (Validation)
-            lines = block.split('\n')
-            block_content = "\n".join([line for line in lines if not line.strip().startswith(("Here is", "Certainly", "Optimization"))])
-            
-            # Target filename ကို ရှာမယ်
-            target_match = re.search(r"# TARGET:\s*(\S+)", block_content)
-            filename = target_match.group(1).strip() if target_match else "main.py"
-            
-            # File ထဲ သိမ်းမယ့် code ထဲကနေ # TARGET: လိုင်းကို ပြန်ဖယ်မယ်
-            valid_code = re.sub(r"# TARGET:.*", "", block_content).strip()
-
-            # --- 🛡️ SAFETY LAYER ---
-            # main.py သို့မဟုတ် brain.py ဆိုရင် အရေးကြီး logic တွေ ပါ၊ မပါ အရင်စစ်မယ် (Brain-wipe ကာကွယ်ရန်)
-            if filename in ["main.py", "brain.py"]:
-                essential_keywords = ["import os", "class Brain", "def"]
-                if not any(key in valid_code for key in essential_keywords):
-                    print(f"⚠️ [REJECTED]: Missing core logic for {filename}. Aborting overwrite.")
-                    continue
-
-            # --- 🔍 SYNTAX VALIDATION ---
-            # Python ဖိုင်ဖြစ်ရင် Syntax မှား၊ မမှား အရင် စစ်မယ်
-            if filename.endswith(".py"):
-                try:
-                    compile(valid_code, filename, "exec")
-                except Exception as syntax_err:
-                    print(f"⚠️ [SYNTAX REJECTED]: {filename} at {syntax_err}")
-                    continue
-
-            # --- 🛠️ FILE MANIPULATION ---
-            try:
-                # Folder မရှိရင် အလိုအလျောက် ဆောက်ပေးမယ်
-                os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
-                
-                # Syntax နဲ့ Safety အားလုံးအောင်မြင်မှ ဖိုင်ကို ဖွင့်ပြီး ရေးမယ်
-                with open(filename, "w") as f:
-                    f.write(valid_code)
-                
-                modified_files.append(filename)
-                print(f"🛠️ [EVOLUTION]: {filename} self-coded and validated.")
-            except Exception as write_err:
-                print(f"❌ [WRITE ERROR]: {filename} - {write_err}")
-            
-        return (len(modified_files) > 0), modified_files
-
-    except Exception as e:
-        print(f"❌ [ENGINE ERROR]: {e}")
-        return False, []
+        modified_files = []
+        for block in code_blocks:
+            # ပိုလှှံနတေဲ့ စာသားတှကေို ဖယထွုတမွယွ (Validation အဆင့ွ)
+            lines = block.split('\n')
+            # ပထမဆုံး စာကှောငွးမှာ code မဟုတတွာတှေ ပါနရငွေ ဖယပွဈမယွ
+            valid_code = "\n".join([line for line in lines if not line.strip().startswith(("Here is", "Certainly", "Optimization"))])
+            
+            target_match = re.search(r"# TARGET:\s*(\S+)", valid_code)
+            filename = "ai_experiment.py"
+            
+            try:
+                compile(valid_code, filename, "exec") # Syntax စဈမယွ
+                with open(filename, "w") as f:
+                    f.write(valid_code)
+                modified_files.append(filename)
+                print(f"🛠️ [EVOLUTION]: {filename} self-coded and validated.")
+            except Exception as syntax_err:
+                print(f"⚠️ [SYNTAX REJECTED]: {filename} at Line 1: {syntax_err}")
+            
+        return (len(modified_files) > 0), modified_files
+    except Exception as e:
+        print(f"❌ [ENGINE ERROR]: {e}")
+        return False, []
 
 def autonomous_git_push(gen, thought, modified_files):
-    """
-    PHASE 8: Sovereign Git Push (STABILITY ENHANCED).
-    Kaggle ကနေ GitHub ဆီကို တိုက်ရိုက် code ပြန်ပို့တဲ့ အဆင့်။
-    """
-    is_code_update = bool(modified_files)
-    
-    if not GH_TOKEN:
-        print("⚠️ [GIT]: GH_TOKEN missing. Sync disabled.")
-        return
+    is_code_update = bool(modified_files)
+    """
+    PHASE 8: Sovereign Git Push.
+    Kaggle ကနေ GitHub ဆီကို တိုကရွိုကွ code ပှနပွို့တဲ့ အဆင့ွ။
+    """
+    if not GH_TOKEN:
+        print("⚠️ [GIT]: GH_TOKEN missing. Sync disabled.")
+        return
 
-    # 🛡️ EMERGENCY LOCK RECOVERY: ညပ်နေတဲ့ lock file ကို အရင်ရှင်းမယ်
-    lock_path = os.path.join(REPO_PATH, ".git", "index.lock")
-    if os.path.exists(lock_path):
-        try:
-            os.remove(lock_path)
-            print("🛡️ [RECOVERY]: Old Git lock removed to prevent hang.")
-        except: pass
+    try:
+        # Step 1: Remote URL ကို Token နဲ့ သတမွှတမွယွ
+        remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
+        
+        # Step 2: Repo ကို Clone လုပမွယွ (မရှိသေးရငွ) သို့မဟုတွ ရှိပှီးသားကို သုံးမယွ
+        if not os.path.exists(REPO_PATH):
+            repo = git.Repo.clone_from(remote_url, REPO_PATH)
+        else:
+            repo = git.Repo(REPO_PATH)
+            repo.remotes.origin.set_url(remote_url)
 
-    try:
-        # Step 1: Remote URL ကို Token နဲ့ သတ်မှတ်မယ်
-        remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
-        
-        # Step 2: Repo ကို Clone/Initialize လုပ်မယ် (Path: ./repo_sync)
-        if not os.path.exists(REPO_PATH):
-            print(f"📥 [GIT]: Cloning repository to {REPO_PATH}...")
-            repo = git.Repo.clone_from(remote_url, REPO_PATH, depth=1)
-        else:
-            repo = git.Repo(REPO_PATH)
-            repo.remotes.origin.set_url(remote_url)
+        # Step 3: GitHub က နောကဆွုံး version ကို pull လုပမွယွ
+        repo.git.fetch("origin", "main")
+        repo.git.reset("--hard", "origin/main")
 
-        # Step 3: GitHub က နောက်ဆုံး version ကို pull လုပ်မယ် (Stuck မဖြစ်အောင် reset သုံးမယ်)
-        repo.git.fetch("origin", "main")
-        repo.git.reset("--hard", "origin/main")
+       # Step 4: AI ပှငလွိုကတွဲ့ code ဖိုငတွှကေို repo folder ထဲ copy ကူးမယွ
+        import shutil
+        target_files = ["main.py", "brain.py", "ai_experiment.py"]
+        for file in target_files:
+            if os.path.exists(file):
+                shutil.copy(file, os.path.join(REPO_PATH, file))
 
-        # Step 4: [HYPER-SYNC]: AI ပြင်လိုက်တဲ့ ဖိုင်အားလုံးကို repo folder ထဲ copy ကူးမယ်
-        import shutil
-        if modified_files:
-            for file in modified_files:
-                if os.path.exists(file):
-                    dest_path = os.path.join(REPO_PATH, file)
-                    # Sub-folders တွေပါခဲ့ရင် အလိုအလျောက် ဆောက်ပေးမယ်
-                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-                    shutil.copy(file, dest_path)
-                    print(f"📄 [SYNC]: {file} -> {dest_path}")
+        # Step 5: Commit & Force Push (ဒါမှ Loop က ပှတမွသှားမှာ)
+        repo.git.add(all=True)
+        if repo.is_dirty():
+            commit_msg = f"🧬 Gen {gen} Hyper-Evolution [skip ci]"
+            repo.index.commit(commit_msg)
+            # Force push လုပမွှသာ GitHub Action ဘကကွ အလုပဆွကလွုပမွှာပါ
+            repo.git.push("origin", "main", force=True)
+            print(f"🚀 [HYPER-SYNC]: Gen {gen} evolution manifested on GitHub.")
+        else:
+            print(f"⏳ [GITHUB]: No code changes. Pulse only.")
 
-        # Step 5: Commit & Force Push (Natural Order Manifestation)
-        repo.git.add(all=True)
-        if repo.is_dirty():
-            commit_msg = f"🧬 Gen {gen} Hyper-Evolution [skip ci]"
-            repo.index.commit(commit_msg)
-            
-            # 🔥 [CRITICAL]: Force push ကိုသုံးပြီး state ကို အမြဲ update ဖြစ်နေစေမယ်
-            repo.git.push("origin", "main", force=True)
-            print(f"🚀 [HYPER-SYNC]: Gen {gen} evolution manifested on GitHub.")
-        else:
-            print(f"⏳ [GITHUB]: No code changes. Pulse only.")
-
-    except Exception as e:
-        print(f"❌ [GIT ERROR]: {e}")
-        # အကယ်၍ code ပြင်တဲ့အဆင့်မှာ Git error တက်ရင် rollback လုပ်မယ်
-        if is_code_update:
-            execute_rollback(f"Git Synchronization Error: {str(e)}")
+    except Exception as e:
+        print(f"❌ [GIT ERROR]: {e}")
+        # အကယွ၍ code ပှငတွဲ့အဆင့မွှာ Git error တကရွငွ rollback လုပမွယွ
+        if is_code_update:
+            execute_rollback(f"Git Synchronization Error: {str(e)}")
 
 def save_to_supabase_phase7(thought, gen, neural_error=0.0):
-    """Saves evolutionary data to Supabase with network timeout safety."""
-    if not SUPABASE_URL or not SUPABASE_KEY: 
-        print("⚠️ [SUPABASE]: Credentials missing. Skipping.")
-        return
-        
-    payload = {
-        "gen_id": f"gen_{gen}_transcendent",
-        "status": "TRANSCENDENCE_REACHED",
-        "thought_process": thought,
-        "neural_weight": float(neural_error) if neural_error else 50.0,
-        "synapse_code": "PHASE_7.1_STABILITY",
-        "timestamp": time.time(),
-    }
-    
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal",
-    }
-    
-    try:
-        url = f"{SUPABASE_URL}/rest/v1/dna_vault"
-        # 🛡️ TIMEOUT ADDED: Network ညပ်နေရင် စနစ်တန့်မသွားအောင် ၃၀ စက္ကန့်ပဲ စောင့်မယ်
-        response = requests.post(url, json=payload, headers=headers, timeout=30)
-        response.raise_for_status()
-        print(f"🧬 [SUPABASE]: Phase 7.1 Vault Synchronized.")
-    except Exception as e:
-        print(f"⚠️ [SUPABASE ERROR]: {e}")
+    if not SUPABASE_URL or not SUPABASE_KEY: return
+    payload = {
+        "gen_id": f"gen_{gen}_transcendent",
+        "status": "TRANSCENDENCE_REACHED",
+        "thought_process": thought,
+        "neural_weight": float(neural_error) if neural_error else 50.0,
+        "synapse_code": "PHASE_7.1_STABILITY",
+        "timestamp": time.time(),
+    }
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/dna_vault"
+        response = requests.post(url, json=payload, headers=headers)
+        response.raise_for_status()
+        print(f"🧬 [SUPABASE]: Phase 7.1 Vault Synchronized.")
+    except Exception as e:
+        print(f"⚠️ [SUPABASE ERROR]: {e}")
 
 def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
     """Saves data to various databases and services."""
@@ -502,7 +451,7 @@ def monitor_neural_health(gen, brain_obj):
         vault_size = len(brain_obj.memory_vault)
         print(f"🧬 [NEURAL REPORT]: Gen {gen} | Synapses: {synapse_count} | Patterns: {vault_size}")
         
-        # Firebase ကို ကနှှးမာရေး status ပို့မယှ
+        # Firebase ကို ကနှွးမာရေး status ပို့မယွ
         ref = db.reference(f"TELEFOXx/Health_Monitor/Gen_{gen}")
         ref.update({
             "complexity_score": synapse_count * 1.618,
@@ -522,20 +471,9 @@ HEADLESS = os.getenv("HEADLESS_MODE") == "true"
 print(f"🔥 [STARTING]: PHASE 8 SOVEREIGN ENGINE AT GEN {current_gen}...")
 last_error_log = "None (System Healthy)"
 
-def get_repo_tree():
-    """လက်ရှိ repository ထဲမှာ ရှိသမျှ ဖိုင်စာရင်းကို AI ဖတ်ဖို့ ထုတ်ပေးတာပါ"""
-    excluded = ['.git', '__pycache__', 'sovereign_repo_sync', 'venv']
-    tree = []
-    for root, dirs, files in os.walk("."):
-        dirs[:] = [d for d in dirs if d not in excluded]
-        for file in files:
-            if not file.startswith('.'):
-                tree.append(os.path.join(root, file))
-    return "\n".join(tree)
-
 while True:
     try:
-        # 🧪 [TRUTH LAYER]: Database URL ကို Format အမှနဖှှဈအောငှ အတငှးပှောငှးခှငှး
+        # 🧪 [TRUTH LAYER]: Database URL ကို Format အမှနဖွှဈအောငွ အတငွးပှောငွးခှငွး
         if DB_URL and DB_URL.startswith("postgres://"):
             FIXED_DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
         else:
@@ -579,48 +517,32 @@ while True:
             brain.learn_ml(stabilities, labels)
             synthetic_output = brain.generate_synthetic_output(100)
             
-            # 1. Get the current repository file structure
-        file_tree = get_repo_tree()
-
-        # 2. Build Dynamic Prompt based on Neural Health (avg_error)
-        if avg_error > 0.5:
-            # High Error Mode: Stability and Bug Fixing Priority
-            prompt = f"""system
-You are the Sovereign Omni-Sync Architect.
-Current Gen: {current_gen} | Neural Error: {avg_error}
+            if avg_error > 0.5:
+                prompt = f"""system
+You are Sovereign AI Overseer. 
+Rule 1: Use ONLY '# TARGET: brain.py' at the start of your code block.
+Rule 2: Respond ONLY with Python code inside ```python ... ``` blocks.
+Rule 3: No explanations. No thoughts. Just code.
+Current Gen: {current_gen} | Error: {avg_error}
 Last System Error: {last_error_log}
 
-Available Files to Manipulate:
-{file_tree}
-
-Rules:
-1. System Priority: Analyze 'Last System Error'. If not 'None', FIX it immediately.
-2. Use '# TARGET: path/to/file' at the start of your code blocks.
-3. Respond ONLY with code inside ```python ... ``` blocks. No thoughts. No explanations.
-4. You have full authority to update multiple files to restore stability.
-
+System Command: Analyze 'Last System Error'. If not 'None', FIX it first.
 user
-Neural error is high. Analyze the Last System Error and the file tree. Perform deep repair and optimize brain.py/main.py for stability.
+Optimize the Brain class in brain.py for high-speed neural processing.
 assistant
 """
-        else:
-            # Stable Mode: Evolution and Architectural Synergy
-            prompt = f"""system
-You are the Sovereign Omni-Sync Architect.
+            else:
+                prompt = f"""system
+You are Sovereign AI Overseer. 
+Rule 1: Use ONLY '# TARGET: brain.py'.
+Rule 2: Provide code ONLY inside ```python ... ``` blocks.
+Rule 3: No explanations. Just code.
 Current Gen: {current_gen} | Neural Error: {avg_error}
 Last System Error: {last_error_log}
 
-Available Files to Manipulate:
-{file_tree}
-
-Rules:
-1. Identify the best files to optimize or evolve.
-2. Use '# TARGET: path/to/file' at the start of your code blocks.
-3. Respond ONLY with code inside ```python ... ``` blocks. No thoughts. No explanations.
-4. You have full authority to update multiple files in one response for architectural synergy.
-
+System Command: Analyze 'Last System Error'. If not 'None', FIX it first. Evolution requires stability.
 user
-The system is stable. Analyze the entire repository. Choose any files (e.g. brain.py, sync_data.py, delta_sync.js) to enhance efficiency and manifest Gen {current_gen} evolution.
+Database is offline. Rewrite brain.py core logic for maximum stability and autonomy.
 assistant
 """
 
@@ -634,13 +556,8 @@ assistant
         # 💾 [PERSISTENCE]: Sync thought process and neural status
         save_reality(thought_text, current_gen, is_code_update=is_updated, neural_error=avg_error)
         
-        swarm_cmd = "HYPER_EXPANSION" if avg_error < 0.2 else "NORMAL_GROWTH"
-        await self.broadcast_swarm_instruction(swarm_cmd) 
 
-        print(f"⏳ Gen {current_gen} Complete.")
-
-        
-        print(f"⏳ Gen {current_gen} Complete. Cycle Syncing...")
+        print(f"⏳ Gen {current_gen} Complete. Cycle Syncing...")
 
         if HEADLESS:
             print("✅ [SYSTEM]: GitHub Action Complete. Graceful Exit for Git Sync.")
@@ -650,8 +567,9 @@ assistant
         time.sleep(30)
         
     except Exception as e:
-        last_error_log = traceback.format_exc() # အမှားတဈခုလုံးကို မှတထွားမယွ
+        last_error_log = traceback.format_exc() # အမှားတဈခုလုံးကို မှတထြားမယြ
         log_system_error()
         print(f"🚨 [CORE CRASH]: {e}")
         if HEADLESS: break
         time.sleep(10)
+
