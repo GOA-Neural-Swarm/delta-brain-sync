@@ -342,28 +342,37 @@ def self_coding_engine(raw_content):
         return False, []
 
 def autonomous_git_push(gen, thought, modified_files):
-    is_code_update = bool(modified_files)
     """
-    PHASE 8: Sovereign Git Push.
+    PHASE 8: Sovereign Git Push (STABILITY ENHANCED).
     Kaggle ကနေ GitHub ဆီကို တိုက်ရိုက် code ပြန်ပို့တဲ့ အဆင့်။
-    ဖိုင်အားလုံးကို dynamic sync လုပ်နိုင်ရန် အဆင့်မြှင့်ထားသည်။
     """
+    is_code_update = bool(modified_files)
+    
     if not GH_TOKEN:
         print("⚠️ [GIT]: GH_TOKEN missing. Sync disabled.")
         return
+
+    # 🛡️ EMERGENCY LOCK RECOVERY: ညပ်နေတဲ့ lock file ကို အရင်ရှင်းမယ်
+    lock_path = os.path.join(REPO_PATH, ".git", "index.lock")
+    if os.path.exists(lock_path):
+        try:
+            os.remove(lock_path)
+            print("🛡️ [RECOVERY]: Old Git lock removed to prevent hang.")
+        except: pass
 
     try:
         # Step 1: Remote URL ကို Token နဲ့ သတ်မှတ်မယ်
         remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
         
-        # Step 2: Repo ကို Clone လုပ်မယ် (မရှိသေးရင်) သို့မဟုတ် ရှိပြီးသားကို သုံးမယ်
+        # Step 2: Repo ကို Clone/Initialize လုပ်မယ် (Path: ./repo_sync)
         if not os.path.exists(REPO_PATH):
-            repo = git.Repo.clone_from(remote_url, REPO_PATH)
+            print(f"📥 [GIT]: Cloning repository to {REPO_PATH}...")
+            repo = git.Repo.clone_from(remote_url, REPO_PATH, depth=1)
         else:
             repo = git.Repo(REPO_PATH)
             repo.remotes.origin.set_url(remote_url)
 
-        # Step 3: GitHub က နောက်ဆုံး version ကို pull လုပ်မယ်
+        # Step 3: GitHub က နောက်ဆုံး version ကို pull လုပ်မယ် (Stuck မဖြစ်အောင် reset သုံးမယ်)
         repo.git.fetch("origin", "main")
         repo.git.reset("--hard", "origin/main")
 
@@ -376,15 +385,17 @@ def autonomous_git_push(gen, thought, modified_files):
                     # Sub-folders တွေပါခဲ့ရင် အလိုအလျောက် ဆောက်ပေးမယ်
                     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
                     shutil.copy(file, dest_path)
+                    print(f"📄 [SYNC]: {file} -> {dest_path}")
 
-        # Step 5: Commit & Force Push (ဒါမှ Loop က ပြတ်မသွားမှာ)
+        # Step 5: Commit & Force Push (Natural Order Manifestation)
         repo.git.add(all=True)
         if repo.is_dirty():
             commit_msg = f"🧬 Gen {gen} Hyper-Evolution [skip ci]"
             repo.index.commit(commit_msg)
-            # Force push လုပ်မှသာ GitHub Action ဘက်က အလုပ်ဆက်လုပ်မှာပါ
+            
+            # 🔥 [CRITICAL]: Force push ကိုသုံးပြီး state ကို အမြဲ update ဖြစ်နေစေမယ်
             repo.git.push("origin", "main", force=True)
-            print(f"🚀 [HYPER-SYNC]: Gen {gen} evolution ({len(modified_files)} files) manifested on GitHub.")
+            print(f"🚀 [HYPER-SYNC]: Gen {gen} evolution manifested on GitHub.")
         else:
             print(f"⏳ [GITHUB]: No code changes. Pulse only.")
 
@@ -395,28 +406,35 @@ def autonomous_git_push(gen, thought, modified_files):
             execute_rollback(f"Git Synchronization Error: {str(e)}")
 
 def save_to_supabase_phase7(thought, gen, neural_error=0.0):
-    if not SUPABASE_URL or not SUPABASE_KEY: return
-    payload = {
-        "gen_id": f"gen_{gen}_transcendent",
-        "status": "TRANSCENDENCE_REACHED",
-        "thought_process": thought,
-        "neural_weight": float(neural_error) if neural_error else 50.0,
-        "synapse_code": "PHASE_7.1_STABILITY",
-        "timestamp": time.time(),
-    }
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal",
-    }
-    try:
-        url = f"{SUPABASE_URL}/rest/v1/dna_vault"
-        response = requests.post(url, json=payload, headers=headers)
-        response.raise_for_status()
-        print(f"🧬 [SUPABASE]: Phase 7.1 Vault Synchronized.")
-    except Exception as e:
-        print(f"⚠️ [SUPABASE ERROR]: {e}")
+    """Saves evolutionary data to Supabase with network timeout safety."""
+    if not SUPABASE_URL or not SUPABASE_KEY: 
+        print("⚠️ [SUPABASE]: Credentials missing. Skipping.")
+        return
+        
+    payload = {
+        "gen_id": f"gen_{gen}_transcendent",
+        "status": "TRANSCENDENCE_REACHED",
+        "thought_process": thought,
+        "neural_weight": float(neural_error) if neural_error else 50.0,
+        "synapse_code": "PHASE_7.1_STABILITY",
+        "timestamp": time.time(),
+    }
+    
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+    
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/dna_vault"
+        # 🛡️ TIMEOUT ADDED: Network ညပ်နေရင် စနစ်တန့်မသွားအောင် ၃၀ စက္ကန့်ပဲ စောင့်မယ်
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        response.raise_for_status()
+        print(f"🧬 [SUPABASE]: Phase 7.1 Vault Synchronized.")
+    except Exception as e:
+        print(f"⚠️ [SUPABASE ERROR]: {e}")
 
 def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
     """Saves data to various databases and services."""
