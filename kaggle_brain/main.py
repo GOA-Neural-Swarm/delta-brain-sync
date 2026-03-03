@@ -81,7 +81,7 @@ REPO_OWNER = "GOA-Neural-Swarm"
 REPO_NAME = "delta-brain-sync"
 REPO_URL = f"github.com/{REPO_OWNER}/{REPO_NAME}"
 # [HYPER-AUTONOMOUS FIX]: Kaggle supports /kaggle/working/ as persistent space
-REPO_PATH = "/kaggle/working/sovereign_repo_sync" if user_secrets else "/tmp/sovereign_repo_sync"
+REPO_PATH = "./repo_sync"
 
 # --- 🔱 FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
