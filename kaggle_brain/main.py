@@ -598,8 +598,11 @@ assistant
         # 💾 [PERSISTENCE]: Sync thought process and neural status
         save_reality(thought_text, current_gen, is_code_update=is_updated, neural_error=avg_error)
         
-
-        print(f"⏳ Gen {current_gen} Complete. Cycle Syncing...")
+        # 🔱 [SWARM TRIGGER]: Logic အသစ်ရှိရင် EVOLVE ခိုင်းမယ်၊ မရှိရင် SYNC ပဲ လုပ်မယ်
+        current_command = "EVOLVE_NEURAL_WEIGHTS" if is_updated else "SYNC_AND_MINE"
+        broadcast_to_swarm(current_command, current_gen)
+        
+        print(f"⏳ Gen {current_gen} Complete. Cycle Syncing...")
 
         if HEADLESS:
             print("✅ [SYSTEM]: GitHub Action Complete. Graceful Exit for Git Sync.")
