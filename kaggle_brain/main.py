@@ -242,7 +242,7 @@ def broadcast_to_swarm(command, gen_version):
         return
 
     # sub-node တွေ fetch လုပ်မယ့် instruction repo
-    target_repo = "GOA-neurons/sub-node-logic" 
+    target_repo = "GOA-Neural-Swarm/sub-node-logic" 
     
     try:
         g = Github(GH_TOKEN)
