@@ -1,48 +1,29 @@
-import os
-import logging
-from typing import List
+import brain_module
+import database_module
 
 class Brain:
     def __init__(self):
-        self.data = None
-        self.model = None
-        self.error = None
+        self.module = brain_module
+        self.db = database_module
 
-    def load_data(self) -> None:
-        if not self.data:
-            try:
-                self.data = os.environ['DATABASE_URL']
-                logging.info('Data loaded from environment variable')
-            except KeyError:
-                logging.error('Database URL not found')
+    def analyze_error(self, error):
+        if error!= 'None':
+            self.fix_error(error)
 
-    def train_model(self) -> None:
-        if not self.model:
-            try:
-                self.model = self.data.split(',')
-                logging.info('Model trained from data')
-            except AttributeError:
-                logging.error('Invalid data format')
-
-    def evaluate_model(self) -> None:
-        if self.model:
-            try:
-                self.error = self.model.pop(0)
-                logging.info('Model evaluated')
-            except IndexError:
-                logging.error('Model evaluation failed')
-
-    def predict(self) -> List[float]:
-        if self.error:
-            try:
-                return [float(self.error)]
-            except ValueError:
-                logging.error('Invalid error value')
+    def fix_error(self, error):
+        if error == 'Database Offline':
+            print("Database is offline. Switching to local storage.")
+            # Implement local storage logic here
+            self.db = local_database_module
         else:
-            logging.error('No error value found')
+            print("Unknown error. Exiting.")
+            exit()
+
+    def think(self):
+        try:
+            self.module.process_data()
+        except Exception as e:
+            self.analyze_error(str(e))
 
 brain = Brain()
-brain.load_data()
-brain.train_model()
-brain.evaluate_model()
-print(brain.predict())
+brain.think()
