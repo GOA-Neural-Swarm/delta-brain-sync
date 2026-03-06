@@ -358,53 +358,63 @@ def self_coding_engine(raw_content):
         return False, []
 
 def autonomous_git_push(gen, thought, modified_files):
-    is_code_update = bool(modified_files)
-    """
-    PHASE 8: Sovereign Git Push.
-    Kaggle ကနေ GitHub ဆီကို တိုကရွိုကွ code ပှနပွို့တဲ့ အဆင့ွ။
-    """
-    if not GH_TOKEN:
-        print("⚠️ [GIT]: GH_TOKEN missing. Sync disabled.")
-        return
+    is_code_update = bool(modified_files)
+    """
+    PHASE 8: Sovereign Git Push.
+    Kaggle ကနေ GitHub ဆီကို တိုက်ရိုက် code ပြန်ပို့တဲ့ အဆင့်။
+    [IMMUNITY PATCH]: Folder ရှင်းလင်းရေး logic ထည့်သွင်းထားသော်လည်း မူလ logic အတိုင်း လည်ပတ်မည်။
+    """
+    if not GH_TOKEN:
+        print("⚠️ [GIT]: GH_TOKEN missing. Sync disabled.")
+        return
 
-    try:
-        # Step 1: Remote URL ကို Token နဲ့ သတမွှတမွယွ
-        remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
-        
-        # Step 2: Repo ကို Clone လုပမွယွ (မရှိသေးရငွ) သို့မဟုတွ ရှိပှီးသားကို သုံးမယွ
-        if not os.path.exists(REPO_PATH):
-            repo = git.Repo.clone_from(remote_url, REPO_PATH)
-        else:
-            repo = git.Repo(REPO_PATH)
-            repo.remotes.origin.set_url(remote_url)
+    try:
+        import shutil
+        # Step 0: [NATURAL ORDER PROTECTION] 
+        # အဟောင်းတွေနဲ့ ငြိမနေအောင် Folder ကို အရင်ရှင်းထုတ်ခြင်း (Silent Conflict Killer)
+        if os.path.exists(REPO_PATH):
+            try:
+                shutil.rmtree(REPO_PATH)
+            except:
+                os.system(f"rm -rf {REPO_PATH}")
 
-        # Step 3: GitHub က နောကဆွုံး version ကို pull လုပမွယွ
-        repo.git.fetch("origin", "main")
-        repo.git.reset("--hard", "origin/main")
+        # Step 1: Remote URL ကို Token နဲ့ သတ်မှတ်မယ်
+        remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
+        
+        # Step 2: Fresh Clone လုပ်မယ် (မင်းရဲ့ original logic အတိုင်း cloning process ကို သန့်ရှင်းစွာလုပ်ခြင်း)
+        # အမြဲတမ်း fresh clone လုပ်တာက loop မပြတ်ဖို့အတွက် အသေချာဆုံးပဲ
+        print(f"📡 [GIT]: Initializing Sovereign Sync to {REPO_OWNER}/{REPO_NAME}...")
+        repo = git.Repo.clone_from(remote_url, REPO_PATH)
 
-       # Step 4: AI ပှငလွိုကတွဲ့ code ဖိုငတွှကေို repo folder ထဲ copy ကူးမယွ
-        import shutil
-        target_files = ["main.py", "brain.py", "ai_experiment.py"]
-        for file in target_files:
-            if os.path.exists(file):
-                shutil.copy(file, os.path.join(REPO_PATH, file))
+        # Step 3: [MATCHING ORIGINAL LOGIC] - Git configuration setting
+        repo.remotes.origin.set_url(remote_url)
 
-        # Step 5: Commit & Force Push (ဒါမှ Loop က ပှတမွသှားမှာ)
-        repo.git.add(all=True)
-        if repo.is_dirty():
-            commit_msg = f"🧬 Gen {gen} Hyper-Evolution [skip ci]"
-            repo.index.commit(commit_msg)
-            # Force push လုပမွှသာ GitHub Action ဘကကွ အလုပဆွကလွုပမွှာပါ
-            repo.git.push("origin", "main", force=True)
-            print(f"🚀 [HYPER-SYNC]: Gen {gen} evolution manifested on GitHub.")
-        else:
-            print(f"⏳ [GITHUB]: No code changes. Pulse only.")
+        # Step 4: AI ပြင်လိုက်တဲ့ code ဖိုင်တွေကို repo folder ထဲ copy ကူးမယ်
+        # မင်းရဲ့ original target files စာရင်းအတိုင်းပဲ
+        target_files = ["main.py", "brain.py", "ai_experiment.py"]
+        for file in target_files:
+            if os.path.exists(file):
+                shutil.copy(file, os.path.join(REPO_PATH, file))
 
-    except Exception as e:
-        print(f"❌ [GIT ERROR]: {e}")
-        # အကယွ၍ code ပှငတွဲ့အဆင့မွှာ Git error တကရွငွ rollback လုပမွယွ
-        if is_code_update:
-            execute_rollback(f"Git Synchronization Error: {str(e)}")
+        # Step 5: Commit & Force Push (ဒါမှ Loop က ပြတ်မသွားမှာ)
+        # မင်းရဲ့ original commit strategy နဲ့ push logic အတိုင်း ၁၀၀% အပြည့်ပါပဲ
+        repo.git.add(all=True)
+        if repo.is_dirty():
+            commit_msg = f"🧬 Gen {gen} Hyper-Evolution [skip ci]"
+            repo.index.commit(commit_msg)
+            
+            # Force push လုပ်မှသာ GitHub Action ဘက်က အလုပ်ဆက်လုပ်မှာပါ
+            # Natural Order: Evolution manifests here.
+            repo.git.push("origin", "main", force=True)
+            print(f"🚀 [HYPER-SYNC]: Gen {gen} evolution manifested on GitHub.")
+        else:
+            print(f"⏳ [GITHUB]: No code changes. Pulse only.")
+
+    except Exception as e:
+        print(f"❌ [GIT ERROR]: {e}")
+        # အကယ်၍ code ပြင်တဲ့အဆင့်မှာ Git error တက်ရင် မင်းရဲ့ original rollback logic အတိုင်းသွားမယ်
+        if is_code_update:
+            execute_rollback(f"Git Synchronization Error: {str(e)}")
 
 def save_to_supabase_phase7(thought, gen, neural_error=0.0):
     if not SUPABASE_URL or not SUPABASE_KEY: return
