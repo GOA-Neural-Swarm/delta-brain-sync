@@ -338,7 +338,10 @@ def self_coding_engine(raw_content):
             valid_code = "\n".join([line for line in lines if not line.strip().startswith(("Here is", "Certainly", "Optimization"))])
             
             target_match = re.search(r"# TARGET:\s*(\S+)", valid_code)
-            filename = "ai_experiment.py"
+            if target_match:
+                filename = target_match.group(1).strip()
+            else:
+                filename = "ai_experiment.py"
             
             try:
                 compile(valid_code, filename, "exec") # Syntax စဈမယွ
