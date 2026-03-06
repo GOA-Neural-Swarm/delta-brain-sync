@@ -1,19 +1,13 @@
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
+import random
 
 class Brain:
     def __init__(self):
-        self.model = Sequential()
-        self.model.add(Dense(64, input_shape=(784,), activation='relu'))
-        self.model.add(Dense(32, activation='relu'))
-        self.model.add(Dense(10, activation='softmax'))
-        self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        self.memory = {}
 
-    def think(self, inputs):
-        inputs = np.array(inputs) / 255.0
-        outputs = self.model.predict(inputs)
-        return np.argmax(outputs)
-
-brain = Brain()
+    def think(self, input_data):
+        if input_data in self.memory:
+            return self.memory[input_data]
+        else:
+            output = random.randint(0, 100)
+            self.memory[input_data] = output
+            return output
