@@ -227,6 +227,48 @@ def save_evolution_state_to_neon(state, gen_id):
 # Initialize the integrated hybrid brain
 brain = Brain()
 
+# =======================================================
+# 🔱 SWARM BROADCAST SYSTEM (PHASE 8.1)
+# =======================================================
+from github import Github
+
+def broadcast_to_swarm(command, gen_version):
+    """
+    sub-node-logic/instruction.json ကို update လုပ်ပြီး 
+    Swarm တစ်ခုလုံးကို ညွှန်ကြားချက်အသစ် လှမ်းပို့သည်။
+    """
+    if not GH_TOKEN:
+        print("⚠️ [BROADCAST]: GH_TOKEN missing. Broadcast skipped.")
+        return
+
+    # sub-node တွေ fetch လုပ်မယ့် instruction repo
+    target_repo = "GOA-neurons/sub-node-logic" 
+    
+    try:
+        g = Github(GH_TOKEN)
+        repo = g.get_repo(target_repo)
+        contents = repo.get_contents("instruction.json")
+        
+        broadcast_payload = {
+            "command": command,
+            "gen_version": gen_version,
+            "replicate": True,
+            "timestamp": int(time.time()),
+            "origin": "Sovereign_Main_Py"
+        }
+        
+        repo.update_file(
+            contents.path, 
+            f"🔱 SWARM-EVOLUTION: Gen {gen_version} -> {command}", 
+            json.dumps(broadcast_payload, indent=4), 
+            contents.sha
+        )
+        print(f"📡 [BROADCAST]: Command '{command}' is now live for 1489 nodes.")
+    except Exception as e:
+        print(f"❌ [BROADCAST FAILED]: {str(e)}")
+
+# =======================================================
+
 # 3. Database & Self-Coding Logic
 def log_system_error():
     """Logs detailed error messages to the console."""
