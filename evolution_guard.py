@@ -3,6 +3,7 @@ import os
 import requests
 import json
 import re
+import sys
 
 # Groq API Configuration
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
@@ -34,8 +35,9 @@ def get_ai_correction(error_log, original_code):
     clean_code = re.sub(r'```python\n|```', '', content).strip()
     return clean_code
 
-def run_guard(target_script="main.py"):
+def run_guard(target_script):
     # 1. Run the target script
+    print(f"🛡️ [GUARD]: Executing {target_script}...")
     result = subprocess.run(['python', target_script], capture_output=True, text=True)
     
     if result.returncode != 0:
@@ -58,4 +60,6 @@ def run_guard(target_script="main.py"):
         print("✅ [GUARD]: System is stable.")
 
 if __name__ == "__main__":
-    run_guard()
+    # Get target script from command line, default to main.py
+    target = sys.argv[1] if len(sys.argv) > 1 else "main.py"
+    run_guard(target)
