@@ -9,31 +9,33 @@ import sys
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
 def get_ai_correction(error_log, original_code):
-    print("🧠 [GUARD]: AI is analyzing the error and rewriting logic...")
+    print("🧠 [GUARD]: AI is analyzing the error...")
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     
-    prompt = f"""
-    The following python code crashed with this error:
-    --- ERROR ---
-    {error_log}
-    --- ORIGINAL CODE ---
-    {original_code}
-    
-    Task: Fix the error and return ONLY the full, clean Python code. 
-    No markdown, no explanations, just the code.
-    """
+    prompt = f"Fix this Python error:\n{error_log}\n\nCode:\n{original_code}\n\nReturn ONLY the clean code."
     
     payload = {
         "model": "llama3-70b-8192",
         "messages": [{"role": "user", "content": prompt}]
     }
     
-    response = requests.post(url, headers=headers, json=payload)
-    content = response.json()['choices'][0]['message']['content']
-    # Cleaning potential markdown
-    clean_code = re.sub(r'```python\n|```', '', content).strip()
-    return clean_code
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        data = response.json()
+        
+        # API Error ရှိမရှိ စစ်ဆေးခြင်း
+        if 'choices' in data:
+            content = data['choices'][0]['message']['content']
+            return re.sub(r'```python\n|```', '', content).strip()
+        else:
+            print(f"❌ [GUARD]: API Error Response: {data}")
+            # API Error တက်ရင် Original code ကိုပဲ ပြန်ပေးပြီး Exit လုပ်မယ် (Loop မပတ်အောင်)
+            return original_code
+            
+    except Exception as e:
+        print(f"❌ [GUARD]: Request failed: {e}")
+        return original_code
 
 def run_guard(target_script):
     # 1. Run the target script
