@@ -129,12 +129,16 @@ jobs:
           REPO_URL: ${{ github.repository }}
           HEADLESS_MODE: "true"
         run: |
-          # Prioritize app.py, then main.py
           if [ -f "app.py" ]; then
-            python app.py
+            TARGET="app.py"
           elif [ -f "main.py" ]; then
-            python main.py
+            TARGET="main.py"
+          else
+            echo "Error: No execution target found." && exit 1
           fi
+          
+          echo "Guard: Monitoring $TARGET"
+          python evolution_guard.py "$TARGET"
 
       - name: Step 8 - Run Trinity Sync Engine (Delta Sync)
         env:
