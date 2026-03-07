@@ -156,20 +156,34 @@ jobs:
 
       - name: Optimize Sovereign Repository Structure
         run: |
-          # Keep the files, but stop Git from tracking the sub-repo conflict
+          # Remove node_modules and sub-repos from git index tracking (does not delete local files)
+          git rm -r --cached node_modules || true
           git rm -rf --cached repo_sync || true
           
-          # Ensure node_modules are not bloatware in our commits
-          if [ ! -f ".gitignore" ]; then touch .gitignore; fi
-          grep -q "node_modules/" .gitignore || echo "node_modules/" >> .gitignore
-          grep -q "repo_sync/" .gitignore || echo "repo_sync/" >> .gitignore
+          # Reconstruct a clean .gitignore to prevent future repository bloat
+          cat <<EOF > .gitignore
+          node_modules/
+          repo_sync/
+          __pycache__/
+          *.pyc
+          .env
+          *.log
+          kaggle_deploy/
+          EOF
           
-          echo "✅ Repository optimized. Logic files are untouched."
-      
+          echo "✅ Repository structure is now clean and logic remains intact."
+
       - name: Step 9 - GitHub Auto-Commit
         run: |
+          # Add all modified files
           git add .
-          git commit -m "🧬 Hyper-Autonomous Sync: AI-Modified Core & Brain"
-          git fetch origin main
-          git reset --soft origin/main
-          git push origin main --force
+          
+          # Only proceed with commit and push if there are actual changes
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "🧬 Hyper-Autonomous Sync: AI-Modified Core & Brain [skip ci]"
+            git fetch origin main
+            git reset --soft origin/main
+            git push origin main --force
+          else
+            echo "No changes to commit. System state is already synchronized."
+          fi
