@@ -154,6 +154,18 @@ jobs:
             node delta_sync.js
           fi
 
+      - name: Optimize Sovereign Repository Structure
+        run: |
+          # Keep the files, but stop Git from tracking the sub-repo conflict
+          git rm -rf --cached repo_sync || true
+          
+          # Ensure node_modules are not bloatware in our commits
+          if [ ! -f ".gitignore" ]; then touch .gitignore; fi
+          grep -q "node_modules/" .gitignore || echo "node_modules/" >> .gitignore
+          grep -q "repo_sync/" .gitignore || echo "repo_sync/" >> .gitignore
+          
+          echo "✅ Repository optimized. Logic files are untouched."
+      
       - name: Step 9 - GitHub Auto-Commit
         run: |
           git add .
