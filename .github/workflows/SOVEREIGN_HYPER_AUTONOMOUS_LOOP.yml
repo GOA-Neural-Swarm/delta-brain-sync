@@ -85,24 +85,7 @@ jobs:
             echo "AI output too short. Skipping to prevent empty file."
           fi
       
-      - name: Step 6.1 - Verify & Trigger Evolution Signal
-        if: success() || failure()
-        run: |
-          # ဖိုင်ကို အတင်းပြန်ဖန်တီးမယ်
-          rm -f trigger.lock
-          touch trigger.lock
-          
-          git config --global user.name 'Sovereign-AI-Bot'
-          git config --global user.email 'bot@sovereign.ai'
-          
-          # အပြောင်းအလဲကို အတင်း Add လုပ်မယ်
-          git add -f trigger.lock
-          
-          # အကယ်၍ commit လုပ်စရာ မရှိရင်တောင် --allow-empty နဲ့ အတင်း commit လုပ်မယ်
-          git commit -m "🧬 [SIGNAL] Evolution requested" --allow-empty
-          
-          # push လုပ်မယ်
-          git push origin main
+      
       
       - name: Step 7 - Manifest Sovereign State (Final Push)
         env:
