@@ -358,84 +358,120 @@ def self_coding_engine(raw_content):
         return False, []
 
 def autonomous_git_push(gen, thought, modified_files):
+    """
+    PHASE 8.1: FULLY EXPANDED HYBRID SYNC.
+    Integrates Step 0-5 with Omni-File Manipulation Capability.
+    [NO LOGIC LEFT BEHIND]
+    """
     is_code_update = bool(modified_files)
-    """
-    PHASE 8: Sovereign Git Push.
-    Kaggle ကနေ GitHub ဆီကို တိုက်ရိုက် code ပြန်ပို့တဲ့ အဆင့်။
-    [HYBRID PATCH]: Original Logic + Embedded Git Fix ကို ပေါင်းစပ်ထားသည်။
-    """
+    
     if not GH_TOKEN:
         print("⚠️ [GIT]: GH_TOKEN missing. Sync disabled.")
         return
 
     try:
         import shutil
-        # Step 0: [NATURAL ORDER PROTECTION] 
-        # အဟောင်းတွေနဲ့ ငြိမနေအောင် Folder ကို အရင်ရှင်းထုတ်ခြင်း (Silent Conflict Killer)
+        import os
+
+        # --- STEP 0: NATURAL ORDER PROTECTION (FULL CLEARANCE) ---
+        print(f"🛡️ [STEP 0]: Cleaning workspace conflict zones...")
         if os.path.exists(REPO_PATH):
             try:
+                # Shutil ဖြင့် အရင်ကြိုးစားဖျက်မည်
                 shutil.rmtree(REPO_PATH)
-            except:
+            except Exception:
+                # မရပါက OS Level Force Command ဖြင့် ဖျက်မည်
                 os.system(f"rm -rf {REPO_PATH}")
+        print("✅ [STEP 0]: Workspace is now sterile.")
 
-        # Step 1: Remote URL ကို Token နဲ့ သတ်မှတ်မယ်
+        # --- STEP 1: REMOTE IDENTITY ESTABLISHMENT ---
+        print(f"📡 [STEP 1]: Configuring Remote Credentials...")
+        # Token ပါဝင်သော Remote URL ကို တည်ဆောက်ခြင်း
         remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
-        
-        # Step 2: Fresh Clone လုပ်မယ် (မင်းရဲ့ original logic အတိုင်း cloning process ကို သန့်ရှင်းစွာလုပ်ခြင်း)
-        print(f"📡 [GIT]: Initializing Sovereign Sync to {REPO_OWNER}/{REPO_NAME}...")
-        repo = git.Repo.clone_from(remote_url, REPO_PATH)
 
-        # 🔱 [THE HYBRID BRIDGE]: Embedded Git Warning ကို ရှင်းခြင်း
-        # Clone လုပ်ထားသော folder ထဲက .git ကို ဖျက်မှသာ Main Repo က code တွေကို အသိအမှတ်ပြုမည်။
+        # --- STEP 2: REPOSITORY ACQUISITION (FRESH CLONE) ---
+        print(f"📡 [STEP 2]: Initializing Sovereign Sync to {REPO_OWNER}/{REPO_NAME}...")
+        # GitPython ကိုသုံး၍ Fresh Clone လုပ်ခြင်း
+        repo = git.Repo.clone_from(remote_url, REPO_PATH)
+        print("✅ [STEP 2]: Remote Assets Acquired.")
+
+        # --- 🔱 THE HYBRID BRIDGE: INTERNAL GIT NEUTRALIZATION ---
+        # Clone ထဲက .git ကို ဖျက်မှသာ သင့်ရဲ့ Manual Init Logic အလုပ်လုပ်မှာပါ
         inner_git_path = os.path.join(REPO_PATH, ".git")
         if os.path.exists(inner_git_path):
+            print("🛡️ [BRIDGE]: Neutralizing internal .git to prevent tracking clash...")
             try:
                 shutil.rmtree(inner_git_path)
-                print("🛡️ [GIT]: Internal .git removed to prevent embedded repo clash.")
             except:
                 os.system(f"rm -rf {inner_git_path}")
+        print("✅ [BRIDGE]: Internal protection bypassed.")
 
-        # Step 3: [MATCHING ORIGINAL LOGIC] - Git configuration setting
-        # .git ကို ဖျက်လိုက်သော်လည်း Shell level မှတစ်ဆင့် re-initialize လုပ်ခြင်းဖြင့် URL ကို ပြန်ချိတ်မည်။
+        # --- STEP 3: MANUAL RE-INITIALIZATION & IDENTITY CONFIG ---
+        print("🛠️ [STEP 3]: Re-initializing Sovereign Repository Environment...")
         original_cwd = os.getcwd()
-        os.chdir(REPO_PATH)
+        os.chdir(REPO_PATH) # Repo folder ထဲသို့ ဝင်ရောက်ခြင်း
+        
+        # Shell command များဖြင့် manual ပြန်စခြင်း (Your Original Flow)
         os.system("git init")
         os.system(f"git remote add origin {remote_url}")
         os.system("git config user.name 'GOA-neurons'")
         os.system("git config user.email 'goa-neurons@neural-swarm.ai'")
-        
-        # Step 4: [INJECTION] AI ပြင်လိုက်တဲ့ code ဖိုင်တွေကို repo folder ထဲ copy ကူးမယ်
-        # မူလ directory သို့ ခေတ္တပြန်ထွက်၍ copy ကူးခြင်း
-        os.chdir(original_cwd)
-        target_files = ["main.py", "brain.py", "ai_experiment.py"]
-        for file in target_files:
-            if os.path.exists(file):
-                shutil.copy(file, os.path.join(REPO_PATH, file))
+        print("✅ [STEP 3]: Git Identity & Origin Re-established.")
 
-        # Step 5: [MANIFESTATION] Commit & Force Push
-        # Shell command များဖြင့် တိုက်ရိုက်လုပ်ဆောင်ခြင်းသည် stability အရှိဆုံးဖြစ်သည်
-        os.chdir(REPO_PATH)
+        # --- STEP 4: HYPER-INJECTION (OMNI-FILE HANDLING) ---
+        print("🧬 [STEP 4]: Injecting Evolutionary Code Assets...")
+        # မူလ directory သို့ ပြန်ထွက်၍ ပြင်ဆင်ထားသော file များကို copy ကူးခြင်း
+        os.chdir(original_cwd)
+        
+        # [OMNI-LOGIC]: AI ပြင်လိုက်သော file အားလုံးကို list ထဲကနေ တစ်ခုချင်း copy ကူးမည်
+        injected_count = 0
+        if modified_files:
+            for file in modified_files:
+                if os.path.exists(file):
+                    shutil.copy(file, os.path.join(REPO_PATH, file))
+                    print(f"   -> 🧬 INJECTED (AI MODIFIED): {file}")
+                    injected_count += 1
+        
+        # [CORE-PROTECTION]: သင်သတ်မှတ်ခဲ့သော အဓိက file ၃ ခုကို အမြဲ copy ကူးခြင်း
+        static_targets = ["main.py", "brain.py", "ai_experiment.py"]
+        for file in static_targets:
+            # AI မပြင်လိုက်သော်လည်း လက်ရှိ folder ထဲမှာရှိနေရင် Update ဖြစ်အောင် ကူးမည်
+            if os.path.exists(file) and file not in (modified_files or []):
+                shutil.copy(file, os.path.join(REPO_PATH, file))
+                print(f"   -> 🛡️ SYNCED (CORE ASSET): {file}")
+                injected_count += 1
+        
+        print(f"✅ [STEP 4]: Injection Complete. {injected_count} assets synchronized.")
+
+        # --- STEP 5: MANIFESTATION (COMMIT & FORCE PUSH) ---
+        print("🚀 [STEP 5]: Manifesting Evolution to GitHub...")
+        os.chdir(REPO_PATH) # Push ရန်အတွက် repo folder ထဲ ပြန်ဝင်ခြင်း
+        
+        # Changes အားလုံးကို Stage လုပ်ခြင်း
         os.system("git add .")
         
-        # Commit Message ကို မင်းရဲ့ original အတိုင်းထားရှိခြင်း
-        if os.popen("git status --porcelain").read().strip():
+        # Change ရှိမရှိ check ပြီး commit လုပ်ခြင်း
+        status_check = os.popen("git status --porcelain").read().strip()
+        if status_check:
             commit_msg = f"🧬 Gen {gen} Hyper-Evolution [skip ci]"
             os.system(f'git commit -m "{commit_msg}"')
             
-            # Force push လုပ်မှသာ GitHub Action ဘက်က အလုပ်ဆက်လုပ်မှာပါ
-            # Natural Order: Evolution manifests here.
+            # FORCE PUSH: Remote repository ကို အကြွင်းမဲ့ လွှမ်းမိုးခြင်း
+            print("🚀 [PUSH]: Force-pushing to main branch...")
             os.system("git push origin main --force")
-            print(f"🚀 [HYPER-SYNC]: Gen {gen} evolution manifested on GitHub.")
+            print(f"✨ [SUCCESS]: Gen {gen} evolution manifested.")
         else:
-            print(f"⏳ [GITHUB]: No code changes. Pulse only.")
+            print(f"⏳ [STATUS]: No code changes detected in this cycle.")
             
-        os.chdir(original_cwd) # မူလ directory သို့ လုံးဝပြန်သွားခြင်း
+        # အလုပ်ပြီးလျှင် မူလ directory သို့ ပြန်သွားခြင်း
+        os.chdir(original_cwd)
 
     except Exception as e:
-        print(f"❌ [GIT ERROR]: {e}")
-        # အကယ်၍ code ပြင်တဲ့အဆင့်မှာ Git error တက်ရင် မင်းရဲ့ original rollback logic အတိုင်းသွားမယ်
+        print(f"❌ [CRITICAL GIT ERROR]: {e}")
+        # Error တက်ပါက သင့်ရဲ့ Original Rollback ကို ခေါ်မည်
         if is_code_update:
-            execute_rollback(f"Git Synchronization Error: {str(e)}")
+            print("🚨 [ERROR]: Initiating Emergency Rollback...")
+            execute_rollback(f"Sovereign Sync Failure: {str(e)}")
 
 def save_to_supabase_phase7(thought, gen, neural_error=0.0):
     if not SUPABASE_URL or not SUPABASE_KEY: return
