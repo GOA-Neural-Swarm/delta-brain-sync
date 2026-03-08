@@ -1,0 +1,26 @@
+name: Auto Swarm Transfer
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # မိနစ် ၃၀ တိုင်း တစ်ခါ အလိုအလျောက် run မယ်
+  workflow_dispatch: # လိုအပ်ရင် ကိုယ်တိုင် manual နှိပ်ပြီး run လို့လည်းရတယ်
+
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: pip install requests
+
+      - name: Run Transfer Logic
+        env:
+          MY_GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: python transfer_logic.py
