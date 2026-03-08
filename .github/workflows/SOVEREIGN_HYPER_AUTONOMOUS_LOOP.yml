@@ -84,7 +84,17 @@ jobs:
           else
             echo "AI output too short. Skipping to prevent empty file."
           fi
-          
+      
+      - name: Step 6.1 - Verify & Trigger Evolution Signal
+        if: success() || failure()
+        run: |
+          touch trigger.lock
+          git config --global user.name 'Sovereign-AI-Bot'
+          git config --global user.email 'bot@sovereign.ai'
+          git add trigger.lock
+          git commit -m "🧬 [SIGNAL] Evolution requested"
+          git push origin main    
+      
       - name: Step 7 - Manifest Sovereign State (Final Push)
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
