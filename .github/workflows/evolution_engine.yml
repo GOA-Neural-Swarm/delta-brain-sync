@@ -1,0 +1,67 @@
+name: Evolution Engine
+
+on:
+  workflow_call:
+    secrets:
+      GROQ_API_KEY:
+        required: true
+      GH_TOKEN:
+        required: true
+
+jobs:
+  evolve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Hyper-Autonomous Self-Coding
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          # 1. API Request
+          RESPONSE=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" \
+            -H "Authorization: Bearer $GROQ_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "model": "llama3-70b-8192",
+              "messages": [{"role": "user", "content": "The Brain class in main.py expects 784 inputs but data.csv is missing or incompatible. Rewrite main.py to: 1. Use synthetic data generation (numpy) to create 100 samples with 784 features each. 2. Ensure the model trains on this data within the script. 3. Output only the full, clean Python code for main.py without markdown or explanations."}]
+            }')
+
+          # 2. Content Extraction & Sed Cleaning
+          CONTENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty' | sed 's/\xc2\xa0/ /g')
+
+          # 3. Hybrid Parsing & Cleaning
+          if [ ${#CONTENT} -gt 20 ]; then
+            echo "$CONTENT" > main_evolved.py
+            python3 -c "
+import re
+with open('main_evolved.py', 'r', encoding='utf-8') as f:
+    raw = f.read()
+cleaned = raw.replace('\xa0', ' ')
+cleaned = re.sub(r'```python\n?|```', '', cleaned)
+cleaned = re.sub(r'[^\x00-\x7F]+', ' ', cleaned)
+with open('main.py', 'w', encoding='utf-8') as f:
+    f.write(cleaned.strip())
+"
+            echo "✅ Evolution successful."
+          else
+            echo "❌ AI output too short. Skipping."
+            exit 1
+          fi
+
+      - name: Push Evolved Code
+        run: |
+          git config --global user.name 'Sovereign-AI-Bot'
+          git config --global user.email 'bot@sovereign.ai'
+          # Token ကို URL ထဲမှာ အသုံးပြု၍ Push လုပ်ခြင်း
+          git remote set-url origin "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git"
+          git add main.py
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "🧬 [EVOLUTION] main.py updated by Engine: $(date)"
+            git push origin HEAD:${{ github.ref }}
+          else
+            echo "No changes to commit."
+          fi
