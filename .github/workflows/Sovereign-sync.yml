@@ -3,11 +3,12 @@ name: Sovereign Evolution & Trinity Sync
 on:
   push:
     branches: [main]
-    # [OMNI-TRIGGER]: AI ပြင်သမျှ ဖိုင်တိုင်းကို လက်ခံရန် paths-ignore သုံးထားသည်
-    paths-ignore:
-      - 'README.md'
-      - '.gitignore'
-      - 'docs/**'
+    paths:
+      - 'kaggle_brain/**'
+      - 'app.py'
+      - 'main.py'
+      - 'brain.py'
+      - 'sync_data.py'
   schedule:
     - cron: '*/30 * * * *'
   workflow_dispatch:
@@ -30,7 +31,7 @@ jobs:
         with:
           token: ${{ secrets.GH_TOKEN }}
           fetch-depth: 0
-          submodules: false # Submodules clash မဖြစ်စေရန် မူလအတိုင်းထားသည်
+          submodules: false
       
       - name: Step 2 - Environment Setup (Python 3.10 & Node 20)
         uses: actions/setup-python@v5
@@ -44,7 +45,7 @@ jobs:
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
-          git config --global pull.rebase true # Auto-rebase for cleaner history
+          git config --global pull.rebase false
           git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
 
       - name: Step 4 - Install Multi-Engine Dependencies
@@ -61,10 +62,10 @@ jobs:
           if [ -f "sync_data.py" ]; then
             python sync_data.py
           else
-            echo "⚠️ sync_data.py not found, skipping Neon sync."
+            echo "⚠️ sync_data.py not found, skipping specific Neon sync."
           fi
 
-      - name: Step 6 - Push to Kaggle (The Ironclad Hybrid Fix)
+      - name: Step 6 - Push to Kaggle (The Ironclad Fix)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
@@ -72,15 +73,15 @@ jobs:
           mkdir -p ~/.kaggle
           printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
+          
           mkdir -p kaggle_deploy
           
-          # [OMNI-LOGIC]: သင့် မူလ Priority detection logic အားလုံး ပါဝင်သည်
+          # Prioritize kaggle_brain/main.py, then main.py, then brain.py, then app.py
           if [ -f "kaggle_brain/main.py" ]; then
             cp kaggle_brain/main.py kaggle_deploy/main.py
             echo "✅ Found main.py in kaggle_brain/"
           elif [ -f "main.py" ]; then
             cp main.py kaggle_deploy/main.py
-            echo "✅ Found main.py in root/"
           elif [ -f "brain.py" ]; then
             cp brain.py kaggle_deploy/main.py
           elif [ -f "app.py" ]; then
@@ -88,11 +89,6 @@ jobs:
           else
             echo "❌ Critical Error: No logic file found!" && exit 1
           fi
-
-          # [HYBRID ASSET SYNC]: သင်လိုအပ်သော Assets များ အားလုံးကို တွဲဖက်ပေးပို့ခြင်း
-          [ -f "brain.py" ] && cp brain.py kaggle_deploy/
-          [ -f "ai_experiment.py" ] && cp ai_experiment.py kaggle_deploy/
-          [ -f "sync_data.py" ] && cp sync_data.py kaggle_deploy/
 
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
@@ -112,7 +108,7 @@ jobs:
           EOF
           
           export PATH=$PATH:/home/runner/.local/bin
-          kaggle kernels push -p kaggle_deploy || echo "⚠️ Kaggle push failed but continuing..."
+          kaggle kernels push -p kaggle_deploy
 
       - name: Step 7 - Run Evolution Engine (Self-Coding & Ingestion)
         timeout-minutes: 15
@@ -133,9 +129,16 @@ jobs:
           REPO_URL: ${{ github.repository }}
           HEADLESS_MODE: "true"
         run: |
-          TARGET=$( [ -f "app.py" ] && echo "app.py" || echo "main.py" )
+          if [ -f "app.py" ]; then
+            TARGET="app.py"
+          elif [ -f "main.py" ]; then
+            TARGET="main.py"
+          else
+            echo "Error: No execution target found." && exit 1
+          fi
+          
           echo "Guard: Monitoring $TARGET"
-          python evolution_guard.py "$TARGET" || echo "⚠️ Evolution guard issue."
+          python evolution_guard.py "$TARGET"
 
       - name: Step 8 - Run Trinity Sync Engine (Delta Sync)
         env:
@@ -147,14 +150,17 @@ jobs:
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          [ -f "delta_sync.js" ] && node delta_sync.js || echo "Skipping JS sync."
+          if [ -f "delta_sync.js" ]; then
+            node delta_sync.js
+          fi
 
       - name: Optimize Sovereign Repository Structure
         run: |
-          # [PROTECTION]: Repo ဖောင်းပွမှုကို တားဆီးရန် Cache များအား ရှင်းထုတ်ခြင်း
+          # Remove node_modules and sub-repos from git index tracking (does not delete local files)
           git rm -r --cached node_modules || true
           git rm -rf --cached repo_sync || true
           
+          # Reconstruct a clean .gitignore to prevent future repository bloat
           cat <<EOF > .gitignore
           node_modules/
           repo_sync/
@@ -164,25 +170,20 @@ jobs:
           *.log
           kaggle_deploy/
           EOF
-          echo "✅ Repository structure is clean."
+          
+          echo "✅ Repository structure is now clean and logic remains intact."
 
-      - name: Step 9 - GitHub Sovereign Re-sync (Error Buster Logic)
+      - name: Step 9 - GitHub Auto-Commit
         run: |
+          # Add all modified files
           git add .
           
-          # ပြောင်းလဲမှုရှိမှသာ Commit လုပ်မည်
+          # Only proceed with commit and push if there are actual changes
           if ! git diff-index --quiet HEAD; then
-            git commit -m "🧬 Hyper-Autonomous Sync: Omni-State Manifested [skip ci]" || exit 0
-            
-            # [SAFE SYNC]: Error အနီရောင်မပြစေရန် Force Sync လုပ်ခြင်း
+            git commit -m "🧬 Hyper-Autonomous Sync: AI-Modified Core & Brain [skip ci]"
             git fetch origin main
-            
-            # Conflict ဖြစ်နိုင်သော merge/rebase နေရာတွင် soft reset ဖြင့် အစားထိုးခြင်း
             git reset --soft origin/main
-            
-            # နောက်ဆုံးအဆင့် Force Push ဖြင့် မူလ Code State ကို ထိန်းသိမ်းခြင်း
             git push origin main --force
-            echo "🚀 [SUCCESS]: System state manifested on GitHub without errors."
           else
-            echo "No changes to commit. System is in sync."
+            echo "No changes to commit. System state is already synchronized."
           fi
