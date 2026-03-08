@@ -24,7 +24,7 @@ jobs:
             -H "Authorization: Bearer $GROQ_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{
-              "model": "llama3-70b-8192",
+              "model": "llama-3.3-70b-versatile",
               "messages": [{"role": "user", "content": "You are a Python expert. Rewrite main.py: Generate 100 synthetic samples (784 features), train a model, and print success. Output ONLY the full Python code, no markdown, no conversational text."}],
               "temperature": 0.2,
               "max_tokens": 4096
