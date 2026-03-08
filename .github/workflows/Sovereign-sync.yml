@@ -3,9 +3,12 @@ name: Sovereign Evolution & Trinity Sync
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '.gitignore'
-      - 'README.md'
+    paths:
+      - 'kaggle_brain/**'
+      - 'app.py'
+      - 'main.py'
+      - 'brain.py'
+      - 'sync_data.py'
   schedule:
     - cron: '*/30 * * * *'
   workflow_dispatch:
