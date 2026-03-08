@@ -3,12 +3,11 @@ name: Sovereign Evolution & Trinity Sync
 on:
   push:
     branches: [main]
-    paths:
-      - 'kaggle_brain/**'
-      - 'app.py'
-      - 'main.py'
-      - 'brain.py'
-      - 'sync_data.py'
+    # [OMNI-TRIGGER]: AI ပြင်သမျှ ဖိုင်တိုင်းကို လက်ခံရန် paths ကန့်သတ်ချက်ကို ဖြုတ်ထားသည်
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+      - 'docs/**'
   schedule:
     - cron: '*/30 * * * *'
   workflow_dispatch:
@@ -31,6 +30,7 @@ jobs:
         with:
           token: ${{ secrets.GH_TOKEN }}
           fetch-depth: 0
+          # Submodules clash မဖြစ်အောင် မူလအတိုင်း False ထားသည်
           submodules: false
       
       - name: Step 2 - Environment Setup (Python 3.10 & Node 20)
@@ -46,6 +46,7 @@ jobs:
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
           git config --global pull.rebase false
+          # Token ဖြင့် Remote URL ကို အသေချာ ချိတ်ဆက်ခြင်း
           git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
 
       - name: Step 4 - Install Multi-Engine Dependencies
@@ -65,7 +66,7 @@ jobs:
             echo "⚠️ sync_data.py not found, skipping specific Neon sync."
           fi
 
-      - name: Step 6 - Push to Kaggle (The Ironclad Fix)
+      - name: Step 6 - Push to Kaggle (The Fully-Expanded Hybrid Fix)
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
@@ -76,12 +77,13 @@ jobs:
           
           mkdir -p kaggle_deploy
           
-          # Prioritize kaggle_brain/main.py, then main.py, then brain.py, then app.py
+          # [OMNI-LOGIC]: AI ပြင်လိုက်သော ဖိုင်များရှိပါက ဦးစားပေးရွေးချယ်ခြင်း
           if [ -f "kaggle_brain/main.py" ]; then
             cp kaggle_brain/main.py kaggle_deploy/main.py
             echo "✅ Found main.py in kaggle_brain/"
           elif [ -f "main.py" ]; then
             cp main.py kaggle_deploy/main.py
+            echo "✅ Found main.py in root/"
           elif [ -f "brain.py" ]; then
             cp brain.py kaggle_deploy/main.py
           elif [ -f "app.py" ]; then
@@ -89,6 +91,11 @@ jobs:
           else
             echo "❌ Critical Error: No logic file found!" && exit 1
           fi
+
+          # [HYBRID ASSET SYNC]: Core brain files များကိုပါ Kaggle ဆီ တွဲဖက်ပေးပို့ခြင်း
+          [ -f "brain.py" ] && cp brain.py kaggle_deploy/
+          [ -f "ai_experiment.py" ] && cp ai_experiment.py kaggle_deploy/
+          [ -f "sync_data.py" ] && cp sync_data.py kaggle_deploy/
 
           cat <<EOF > kaggle_deploy/kernel-metadata.json
           {
@@ -156,11 +163,10 @@ jobs:
 
       - name: Optimize Sovereign Repository Structure
         run: |
-          # Remove node_modules and sub-repos from git index tracking (does not delete local files)
+          # [PROTECTION]: Repo ဖောင်းပွမှုကို တားဆီးရန် Cache များအား ရှင်းထုတ်ခြင်း
           git rm -r --cached node_modules || true
           git rm -rf --cached repo_sync || true
           
-          # Reconstruct a clean .gitignore to prevent future repository bloat
           cat <<EOF > .gitignore
           node_modules/
           repo_sync/
@@ -173,17 +179,22 @@ jobs:
           
           echo "✅ Repository structure is now clean and logic remains intact."
 
-      - name: Step 9 - GitHub Auto-Commit
+      - name: Step 9 - GitHub Sovereign Re-sync (Conflict Killer)
         run: |
-          # Add all modified files
           git add .
           
-          # Only proceed with commit and push if there are actual changes
           if ! git diff-index --quiet HEAD; then
-            git commit -m "🧬 Hyper-Autonomous Sync: AI-Modified Core & Brain [skip ci]"
+            git commit -m "🧬 Hyper-Autonomous Sync: Omni-State Manifested [skip ci]"
+            
+            # [HYBRID MERGE STRATEGY]: Kaggle ဘက်က Force Push နှင့် မငြိအောင် ညှိနှိုင်းခြင်း
             git fetch origin main
-            git reset --soft origin/main
+            
+            # Rebase လုပ်၍ မရပါက Remote ဘက်က အပြောင်းအလဲကို ဦးစားပေး၍ ပေါင်းစပ်မည်
+            git rebase origin/main || git merge -X theirs origin/main
+            
+            # နောက်ဆုံးအဆင့် Force Push ဖြင့် မူလ Code State ကို ထိန်းသိမ်းခြင်း
             git push origin main --force
+            echo "🚀 [SUCCESS]: System state manifested on GitHub."
           else
             echo "No changes to commit. System state is already synchronized."
           fi
