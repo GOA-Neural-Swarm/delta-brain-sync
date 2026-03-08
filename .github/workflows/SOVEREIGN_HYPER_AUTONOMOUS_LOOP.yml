@@ -63,7 +63,9 @@ jobs:
           fi
 
       - name: Trigger Evolution Engine
-        run: gh workflow run evolution_engine.yml
+        run: |
+          # ဖိုင်နာမည်ကို workflow path အပြည့်အစုံ (.github/workflows/...) နဲ့ ခေါ်ပါ
+          gh workflow run evolution_engine.yml -f branch=main
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           
