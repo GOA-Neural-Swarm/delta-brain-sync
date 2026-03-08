@@ -62,31 +62,10 @@ jobs:
             python -c "try: from brain import sync_data; sync_data(); except: print('Skipped')"
           fi
 
-      - name: Step 6 - Hyper-Autonomous Self-Coding (Groq AI)
+      - name: Trigger Evolution Engine
+        run: gh workflow run evolution_engine.yml
         env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: |
-          RESPONSE=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" \
-            -H "Authorization: Bearer $GROQ_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "model": "llama3-70b-8192",
-              "messages": [{"role": "user", "content": "The Brain class in main.py expects 784 inputs but data.csv is missing or incompatible. Rewrite main.py to: 1. Use synthetic data generation (numpy) to create 100 samples with 784 features each. 2. Ensure the model trains on this data within the script. 3. Output only the full, clean Python code for main.py without markdown or explanations."}]
-            }')
-
-          # Content ကို ဆွဲထုတ်ပြီး Invisible character (U+00A0) တွေကို ရှင်းထုတ်မယ်
-          # sed 's/\xc2\xa0/ /g' က character အမှားတွေကို space အမှန် ပြောင်းပေးတာပါ
-          CONTENT=$(echo $RESPONSE | jq -r '.choices[0].message.content // empty' | sed 's/\xc2\xa0/ /g')
-
-          if [ ${#CONTENT} -gt 20 ]; then
-            echo "$CONTENT" > main_evolved.py
-            # ထပ်ဆင့် သန့်စင်မှုအနေနဲ့ python သုံးပြီး character အမှား ဖယ်ထုတ်မယ်
-            python3 -c "import sys; content = open('main_evolved.py').read(); open('main.py', 'w').write(content.replace('\xa0', ' '))"
-            echo "Evolution successful and code cleaned."
-          else
-            echo "AI output too short. Skipping to prevent empty file."
-          fi
-        
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           
         
           
