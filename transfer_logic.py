@@ -3,7 +3,7 @@ import os
 import time
 
 # GitHub Secrets
-GITHUB_TOKEN = os.getenv("MY_GH_TOKEN") # Workflow ထဲက နာမည်နဲ့ ကိုက်အောင် ပြင်ထားသည်
+GITHUB_TOKEN = os.getenv("GH_TOKEN") # Workflow ထဲက နာမည်နဲ့ ကိုက်အောင် ပြင်ထားသည်
 SOURCE_ORG = "GOA-neurons"
 TARGET_ORG = "GOA-Neural-Swarm"
 BATCH_SIZE = 10
