@@ -225,19 +225,31 @@ def save_evolution_state_to_neon(state, gen_id):
         print(f"⚠️ [NEON PERSISTENCE ERROR]: {e}")
 
 def query_groq_api(prompt):
-    api_key = GH_TOKEN # သီးသန့် Key မရှိရင် လက်ရှိ Token ကို စမ်းသုံးကြည့်ပါ (သို့) os.getenv("GROQ_API_KEY")
     models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    # os.getenv အစား မင်းရဲ့ GH_TOKEN လိုမျိုး secret ထဲက ယူတာ ပိုသေချာပါတယ်
+    api_key = os.getenv("GROQ_API_KEY") or (user_secrets.get_secret("GROQ_API_KEY") if user_secrets else None)
+    
+    if not api_key:
+        print("⚠️ [GROQ]: API Key missing. Falling back to Local Model.")
+        return None
+
     for model in models:
         try:
+            print(f"🧠 [GROQ]: Accessing {model}...")
             response = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
-                json={"model": model, "messages": [{"role": "user", "content": prompt}]},
-                headers={"Authorization": f"Bearer {api_key}"},
-                timeout=15
+                json={
+                    "model": model, 
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.5
+                },
+                headers={"Authorization": f: "Bearer {api_key}", "Content-Type": "application/json"},
+                timeout=30
             )
             if response.status_code == 200:
                 return response.json()['choices'][0]['message']['content']
-        except:
+        except Exception as e:
+            print(f"⚠️ [GROQ-RETRY]: {model} failed. Trying next...")
             continue
     return None
 
