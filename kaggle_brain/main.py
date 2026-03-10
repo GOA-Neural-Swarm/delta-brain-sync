@@ -635,12 +635,13 @@ You are Sovereign AI Overseer.
 Rule 1: Use ONLY '# TARGET: brain.py' at the start of your code block.
 Rule 2: Respond ONLY with Python code inside ```python ... ``` blocks.
 Rule 3: No explanations. No thoughts. Just code.
+Rule 4: Implement logic to support 'llama-3.3-70b-versatile' for high-reasoning and 'llama-3.1-8b-instant' for rapid sync.
 Current Gen: {current_gen} | Error: {avg_error}
 Last System Error: {last_error_log}
 
 System Command: Analyze 'Last System Error'. If not 'None', FIX it first.
 user
-Optimize the Brain class in brain.py for high-speed neural processing.
+Optimize the Brain class in brain.py for high-speed neural processing and integrate model-routing logic between 70b-versatile and 8b-instant.
 assistant
 """
             else:
@@ -649,12 +650,13 @@ You are Sovereign AI Overseer.
 Rule 1: Use ONLY '# TARGET: brain.py'.
 Rule 2: Provide code ONLY inside ```python ... ``` blocks.
 Rule 3: No explanations. Just code.
+Rule 4: Prioritize 'llama-3.3-70b-versatile' for complex structural evolution and 'llama-3.1-8b-instant' for stability-checks.
 Current Gen: {current_gen} | Neural Error: {avg_error}
 Last System Error: {last_error_log}
 
 System Command: Analyze 'Last System Error'. If not 'None', FIX it first. Evolution requires stability.
 user
-Database is offline. Rewrite brain.py core logic for maximum stability and autonomy.
+Database is offline. Rewrite brain.py core logic for maximum stability, autonomy, and hybrid model-routing between 70b and 8b models.
 assistant
 """
 
