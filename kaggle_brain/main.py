@@ -243,7 +243,7 @@ def query_groq_api(prompt):
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.5
                 },
-                headers={"Authorization": f: "Bearer {api_key}", "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 timeout=30
             )
             if response.status_code == 200:
@@ -701,7 +701,7 @@ assistant
         is_updated, files_changed = self_coding_engine(thought_text)
 
         # 💾 [PERSISTENCE]: Sync thought process and neural status
-        save_reality(thought_text, current_gen, is_code_update=files_changed, neural_error=avg_error)
+        save_reality(thought_text, current_gen, is_update=files_changed, neural_error=avg_error)
         
         # 🔱 [SWARM TRIGGER]: Logic အသစ်ရှိရင် EVOLVE ခိုင်းမယ်၊ မရှိရင် SYNC ပဲ လုပ်မယ်
         current_command = "EVOLVE_NEURAL_WEIGHTS" if is_updated else "SYNC_AND_MINE"
