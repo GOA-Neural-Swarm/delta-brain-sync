@@ -690,14 +690,18 @@ assistant
 """
 
         # --- PHASE 8 EXECUTION & SELF-CODING ---
-        outputs = pipe(prompt, max_new_tokens=1000, do_sample=True, temperature=0.9, pad_token_id=pipe.tokenizer.eos_token_id)
-        thought_text = outputs[0]["generated_text"].split("assistant")[-1].strip()
+        thought_text = query_groq_api(prompt)
+
+        if not thought_text:
+            print("💾 [LOCAL-FALLBACK]: Groq failed. Using Local Llama-3-8B...")
+            outputs = pipe(prompt, max_new_tokens=1000, do_sample=True, temperature=0.9, pad_token_id=pipe.tokenizer.eos_token_id)
+            thought_text = outputs[0]["generated_text"].split("assistant")[-1].strip()
 
         # Self-Coding Logic: AI detects and updates target files (main.py or brain.py)
         is_updated, files_changed = self_coding_engine(thought_text)
 
         # 💾 [PERSISTENCE]: Sync thought process and neural status
-        save_reality(thought_text, current_gen, is_code_update=is_updated, neural_error=avg_error)
+        save_reality(thought_text, current_gen, is_code_update=files_changed, neural_error=avg_error)
         
         # 🔱 [SWARM TRIGGER]: Logic အသစ်ရှိရင် EVOLVE ခိုင်းမယ်၊ မရှိရင် SYNC ပဲ လုပ်မယ်
         current_command = "EVOLVE_NEURAL_WEIGHTS" if is_updated else "SYNC_AND_MINE"
