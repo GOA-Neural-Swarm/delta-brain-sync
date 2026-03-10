@@ -224,6 +224,23 @@ def save_evolution_state_to_neon(state, gen_id):
     except Exception as e:
         print(f"⚠️ [NEON PERSISTENCE ERROR]: {e}")
 
+def query_groq_api(prompt):
+    api_key = GH_TOKEN # သီးသန့် Key မရှိရင် လက်ရှိ Token ကို စမ်းသုံးကြည့်ပါ (သို့) os.getenv("GROQ_API_KEY")
+    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    for model in models:
+        try:
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                json={"model": model, "messages": [{"role": "user", "content": prompt}]},
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=15
+            )
+            if response.status_code == 200:
+                return response.json()['choices'][0]['message']['content']
+        except:
+            continue
+    return None
+
 # Initialize the integrated hybrid brain
 brain = Brain()
 
