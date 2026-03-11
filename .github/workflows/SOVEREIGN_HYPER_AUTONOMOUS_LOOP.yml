@@ -17,6 +17,8 @@ permissions:
 jobs:
   sovereign_cycle:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Step 1 - Initialize Sovereign Source
         uses: actions/checkout@v4
