@@ -700,7 +700,11 @@ assistant
         # Self-Coding Logic: AI detects and updates target files (main.py or brain.py)
         is_updated, files_changed = self_coding_engine(thought_text)
 
-        # 💾 [PERSISTENCE]: Sync thought process and neural status
+        if is_updated:
+            print("🧬 [EVOLUTION]: Code modified. Restarting system with new DNA...")
+            os.execv(sys.executable, ['python'] + sys.argv) # 🔱
+        
+        # 💾 [PERSISTENCE]: Sync thought process and neural status
         save_reality(thought_text, current_gen, is_update=files_changed, neural_error=avg_error)
         
         # 🔱 [SWARM TRIGGER]: Logic အသစ်ရှိရင် EVOLVE ခိုင်းမယ်၊ မရှိရင် SYNC ပဲ လုပ်မယ်
