@@ -25,6 +25,8 @@ concurrency:
 jobs:
   evolve_and_sync:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Step 1 - Checkout Sovereign Code
         uses: actions/checkout@v4
