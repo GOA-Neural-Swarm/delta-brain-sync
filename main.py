@@ -71,37 +71,6 @@ class ModularNeuralNetwork(nn.Module):
         x = self.fc4(x)
         return x
 
-class ModularNeuralNetworkImproved(nn.Module):
-    def __init__(self):
-        super(ModularNeuralNetworkImproved, self).__init__()
-        self.block1 = nn.Sequential(
-            nn.Linear(784, 2048),
-            nn.ReLU(),
-            nn.BatchNorm1d(2048),
-            nn.Dropout(0.2)
-        )
-        self.block2 = nn.Sequential(
-            nn.Linear(2048, 1024),
-            nn.ReLU(),
-            nn.BatchNorm1d(1024),
-            nn.Dropout(0.2)
-        )
-        self.block3 = nn.Sequential(
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.BatchNorm1d(512)
-        )
-        self.fc4 = nn.Linear(512, 2)
-        self.attention = nn.MultiHeadAttention(512, 8)
-
-    def forward(self, x):
-        x = self.block1(x)
-        x = self.block2(x)
-        x = self.block3(x)
-        x, _ = self.attention(x, x)
-        x = self.fc4(x)
-        return x
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = ModularNeuralNetwork().to(device)
 criterion = nn.CrossEntropyLoss()
@@ -182,6 +151,37 @@ plt.plot(test_accuracy_values)
 plt.xlabel("Epoch")
 plt.ylabel("Loss/Accuracy")
 plt.show()
+
+class ModularNeuralNetworkImproved(nn.Module):
+    def __init__(self):
+        super(ModularNeuralNetworkImproved, self).__init__()
+        self.block1 = nn.Sequential(
+            nn.Linear(784, 2048),
+            nn.ReLU(),
+            nn.BatchNorm1d(2048),
+            nn.Dropout(0.2)
+        )
+        self.block2 = nn.Sequential(
+            nn.Linear(2048, 1024),
+            nn.ReLU(),
+            nn.BatchNorm1d(1024),
+            nn.Dropout(0.2)
+        )
+        self.block3 = nn.Sequential(
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.BatchNorm1d(512)
+        )
+        self.fc4 = nn.Linear(512, 2)
+        self.attention = nn.MultiHeadAttention(512, 8)
+
+    def forward(self, x):
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x, _ = self.attention(x, x)
+        x = self.fc4(x)
+        return x
 
 model_improved = ModularNeuralNetworkImproved().to(device)
 criterion = nn.CrossEntropyLoss()
