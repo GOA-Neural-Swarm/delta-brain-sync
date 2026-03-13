@@ -36,31 +36,31 @@ class SyntheticDataset(Dataset):
 train_dataset = SyntheticDataset(X_train, y_train)
 test_dataset = SyntheticDataset(X_test, y_test)
 
-batch_size = 64
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
-test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4)
+batch_size = 128
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=8)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=8)
 
 class ModularNeuralNetwork(nn.Module):
     def __init__(self):
         super(ModularNeuralNetwork, self).__init__()
         self.block1 = nn.Sequential(
-            nn.Linear(784, 1024),
+            nn.Linear(784, 2048),
+            nn.ReLU(),
+            nn.BatchNorm1d(2048),
+            nn.Dropout(0.2)
+        )
+        self.block2 = nn.Sequential(
+            nn.Linear(2048, 1024),
             nn.ReLU(),
             nn.BatchNorm1d(1024),
             nn.Dropout(0.2)
         )
-        self.block2 = nn.Sequential(
+        self.block3 = nn.Sequential(
             nn.Linear(1024, 512),
             nn.ReLU(),
-            nn.BatchNorm1d(512),
-            nn.Dropout(0.2)
+            nn.BatchNorm1d(512)
         )
-        self.block3 = nn.Sequential(
-            nn.Linear(512, 256),
-            nn.ReLU(),
-            nn.BatchNorm1d(256)
-        )
-        self.fc4 = nn.Linear(256, 2)
+        self.fc4 = nn.Linear(512, 2)
 
     def forward(self, x):
         x = self.block1(x)
@@ -76,7 +76,7 @@ optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.001)
 
 writer = SummaryWriter()
 
-num_epochs = 100
+num_epochs = 200
 cudnn.benchmark = True
 start_time = time.time()
 train_loss_values = []
