@@ -10,6 +10,7 @@ import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 import time
 import random
+import argparse
 
 # Set random seeds for reproducibility
 np.random.seed(0)
@@ -138,3 +139,28 @@ with torch.no_grad():
 
 accuracy = correct / len(test_loader.dataset)
 print(f'Test Loss: {test_loss / len(test_loader):.4f}, Test Accuracy: {accuracy:.4f}')
+
+# Define a function to get the number of parameters in the model
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+# Print the number of parameters in the model
+print(f"Number of parameters: {count_parameters(model)}")
+
+# Define a function to plot the training and test loss and accuracy
+import matplotlib.pyplot as plt
+
+def plot_loss_and_accuracy(writer):
+    loss_values = []
+    accuracy_values = []
+    for i in range(num_epochs):
+        loss_values.append(writer.scalar_dict["Loss/train"][i])
+        accuracy_values.append(writer.scalar_dict["Accuracy/test"][i])
+    plt.plot(loss_values)
+    plt.plot(accuracy_values)
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss/Accuracy")
+    plt.show()
+
+# Plot the training and test loss and accuracy
+plot_loss_and_accuracy(writer)
