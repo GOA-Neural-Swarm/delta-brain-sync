@@ -153,28 +153,7 @@ jobs:
             fi
           done
 
-          # 6. SURVIVAL FALLBACK: If evolution fails after all cycles, inject a baseline.
-          if [ "$EVOLUTION_SUCCESS" != "true" ]; then
-            echo "🚨 [CRITICAL]: Evolution sequence failed after multiple attempts. Initiating Survival Protocol."
-            # Check if main.py is empty or non-existent.
-            if [ ! -s "main.py" ]; then
-              # Create a minimal, functional Python script as a fallback.
-              cat <<'EOF' > main.py
-import numpy as np
-class SurvivalBrain:
-    def __init__(self):
-        # Initialize weights for a simple neural network.
-        self.w = np.random.randn(784, 10)
-    def run(self):
-        print("ASI Recovery Mode: System Breathing. Baseline brain initialized.")
-if __name__ == "__main__":
-    SurvivalBrain().run()
-EOF
-              echo "🛡️ [RECOVERY-INJECTED]: Baseline brain established in main.py."
-            else
-              echo "♻️ [ROLLBACK]: Retaining last known stable brain state in main.py."
-            fi
-          fi
+          
 
       - name: Step 7 - Commit and Push Changes
         env:
