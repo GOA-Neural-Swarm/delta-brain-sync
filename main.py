@@ -61,11 +61,13 @@ class ModularNeuralNetwork(nn.Module):
             nn.BatchNorm1d(512)
         )
         self.fc4 = nn.Linear(512, 2)
+        self.attention = nn.MultiHeadAttention(512, 8)
 
     def forward(self, x):
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
+        x, _ = self.attention(x, x)
         x = self.fc4(x)
         return x
 
