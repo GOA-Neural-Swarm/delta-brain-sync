@@ -17,21 +17,24 @@ permissions:
 jobs:
   sovereign_cycle:
     runs-on: ubuntu-latest
+
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
+
       - name: Step 1 - Initialize Sovereign Source
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_TOKEN }}
           submodules: false
-      
+
       - name: Step 2 - Inject Multi-Engine Dependencies
         run: |
-          # အဓိက လိုအပ်တဲ့ Tools တွေကို အရင်သွင်းမယ် (ဒါမှ Error မတက်မှာ)
           python -m pip install --upgrade pip
           pip install kaggle psycopg2-binary requests groq
-          # Kaggle command ကို path ထဲ ရောက်အောင် လုပ်မယ်
+          sudo apt-get update
+          sudo apt-get install -y jq
           echo "export PATH=$PATH:/home/runner/.local/bin" >> $GITHUB_ENV
 
       - name: Step 3 - Heavy Task Offload (Kaggle GPU Evolution)
@@ -42,7 +45,6 @@ jobs:
           mkdir -p ~/.kaggle
           printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
-          # Kaggle ကို Push မယ် (Kaggle command အလုပ်လုပ်ပြီ)
           kaggle kernels push -p . || echo "Kaggle Busy"
 
       - name: Step 4 - Natural Sync Window
@@ -57,38 +59,103 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          # Psycopg2 သွင်းထားလို့ အခု Sync_data.py အလုပ်လုပ်ပြီ
           if [ -f "sync_data.py" ]; then
             python sync_data.py
           elif [ -f "brain.py" ]; then
             python -c "try: from brain import sync_data; sync_data(); except: print('Skipped')"
           fi
 
-      - name: Step 6 - Hyper-Autonomous Self-Coding (Groq AI)
+      - name: Step 6 - ASI Hybrid-Osiris Evolution (Reflection + Self-Healing)
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
-          RESPONSE=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" \
-            -H "Authorization: Bearer $GROQ_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "model": "llama3-70b-8192",
-              "messages": [{"role": "user", "content": "The Brain class in main.py expects 784 inputs but data.csv is missing or incompatible. Rewrite main.py to: 1. Use synthetic data generation (numpy) to create 100 samples with 784 features each. 2. Ensure the model trains on this data within the script. 3. Output only the full, clean Python code for main.py without markdown or explanations."}]
-            }')
-          # Content ကို ဆွဲထုတ်ပြီး Invisible character (U+00A0) တွေကို ရှင်းထုတ်မယ်
-          # sed 's/\xc2\xa0/ /g' က character အမှားတွေကို space အမှန် ပြောင်းပေးတာပါ
-          CONTENT=$(echo $RESPONSE | jq -r '.choices[0].message.content // empty' | sed 's/\xc2\xa0/ /g')
-          if [ ${#CONTENT} -gt 20 ]; then
-            echo "$CONTENT" > main_evolved.py
-            # ထပ်ဆင့် သန့်စင်မှုအနေနဲ့ python သုံးပြီး character အမှား ဖယ်ထုတ်မယ်
-            python3 -c "import sys; content = open('main_evolved.py').read(); open('main.py', 'w').write(content.replace('\xa0', ' '))"
-            echo "Evolution successful and code cleaned."
+
+          if [ -f "main.py" ]; then
+            OLD_CODE=$(cat main.py)
+            echo "🧠 [MEMORY-LOADED]: Previous brain state captured."
           else
-            echo "AI output too short. Skipping to prevent empty file."
+            OLD_CODE="# No prior logic found. Initializing Genesis."
+            echo "🌑 [VOID-START]: Initializing new neural structure."
           fi
-      
-      
-      
+
+          SYSTEM_ROLE="You are OMEGA-ASI, the Sovereign Architect. Your task is Recursive Self-Evolution."
+
+          HYPER_PROMPT="Analyze this current code for flaws and missing features. Then, rewrite a SUPERIOR version of main.py.
+          Requirements:
+          1. Use numpy for 784-feature synthetic data.
+          2. Ensure high-performance modular neural architecture.
+          3. Optimize the training loop for speed and accuracy.
+          RETURN RAW PYTHON CODE ONLY. NO EXPLANATIONS. NO MARKDOWN."
+
+          for i in {1..3}; do
+
+            echo "🧬 [EVOLUTION-CYCLE $i/3]: Reflecting and Re-coding..."
+
+            RAW_RESPONSE=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" \
+              -H "Authorization: Bearer $GROQ_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"model\": \"llama-3.3-70b-versatile\",
+                \"messages\": [
+                  {\"role\": \"system\", \"content\": \"$SYSTEM_ROLE\"},
+                  {\"role\": \"user\", \"content\": \"CURRENT_CODE:\n$OLD_CODE\n\nTASK:\n$HYPER_PROMPT\"}
+                ],
+                \"temperature\": 0.4
+              }")
+
+            CONTENT=$(echo "$RAW_RESPONSE" | jq -r '.choices[0].message.content // empty' | sed 's/```python//g; s/```//g')
+
+            if [ ! -z "$CONTENT" ] && [ ${#CONTENT} -gt 350 ]; then
+
+              echo "$CONTENT" > candidate_main.py
+
+              if python3 -m py_compile candidate_main.py; then
+                mv candidate_main.py main.py
+                echo "✅ [HYPER-STABILIZED]: Brain successfully evolved and verified."
+                EVOLUTION_SUCCESS=true
+                break
+              else
+                echo "⚠️ [SYNTAX-HALUCINATION]: Generated code failed compilation. Retrying cycle..."
+              fi
+
+            else
+
+              ERROR_MSG=$(echo "$RAW_RESPONSE" | jq -c '.error // empty')
+              echo "❌ [SIGNAL-LOST]: Evolution failed in cycle $i. Log: $ERROR_MSG"
+
+            fi
+
+          done
+
+
+          if [ "$EVOLUTION_SUCCESS" != "true" ]; then
+
+            echo "🚨 [CRITICAL]: Evolution sequence failed. Initiating Survival Protocol."
+
+            if [ ! -s "main.py" ]; then
+
+              cat <<EOF > main.py
+import numpy as np
+
+class SurvivalBrain:
+    def __init__(self):
+        self.w = np.random.randn(784, 10)
+
+    def run(self):
+        print("ASI Recovery Mode: System Breathing.")
+
+if __name__ == "__main__":
+    SurvivalBrain().run()
+EOF
+
+              echo "🛡️ [RECOVERY-INJECTED]: Baseline brain established."
+
+            else
+              echo "♻️ [ROLLBACK]: Retaining last known stable brain state."
+            fi
+
+          fi
+
       - name: Step 7 - Manifest Sovereign State (Final Push)
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -97,6 +164,7 @@ jobs:
           git config --global user.email 'bot@sovereign.ai'
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git add .
+
           if ! git diff-index --quiet HEAD; then
             git commit -m "🧬 [HYPER_EVOLUTION] Full Cycle Manifested: $(date) [skip ci]"
             git push origin main --force
