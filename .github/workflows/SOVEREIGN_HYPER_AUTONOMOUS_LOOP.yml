@@ -159,7 +159,7 @@ jobs:
             # Check if main.py is empty or non-existent.
             if [ ! -s "main.py" ]; then
               # Create a minimal, functional Python script as a fallback.
-              cat <<EOF > main.py
+              cat <<'EOF' > main.py
 import numpy as np
 class SurvivalBrain:
     def __init__(self):
