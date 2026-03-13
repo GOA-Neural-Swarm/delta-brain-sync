@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from torch.utils.data import Dataset, DataLoader
 import torch.backends.cudnn as cudnn
+from torch.utils.tensorboard import SummaryWriter
 
 # Generate synthetic data
 np.random.seed(0)
@@ -34,8 +35,8 @@ test_dataset = SyntheticDataset(X_test, y_test)
 
 # Create data loaders
 batch_size = 64
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
-test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, pin_memory=True)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4)
 
 # Define a high-performance modular neural architecture
 class NeuralNetwork(nn.Module):
@@ -66,6 +67,9 @@ model = NeuralNetwork().to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.001)
 
+# Initialize tensorboard writer
+writer = SummaryWriter()
+
 # Optimize the training loop for speed and accuracy
 num_epochs = 100
 cudnn.benchmark = True
@@ -81,6 +85,7 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
+    writer.add_scalar("Loss/train", total_loss / len(train_loader), epoch)
     if epoch % 10 == 0:
         print(f'Epoch {epoch+1}, Loss: {total_loss / len(train_loader):.4f}')
 
@@ -94,6 +99,7 @@ for epoch in range(num_epochs):
             _, predicted = torch.max(outputs, 1)
             total_correct += (predicted == labels).sum().item()
         accuracy = total_correct / len(test_loader.dataset)
+        writer.add_scalar("Accuracy/test", accuracy, epoch)
         if epoch % 10 == 0:
             print(f'Epoch {epoch+1}, Accuracy: {accuracy:.4f}')
 
