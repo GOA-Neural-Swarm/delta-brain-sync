@@ -9,9 +9,14 @@ from torch.utils.data import Dataset, DataLoader
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 import time
+import random
+
+# Set random seeds for reproducibility
+np.random.seed(0)
+torch.manual_seed(0)
+random.seed(0)
 
 # Generate synthetic data
-np.random.seed(0)
 X = np.random.rand(1000, 784)
 y = np.random.randint(0, 2, 1000)
 
@@ -111,3 +116,25 @@ print(f"Training time: {end_time - start_time} seconds")
 # Print success if the model is trained and accuracy is greater than 0
 if model and accuracy > 0:
     print("Success")
+
+# Save the trained model
+torch.save(model.state_dict(), 'model.pth')
+
+# Load the saved model
+# model.load_state_dict(torch.load('model.pth'))
+
+# Evaluate the model on the test set
+model.eval()
+test_loss = 0
+correct = 0
+with torch.no_grad():
+    for inputs, labels in test_loader:
+        inputs, labels = inputs.to(device), labels.to(device)
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+        test_loss += loss.item()
+        _, predicted = torch.max(outputs, 1)
+        correct += (predicted == labels).sum().item()
+
+accuracy = correct / len(test_loader.dataset)
+print(f'Test Loss: {test_loss / len(test_loader):.4f}, Test Accuracy: {accuracy:.4f}')
