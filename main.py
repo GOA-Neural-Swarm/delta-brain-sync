@@ -8,6 +8,7 @@ from sklearn.metrics import accuracy_score
 from torch.utils.data import Dataset, DataLoader
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
+import time
 
 # Generate synthetic data
 np.random.seed(0)
@@ -73,6 +74,7 @@ writer = SummaryWriter()
 # Optimize the training loop for speed and accuracy
 num_epochs = 100
 cudnn.benchmark = True
+start_time = time.time()
 for epoch in range(num_epochs):
     model.train()
     total_loss = 0
@@ -102,6 +104,9 @@ for epoch in range(num_epochs):
         writer.add_scalar("Accuracy/test", accuracy, epoch)
         if epoch % 10 == 0:
             print(f'Epoch {epoch+1}, Accuracy: {accuracy:.4f}')
+
+end_time = time.time()
+print(f"Training time: {end_time - start_time} seconds")
 
 # Print success if the model is trained and accuracy is greater than 0
 if model and accuracy > 0:
