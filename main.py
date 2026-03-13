@@ -73,8 +73,9 @@ class ModularNeuralNetwork(nn.Module):
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = ModularNeuralNetwork().to(device)
+
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=0.001)
+optimizer = optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.001, betas=(0.9, 0.999), eps=1e-8)
 
 writer = SummaryWriter()
 
@@ -184,8 +185,9 @@ class ModularNeuralNetworkImproved(nn.Module):
         return x
 
 model_improved = ModularNeuralNetworkImproved().to(device)
+
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model_improved.parameters(), lr=0.001, weight_decay=0.001)
+optimizer = optim.AdamW(model_improved.parameters(), lr=0.001, weight_decay=0.001, betas=(0.9, 0.999), eps=1e-8)
 
 writer = SummaryWriter()
 
