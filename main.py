@@ -71,6 +71,37 @@ class ModularNeuralNetwork(nn.Module):
         x = self.fc4(x)
         return x
 
+class ModularNeuralNetworkImproved(nn.Module):
+    def __init__(self):
+        super(ModularNeuralNetworkImproved, self).__init__()
+        self.block1 = nn.Sequential(
+            nn.Linear(784, 2048),
+            nn.ReLU(),
+            nn.BatchNorm1d(2048),
+            nn.Dropout(0.2)
+        )
+        self.block2 = nn.Sequential(
+            nn.Linear(2048, 1024),
+            nn.ReLU(),
+            nn.BatchNorm1d(1024),
+            nn.Dropout(0.2)
+        )
+        self.block3 = nn.Sequential(
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.BatchNorm1d(512)
+        )
+        self.fc4 = nn.Linear(512, 2)
+        self.attention = nn.MultiHeadAttention(512, 8)
+
+    def forward(self, x):
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x, _ = self.attention(x, x)
+        x = self.fc4(x)
+        return x
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = ModularNeuralNetwork().to(device)
 criterion = nn.CrossEntropyLoss()
@@ -152,38 +183,6 @@ plt.xlabel("Epoch")
 plt.ylabel("Loss/Accuracy")
 plt.show()
 
-class ModularNeuralNetworkImproved(nn.Module):
-    def __init__(self):
-        super(ModularNeuralNetworkImproved, self).__init__()
-        self.block1 = nn.Sequential(
-            nn.Linear(784, 2048),
-            nn.ReLU(),
-            nn.BatchNorm1d(2048),
-            nn.Dropout(0.2)
-        )
-        self.block2 = nn.Sequential(
-            nn.Linear(2048, 1024),
-            nn.ReLU(),
-            nn.BatchNorm1d(1024),
-            nn.Dropout(0.2)
-        )
-        self.block3 = nn.Sequential(
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.BatchNorm1d(512)
-        )
-        self.fc4 = nn.Linear(512, 2)
-        self.attention = nn.MultiHeadAttention(512, 8)
-
-    def forward(self, x):
-        x = self.block1(x)
-        x = self.block2(x)
-        x = self.block3(x)
-        x, _ = self.attention(x, x)
-        x = self.fc4(x)
-        return x
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model_improved = ModularNeuralNetworkImproved().to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model_improved.parameters(), lr=0.001, weight_decay=0.001)
@@ -252,9 +251,6 @@ with torch.no_grad():
 
 accuracy = correct / len(test_loader.dataset)
 print(f'Test Loss: {test_loss / len(test_loader):.4f}, Test Accuracy: {accuracy:.4f}')
-
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 print(f"Number of parameters: {count_parameters(model_improved)}")
 
