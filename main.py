@@ -73,41 +73,8 @@ class ModularNeuralNetwork(nn.Module):
         x = self.fc4(x)
         return x
 
-class ModularNeuralNetworkImproved(nn.Module):
-    def __init__(self):
-        super(ModularNeuralNetworkImproved, self).__init__()
-        self.block1 = nn.Sequential(
-            nn.Linear(784, 2048),
-            nn.ReLU(),
-            nn.BatchNorm1d(2048),
-            nn.Dropout(0.2)
-        )
-        self.block2 = nn.Sequential(
-            nn.Linear(2048, 1024),
-            nn.ReLU(),
-            nn.BatchNorm1d(1024),
-            nn.Dropout(0.2)
-        )
-        self.block3 = nn.Sequential(
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.BatchNorm1d(512)
-        )
-        self.fc4 = nn.Linear(512, 2)
-        self.attention = nn.MultiHeadAttention(512, 8)
-        self.batch_norm = nn.BatchNorm1d(512)
-
-    def forward(self, x):
-        x = self.block1(x)
-        x = self.block2(x)
-        x = self.block3(x)
-        x = self.batch_norm(x)
-        x, _ = self.attention(x, x)
-        x = self.fc4(x)
-        return x
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-model = ModularNeuralNetworkImproved().to(device)
+model = ModularNeuralNetwork().to(device)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.001, betas=(0.9, 0.999), eps=1e-8)
@@ -158,9 +125,9 @@ print(f"Training time: {end_time - start_time} seconds")
 if model and accuracy > 0:
     print("Success")
 
-torch.save(model.state_dict(), 'model_improved.pth')
+torch.save(model.state_dict(), 'model.pth')
 
-model.load_state_dict(torch.load('model_improved.pth'))
+model.load_state_dict(torch.load('model.pth'))
 
 model.eval()
 test_loss = 0
