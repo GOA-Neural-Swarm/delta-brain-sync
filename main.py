@@ -64,6 +64,7 @@ class ModularNeuralNetwork(nn.Module):
         self.attention = nn.MultiHeadAttention(512, 8)
         self.batch_norm = nn.BatchNorm1d(512)
         self.gelu = nn.GELU()
+        self.swish = nn.SiLU()
 
     def forward(self, x):
         x = self.block1(x)
@@ -72,6 +73,7 @@ class ModularNeuralNetwork(nn.Module):
         x = self.batch_norm(x)
         x, _ = self.attention(x, x)
         x = self.gelu(x)
+        x = self.swish(x)
         x = self.fc4(x)
         return x
 
