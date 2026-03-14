@@ -77,88 +77,6 @@ class ModularNeuralNetwork(nn.Module):
         x = self.fc4(x)
         return x
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-model = ModularNeuralNetwork().to(device)
-
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.001, betas=(0.9, 0.999), eps=1e-8)
-
-writer = SummaryWriter()
-
-num_epochs = 200
-cudnn.benchmark = True
-start_time = time.time()
-train_loss_values = []
-test_accuracy_values = []
-
-for epoch in range(num_epochs):
-    model.train()
-    total_loss = 0
-    for batch in train_loader:
-        inputs, labels = batch
-        inputs, labels = inputs.to(device), labels.to(device)
-        optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-    writer.add_scalar("Loss/train", total_loss / len(train_loader), epoch)
-    train_loss_values.append(total_loss / len(train_loader))
-    if epoch % 10 == 0:
-        print(f'Epoch {epoch+1}, Loss: {total_loss / len(train_loader):.4f}')
-
-    model.eval()
-    with torch.no_grad():
-        total_correct = 0
-        for batch in test_loader:
-            inputs, labels = batch
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = model(inputs)
-            _, predicted = torch.max(outputs, 1)
-            total_correct += (predicted == labels).sum().item()
-        accuracy = total_correct / len(test_loader.dataset)
-        writer.add_scalar("Accuracy/test", accuracy, epoch)
-        test_accuracy_values.append(accuracy)
-        if epoch % 10 == 0:
-            print(f'Epoch {epoch+1}, Accuracy: {accuracy:.4f}')
-
-end_time = time.time()
-print(f"Training time: {end_time - start_time} seconds")
-
-if model and accuracy > 0:
-    print("Success")
-
-torch.save(model.state_dict(), 'model.pth')
-
-model.load_state_dict(torch.load('model.pth'))
-
-model.eval()
-test_loss = 0
-correct = 0
-with torch.no_grad():
-    for inputs, labels in test_loader:
-        inputs, labels = inputs.to(device), labels.to(device)
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
-        test_loss += loss.item()
-        _, predicted = torch.max(outputs, 1)
-        correct += (predicted == labels).sum().item()
-
-accuracy = correct / len(test_loader.dataset)
-print(f'Test Loss: {test_loss / len(test_loader):.4f}, Test Accuracy: {accuracy:.4f}')
-
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-print(f"Number of parameters: {count_parameters(model)}")
-
-plt.plot(train_loss_values)
-plt.plot(test_accuracy_values)
-plt.xlabel("Epoch")
-plt.ylabel("Loss/Accuracy")
-plt.show()
-
 class ModularNeuralNetworkImproved(nn.Module):
     def __init__(self):
         super(ModularNeuralNetworkImproved, self).__init__()
@@ -196,83 +114,127 @@ class ModularNeuralNetworkImproved(nn.Module):
         x = self.fc4(x)
         return x
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+model = ModularNeuralNetwork().to(device)
 model_improved = ModularNeuralNetworkImproved().to(device)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.AdamW(model_improved.parameters(), lr=0.001, weight_decay=0.001, betas=(0.9, 0.999), eps=1e-8)
+optimizer = optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.001, betas=(0.9, 0.999), eps=1e-8)
+optimizer_improved = optim.AdamW(model_improved.parameters(), lr=0.001, weight_decay=0.001, betas=(0.9, 0.999), eps=1e-8)
 
 writer = SummaryWriter()
+writer_improved = SummaryWriter()
 
 num_epochs = 200
 cudnn.benchmark = True
 start_time = time.time()
+train_loss_values = []
+test_accuracy_values = []
 train_loss_values_improved = []
 test_accuracy_values_improved = []
 
 for epoch in range(num_epochs):
+    model.train()
     model_improved.train()
     total_loss = 0
+    total_loss_improved = 0
     for batch in train_loader:
         inputs, labels = batch
         inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
-        outputs = model_improved(inputs)
+        optimizer_improved.zero_grad()
+        outputs = model(inputs)
+        outputs_improved = model_improved(inputs)
         loss = criterion(outputs, labels)
+        loss_improved = criterion(outputs_improved, labels)
         loss.backward()
+        loss_improved.backward()
         optimizer.step()
+        optimizer_improved.step()
         total_loss += loss.item()
+        total_loss_improved += loss_improved.item()
     writer.add_scalar("Loss/train", total_loss / len(train_loader), epoch)
-    train_loss_values_improved.append(total_loss / len(train_loader))
+    writer_improved.add_scalar("Loss/train", total_loss_improved / len(train_loader), epoch)
+    train_loss_values.append(total_loss / len(train_loader))
+    train_loss_values_improved.append(total_loss_improved / len(train_loader))
     if epoch % 10 == 0:
-        print(f'Epoch {epoch+1}, Loss: {total_loss / len(train_loader):.4f}')
+        print(f'Epoch {epoch+1}, Loss: {total_loss / len(train_loader):.4f}, Loss Improved: {total_loss_improved / len(train_loader):.4f}')
 
+    model.eval()
     model_improved.eval()
     with torch.no_grad():
         total_correct = 0
+        total_correct_improved = 0
         for batch in test_loader:
             inputs, labels = batch
             inputs, labels = inputs.to(device), labels.to(device)
-            outputs = model_improved(inputs)
+            outputs = model(inputs)
+            outputs_improved = model_improved(inputs)
             _, predicted = torch.max(outputs, 1)
+            _, predicted_improved = torch.max(outputs_improved, 1)
             total_correct += (predicted == labels).sum().item()
+            total_correct_improved += (predicted_improved == labels).sum().item()
         accuracy = total_correct / len(test_loader.dataset)
+        accuracy_improved = total_correct_improved / len(test_loader.dataset)
         writer.add_scalar("Accuracy/test", accuracy, epoch)
-        test_accuracy_values_improved.append(accuracy)
+        writer_improved.add_scalar("Accuracy/test", accuracy_improved, epoch)
+        test_accuracy_values.append(accuracy)
+        test_accuracy_values_improved.append(accuracy_improved)
         if epoch % 10 == 0:
-            print(f'Epoch {epoch+1}, Accuracy: {accuracy:.4f}')
+            print(f'Epoch {epoch+1}, Accuracy: {accuracy:.4f}, Accuracy Improved: {accuracy_improved:.4f}')
 
 end_time = time.time()
 print(f"Training time: {end_time - start_time} seconds")
 
-if model_improved and accuracy > 0:
+if model and accuracy > 0:
     print("Success")
+if model_improved and accuracy_improved > 0:
+    print("Success Improved")
 
+torch.save(model.state_dict(), 'model.pth')
 torch.save(model_improved.state_dict(), 'model_improved.pth')
 
+model.load_state_dict(torch.load('model.pth'))
 model_improved.load_state_dict(torch.load('model_improved.pth'))
 
+model.eval()
 model_improved.eval()
 test_loss = 0
+test_loss_improved = 0
 correct = 0
+correct_improved = 0
 with torch.no_grad():
     for inputs, labels in test_loader:
         inputs, labels = inputs.to(device), labels.to(device)
-        outputs = model_improved(inputs)
+        outputs = model(inputs)
+        outputs_improved = model_improved(inputs)
         loss = criterion(outputs, labels)
+        loss_improved = criterion(outputs_improved, labels)
         test_loss += loss.item()
+        test_loss_improved += loss_improved.item()
         _, predicted = torch.max(outputs, 1)
+        _, predicted_improved = torch.max(outputs_improved, 1)
         correct += (predicted == labels).sum().item()
+        correct_improved += (predicted_improved == labels).sum().item()
 
 accuracy = correct / len(test_loader.dataset)
-print(f'Test Loss: {test_loss / len(test_loader):.4f}, Test Accuracy: {accuracy:.4f}')
+accuracy_improved = correct_improved / len(test_loader.dataset)
+print(f'Test Loss: {test_loss / len(test_loader):.4f}, Test Accuracy: {accuracy:.4f}, Test Loss Improved: {test_loss_improved / len(test_loader):.4f}, Test Accuracy Improved: {accuracy_improved:.4f}')
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-print(f"Number of parameters: {count_parameters(model_improved)}")
+print(f"Number of parameters: {count_parameters(model)}")
+print(f"Number of parameters Improved: {count_parameters(model_improved)}")
+
+plt.plot(train_loss_values)
+plt.plot(test_accuracy_values)
+plt.xlabel("Epoch")
+plt.ylabel("Loss/Accuracy")
+plt.show()
 
 plt.plot(train_loss_values_improved)
 plt.plot(test_accuracy_values_improved)
 plt.xlabel("Epoch")
-plt.ylabel("Loss/Accuracy")
+plt.ylabel("Loss/Accuracy Improved")
 plt.show()
