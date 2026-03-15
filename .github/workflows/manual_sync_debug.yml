@@ -1,19 +1,19 @@
 name: Manual Trinity Debugger
 
 on:
-  workflow_dispatch: # မင်းကိုယ်တိုင် ခလုတ်နှိပ်မှ Run မယ်
+  workflow_dispatch: 
   schedule:
-    # ၆ နာရီခြား တစ်ခါ (တစ်နေ့ ၄ ကြိမ်) အလိုအလျောက် Sync လုပ်ပေးမယ်
-    # ဒါက GitHub Free Minutes ကို အလွန်အကျွံ မကုန်စေဘဲ Phase 3 ကို Live ဖြစ်စေပါတယ်
+    
+    # GitHub Free Minutes Phase 3 Live 
     - cron: '0 */6 * * *'
 
-# 🛠 အရေးကြီးဆုံးအပိုင်း - GitHub ကို ဖိုင်တွေ ရေးခွင့် (Write Permission) ပေးလိုက်တာပါ
+# 🛠 - GitHub (Write Permission) 
 permissions:
   contents: write
   pages: write
   id-token: write
 
-# တစ်ပြိုင်တည်း Workflow တွေ အများကြီးတက်ပြီး Limit မကျော်အောင် ထိန်းပေးတဲ့ အပိုင်း
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -35,7 +35,8 @@ jobs:
           node-version: '24'
 
       - name: Install Dependencies
-        run: npm install pg @supabase/supabase-js firebase-admin
+        
+        run: npm install --no-audit --progress=false pg @supabase/supabase-js firebase-admin
 
       - name: Force Sync Neon to Supabase
         env:
@@ -45,8 +46,8 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           
-          # GitHub Authentication (PAT သို့မဟုတ် GITHUB_TOKEN)
-          # 'GH_TOKEN' နဲ့ 'GITHUB_TOKEN' နှစ်မျိုးလုံးကို delta_sync.js က ခေါ်သုံးနိုင်အောင် ထည့်ပေးထားပါတယ်
+          # GitHub Authentication (PAT or GITHUB_TOKEN)
+          
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
