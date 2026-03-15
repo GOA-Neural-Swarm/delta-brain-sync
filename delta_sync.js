@@ -141,7 +141,7 @@ async function executeAutonomousTrinity() {
         }
 
         const audit = await neon.query("SELECT count(*) FROM neurons WHERE data->>'logic' = 'SUPREME_DENSITY'");
-        const powerLevel = parseInt(audit.rows[0].count) || 10004;
+        const powerLevel = parseInt(audit.rows[0].count);
         const decision = await getNeuralDecision();
 
         // Self-Evolution
