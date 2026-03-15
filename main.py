@@ -37,7 +37,7 @@ train_dataset = SyntheticDataset(X_train, y_train)
 test_dataset = SyntheticDataset(X_test, y_test)
 
 batch_size = 128
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=8, prefetch_factor=2)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=8, prefetch_factor=2, drop_last=True)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=8, prefetch_factor=2)
 
 class ModularNeuralNetwork(nn.Module):
