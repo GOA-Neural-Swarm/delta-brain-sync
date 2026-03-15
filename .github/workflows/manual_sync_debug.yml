@@ -40,15 +40,11 @@ jobs:
 
       - name: Force Sync Neon to Supabase
         env:
-          # Database & Firebase Keys
           NEON_KEY: ${{ secrets.NEON_KEY }}
+          NEON_DB_URL: ${{ secrets.NEON_KEY }} 
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
-          
-          # GitHub Authentication (PAT or GITHUB_TOKEN)
-          
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
         run: node delta_sync.js
