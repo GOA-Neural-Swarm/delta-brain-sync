@@ -446,7 +446,7 @@ def self_coding_engine_internal(self, raw_content):
             # 3. Directory and file writing (Original logic preserved)
             os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
             
-            # မူလ print statement 
+            # print statement 
             print(f"🔄 Writing {filename} ...")
             
             with open(filename, "w", encoding='utf-8') as f:
