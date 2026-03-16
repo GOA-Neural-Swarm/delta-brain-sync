@@ -128,6 +128,22 @@ class TelefoxXAGI:
         self.last_error_log = "None"
         self.current_gen = 1
 
+    def self_coding_engine_internal(self, raw_content):
+        """[FIXED]: Now correctly nested as a Class Method."""
+        blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
+        modified_files = []
+        for block in blocks:
+            target_match = re.search(r"# TARGET:\s*(\S+)", block)
+            filename = target_match.group(1).strip() if target_match else "main.py"
+            clean_code = re.sub(r"# TARGET:.*", "", block).strip()
+            os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
+            print(f"🔄 Writing {filename} ...")
+            with open(filename, "w", encoding='utf-8') as f:
+                f.write(clean_code)
+            time.sleep(0.5)
+            modified_files.append(filename)
+        return modified_files
+    
     def _create_neon_engine(self):
         try:
             if NEON_DB_URL:
@@ -428,36 +444,7 @@ assistant
             gr.Markdown("🛰️ *Connected to Natural Order Neural Swarm*")
         return demo
 
-# Helper function for internal class usage
-def self_coding_engine_internal(self, raw_content):
-        """
-        [HYBRID MATCHED]: 
-        """
-        # 1. Regex logic 
-        blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
-        modified_files = []
-        
-        for block in blocks:
-            # 2. Target extraction logic
-            target_match = re.search(r"# TARGET:\s*(\S+)", block)
-            filename = target_match.group(1).strip() if target_match else "main.py"
-            clean_code = re.sub(r"# TARGET:.*", "", block).strip()
-            
-            # 3. Directory and file writing (Original logic preserved)
-            os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
-            
-            # print statement 
-            print(f"🔄 Writing {filename} ...")
-            
-            with open(filename, "w", encoding='utf-8') as f:
-                f.write(clean_code)
-            
-            # 4. Latency control (Original sleep)
-            time.sleep(0.5)
-            
-            modified_files.append(filename)
-            
-        return modified_files
+
 
 if __name__ == "__main__":
     overseer = TelefoxXAGI()
