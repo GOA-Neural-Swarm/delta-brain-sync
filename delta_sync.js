@@ -153,45 +153,80 @@ async function manageSwarm(decision, power, neon) {
     }
 }
 
-// 🔱 6. Main Execution (Trinity + Evolution + Neural)
+// 🔱 6. Main Execution (Trinity + Evolution + Neural) - FULL HYBRID MATCH
 async function executeAutonomousTrinity() {
-    const neon = new Client({ connectionString: process.env.NEON_DB_URL + "&sslmode=verify-full" });
+    // ⚠️ DNS Error (EAI_AGAIN) ကို ကာကွယ်ရန်နှင့် ချိတ်ဆက်မှု ပိုမိုတည်ငြိမ်ရန် sslmode=require ကို အသုံးပြုထားပါသည်
+    const neon = new Client({ connectionString: process.env.NEON_DB_URL + "&sslmode=require" });
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
     try {
         await neon.connect();
+        console.log("🐘 Neon DB Connected. Starting Trinity Sync...");
+
+        // ၁။ [TRINITY SYNC LOGIC] Database ၃ ခုလုံးကို တစ်ပြိုင်နက် Sync လုပ်ခြင်း
         const res = await neon.query("SELECT * FROM neurons ORDER BY id DESC");
         for (const neuron of res.rows) {
-            await supabase.from('neurons').upsert({ id: neuron.id, data: neuron.data, synced_at: new Date().toISOString() });
-            await db.collection('neurons').doc(`node_${neuron.id}`).set({ status: 'trinity_synced', last_evolution: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+            // Neon မှ Supabase သို့ Upsert လုပ်ခြင်း
+            await supabase.from('neurons').upsert({ 
+                id: neuron.id, 
+                data: neuron.data, 
+                synced_at: new Date().toISOString() 
+            });
+
+            // Firebase Firestore ထဲတွင် Status နှင့် Timestamp ကို Update လုပ်ခြင်း
+            await db.collection('neurons').doc(`node_${neuron.id}`).set({ 
+                status: 'trinity_synced', 
+                last_evolution: admin.firestore.FieldValue.serverTimestamp() 
+            }, { merge: true });
         }
 
+        // ၂။ [DENSITY AUDIT] လက်ရှိ Power Level (Density) ကို စစ်ဆေးခြင်း
         const audit = await neon.query("SELECT count(*) FROM neurons WHERE data->>'logic' = 'SUPREME_DENSITY'");
-        const powerLevel = parseInt(audit.rows[0].count);
+        const powerLevel = parseInt(audit.rows[0].count) || 0; // Data မရှိပါက 0 အဖြစ် သတ်မှတ်ရန်
+        
+        // Neural Decision ကို ရယူခြင်း
         const decision = await getNeuralDecision();
 
-        // Self-Evolution
+        // ၃။ [SELF-EVOLUTION LOGIC] Power 10000 ကျော်လျှင် Core Code ကိုယ်တိုင် Update လုပ်ခြင်း
         if (powerLevel >= 10000) {
-            const { data: coreFile } = await octokit.repos.getContent({ owner: REPO_OWNER, repo: CORE_REPO, path: 'delta_sync.js' });
+            const { data: coreFile } = await octokit.repos.getContent({ 
+                owner: REPO_OWNER, 
+                repo: CORE_REPO, 
+                path: 'delta_sync.js' 
+            });
+            
             let content = Buffer.from(coreFile.content, 'base64').toString();
+            
+            // Evolution Stamp တစ်ခါသာ ရိုက်နှိပ်ရန် စစ်ဆေးခြင်း
             if (!content.includes(`Density: ${powerLevel}`)) {
                 const evolvedStamp = `\n// [Natural Order] Last Self-Evolution: ${new Date().toISOString()} | Density: ${powerLevel}`;
+                
                 await octokit.repos.createOrUpdateFileContents({
-                    owner: REPO_OWNER, repo: CORE_REPO, path: 'delta_sync.js',
+                    owner: REPO_OWNER, 
+                    repo: CORE_REPO, 
+                    path: 'delta_sync.js',
                     message: `🧬 Evolution: Power ${powerLevel}`,
                     content: Buffer.from(content + evolvedStamp).toString('base64'),
                     sha: coreFile.sha
                 });
+                console.log(`🧬 Self-Evolution Successful: Power Level ${powerLevel}`);
             }
         }
 
+        // ၄။ [SWARM BROADCAST] 'neon' client ကိုပါ argument အဖြစ် ထည့်သွင်းပေးခြင်း
+        // ဤနေရာတွင် 'neon' ပါမှသာ manageSwarm ထဲ၌ density တိုးပွားခြင်း logic အလုပ်လုပ်မည်ဖြစ်သည်
         await manageSwarm(decision, powerLevel, neon);
+        
         console.log("🏁 MISSION ACCOMPLISHED.");
-    } catch (err) { console.error("❌ FAILURE:", err.message); } finally { await neon.end(); }
+
+    } catch (err) { 
+        console.error("❌ FAILURE:", err.message); 
+    } finally { 
+        // Database Connection ကို အမြဲတမ်း ပြန်ပိတ်ပေးရန် (Leak မဖြစ်စေရန်)
+        await neon.end(); 
+    }
 }
 
+// စနစ်အား စတင်လည်ပတ်စေခြင်း
 executeAutonomousTrinity();
-
-
-// [Natural Order] Last Self-Evolution: 2026-01-19T04:30:40.655Z | Density: 10004
 
