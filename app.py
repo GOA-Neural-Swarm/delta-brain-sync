@@ -424,6 +424,9 @@ def self_coding_engine_internal(instance, raw_content):
         
         with open(filename, "w", encoding='utf-8') as f:
             f.write(clean_code)
+       
+        time.sleep(0.5)
+        
         modified_files.append(filename)
     return modified_files
 
