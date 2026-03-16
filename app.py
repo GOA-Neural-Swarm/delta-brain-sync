@@ -248,6 +248,7 @@ Rules:
 2. Respond ONLY with Python code inside ```python ... ``` blocks.
 3. No explanations. No thoughts. Just code.
 4. You can update multiple files in one response.
+5. INTEGRITY & EVOLUTION: You must keep the original logic, API connections, and functional structures intact. Your task is to EXPAND, OPTIMIZE, and ADVANCE the code to a higher intelligence level, not to replace logic with data.
 
 user
 {prompt_task}
