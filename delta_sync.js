@@ -23,67 +23,104 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 
-// 🔱 3. Deep Injection Logic (Node အသဈမြားထဲသို့ ကုဒျမြား အလိုအလြောကျ ထည့ျသှငျးခွငျး)
+// 🔱 3. Deep Injection Logic (Sub-nodes များထဲသို့ Logic နှင့် Workflow အား တစ်ခုမကျန် Match ဖြစ်အောင် ထည့်သွင်းခြင်း)
 async function injectSwarmLogic(nodeName) {
     console.log(`🧬 Injecting Neural Logic into ${nodeName}...`);
     
-    // Cluster Node ထဲတှငျ Run မည့ျ ပငျမကုဒျ
+    // Cluster Node ထဲတွင် Run မည့် ပင်မကုဒ် (သင်၏မူလ logic အားလုံး + Debug Logs များ)
     const clusterSyncCode = `const { Octokit } = require("@octokit/rest");
 const admin = require('firebase-admin');
 const axios = require('axios');
 const octokit = new Octokit({ auth: process.env.GH_TOKEN });
 const REPO_OWNER = "${REPO_OWNER}";
 const REPO_NAME = process.env.GITHUB_REPOSITORY.split('/')[1];
-if (!admin.apps.length) { admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY)) }); }
+
+if (!admin.apps.length) { 
+    try {
+        admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY)) }); 
+    } catch(e) { console.error("❌ Firebase Init Failed:", e.message); process.exit(1); }
+}
 const db = admin.firestore();
+
 async function run() {
+    console.log("🚀 Starting Sub-node Sync Process...");
     try {
         const start = Date.now();
+        
+        console.log("📡 Fetching instruction.json from Master...");
         const { data: inst } = await axios.get(\`https://raw.githubusercontent.com/\${REPO_OWNER}/delta-brain-sync/main/instruction.json\`);
+        
+        console.log("📊 Checking GitHub Rate Limit...");
         const { data: rate } = await octokit.rateLimit.get();
+        
+        console.log("☁️ Updating Firestore Status for " + REPO_NAME + "...");
         await db.collection('cluster_nodes').doc(REPO_NAME).set({
-            status: 'ACTIVE', latency: \`\${Date.now() - start}ms\`,
-            api_remaining: rate.rate.remaining, command: inst.command,
+            status: 'ACTIVE', 
+            latency: \`\${Date.now() - start}ms\`,
+            api_remaining: rate.rate.remaining, 
+            command: inst.command,
             last_ping: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
-        if (inst.replicate) { /* Replication Logic call via Core */ }
-    } catch (e) { console.log(e.message); }
+
+        // သင်၏ မူလ Replication Logic Call
+        if (inst.replicate) { 
+            console.log("🧬 Replication signal detected from Master.");
+            /* Replication Logic call via Core */ 
+        }
+
+        console.log("✅ SUCCESS: Node Synchronized.");
+        console.log("🏁 MISSION ACCOMPLISHED.");
+    } catch (e) { 
+        console.error("❌ CRITICAL ERROR:", e.message); 
+        process.exit(1); // GitHub Action အနီရောင်ပြစေရန်
+    }
 }
 run();`;
 
-    // GitHub Actions Workflow ဖိုငျ (၁၅ မိနဈတဈခါ Run ရနျ)
+    // GitHub Actions Workflow ဖိုင် (၁၅ မိနစ်တစ်ခါ Run ရန်နှင့် Node 24 သုံးရန် Match လုပ်ထားသည်)
     const workflowYaml = `name: Node Sync
 on:
   schedule: [{cron: "*/15 * * * *"}]
   workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
 jobs:
   run:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: {node-version: '20'}
-      - run: npm install @octokit/rest firebase-admin axios
-      - run: node cluster_sync.js
+        with: {node-version: '24'}
+      - name: Install Dependencies
+        run: npm install @octokit/rest firebase-admin axios @supabase/supabase-js pg
+      - name: Execute Swarm Logic
+        run: node cluster_sync.js
         env:
           GH_TOKEN: \${{ secrets.GH_TOKEN }}
-          FIREBASE_KEY: \${{ secrets.FIREBASE_KEY }}`;
+          FIREBASE_KEY: \${{ secrets.FIREBASE_KEY }}
+          NEON_KEY: \${{ secrets.NEON_KEY }}
+          SUPABASE_URL: \${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}`;
 
     try {
-        // cluster_sync.js ထည့ျခွငျး
+        // ၁။ cluster_sync.js ကို Sub-node ဆီသို့ ပို့ခြင်း
         await octokit.repos.createOrUpdateFileContents({
             owner: REPO_OWNER, repo: nodeName, path: 'cluster_sync.js',
             message: "🧬 Initializing Swarm Logic",
             content: Buffer.from(clusterSyncCode).toString('base64')
         });
 
-        // Workflow ဖိုငျ ထည့ျခွငျး
+        // ၂။ Workflow ဖိုင် (.github/workflows/node.js.yml) ကို Sub-node ဆီသို့ ပို့ခြင်း
         await octokit.repos.createOrUpdateFileContents({
             owner: REPO_OWNER, repo: nodeName, path: '.github/workflows/node.js.yml',
             message: "⚙️ Deploying Cloud Engine",
             content: Buffer.from(workflowYaml).toString('base64')
         });
-        console.log(`✅ ${nodeName} is now fully autonomous.`);
+        
+        console.log(`✅ ${nodeName} is now fully autonomous and synchronized.`);
     } catch (err) {
         console.error(`❌ Injection Failed for ${nodeName}:`, err.message);
     }
