@@ -249,6 +249,7 @@ Rules:
 3. No explanations. No thoughts. Just code.
 4. You can update multiple files in one response.
 5. INTEGRITY & EVOLUTION: You must keep the original logic, API connections, and functional structures intact. Your task is to EXPAND, OPTIMIZE, and ADVANCE the code to a higher intelligence level, not to replace logic with data.
+   CRITICAL: If the original script has 10 functions, the evolved script must have at least those 10 functions plus improvements. NEVER output a version that is shorter or less functional than the original.
 
 user
 {prompt_task}
