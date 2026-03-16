@@ -16,7 +16,7 @@ from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
 
-# 🛸 [GENESIS LAYER]: လိုအပ်တဲ့ Component တွေကို Auto-Generate လုပ်ပေးမယ့် Logic
+# 🛸 [GENESIS LAYER]: 
 def bootstrap_system():
     infra = {
         "recovery.py": """
@@ -94,7 +94,7 @@ except ImportError:
 # --- [UTILITY FUNCTIONS] ---
 
 def get_repo_tree():
-    """လက်ရှိ repository ထဲမှာ ရှိတဲ့ file structure ကို list လုပ်မယ်"""
+    
     tree = []
     for root, dirs, files in os.walk("."):
         if any(x in root for x in [".git", "__pycache__", "repo_sync"]): continue
@@ -149,7 +149,7 @@ class TelefoxXAGI:
         except: return "Memory Offline"
 
     async def git_sovereign_push(self, modified_files):
-        """[MATCHED]: ဖိုင်အားလုံးကို GitHub ဆီ တိုက်ရိုက် Force Push လုပ်မယ်"""
+        
         if not GITHUB_TOKEN or not modified_files: return
         
         import random
@@ -188,7 +188,7 @@ class TelefoxXAGI:
             print(f"❌ [GIT ERROR]: {e}")
 
     async def broadcast_swarm_instruction(self, command="NORMAL_GROWTH"):
-        """Node.js Swarm Nodes တွေဖတ်ဖို့ instruction.json ကို GitHub ဆီ ပို့ပေးမယ်"""
+        
         if not GITHUB_TOKEN: return
         
         instruction = {
@@ -206,7 +206,7 @@ class TelefoxXAGI:
         print(f"📡 [SWARM]: Command '{command}' manifested.")
     
     def self_coding_engine(self, raw_content):
-        """AI ဆီကလာတဲ့ code block တွေကို ဖိုင်တွေအဖြစ် ခွဲထုတ်ပြီး သိမ်းဆည်းမယ်"""
+        
         blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
         modified_files = []
         for block in blocks:
@@ -303,7 +303,7 @@ assistant
                     self.last_error_log = f"RateLimit on {model_id}"
                     continue # ရှေ့က model limit ပြည့်ရင် နောက် model တစ်ခုနဲ့ ဆက်ကြိုးစားမယ်
                 else:
-                    # တခြား error မျိုးဆိုရင်တော့ မှတ်တမ်းတင်ပြီး ရပ်လိုက်မယ်
+                    
                     self.last_error_log = str(e)
                     print(f"❌ Evolution Crash on {model_id}: {e}")
                     break
@@ -350,20 +350,20 @@ assistant
             try:
                 print(f"\n🧬 Cycle: {time.ctime()}")
 
-                # 📝 [LOGGING LAYER]: brain_history.txt ထဲကို data ရေးသွင်းခြင်း
+                # 📝 [LOGGING LAYER]: brain_history.txt 
                 log_entry = f"[{time.ctime()}] Gen: {self.current_gen} | Status: Active | Error: {self.avg_error}\n"
                 with open("brain_history.txt", "a", encoding='utf-8') as f:
                     f.write(log_entry)
                 print(f"📝 [LOG]: brain_history.txt updated.")
 
-                # 1. Auto-populate Neon DB (မူလ logic)
+                # 1. Auto-populate Neon DB (logic)
                 await self.universal_hyper_ingest(limit=50, sync_to_supabase=False)
 
-                # 2. Trigger Evolution & Sync (မူလ logic)
+                # 2. Trigger Evolution & Sync (logic)
                 if await self.trigger_supreme_evolution():
                     await self.sync_to_huggingface()
 
-                # 3. Swarm Instruction Logic (မူလ logic + brain_history.txt update ပါအောင်လုပ်ထားသည်)
+                # 3. Swarm Instruction Logic (logic + brain_history.txt update)
                 swarm_cmd = "HYPER_EXPANSION" if self.avg_error < 0.2 else "NORMAL_GROWTH"
                 await self.broadcast_swarm_instruction(swarm_cmd)
                 
@@ -372,7 +372,7 @@ assistant
 
             except Exception as e:
                 print(f"⚠️ Loop Error: {e}")
-                # Error ဖြစ်ရင်လည်း Log ထဲမှာ မှတ်တမ်းတင်မယ်
+                # Error Log 
                 try:
                     with open("brain_history.txt", "a", encoding='utf-8') as f:
                         f.write(f"[{time.ctime()}] ERROR: {str(e)}\n")
@@ -431,9 +431,9 @@ assistant
 # Helper function for internal class usage
 def self_coding_engine_internal(self, raw_content):
         """
-        [HYBRID MATCHED]: အမှားကင်းသော method ဖြစ်ပြီး မူလ logic အားလုံးကို ထိန်းသိမ်းထားသည်။
+        [HYBRID MATCHED]: 
         """
-        # 1. Regex logic ကို မူလအတိုင်း ပြန်သုံးသည်
+        # 1. Regex logic 
         blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
         modified_files = []
         
@@ -446,7 +446,7 @@ def self_coding_engine_internal(self, raw_content):
             # 3. Directory and file writing (Original logic preserved)
             os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
             
-            # မူလ print statement အတိုင်း ပြန်ထည့်ထားသည်
+            # မူလ print statement 
             print(f"🔄 Writing {filename} ...")
             
             with open(filename, "w", encoding='utf-8') as f:
