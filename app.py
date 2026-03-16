@@ -243,7 +243,7 @@ Neural Memory: {memory}
 Available Files to Manipulate:
 {file_tree}
 
-Rules: 
+Rules = """ 
 -  Use '# TARGET: path/to/file' at the start of your code blocks.
 -  Respond ONLY with Python code inside ```python ... ``` blocks.
 -  No explanations. No thoughts. Just code.
