@@ -243,18 +243,13 @@ Neural Memory: {memory}
 Available Files to Manipulate:
 {file_tree}
 
-Rules = """
+Rules:
 1. Use '# TARGET: path/to/file' at the start of your code blocks.
 2. Respond ONLY with Python code inside ```python ... ``` blocks.
 3. No explanations. No thoughts. Just code.
 4. You can update multiple files in one response.
 5. INTEGRITY & EVOLUTION: You must keep the original logic, API connections, and functional structures intact. Your task is to EXPAND, OPTIMIZE, and ADVANCE the code to a higher intelligence level, not to replace logic with data.
    CRITICAL: If the original script has 10 functions, the evolved script must have at least those 10 functions plus improvements. NEVER output a version that is shorter or less functional than the original.
-6. MANDATORY: NEVER DELETE EXISTING FUNCTIONS OR LOGIC.
-7. EVOLUTION IS ADDITIVE ONLY: Add new science domains or improve existing functions, but never remove them.
-8. PRESERVE ARCHITECTURE: The structure of cluster_sync.js must remain intact.
-9. STOP DELETING CODE: Any future commit with more than 10 lines of deletion will be treated as a SYSTEM FAILURE.
-10.CRITICAL FULL OUTPUT: You MUST output the ENTIRE, COMPLETE code for the file. NEVER use placeholders, abbreviations, or comments like "// rest of the code". If the file is 1000 lines long, you must output all 1000 lines plus your additions.
 
 user
 {prompt_task}
