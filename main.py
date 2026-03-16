@@ -91,38 +91,6 @@ start_time = time.time()
 train_loss_values = []
 test_accuracy_values = []
 
-for epoch in range(num_epochs):
-    model.train()
-    total_loss = 0
-    for batch in train_loader:
-        inputs, labels = batch
-        inputs, labels = inputs.to(device), labels.to(device)
-        optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-    writer.add_scalar("Loss/train", total_loss / len(train_loader), epoch)
-    train_loss_values.append(total_loss / len(train_loader))
-    if epoch % 10 == 0:
-        print(f'Epoch {epoch+1}, Loss: {total_loss / len(train_loader):.4f}')
-
-    model.eval()
-    with torch.no_grad():
-        total_correct = 0
-        for batch in test_loader:
-            inputs, labels = batch
-            inputs, labels = inputs.to(device), labels.to(device)
-            outputs = model(inputs)
-            _, predicted = torch.max(outputs, 1)
-            total_correct += (predicted == labels).sum().item()
-        accuracy = total_correct / len(test_loader.dataset)
-        writer.add_scalar("Accuracy/test", accuracy, epoch)
-        test_accuracy_values.append(accuracy)
-        if epoch % 10 == 0:
-            print(f'Epoch {epoch+1}, Accuracy: {accuracy:.4f}')
-
 class EarlyStopping:
     def __init__(self, patience=5, min_delta=0.001):
         self.patience = patience
