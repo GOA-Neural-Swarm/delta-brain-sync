@@ -101,29 +101,55 @@ async function getNeuralDecision() {
     return { command: cmd, replicate: avgApi > 1000, avgApi };
 }
 
-// 🔱 5. Swarm Broadcast & Replication
-async function manageSwarm(decision, power) {
+// 🔱 5. Swarm Broadcast & Replication (Fully Matched & Integrated)
+async function manageSwarm(decision, power, neon) {
+    // ၁။ Instruction ဖိုင်အတွက် Data ပြင်ဆင်ခြင်း (မူလအတိုင်း)
     const instruction = JSON.stringify({
         command: decision.command, core_power: power,
         avg_api: decision.avgApi, replicate: decision.replicate,
         updated_at: new Date().toISOString()
     }, null, 2);
 
-    const { data: instFile } = await octokit.repos.getContent({ owner: REPO_OWNER, repo: CORE_REPO, path: 'instruction.json' });
+    // ၂။ instruction.json ကို GitHub ပေါ်တွင် Update လုပ်ခြင်း (မူလအတိုင်း)
+    const { data: instFile } = await octokit.repos.getContent({ 
+        owner: REPO_OWNER, 
+        repo: CORE_REPO, 
+        path: 'instruction.json' 
+    });
+
     await octokit.repos.createOrUpdateFileContents({
-        owner: REPO_OWNER, repo: CORE_REPO, path: 'instruction.json',
+        owner: REPO_OWNER, 
+        repo: CORE_REPO, 
+        path: 'instruction.json',
         message: `🧠 Decision: ${decision.command}`,
         content: Buffer.from(instruction).toString('base64'),
         sha: instFile.sha
     });
 
+    // 📈 ၃။ [NEW LOGIC] Density တိုးပွားစေရန် Database ထဲသို့ Neuron အသစ်သွင်းခြင်း
+    // Lockdown မဟုတ်လျှင် မျိုးပွားမှုနှုန်း (Density) ကို တိုးမြှင့်မည်
+    if (decision.command !== "STEALTH_LOCKDOWN") {
+        const newData = { logic: 'SUPREME_DENSITY', timestamp: new Date().toISOString() };
+        try {
+            await neon.query("INSERT INTO neurons (data) VALUES ($1)", [JSON.stringify(newData)]);
+            console.log("📈 Density Increasing... New Neuron added to Neon DB.");
+        } catch (dbErr) {
+            console.error("⚠️ Density Update Failed:", dbErr.message);
+        }
+    }
+
+    // ၄။ Node Replication Logic (မူလအတိုင်း အတိအကျ)
     if (decision.replicate) {
         const nextNode = `swarm-node-${String(Math.floor(Math.random() * 1000000)).padStart(7, '0')}`;
         try {
             await octokit.repos.createForAuthenticatedUser({ name: nextNode, auto_init: true });
             console.log(`🚀 Spawned: ${nextNode}`);
-            await injectSwarmLogic(nextNode); // 🧬 Injection ဖွဈစရေနျ ခကြျခငြျးခေါျယူခွငျး
-        } catch (e) { console.log("Spawn skipped or exists."); }
+            
+            // 🧬 Injection ဖြစ်စေရန် ချက်ချင်းခေါ်ယူခြင်း
+            await injectSwarmLogic(nextNode); 
+        } catch (e) { 
+            console.log("Spawn skipped or exists."); 
+        }
     }
 }
 
