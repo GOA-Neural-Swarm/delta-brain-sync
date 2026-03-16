@@ -429,24 +429,35 @@ assistant
         return demo
 
 # Helper function for internal class usage
-def self_coding_engine_internal(instance, raw_content):
-    blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
-    modified_files = []
-    for block in blocks:
-        target_match = re.search(r"# TARGET:\s*(\S+)", block)
-        filename = target_match.group(1).strip() if target_match else "main.py"
-        clean_code = re.sub(r"# TARGET:.*", "", block).strip()
-        os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
+def self_coding_engine_internal(self, raw_content):
+        """
+        [HYBRID MATCHED]: အမှားကင်းသော method ဖြစ်ပြီး မူလ logic အားလုံးကို ထိန်းသိမ်းထားသည်။
+        """
+        # 1. Regex logic ကို မူလအတိုင်း ပြန်သုံးသည်
+        blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
+        modified_files = []
         
-        print(f"🔄 Writing {filename} ...")
-        
-        with open(filename, "w", encoding='utf-8') as f:
-            f.write(clean_code)
-       
-        time.sleep(0.5)
-        
-        modified_files.append(filename)
-    return modified_files
+        for block in blocks:
+            # 2. Target extraction logic
+            target_match = re.search(r"# TARGET:\s*(\S+)", block)
+            filename = target_match.group(1).strip() if target_match else "main.py"
+            clean_code = re.sub(r"# TARGET:.*", "", block).strip()
+            
+            # 3. Directory and file writing (Original logic preserved)
+            os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
+            
+            # မူလ print statement အတိုင်း ပြန်ထည့်ထားသည်
+            print(f"🔄 Writing {filename} ...")
+            
+            with open(filename, "w", encoding='utf-8') as f:
+                f.write(clean_code)
+            
+            # 4. Latency control (Original sleep)
+            time.sleep(0.5)
+            
+            modified_files.append(filename)
+            
+        return modified_files
 
 if __name__ == "__main__":
     overseer = TelefoxXAGI()
