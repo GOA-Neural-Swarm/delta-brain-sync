@@ -419,6 +419,9 @@ def self_coding_engine_internal(instance, raw_content):
         filename = target_match.group(1).strip() if target_match else "main.py"
         clean_code = re.sub(r"# TARGET:.*", "", block).strip()
         os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
+        
+        print(f"🔄 Writing {filename} ...")
+        
         with open(filename, "w", encoding='utf-8') as f:
             f.write(clean_code)
         modified_files.append(filename)
