@@ -60,9 +60,14 @@ class ModularNeuralNetwork(nn.Module):
             nn.ReLU(),
             nn.BatchNorm1d(512)
         )
-        self.fc4 = nn.Linear(512, 2)
-        self.attention = nn.MultiHeadAttention(512, 8)
-        self.batch_norm = nn.BatchNorm1d(512)
+        self.block4 = nn.Sequential(
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.BatchNorm1d(256)
+        )
+        self.fc5 = nn.Linear(256, 2)
+        self.attention = nn.MultiHeadAttention(256, 8)
+        self.batch_norm = nn.BatchNorm1d(256)
         self.gelu = nn.GELU()
         self.swish = nn.SiLU()
 
@@ -70,11 +75,12 @@ class ModularNeuralNetwork(nn.Module):
         x = self.block1(x)
         x = self.block2(x)
         x = self.block3(x)
+        x = self.block4(x)
         x = self.batch_norm(x)
         x, _ = self.attention(x, x)
         x = self.gelu(x)
         x = self.swish(x)
-        x = self.fc4(x)
+        x = self.fc5(x)
         return x
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
