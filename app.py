@@ -285,7 +285,7 @@ assistant
                 raw_content = completion.choices[0].message.content
                 
                 # 4. Manifesting changes (Original Logic)
-                modified_files = self_coding_engine_internal(self, raw_content)
+                modified_files = self.self_coding_engine_internal(raw_content)
                 
                 if modified_files:
                     await self.git_sovereign_push(modified_files)
