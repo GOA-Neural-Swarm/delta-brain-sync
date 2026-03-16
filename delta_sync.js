@@ -185,7 +185,7 @@ async function executeAutonomousTrinity() {
             }
         }
 
-        await manageSwarm(decision, powerLevel);
+        await manageSwarm(decision, powerLevel, neon);
         console.log("🏁 MISSION ACCOMPLISHED.");
     } catch (err) { console.error("❌ FAILURE:", err.message); } finally { await neon.end(); }
 }
