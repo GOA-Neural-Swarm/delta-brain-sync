@@ -438,4 +438,4 @@ if __name__ == "__main__":
     else:
         loop = asyncio.get_event_loop()
         loop.create_task(overseer.sovereign_loop())
-        overseer.create_ui().launch(server_name="0.0.0.0", server_port=7860)
+        overseer.create_ui().launch(server_name="0.0.0.0", server_port=7860) 
