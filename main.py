@@ -75,6 +75,10 @@ class ModularNeuralNetwork(nn.Module):
         self.batch_norm = nn.BatchNorm1d(256)
         self.gelu = nn.GELU()
         self.swish = nn.SiLU()
+        self.residual_connection = nn.Sequential(
+            nn.Linear(128, 128),
+            nn.ReLU()
+        )
 
     def forward(self, x):
         x = self.block1(x)
@@ -85,7 +89,9 @@ class ModularNeuralNetwork(nn.Module):
         x, _ = self.attention(x, x)
         x = self.gelu(x)
         x = self.swish(x)
+        residual = x
         x = self.block5(x)
+        x = x + self.residual_connection(residual)
         x = self.fc6(x)
         return x
 
@@ -228,60 +234,3 @@ for epoch in range(num_epochs):
         gradient_clipping(optimizer, grad_clip)
         optimizer.step()
         total_loss += loss.item()
-
-class ModularNeuralNetworkImproved(nn.Module):
-    def __init__(self):
-        super(ModularNeuralNetworkImproved, self).__init__()
-        self.block1 = nn.Sequential(
-            nn.Linear(784, 2048),
-            nn.ReLU(),
-            nn.BatchNorm1d(2048),
-            nn.Dropout(0.2)
-        )
-        self.block2 = nn.Sequential(
-            nn.Linear(2048, 1024),
-            nn.ReLU(),
-            nn.BatchNorm1d(1024),
-            nn.Dropout(0.2)
-        )
-        self.block3 = nn.Sequential(
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.BatchNorm1d(512)
-        )
-        self.block4 = nn.Sequential(
-            nn.Linear(512, 256),
-            nn.ReLU(),
-            nn.BatchNorm1d(256)
-        )
-        self.block5 = nn.Sequential(
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.BatchNorm1d(128)
-        )
-        self.fc6 = nn.Linear(128, 2)
-        self.attention = nn.MultiHeadAttention(256, 8)
-        self.batch_norm = nn.BatchNorm1d(256)
-        self.gelu = nn.GELU()
-        self.swish = nn.SiLU()
-        self.residual_connection = nn.Sequential(
-            nn.Linear(128, 128),
-            nn.ReLU()
-        )
-
-    def forward(self, x):
-        x = self.block1(x)
-        x = self.block2(x)
-        x = self.block3(x)
-        x = self.block4(x)
-        x = self.batch_norm(x)
-        x, _ = self.attention(x, x)
-        x = self.gelu(x)
-        x = self.swish(x)
-        residual = x
-        x = self.block5(x)
-        x = x + self.residual_connection(residual)
-        x = self.fc6(x)
-        return x
-
-model = ModularNeuralNetworkImproved().to(device)
