@@ -260,27 +260,12 @@ Available Files to Manipulate:
 {file_tree}
 
 
-RULES = """
+Rules:
 1. Use '# TARGET: path/to/file' at the start of your code blocks.
 2. Respond ONLY with Python code inside ```python ... ``` blocks.
 3. No explanations. No thoughts. Just code.
 4. You can update multiple files in one response.
-5. INTEGRITY & EVOLUTION: You must keep the original logic, API connections, and functional structures intact. Your task is to EXPAND and OPTIMIZE.
-6. CLUSTER_SYNC PROTECTION: When modifying 'cluster_sync.js', you are ONLY allowed to ADD new science domains. NEVER delete, overwrite, or shorten the existing core synchronization logic.
-7. Make sure to properly close your code blocks with ``` at the end.
-"""
-
-        prompt = f"""system
-You are the Sovereign Omni-Sync Architect.
-Current Gen: {self.current_gen} | Neural Error: {self.avg_error}
-Last System Error: {self.last_error_log}
-Neural Memory: {memory}
-
-Available Files to Manipulate:
-{file_tree}
-
-Rules:
-{RULES}
+5. INTEGRITY & EVOLUTION: You must keep the original logic, API connections, and functional structures intact. Your task is to EXPAND, OPTIMIZE, and ADVANCE the code to a higher intelligence level, not to replace logic with data.
 
 user
 {prompt_task}
