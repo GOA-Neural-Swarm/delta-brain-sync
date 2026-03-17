@@ -234,3 +234,146 @@ for epoch in range(num_epochs):
         gradient_clipping(optimizer, grad_clip)
         optimizer.step()
         total_loss += loss.item()
+
+class ModularNeuralNetworkImproved(nn.Module):
+    def __init__(self):
+        super(ModularNeuralNetworkImproved, self).__init__()
+        self.block1 = nn.Sequential(
+            nn.Linear(784, 2048),
+            nn.ReLU(),
+            nn.BatchNorm1d(2048),
+            nn.Dropout(0.2)
+        )
+        self.block2 = nn.Sequential(
+            nn.Linear(2048, 1024),
+            nn.ReLU(),
+            nn.BatchNorm1d(1024),
+            nn.Dropout(0.2)
+        )
+        self.block3 = nn.Sequential(
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.BatchNorm1d(512)
+        )
+        self.block4 = nn.Sequential(
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.BatchNorm1d(256)
+        )
+        self.block5 = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.BatchNorm1d(128)
+        )
+        self.fc6 = nn.Linear(128, 2)
+        self.attention = nn.MultiHeadAttention(256, 8)
+        self.batch_norm = nn.BatchNorm1d(256)
+        self.gelu = nn.GELU()
+        self.swish = nn.SiLU()
+        self.residual_connection = nn.Sequential(
+            nn.Linear(128, 128),
+            nn.ReLU()
+        )
+
+    def forward(self, x):
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = self.block4(x)
+        x = self.batch_norm(x)
+        x, _ = self.attention(x, x)
+        x = self.gelu(x)
+        x = self.swish(x)
+        residual = x
+        x = self.block5(x)
+        x = x + self.residual_connection(residual)
+        x = self.fc6(x)
+        return x
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+model_improved = ModularNeuralNetworkImproved().to(device)
+
+criterion_improved = nn.CrossEntropyLoss()
+optimizer_improved = optim.AdamW(model_improved.parameters(), lr=0.001, weight_decay=0.001, betas=(0.9, 0.999), eps=1e-8)
+
+writer_improved = SummaryWriter()
+
+num_epochs_improved = 200
+cudnn.benchmark = True
+start_time_improved = time.time()
+train_loss_values_improved = []
+test_accuracy_values_improved = []
+
+early_stopping_improved = EarlyStopping(patience=10, min_delta=0.001)
+
+for epoch in range(num_epochs_improved):
+    model_improved.train()
+    total_loss_improved = 0
+    for batch in train_loader:
+        inputs, labels = batch
+        inputs, labels = inputs.to(device), labels.to(device)
+        optimizer_improved.zero_grad()
+        outputs = model_improved(inputs)
+        loss = criterion_improved(outputs, labels)
+        loss.backward()
+        optimizer_improved.step()
+        total_loss_improved += loss.item()
+    writer_improved.add_scalar("Loss/train", total_loss_improved / len(train_loader), epoch)
+    train_loss_values_improved.append(total_loss_improved / len(train_loader))
+    if epoch % 10 == 0:
+        print(f'Epoch {epoch+1}, Loss: {total_loss_improved / len(train_loader):.4f}')
+
+    model_improved.eval()
+    with torch.no_grad():
+        total_correct_improved = 0
+        for batch in test_loader:
+            inputs, labels = batch
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model_improved(inputs)
+            _, predicted = torch.max(outputs, 1)
+            total_correct_improved += (predicted == labels).sum().item()
+        accuracy_improved = total_correct_improved / len(test_loader.dataset)
+        writer_improved.add_scalar("Accuracy/test", accuracy_improved, epoch)
+        test_accuracy_values_improved.append(accuracy_improved)
+        if epoch % 10 == 0:
+            print(f'Epoch {epoch+1}, Accuracy: {accuracy_improved:.4f}')
+
+    if early_stopping_improved.step(total_loss_improved / len(train_loader)):
+        print(f'Early stopping at epoch {epoch+1}')
+        break
+
+end_time_improved = time.time()
+print(f"Training time: {end_time_improved - start_time_improved} seconds")
+
+if model_improved and accuracy_improved > 0:
+    print("Success")
+
+torch.save(model_improved.state_dict(), 'model_improved.pth')
+
+model_improved.load_state_dict(torch.load('model_improved.pth'))
+
+model_improved.eval()
+test_loss_improved = 0
+correct_improved = 0
+with torch.no_grad():
+    for inputs, labels in test_loader:
+        inputs, labels = inputs.to(device), labels.to(device)
+        outputs = model_improved(inputs)
+        loss = criterion_improved(outputs, labels)
+        test_loss_improved += loss.item()
+        _, predicted = torch.max(outputs, 1)
+        correct_improved += (predicted == labels).sum().item()
+
+accuracy_improved = correct_improved / len(test_loader.dataset)
+print(f'Test Loss: {test_loss_improved / len(test_loader):.4f}, Test Accuracy: {accuracy_improved:.4f}')
+
+def count_parameters_improved(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+print(f"Number of parameters: {count_parameters_improved(model_improved)}")
+
+plt.plot(train_loss_values_improved)
+plt.plot(test_accuracy_values_improved)
+plt.xlabel("Epoch")
+plt.ylabel("Loss/Accuracy")
+plt.show()
