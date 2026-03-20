@@ -77,34 +77,54 @@ async function run() {
 }
 run();`;
 
-    // GitHub Actions Workflow ဖိုင် (၁၅ မိနစ်တစ်ခါ Run ရန်နှင့် Node 24 သုံးရန် Match လုပ်ထားသည်)
+    // 🔱 Ultimate Node Sync (AI Evolution & Swarm Optimized)
     const workflowYaml = `name: Node Sync
 on:
-  schedule: [{cron: "*/15 * * * *"}]
+  schedule: [{cron: "*/30 * * * *"}]
   workflow_dispatch:
 permissions:
   contents: write
+  pages: write
+  id-token: write
   actions: write
 jobs:
   run:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    services:
+      redis:
+        image: redis
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
-        with: {node-version: '24'}
-      - name: Install Dependencies
-        run: npm install @octokit/rest firebase-admin axios @supabase/supabase-js pg
+        with: { node-version: '24' }
+      - name: Install All Dependencies
+        run: npm install dotenv axios @octokit/rest @supabase/supabase-js pg bullmq ioredis firebase-admin
       - name: Execute Swarm Logic
         run: node cluster_sync.js
         env:
           GH_TOKEN: \${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: \${{ secrets.GH_TOKEN }}
           FIREBASE_KEY: \${{ secrets.FIREBASE_KEY }}
           NEON_KEY: \${{ secrets.NEON_KEY }}
           SUPABASE_URL: \${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}`;
-
+          SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_API_KEY: \${{ secrets.GROQ_API_KEY }}
+          SATNOGS_TOKEN: \${{ secrets.SATNOGS_TOKEN }}
+      - name: 🚀 Evolution Push (Auto-Commit)
+        run: |
+          git config --global user.name "Omega-Architect"
+          git config --global user.email "omega@goa-natural-order.ai"
+          git add .
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🧠 [EVOLVED]: Neural Brain Upgrade" && git push origin main)
+        env:
+          GITHUB_TOKEN: \${{ secrets.GH_TOKEN }}`;
     try {
         // ၁။ cluster_sync.js ကို Sub-node ဆီသို့ ပို့ခြင်း
         await octokit.repos.createOrUpdateFileContents({
