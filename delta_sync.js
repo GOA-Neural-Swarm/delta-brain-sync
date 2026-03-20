@@ -80,7 +80,7 @@ run();`;
     // 🔱 Ultimate Node Sync (AI Evolution & Swarm Optimized)
     const workflowYaml = `name: Node Sync
 on:
-  schedule: [{cron: "*/15 * * * *"}]
+  schedule: [{cron: "*/30 * * * *"}]
   workflow_dispatch:
 permissions:
   contents: write
