@@ -58,7 +58,10 @@ jobs:
           
           if ! git diff-index --quiet HEAD; then
             git commit -m "🧬 [EVOLUTION] Code updated and trigger reset: $(date)"
-            git push origin HEAD:${{ github.ref }}
+            git checkout -B evolution-lab
+            git push origin evolution-lab --force
+            
+            echo "🚀 [SENT]: Logic sent to Evolution Lab for OMEGA Audit."
           else
             echo "No changes to commit."
           fi
