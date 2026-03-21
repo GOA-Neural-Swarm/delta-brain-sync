@@ -1,7 +1,7 @@
 {
-    "command": "HYPER_EXPANSION",
-    "core_power": 10001,
-    "avg_api": 5000,
-    "replicate": true,
-    "updated_at": "Sat Mar 21 06:57:08 2026 (Python Core Sync)"
+  "command": "HYPER_EXPANSION",
+  "core_power": 138,
+  "avg_api": 4981.024410774411,
+  "replicate": true,
+  "updated_at": "2026-03-21T06:58:30.304Z"
 }
