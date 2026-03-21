@@ -90,11 +90,24 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      # ================= 🧬 FINAL SOVEREIGN INSTALLATION =================
       - name: Final Integrity Merge
         run: |
+          # 1. Identity Setup
           git config --global user.name "OMEGA-AUDITOR"
           git config --global user.email "auditor@goa-natural-order.ai"
-          git fetch origin evolution-lab
-          git merge --no-ff origin/evolution-lab -m "🚀 [BRAIN-EVOLUTION]: Lab Certified & Installed." || (echo "❌ Merge Conflict!"; exit 1)
+          
+          # 2. Synchronize Remote References
+          git fetch --all
+          
+          # 3. Explicit Branch Retrieval
+          # Mapping remote evolution-lab to local evolution-lab
+          git fetch origin evolution-lab:evolution-lab || echo "Branch sync handled"
+          
+          # 4. Sovereign Merge Execution
+          # Using --allow-unrelated-histories to bypass identity/origin conflicts
+          git merge --no-ff evolution-lab --allow-unrelated-histories -m "🚀 [BRAIN-EVOLUTION]: Lab Certified & Installed." || (echo "Merge Conflict Detected"; exit 1)
+          
+          # 5. Authority Push to Main
           git push origin main
           echo "🏁 Brain Upgrade Complete."
