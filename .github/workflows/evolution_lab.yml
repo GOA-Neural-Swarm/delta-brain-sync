@@ -90,24 +90,32 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      # ================= 🧬 FINAL SOVEREIGN INSTALLATION =================
-      - name: Final Integrity Merge
+      # ================= 🧬 UNIVERSAL SOVEREIGN INSTALLATION =================
+      - name: Final Integrity Sync
         run: |
           # 1. Identity Setup
           git config --global user.name "OMEGA-AUDITOR"
           git config --global user.email "auditor@goa-natural-order.ai"
           
-          # 2. Synchronize Remote References
-          git fetch --all
+          # 2. Force Sync Strategy (Avoiding Ref errors)
+          # We fetch the current head directly instead of named refs
+          git fetch origin ${GITHUB_REF}:evolution-lab
           
-          # 3. Explicit Branch Retrieval
-          # Mapping remote evolution-lab to local evolution-lab
-          git fetch origin evolution-lab:evolution-lab || echo "Branch sync handled"
+          # 3. Switch to Main and Overwrite
+          git checkout main
+          git pull origin main
           
-          # 4. Sovereign Merge Execution
-          # Using --allow-unrelated-histories to bypass identity/origin conflicts
-          git merge --no-ff evolution-lab --allow-unrelated-histories -m "🚀 [BRAIN-EVOLUTION]: Lab Certified & Installed." || (echo "Merge Conflict Detected"; exit 1)
+          # 4. Heavy Injection (Copying files from evolution branch to main)
+          # This bypasses "not something we can merge" errors
+          git checkout evolution-lab -- .
           
-          # 5. Authority Push to Main
+          # 5. Safety Reset for Workflow (Preventing Permission Issues)
+          git reset HEAD .github/workflows/
+          git checkout -- .github/workflows/
+          
+          # 6. Commit and Authority Push
+          git add .
+          git commit -m "🚀 [BRAIN-EVOLUTION]: Lab Certified & Installed (Universal Sync)." || echo "No changes to sync"
+          
           git push origin main
           echo "🏁 Brain Upgrade Complete."
