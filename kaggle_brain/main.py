@@ -266,6 +266,16 @@ def query_groq_api(prompt):
 # Initialize the integrated hybrid brain
 brain = Brain()
 
+def get_gemini_wisdom(prompt_text):
+    """Gemini High-Context Auditor Logic"""
+    try:
+        if not GEMINI_API_KEY: return None
+        response = gemini_model.generate_content(prompt_text)
+        return response.text
+    except Exception as e:
+        print(f"⚠️ [GEMINI-ERROR]: {e}")
+        return None
+
 # =======================================================
 # 🔱 SWARM BROADCAST SYSTEM (PHASE 8.1)
 # =======================================================
