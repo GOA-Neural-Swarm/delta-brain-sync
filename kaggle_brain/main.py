@@ -776,11 +776,11 @@ Current Gen: {current_gen_val} | Error: {avg_error}
 assistant
 """
 
-        # --- PHASE 8 EXECUTION & SELF-CODING ---
-        thought_text = query_groq_api(prompt)
+        thought_text = dual_brain_pipeline(prompt, current_gen, avg_error)
 
+        # 2. 🧬 [FULLY HYBRID MATCH]: အကယျ၍ Cloud Engines တှေ အကုနျလုံး Error တကျရငျ Local ကို သုံးမယျ
         if not thought_text:
-            print("💾 [LOCAL-FALLBACK]: Groq failed. Using Local Llama-3-8B...")
+            print("💾 [LOCAL-FALLBACK]: Cloud Engines (Groq/Gemini) offline. Engaging Local Llama-3-8B...")
             outputs = pipe(prompt, max_new_tokens=1000, do_sample=True, temperature=0.9, pad_token_id=pipe.tokenizer.eos_token_id)
             thought_text = outputs[0]["generated_text"].split("assistant")[-1].strip()
 
