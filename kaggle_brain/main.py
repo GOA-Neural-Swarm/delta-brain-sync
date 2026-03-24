@@ -276,6 +276,60 @@ def get_gemini_wisdom(prompt_text):
         print(f"⚠️ [GEMINI-ERROR]: {e}")
         return None
 
+def dual_brain_pipeline(prompt_text):
+    """
+    🧬 SOVEREIGN OMNI-BRAIN PIPELINE
+    Stage 1: Architect (Groq) - Creativity & Speed
+    Stage 2: Auditor (Gemini) - Security, Syntax & Optimization
+    """
+    # --- 🏗️ STAGE 1: THE ARCHITECT (Groq) ---
+    print("🏗️ [ARCHITECT - Groq]: Initiating rapid neural drafting...")
+    try:
+        draft_code = call_groq(prompt_text)
+    except Exception as e:
+        print(f"⚠️ [GROQ-LIMIT]: Architect offline. Reason: {e}")
+        draft_code = None
+
+    # ARCHITECT က Token ပြည့်လို့ဖြစ်စေ၊ Error တက်လို့ဖြစ်စေ မလုပ်နိုင်ရင် Gemini ကို Direct ခိုင်းမယ်
+    if not draft_code or "rate_limit_exceeded" in str(draft_code).lower():
+        print("⚡ [SWITCHING]: Groq limited. Gemini taking over as Lead Architect...")
+        return get_gemini_wisdom(f"EMERGENCY ARCHITECT MODE: {prompt_text}")
+
+    # --- 🔍 STAGE 2: THE SUPREME AUDITOR (Gemini) ---
+    print(f"🔍 [AUDITOR - Gemini]: Scanning {len(draft_code)} characters of code for vulnerabilities...")
+    
+    # Auditor ဆီကို ပို့မယ့် အမိန့်ကို ပိုပြီး တိကျအောင် ပြင်လိုက်ပါတယ်
+    audit_prompt = f"""system
+You are the Supreme Auditor (Gen {current_gen_val}). 
+MISSION: Secure and Optimize the Architect's Draft.
+RULES:
+1. FIX Syntax Errors, CWE Vulnerabilities (os.system, etc.), and Infinite Loops.
+2. OPTIMIZE performance without changing the core logic intent.
+3. OUTPUT: Respond ONLY with the Final Corrected Python code.
+4. FORMAT: Use ONLY ```python ... ``` blocks. No prose. No markdown headers.
+
+ARCHITECT'S DRAFT:
+{draft_code}
+"""
+    
+    try:
+        # Gemini ရဲ့ High-Context Brain နဲ့ အမှားစစ်ခြင်း
+        final_verified_code = get_gemini_wisdom(audit_prompt)
+        
+        # Markdown Block တွေကို အသေအချာ သန့်စင်ခြင်း (Code သီးသန့်ရရန်)
+        if "```python" in final_verified_code:
+            final_verified_code = re.search(r"```python(.*?)```", final_verified_code, re.DOTALL).group(1).strip()
+            
+        print("✅ [PIPELINE]: Audit complete. Code is safe for execution.")
+        return final_verified_code
+
+    except Exception as e:
+        print(f"🚨 [AUDIT-FAILED]: Gemini could not verify. Reverting to Draft. Error: {e}")
+        return draft_code # အမှားစစ်လို့မရရင် Draft ကိုပဲ Rollback အနေနဲ့ သုံးမယ်
+
+# --- 🔱 IMPLEMENTATION ---
+thought_text = dual_brain_pipeline(prompt)
+
 # =======================================================
 # 🔱 SWARM BROADCAST SYSTEM (PHASE 8.1)
 # =======================================================
