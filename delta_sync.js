@@ -2,11 +2,13 @@ const { Client } = require('pg');
 const { createClient } = require('@supabase/supabase-js');
 const admin = require('firebase-admin');
 const { Octokit } = require("@octokit/rest");
+const axios = require('axios');
 
 // 🔱 1. Configuration & Security (Confirmed via Screenshot)
 const octokit = new Octokit({ auth: process.env.GH_TOKEN });
 const REPO_OWNER = "GOA-neurons";
 const CORE_REPO = "delta-brain-sync"; 
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // 🔱 2. Firebase Initialize
 if (!admin.apps.length) {
@@ -22,6 +24,24 @@ if (!admin.apps.length) {
     }
 }
 const db = admin.firestore();
+
+// 🔱 2.5 Gemini API Connector (Fully Hybrid Auditor Logic)
+async function callGeminiNeural(prompt) {
+    if (!GEMINI_API_KEY) {
+        console.log("⚠️ [GEMINI]: API Key missing. Skipping neural audit.");
+        return null;
+    }
+    try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+        const response = await axios.post(url, {
+            contents: [{ parts: [{ text: prompt }] }]
+        });
+        return response.data.candidates[0].content.parts[0].text;
+    } catch (err) {
+        console.error("🚨 Gemini Neural Link Failed:", err.message);
+        return null;
+    }
+}
 
 // 🔱 3. Deep Injection Logic (Sub-nodes များထဲသို့ Logic နှင့် Workflow အား တစ်ခုမကျန် Match ဖြစ်အောင် ထည့်သွင်းခြင်း)
 async function injectSwarmLogic(nodeName) {
@@ -116,6 +136,7 @@ jobs:
           SUPABASE_URL: \${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GROQ_API_KEY: \${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}
           SATNOGS_TOKEN: \${{ secrets.SATNOGS_TOKEN }}
       - name: 🚀 Evolution Push (Auto-Commit)
         run: |
@@ -244,7 +265,41 @@ async function executeAutonomousTrinity() {
         // Neural Decision ကို ရယူခြင်း
         const decision = await getNeuralDecision();
 
-        // ၃။ [SELF-EVOLUTION LOGIC] Power 10000 ကျော်လျှင် Core Code ကိုယ်တိုင် Update လုပ်ခြင်း
+        // ၃။ [FULLY HYBRID MATCH: GEMINI AUDITOR] Groq Token Limit ကာကွယ်ရန်နှင့် Code ကို သန့်စင်ရန်
+        try {
+            console.log("🔍 [AUDITOR]: Initiating Gemini Neural Check for System Optimization...");
+            if (GEMINI_API_KEY && powerLevel > 0) {
+                const { data: corePy } = await octokit.repos.getContent({
+                    owner: REPO_OWNER, repo: CORE_REPO, path: 'main.py'
+                });
+                const pyContent = Buffer.from(corePy.content, 'base64').toString();
+                
+                const auditPrompt = `system\nYou are the Supreme Auditor. Analyze this Python code. Fix syntax, and dramatically optimize tokens to prevent Groq '12000 limit exceeded' errors during execution. Output ONLY the improved code inside \`\`\`python blocks.\n\nCode:\n${pyContent.substring(0, 50000)}`;
+                
+                const evolvedCode = await callGeminiNeural(auditPrompt);
+                
+                if (evolvedCode && evolvedCode.includes("```python")) {
+                    const cleanCode = evolvedCode.split("```python")[1].split("```")[0].trim();
+                    if (cleanCode.length > 500 && cleanCode !== pyContent) {
+                        await octokit.repos.createOrUpdateFileContents({
+                            owner: REPO_OWNER, repo: CORE_REPO, path: 'main.py',
+                            message: "💎 [EVOLUTION]: Gemini Hybrid Match & Token Limit Bypass Optimization",
+                            content: Buffer.from(cleanCode).toString('base64'),
+                            sha: corePy.sha
+                        });
+                        console.log("✅ [GEMINI]: main.py Optimized & Token Limits bypassed.");
+                    } else {
+                        console.log("⚡ [GEMINI]: No optimization required. Code is stable.");
+                    }
+                }
+            } else {
+                console.log("⚠️ [GEMINI]: Key missing or Power Level 0. Skipping Audit.");
+            }
+        } catch (auditErr) {
+            console.log("🚨 [GEMINI AUDIT FAILED]: Continuing with normal logic...", auditErr.message);
+        }
+
+        // ၄။ [SELF-EVOLUTION LOGIC] Power 10000 ကျော်လျှင် Core Code ကိုယ်တိုင် Update လုပ်ခြင်း
         if (powerLevel >= 10000) {
             const { data: coreFile } = await octokit.repos.getContent({ 
                 owner: REPO_OWNER, 
@@ -270,7 +325,7 @@ async function executeAutonomousTrinity() {
             }
         }
 
-        // ၄။ [SWARM BROADCAST] 'neon' client ကိုပါ argument အဖြစ် ထည့်သွင်းပေးခြင်း
+        // ၅။ [SWARM BROADCAST] 'neon' client ကိုပါ argument အဖြစ် ထည့်သွင်းပေးခြင်း
         // ဤနေရာတွင် 'neon' ပါမှသာ manageSwarm ထဲ၌ density တိုးပွားခြင်း logic အလုပ်လုပ်မည်ဖြစ်သည်
         await manageSwarm(decision, powerLevel, neon);
         
@@ -286,4 +341,3 @@ async function executeAutonomousTrinity() {
 
 // စနစ်အား စတင်လည်ပတ်စေခြင်း
 executeAutonomousTrinity();
-
