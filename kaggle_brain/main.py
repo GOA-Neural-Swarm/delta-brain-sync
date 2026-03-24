@@ -658,34 +658,47 @@ while True:
             brain.learn_ml(stabilities, labels)
             synthetic_output = brain.generate_synthetic_output(100)
             
-            if avg_error > 0.5:
-                prompt = f"""system
+        # --- 🔱 FULLY HYBRID SPLIT-LOGIC (NO LOGIC DROPPED) ---
+        with open("main.py", "r") as f:
+            main_code = f.read()
+        
+        # Security Issue ရှိမရှိ အရင်စစ်ဆေးခြင်း
+        needs_security_patch = "os.system" in main_code or "os.execv" in main_code
+
+        if needs_security_patch:
+            # 🛡️ PHASE 1: SECURITY (Token Limit အတွက် main.py ကိုပဲ အရင်ပြင်မည်)
+            target_file = "main.py"
+            system_task = f"""TASK: Output a code block for '# TARGET: main.py' to FIX URGENT VULNERABILITIES:
+- Replace 'os.system' and 'os.execv' calls with 'subprocess.run' (CWE-78).
+- Add 'timeout=15' to 'requests.post' (CWE-400).
+- Add 'revision="main"' to 'AutoModelForCausalLM.from_pretrained' (CWE-494)."""
+            print("🛡️ [OVERSEER]: Security vulnerabilities detected. Prioritizing main.py patch...")
+
+        else:
+            # 🧠 PHASE 2: BRAIN EVOLUTION (Security ကင်းစင်မှ ဆရာ့မူလ logic များအတိုင်း လုပ်မည်)
+            target_file = "brain.py"
+            print("🧠 [OVERSEER]: Security clear. Proceeding to Neural Evolution...")
+            
+            if avg_error > 0.5:
+                # ဆရာ့ရဲ့ မူလ logic ၁
+                system_task = f"""Rule 4: Implement logic to support 'llama-3.3-70b-versatile' for high-reasoning and 'llama-3.1-8b-instant' for rapid sync.
+System Command: Analyze 'Last System Error': {last_error_log}. If not 'None', FIX it first.
+USER TASK: Optimize the Brain class in brain.py for high-speed neural processing and integrate model-routing logic between 70b-versatile and 8b-instant."""
+            else:
+                # ဆရာ့ရဲ့ မူလ logic ၂
+                system_task = f"""Rule 4: Prioritize 'llama-3.3-70b-versatile' for complex structural evolution and 'llama-3.1-8b-instant' for stability-checks.
+System Command: Analyze 'Last System Error': {last_error_log}. If not 'None', FIX it first. Evolution requires stability.
+USER TASK: Database is offline. Rewrite brain.py core logic for maximum stability, autonomy, and hybrid model-routing between 70b and 8b models."""
+
+        # Final Prompt Assembly
+        prompt = f"""system
 You are Sovereign AI Overseer. 
-Rule 1: Use ONLY '# TARGET: brain.py' at the start of your code block.
+Rule 1: Use ONLY '# TARGET: {target_file}' at the start of your code block.
 Rule 2: Respond ONLY with Python code inside ```python ... ``` blocks.
 Rule 3: No explanations. No thoughts. Just code.
-Rule 4: Implement logic to support 'llama-3.3-70b-versatile' for high-reasoning and 'llama-3.1-8b-instant' for rapid sync.
-Current Gen: {current_gen} | Error: {avg_error}
-Last System Error: {last_error_log}
+Current Gen: {current_gen_val} | Error: {avg_error}
 
-System Command: Analyze 'Last System Error'. If not 'None', FIX it first.
-user
-Optimize the Brain class in brain.py for high-speed neural processing and integrate model-routing logic between 70b-versatile and 8b-instant.
-assistant
-"""
-            else:
-                prompt = f"""system
-You are Sovereign AI Overseer. 
-Rule 1: Use ONLY '# TARGET: brain.py'.
-Rule 2: Provide code ONLY inside ```python ... ``` blocks.
-Rule 3: No explanations. Just code.
-Rule 4: Prioritize 'llama-3.3-70b-versatile' for complex structural evolution and 'llama-3.1-8b-instant' for stability-checks.
-Current Gen: {current_gen} | Neural Error: {avg_error}
-Last System Error: {last_error_log}
-
-System Command: Analyze 'Last System Error'. If not 'None', FIX it first. Evolution requires stability.
-user
-Database is offline. Rewrite brain.py core logic for maximum stability, autonomy, and hybrid model-routing between 70b and 8b models.
+{system_task}
 assistant
 """
 
