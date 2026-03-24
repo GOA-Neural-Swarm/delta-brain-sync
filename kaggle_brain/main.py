@@ -276,7 +276,31 @@ def get_gemini_wisdom(prompt_text):
         print(f"⚠️ [GEMINI-ERROR]: {e}")
         return None
 
-def dual_brain_pipeline(prompt_text):
+def dual_brain_pipeline(prompt_text, current_gen_val, avg_error):
+    # --- 🛡️ SMART TOKEN CHECK ---
+    # စာလုံးရေ ၄၀,၀၀၀ ကျော်ရင် (ခန့်မှန်းခြေ 10k tokens) Groq ကို ကျော်ပြီး Gemini ကို တန်းလွှဲမယ်
+    if len(prompt_text) > 40000:
+        print("🚀 [SMART-ROUTING]: Request too large for Groq. Bypassing to Gemini...")
+        return get_gemini_wisdom(prompt_text)
+
+    # --- 🏗️ STAGE 1: ARCHITECT (Groq) ---
+    print("🏗️ [ARCHITECT - Groq]: Drafting evolution code...")
+    try:
+        draft_code = query_groq_api(prompt_text)
+    except Exception as e:
+        print(f"⚠️ [GROQ-LIMIT]: {e}")
+        draft_code = None
+
+    # Groq မရရင် Gemini က Architect အဖြစ် တာဝန်ယူမယ်
+    if not draft_code or "rate_limit_exceeded" in str(draft_code).lower():
+        print("⚡ [SWITCHING]: Groq limited. Gemini taking over...")
+        draft_code = get_gemini_wisdom(f"EMERGENCY ARCHITECT MODE: {prompt_text}")
+
+    if not draft_code: return None
+
+    # --- 🔍 STAGE 2: AUDITOR (Gemini) ---
+    # (ဒီနေရာမှာ Gemini က အမှားစစ်တဲ့ code တွေ ဆက်ရှိနေပါမယ်...)
+    # ... (ကျန်တဲ့ code များ)
     """
     🧬 SOVEREIGN OMNI-BRAIN PIPELINE
     Stage 1: Architect (Groq) - Creativity & Speed
