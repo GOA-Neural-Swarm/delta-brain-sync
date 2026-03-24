@@ -9,6 +9,7 @@ import git
 import re
 import random
 import base64
+import google.generativeai as genai
 from datetime import datetime, UTC
 from functools import lru_cache
 
@@ -82,6 +83,15 @@ REPO_NAME = "delta-brain-sync"
 REPO_URL = f"github.com/{REPO_OWNER}/{REPO_NAME}"
 # [HYPER-AUTONOMOUS FIX]: Kaggle supports /kaggle/working/ as persistent space
 REPO_PATH = "/kaggle/working/sovereign_repo_sync" if user_secrets else "/tmp/sovereign_repo_sync"
+
+# --- 🔱 GEMINI CONFIGURATION (Free Tier) ---
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or (user_secrets.get_secret("GEMINI_API_KEY") if user_secrets else None)
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+    print("✅ [GEMINI]: Auditor Brain Initialized.")
+else:
+    print("⚠️ [GEMINI]: API Key missing. Auditor mode disabled.")
 
 # --- 🔱 FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
