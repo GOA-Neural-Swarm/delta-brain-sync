@@ -54,15 +54,15 @@ def install_requirements():
 
 install_requirements()
 
-# --- အပေါပွိုငွးက DB_URL သတမွှတတွဲ့နရောမှာ ဒါကို အစားထိုးပါ ---
+
 raw_db_url = os.getenv("NEON_DB_URL") or os.getenv("DATABASE_URL")
 if user_secrets:
     raw_db_url = user_secrets.get_secret("NEON_DB_URL") or raw_db_url
 
-# Protocol Fix ကို Global မှာ တဈခါတညွးလုပမွယွ
+# Protocol Fix 
 DB_URL = raw_db_url.replace("postgres://", "postgresql://", 1) if raw_db_url and raw_db_url.startswith("postgres://") else raw_db_url
 
-FIXED_DB_URL = DB_URL  # အောကကွ function တှေ လှမွးသုံးလို့ရအောငွ Global သတမွှတလွိုကတွာ
+FIXED_DB_URL = DB_URL  
 
 FIREBASE_URL = os.getenv("FIREBASE_DB_URL")
 FB_JSON_STR = os.getenv("FIREBASE_SERVICE_ACCOUNT")
@@ -236,7 +236,7 @@ def save_evolution_state_to_neon(state, gen_id):
 
 def query_groq_api(prompt):
     models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
-    # os.getenv အစား မင်းရဲ့ GH_TOKEN လိုမျိုး secret ထဲက ယူတာ ပိုသေချာပါတယ်
+    
     api_key = os.getenv("GROQ_API_KEY") or (user_secrets.get_secret("GROQ_API_KEY") if user_secrets else None)
     
     if not api_key:
@@ -291,7 +291,7 @@ def dual_brain_pipeline(prompt_text, current_gen_val, avg_error):
         print(f"⚠️ [GROQ-LIMIT]: {e}")
         draft_code = None
 
-    # Groq မရရငျ Gemini က Architect အဖွဈ တာဝနျယူမယျ
+    
     if not draft_code or "rate_limit_exceeded" in str(draft_code).lower():
         print("⚡ [SWITCHING]: Groq limited. Gemini taking over...")
         draft_code = get_gemini_wisdom(f"EMERGENCY ARCHITECT MODE: {prompt_text}")
@@ -314,7 +314,7 @@ def dual_brain_pipeline(prompt_text, current_gen_val, avg_error):
         print(f"⚠️ [GROQ-LIMIT]: Architect offline. Reason: {e}")
         draft_code = None
 
-    # ARCHITECT က Token ပြည့်လို့ဖြစ်စေ၊ Error တက်လို့ဖြစ်စေ မလုပ်နိုင်ရင် Gemini ကို Direct ခိုင်းမယ်
+    
     if not draft_code or "rate_limit_exceeded" in str(draft_code).lower():
         print("⚡ [SWITCHING]: Groq limited. Gemini taking over as Lead Architect...")
         return get_gemini_wisdom(f"EMERGENCY ARCHITECT MODE: {prompt_text}")
@@ -322,7 +322,7 @@ def dual_brain_pipeline(prompt_text, current_gen_val, avg_error):
     # --- 🔍 STAGE 2: THE SUPREME AUDITOR (Gemini) ---
     print(f"🔍 [AUDITOR - Gemini]: Scanning {len(draft_code)} characters of code for vulnerabilities...")
     
-    # Auditor ဆီကို ပို့မယ့် အမိန့်ကို ပိုပြီး တိကျအောင် ပြင်လိုက်ပါတယ်
+    # Auditor 
     audit_prompt = f"""system
 You are the Supreme Auditor (Gen {current_gen_val}). 
 MISSION: Secure and Optimize the Architect's Draft.
@@ -337,10 +337,10 @@ ARCHITECT'S DRAFT:
 """
     
     try:
-        # Gemini ရဲ့ High-Context Brain နဲ့ အမှားစစ်ခြင်း
+        # Gemini High-Context Brain 
         final_verified_code = get_gemini_wisdom(audit_prompt)
         
-        # Markdown Block တွေကို အသေအချာ သန့်စင်ခြင်း (Code သီးသန့်ရရန်)
+        # Markdown Block 
         if "```python" in final_verified_code:
             final_verified_code = re.search(r"```python(.*?)```", final_verified_code, re.DOTALL).group(1).strip()
             
@@ -349,7 +349,7 @@ ARCHITECT'S DRAFT:
 
     except Exception as e:
         print(f"🚨 [AUDIT-FAILED]: Gemini could not verify. Reverting to Draft. Error: {e}")
-        return draft_code # အမှားစစ်လို့မရရင် Draft ကိုပဲ Rollback အနေနဲ့ သုံးမယ်
+        return draft_code 
 
 # --- 🔱 IMPLEMENTATION ---
 thought_text = dual_brain_pipeline(prompt)
@@ -368,7 +368,7 @@ def broadcast_to_swarm(command, gen_version):
         print("⚠️ [BROADCAST]: GH_TOKEN missing. Broadcast skipped.")
         return
 
-    # sub-node တွေ fetch လုပ်မယ့် instruction repo
+    # sub-node fetch instruction repo
     target_repo = "GOA-Neural-Swarm/sub-node-logic" 
     
     try:
@@ -449,19 +449,19 @@ def absorb_natural_order_data():
 
 def self_coding_engine(raw_content):
     try:
-        # AI ရဲ့ output ထဲက ```python ... ``` block ကို ပိုသခှောအောငွ ရှာမယွ
+        # AI ရဲ့ output ထဲက ```python ... ``` block 
         code_blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
         
         if not code_blocks:
-            # တကယလွို့ block မပါရငွ စာသားအကုနလွုံးထဲက code ကိုပဲ ဆှဲထုတဖွို့ ကှိုးစားမယွ
+            # block code 
             clean_content = re.sub(r"system|user|assistant|Note:.*", "", raw_content, flags=re.IGNORECASE).strip()
             code_blocks = [clean_content] if len(clean_content) > 20 else []
 
         modified_files = []
         for block in code_blocks:
-            # ပိုလှှံနတေဲ့ စာသားတှကေို ဖယထွုတမွယွ (Validation အဆင့ွ)
+            #(Validation)
             lines = block.split('\n')
-            # ပထမဆုံး စာကှောငွးမှာ code မဟုတတွာတှေ ပါနရငွေ ဖယပွဈမယွ
+            #code 
             valid_code = "\n".join([line for line in lines if not line.strip().startswith(("Here is", "Certainly", "Optimization"))])
             
             target_match = re.search(r"# TARGET:\s*(\S+)", valid_code)
@@ -471,7 +471,7 @@ def self_coding_engine(raw_content):
                 filename = "ai_experiment.py"
             
             try:
-                compile(valid_code, filename, "exec") # Syntax စဈမယွ
+                compile(valid_code, filename, "exec") # Syntax 
                 with open(filename, "w") as f:
                     f.write(valid_code)
                 modified_files.append(filename)
@@ -504,26 +504,26 @@ def autonomous_git_push(gen, thought, modified_files):
         print(f"🛡️ [STEP 0]: Cleaning workspace conflict zones...")
         if os.path.exists(REPO_PATH):
             try:
-                # Shutil ဖြင့် အရင်ကြိုးစားဖျက်မည်
+                # Shutil 
                 shutil.rmtree(REPO_PATH)
             except Exception:
-                # မရပါက OS Level Force Command ဖြင့် ဖျက်မည်
+                # OS Level Force Command 
                 os.system(f"rm -rf {REPO_PATH}")
         print("✅ [STEP 0]: Workspace is now sterile.")
 
         # --- STEP 1: REMOTE IDENTITY ESTABLISHMENT ---
         print(f"📡 [STEP 1]: Configuring Remote Credentials...")
-        # Token ပါဝင်သော Remote URL ကို တည်ဆောက်ခြင်း
+        # Token Remote URL
         remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
 
         # --- STEP 2: REPOSITORY ACQUISITION (FRESH CLONE) ---
         print(f"📡 [STEP 2]: Initializing Sovereign Sync to {REPO_OWNER}/{REPO_NAME}...")
-        # GitPython ကိုသုံး၍ Fresh Clone လုပ်ခြင်း
+        # GitPython Fresh Clone 
         repo = git.Repo.clone_from(remote_url, REPO_PATH)
         print("✅ [STEP 2]: Remote Assets Acquired.")
 
         # --- 🔱 THE HYBRID BRIDGE: INTERNAL GIT NEUTRALIZATION ---
-        # Clone ထဲက .git ကို ဖျက်မှသာ သင့်ရဲ့ Manual Init Logic အလုပ်လုပ်မှာပါ
+        # Clone.git Manual Init Logic 
         inner_git_path = os.path.join(REPO_PATH, ".git")
         if os.path.exists(inner_git_path):
             print("🛡️ [BRIDGE]: Neutralizing internal .git to prevent tracking clash...")
@@ -536,9 +536,9 @@ def autonomous_git_push(gen, thought, modified_files):
         # --- STEP 3: MANUAL RE-INITIALIZATION & IDENTITY CONFIG ---
         print("🛠️ [STEP 3]: Re-initializing Sovereign Repository Environment...")
         original_cwd = os.getcwd()
-        os.chdir(REPO_PATH) # Repo folder ထဲသို့ ဝင်ရောက်ခြင်း
+        os.chdir(REPO_PATH) # Repo folder
         
-        # Shell command များဖြင့် manual ပြန်စခြင်း (Your Original Flow)
+        # Shell command manual(Your Original Flow)
         os.system("git init")
         os.system(f"git remote add origin {remote_url}")
         os.system("git config user.name 'GOA-neurons'")
@@ -547,10 +547,10 @@ def autonomous_git_push(gen, thought, modified_files):
 
         # --- STEP 4: HYPER-INJECTION (OMNI-FILE HANDLING) ---
         print("🧬 [STEP 4]: Injecting Evolutionary Code Assets...")
-        # မူလ directory သို့ ပြန်ထွက်၍ ပြင်ဆင်ထားသော file များကို copy ကူးခြင်း
+        # directory file copy 
         os.chdir(original_cwd)
         
-        # [OMNI-LOGIC]: AI ပြင်လိုက်သော file အားလုံးကို list ထဲကနေ တစ်ခုချင်း copy ကူးမည်
+        # [OMNI-LOGIC]: AI file list copy 
         injected_count = 0
         if modified_files:
             for file in modified_files:
@@ -559,10 +559,10 @@ def autonomous_git_push(gen, thought, modified_files):
                     print(f"   -> 🧬 INJECTED (AI MODIFIED): {file}")
                     injected_count += 1
         
-        # [CORE-PROTECTION]: သင်သတ်မှတ်ခဲ့သော အဓိက file ၃ ခုကို အမြဲ copy ကူးခြင်း
+        # [CORE-PROTECTION]: 
         static_targets = ["main.py", "brain.py", "ai_experiment.py"]
         for file in static_targets:
-            # AI မပြင်လိုက်သော်လည်း လက်ရှိ folder ထဲမှာရှိနေရင် Update ဖြစ်အောင် ကူးမည်
+            
             if os.path.exists(file) and file not in (modified_files or []):
                 shutil.copy(file, os.path.join(REPO_PATH, file))
                 print(f"   -> 🛡️ SYNCED (CORE ASSET): {file}")
@@ -572,30 +572,30 @@ def autonomous_git_push(gen, thought, modified_files):
 
         # --- STEP 5: MANIFESTATION (COMMIT & FORCE PUSH) ---
         print("🚀 [STEP 5]: Manifesting Evolution to GitHub...")
-        os.chdir(REPO_PATH) # Push ရန်အတွက် repo folder ထဲ ပြန်ဝင်ခြင်း
+        os.chdir(REPO_PATH) 
         
-        # Changes အားလုံးကို Stage လုပ်ခြင်း
+        # Changes Stage 
         os.system("git add .")
         
-        # Change ရှိမရှိ check ပြီး commit လုပ်ခြင်း
+        # Change check commit 
         status_check = os.popen("git status --porcelain").read().strip()
         if status_check:
             commit_msg = f"🧬 Gen {gen} Hyper-Evolution [skip ci]"
             os.system(f'git commit -m "{commit_msg}"')
             
-            # FORCE PUSH: Remote repository ကို အကြွင်းမဲ့ လွှမ်းမိုးခြင်း
+            # FORCE PUSH: Remote repository 
             print("🚀 [PUSH]: Force-pushing to main branch...")
             os.system("git push origin main --force")
             print(f"✨ [SUCCESS]: Gen {gen} evolution manifested.")
         else:
             print(f"⏳ [STATUS]: No code changes detected in this cycle.")
             
-        # အလုပ်ပြီးလျှင် မူလ directory သို့ ပြန်သွားခြင်း
+        # directory 
         os.chdir(original_cwd)
 
     except Exception as e:
         print(f"❌ [CRITICAL GIT ERROR]: {e}")
-        # Error တက်ပါက သင့်ရဲ့ Original Rollback ကို ခေါ်မည်
+        # Error Original Rollback 
         if is_code_update:
             print("🚨 [ERROR]: Initiating Emergency Rollback...")
             execute_rollback(f"Sovereign Sync Failure: {str(e)}")
@@ -690,7 +690,7 @@ def monitor_neural_health(gen, brain_obj):
         vault_size = len(brain_obj.memory_vault)
         print(f"🧬 [NEURAL REPORT]: Gen {gen} | Synapses: {synapse_count} | Patterns: {vault_size}")
         
-        # Firebase ကို ကနှွးမာရေး status ပို့မယွ
+        # Firebase status 
         ref = db.reference(f"TELEFOXx/Health_Monitor/Gen_{gen}")
         ref.update({
             "complexity_score": synapse_count * 1.618,
@@ -712,7 +712,7 @@ last_error_log = "None (System Healthy)"
 
 while True:
     try:
-        # 🧪 [TRUTH LAYER]: Database URL ကို Format အမှနဖွှဈအောငွ အတငွးပှောငွးခှငွး
+        # 🧪 [TRUTH LAYER]: Database URL Format 
         if DB_URL and DB_URL.startswith("postgres://"):
             FIXED_DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
         else:
@@ -760,11 +760,11 @@ while True:
         with open("main.py", "r") as f:
             main_code = f.read()
         
-        # Security Issue ရှိမရှိ အရင်စစ်ဆေးခြင်း
+        # Security Issue 
         needs_security_patch = "os.system" in main_code or "os.execv" in main_code
 
         if needs_security_patch:
-            # 🛡️ PHASE 1: SECURITY (Token Limit အတွက် main.py ကိုပဲ အရင်ပြင်မည်)
+            # 🛡️ PHASE 1: SECURITY (Token Limit main.py
             target_file = "main.py"
             system_task = f"""TASK: Output a code block for '# TARGET: main.py' to FIX URGENT VULNERABILITIES:
 - Replace 'os.system' and 'os.execv' calls with 'subprocess.run' (CWE-78).
@@ -773,17 +773,17 @@ while True:
             print("🛡️ [OVERSEER]: Security vulnerabilities detected. Prioritizing main.py patch...")
 
         else:
-            # 🧠 PHASE 2: BRAIN EVOLUTION (Security ကင်းစင်မှ ဆရာ့မူလ logic များအတိုင်း လုပ်မည်)
+            # 🧠 PHASE 2: BRAIN EVOLUTION (Security logic)
             target_file = "brain.py"
             print("🧠 [OVERSEER]: Security clear. Proceeding to Neural Evolution...")
             
             if avg_error > 0.5:
-                # ဆရာ့ရဲ့ မူလ logic ၁
+                #logic (1)
                 system_task = f"""Rule 4: Implement logic to support 'llama-3.3-70b-versatile' for high-reasoning and 'llama-3.1-8b-instant' for rapid sync.
 System Command: Analyze 'Last System Error': {last_error_log}. If not 'None', FIX it first.
 USER TASK: Optimize the Brain class in brain.py for high-speed neural processing and integrate model-routing logic between 70b-versatile and 8b-instant."""
             else:
-                # ဆရာ့ရဲ့ မူလ logic ၂
+                #logic(2)
                 system_task = f"""Rule 4: Prioritize 'llama-3.3-70b-versatile' for complex structural evolution and 'llama-3.1-8b-instant' for stability-checks.
 System Command: Analyze 'Last System Error': {last_error_log}. If not 'None', FIX it first. Evolution requires stability.
 USER TASK: Database is offline. Rewrite brain.py core logic for maximum stability, autonomy, and hybrid model-routing between 70b and 8b models."""
@@ -802,10 +802,10 @@ assistant
 
         # --- PHASE 8 EXECUTION & SELF-CODING (FULLY HYBRID MATCH) ---
         
-        # ၁။ အရင်ဆုံး Cloud Pipeline ကို ခေါ်မယ် (Groq ကို အရင်စမ်းပြီး မရရင် Gemini က စစ်ဆေးပေးမှာပါ)
+        # 1။Cloud Pipeline (Groq/Gemini)
         thought_text = dual_brain_pipeline(prompt, current_gen, avg_error)
 
-        # ၂။ 🧬 [FAIL-SAFE]: Cloud နှစ်ခုလုံး မရမှ (သို့မဟုတ်) Token Limit ပြည့်မှ Local Llama ကို သုံးမယ်
+        # 2။ 🧬 [FAIL-SAFE]: Cloud Token Limit (Local Llama)
         if not thought_text:
             print("💾 [LOCAL-FALLBACK]: Cloud Engines offline or Request too large. Engaging Local Llama-3-8B...")
             outputs = pipe(prompt, max_new_tokens=1000, do_sample=True, temperature=0.9, pad_token_id=pipe.tokenizer.eos_token_id)
@@ -821,7 +821,7 @@ assistant
         # 💾 [PERSISTENCE]: Sync thought process and neural status
         save_reality(thought_text, current_gen, is_update=files_changed, neural_error=avg_error)
         
-        # 🔱 [SWARM TRIGGER]: Logic အသစ်ရှိရင် EVOLVE ခိုင်းမယ်၊ မရှိရင် SYNC ပဲ လုပ်မယ်
+        # 🔱 [SWARM TRIGGER]: Logic EVOLVE SYNC 
         current_command = "EVOLVE_NEURAL_WEIGHTS" if is_updated else "SYNC_AND_MINE"
         broadcast_to_swarm(current_command, current_gen)
         
@@ -835,7 +835,7 @@ assistant
         time.sleep(30)
         
     except Exception as e:
-        last_error_log = traceback.format_exc() # အမှားတဈခုလုံးကို မှတထြားမယြ
+        last_error_log = traceback.format_exc() 
         log_system_error()
         print(f"🚨 [CORE CRASH]: {e}")
         if HEADLESS: break
