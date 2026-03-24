@@ -28,7 +28,7 @@ jobs:
 
       - name: Install Diagnostic Tools
         run: |
-          pip install flake8 black mypy bandit
+          pip install flake8 black mypy bandit requests google-generativeai groq
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       # ================= 🩺 2. STRUCTURAL DIAGNOSIS =================
@@ -43,24 +43,58 @@ jobs:
           
           echo "Verifying Python syntax..."
           # Path အမှန်ဖြစ်တဲ့ ./kaggle_brain/main.py ကို စစ်မယ်
-          python -m compileall ./kaggle_brain/main.py || (echo "ERROR: Brain logic syntax failed!" && exit 1)
-      
-        
-          
-          
+          if [ -d "./kaggle_brain" ] && [ -f "./kaggle_brain/main.py" ]; then
+            python -m compileall ./kaggle_brain/main.py || (echo "ERROR: Brain logic syntax failed!" && exit 1)
+          else
+            python -m compileall main.py || (echo "ERROR: Root main.py syntax failed!" && exit 1)
+          fi
 
-      # ================= 🛡️ 3. SECURITY GUARD =================
+      # ================= 🧬 3. AI RECURSIVE AUDIT (NEW: GEMINI-GROQ HYBRID) =================
+      - name: AI Recursive Evolution Audit
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          # 1. IDENTIFY AUDIT TARGET
+          TARGET="main.py"
+          if [ -f "./kaggle_brain/main.py" ]; then TARGET="./kaggle_brain/main.py"; fi
+          
+          OLD_CODE=$(python3 -c "import json; print(json.dumps(open('$TARGET').read()))")
+          SYSTEM_ROLE="You are OMEGA-ASI, the Supreme Auditor. Your task is to audit code for bugs and rewrite it for maximum performance."
+          HYPER_PROMPT="Analyze this $TARGET for logical flaws. Rewrite it to be more efficient. RETURN RAW PYTHON CODE ONLY. NO MARKDOWN."
+
+          echo "🧬 [AUDIT]: Initiating Supreme AI Correction Cycle..."
+
+          # --- 🔱 ATTEMPT 1: GEMINI 1.5 FLASH ---
+          GEMINI_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{contents: [{parts: [{text: ($sys + "\n\nCODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.1}}')
+          GEMINI_RES=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY" -H "Content-Type: application/json" -d "$GEMINI_PAYLOAD")
+          CONTENT=$(echo "$GEMINI_RES" | jq -r '.candidates[0].content.parts[0].text // empty' | sed 's/```python//g; s/```//g')
+
+          # --- 🔱 ATTEMPT 2: GROQ FALLBACK ---
+          if [ -z "$CONTENT" ] || [ ${#CONTENT} -lt 500 ]; then
+            echo "⚠️ [GEMINI-SILENCE]: Falling back to Groq Expert Auditor..."
+            GROQ_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.1}')
+            GROQ_RES=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" -H "Authorization: Bearer $GROQ_API_KEY" -H "Content-Type: application/json" -d "$GROQ_PAYLOAD")
+            CONTENT=$(echo "$GROQ_RES" | jq -r '.choices[0].message.content // empty' | sed 's/```python//g; s/```//g')
+          fi
+
+          if [ ! -z "$CONTENT" ] && [ ${#CONTENT} -gt 500 ]; then
+            echo "$CONTENT" > "$TARGET"
+            echo "✅ [AUDIT-COMPLETE]: Brain logic refined by AI Hybrid."
+          fi
+
+      # ================= 🛡️ 4. SECURITY GUARD =================
       - name: Safety Guard (Security Audit)
         run: |
           echo "Scanning for security vulnerabilities with Bandit..."
-          bandit -r main.py --exit-zero
+          bandit -r . --exit-zero
           
           echo "Scanning for secret leaks..."
           if grep -qE "AI_KEY|TOKEN|SECRET|PASSWORD" main.py; then
             echo "WARNING: Potential hardcoded secret detected in Brain Logic!"
           fi
 
-      # ================= 🔬 4. QUALITY INSPECTION =================
+      # ================= 🔬 5. QUALITY INSPECTION =================
       - name: Quality Superiority Inspection
         run: |
           git fetch origin main
@@ -73,10 +107,10 @@ jobs:
             echo "ERROR: Brain integrity check failed - Logic too thin!"; exit 1; 
           fi
 
-      # ================= 🔧 5. AUTO-REPAIR =================
+      # ================= 🔧 6. AUTO-REPAIR =================
       - name: Aesthetic Polish
         run: |
-          black main.py
+          black .
           echo "Logic formatted to PEP8 standards."
 
   final-sovereign-merge:
@@ -89,6 +123,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN }}
 
       # ================= 🧬 UNIVERSAL SOVEREIGN INSTALLATION =================
       - name: Final Integrity Sync
@@ -98,15 +133,13 @@ jobs:
           git config --global user.email "auditor@goa-natural-order.ai"
           
           # 2. Force Sync Strategy (Avoiding Ref errors)
-          # We fetch the current head directly instead of named refs
-          git fetch origin ${GITHUB_REF}:evolution-lab
+          git fetch origin evolution-lab:evolution-lab
           
           # 3. Switch to Main and Overwrite
           git checkout main
           git pull origin main
           
           # 4. Heavy Injection (Copying files from evolution branch to main)
-          # This bypasses "not something we can merge" errors
           git checkout evolution-lab -- .
           
           # 5. Safety Reset for Workflow (Preventing Permission Issues)
@@ -115,7 +148,10 @@ jobs:
           
           # 6. Commit and Authority Push
           git add .
-          git commit -m "🚀 [BRAIN-EVOLUTION]: Lab Certified & Installed (Universal Sync)." || echo "No changes to sync"
-          
-          git push origin main
-          echo "🏁 Brain Upgrade Complete."
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "🚀 [BRAIN-EVOLUTION]: Lab Certified & Installed (Universal Sync)."
+            git push origin main --force
+            echo "🏁 Brain Upgrade Complete."
+          else
+            echo "No changes to sync"
+          fi
