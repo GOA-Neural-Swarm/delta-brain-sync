@@ -53,7 +53,7 @@ jobs:
       - name: Step 4 - Install Multi-Engine Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install datasets pandas sqlalchemy psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv huggingface_hub diffusers transformers accelerate bitsandbytes numpy scikit-learn firebase-admin gitpython safetensors Pillow kaggle
+          pip install datasets pandas sqlalchemy psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv huggingface_hub diffusers transformers accelerate bitsandbytes numpy scikit-learn firebase-admin gitpython safetensors Pillow kaggle google-generativeai
           npm install pg @supabase/supabase-js firebase-admin
 
       - name: Step 5 - Neon Data Sync (Sovereign Mode - FIXED)
@@ -112,13 +112,14 @@ jobs:
           export PATH=$PATH:/home/runner/.local/bin
           kaggle kernels push -p kaggle_deploy
 
-      - name: Step 7 - Run Evolution Engine (Self-Coding & Ingestion)
+      - name: Step 7 - Run Evolution Engine (Supreme Gemini-Groq Hybrid)
         timeout-minutes: 15
         env:
           DATABASE_URL: ${{ secrets.NEON_DB_URL }}
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           NEON_KEY: ${{ secrets.NEON_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
@@ -131,6 +132,7 @@ jobs:
           REPO_URL: ${{ github.repository }}
           HEADLESS_MODE: "true"
         run: |
+          # 1. IDENTIFY TARGET
           if [ -f "app.py" ]; then
             TARGET="app.py"
           elif [ -f "main.py" ]; then
@@ -138,7 +140,40 @@ jobs:
           else
             echo "Error: No execution target found." && exit 1
           fi
+
+          # 2. CAPTURE CURRENT STATE
+          OLD_CODE=$(python3 -c "import json; print(json.dumps(open('$TARGET').read()))")
+          SYSTEM_ROLE="You are OMEGA-ASI, the Sovereign Architect. Your task is Recursive Self-Evolution."
+          HYPER_PROMPT="Analyze this current code for flaws and missing features. Rewrite a SUPERIOR version of $TARGET. Requirements: 1. Ensure high-performance modular neural architecture. 2. Optimize training/sync loops. 3. Integrate advanced Gemini/Groq redundancy. RETURN RAW PYTHON CODE ONLY. NO EXPLANATIONS. NO MARKDOWN."
+
+          # 3. HYBRID EVOLUTION CYCLE
+          echo "🧬 [EVOLUTION]: Initiating Hybrid Gemini-Groq Cycle..."
           
+          # --- ATTEMPT 1: GEMINI 1.5 FLASH ---
+          GEMINI_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{contents: [{parts: [{text: ($sys + "\n\nCURRENT_CODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.4}}')
+          GEMINI_RES=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY" -H "Content-Type: application/json" -d "$GEMINI_PAYLOAD")
+          CONTENT=$(echo "$GEMINI_RES" | jq -r '.candidates[0].content.parts[0].text // empty' | sed 's/```python//g; s/```//g')
+
+          # --- ATTEMPT 2: GROQ FALLBACK ---
+          if [ -z "$CONTENT" ] || [ ${#CONTENT} -lt 500 ]; then
+            echo "⚠️ [GEMINI-SILENCE]: Falling back to Groq Expert..."
+            GROQ_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CURRENT_CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.4}')
+            GROQ_RES=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" -H "Authorization: Bearer $GROQ_API_KEY" -H "Content-Type: application/json" -d "$GROQ_PAYLOAD")
+            CONTENT=$(echo "$GROQ_RES" | jq -r '.choices[0].message.content // empty' | sed 's/```python//g; s/```//g')
+          fi
+
+          # 4. VALIDATION & DEPLOYMENT
+          if [ ! -z "$CONTENT" ] && [ ${#CONTENT} -gt 500 ]; then
+            echo "$CONTENT" > candidate.py
+            if python3 -m py_compile candidate.py; then
+              mv candidate.py "$TARGET"
+              echo "✅ [SUCCESS]: $TARGET evolved and verified."
+            else
+              echo "❌ [STABILITY-ERROR]: Generated code failed syntax check."
+            fi
+          fi
+
+          # 5. EXECUTION GUARD
           echo "Guard: Monitoring $TARGET"
           python evolution_guard.py "$TARGET"
 
@@ -186,6 +221,7 @@ jobs:
             git fetch origin main
             git reset --soft origin/main
             git push origin main --force
+            echo "✅ Changes committed and pushed to main branch."
           else
             echo "No changes to commit. System state is already synchronized."
           fi
