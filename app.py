@@ -15,6 +15,7 @@ from sqlalchemy.pool import QueuePool
 from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
+import google.generativeai as genai
 
 # 🛸 [GENESIS LAYER]: 
 def bootstrap_system():
@@ -75,6 +76,16 @@ REPO_URL = os.environ.get("REPO_URL") or "GOA-Neural-Swarm/delta-brain-sync"
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 REPO_PATH = "./repo_sync"
+
+# --- 🔱 GEMINI CONFIGURATION (Primary Architect) ---
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+gemini_model = None
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+    print("✅ [GEMINI]: Sovereign Architect Brain Initialized.")
+else:
+    print("⚠️ [GEMINI]: API Key missing. Architect mode disabled.")
 
 # 🛸 Smart Dependency Loader
 HEADLESS = os.environ.get("HEADLESS_MODE") == "true"
@@ -236,9 +247,19 @@ class TelefoxXAGI:
             modified_files.append(filename)
         return modified_files
 
+    async def get_gemini_wisdom(self, prompt_text):
+        """Gemini High-Context Architect Logic"""
+        try:
+            if not gemini_model: return None
+            response = gemini_model.generate_content(prompt_text)
+            return response.text
+        except Exception as e:
+            print(f"⚠️ [GEMINI-ERROR]: {e}")
+            return None
+
     async def trigger_supreme_evolution(self):
-        """[STABILITY + EVOLUTION]: Handles Rate Limits by falling back to 8B model while keeping all original logic."""
-        if not self.client: return False
+        """[STABILITY + EVOLUTION]: Fully Matched Hybrid Logic with Gemini Primary Architect and Groq Secondary Backup."""
+        if not self.client and not gemini_model: return False
         
         # 1. Prepare context (Original Logic)
         file_tree = get_repo_tree()
@@ -271,44 +292,56 @@ user
 {prompt_task}
 assistant
 """
+        raw_content = None
+        evolution_success = False
 
-        # 3. Model Fallback Execution (Added to fix 429 Error)
-        for model_id in self.models:
-            try:
-                print(f"🧠 Attempting Evolution via {model_id}...")
-                completion = await self.client.chat.completions.create(
-                    model=model_id,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.1
-                )
-                
-                raw_content = completion.choices[0].message.content
-                
-                # 4. Manifesting changes (Original Logic)
-                modified_files = self.self_coding_engine_internal(raw_content)
-                
-                if modified_files:
-                    await self.git_sovereign_push(modified_files)
-                    self.current_gen += 1
-                    print(f"✅ Evolution Successful via {model_id}. Gen {self.current_gen-1} Manifested.")
-                    return True
-                
-                # အကယ်၍ code block မပါလာရင် Success မဖြစ်တဲ့အတွက် နောက် model တစ်ခု ထပ်စမ်းမယ်
-                continue
-
-            except Exception as e:
-                error_str = str(e).lower()
-                if "rate_limit_exceeded" in error_str or "429" in error_str:
-                    print(f"⚠️ {model_id} Rate Limit reached. Falling back to next model...")
-                    self.last_error_log = f"RateLimit on {model_id}"
-                    continue # ရှေ့က model limit ပြည့်ရင် နောက် model တစ်ခုနဲ့ ဆက်ကြိုးစားမယ်
-                else:
+        # --- 🔱 LAYER 1: GEMINI ARCHITECT (Primary Brain for Deep Context) ---
+        print("🧠 Attempting Deep Evolution via Gemini Architect...")
+        raw_content = await self.get_gemini_wisdom(prompt)
+        
+        if raw_content and "```python" in raw_content:
+            modified_files = self.self_coding_engine_internal(raw_content)
+            if modified_files:
+                await self.git_sovereign_push(modified_files)
+                self.current_gen += 1
+                print(f"💎 Evolution Successful via Gemini. Gen {self.current_gen-1} Manifested.")
+                evolution_success = True
+        
+        # --- 🔱 LAYER 2: GROQ FALLBACK (If Gemini fails or lacks code block) ---
+        if not evolution_success:
+            print("⚠️ Gemini Evolution Skipped. Falling back to Groq Expert Coder...")
+            for model_id in self.models:
+                try:
+                    print(f"🧠 Attempting Evolution via {model_id}...")
+                    completion = self.client.chat.completions.create(
+                        model=model_id,
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.1
+                    )
                     
-                    self.last_error_log = str(e)
-                    print(f"❌ Evolution Crash on {model_id}: {e}")
-                    break
-
-        return False
+                    raw_content = completion.choices[0].message.content
+                    
+                    modified_files = self.self_coding_engine_internal(raw_content)
+                    
+                    if modified_files:
+                        await self.git_sovereign_push(modified_files)
+                        self.current_gen += 1
+                        print(f"✅ Evolution Successful via {model_id}. Gen {self.current_gen-1} Manifested.")
+                        evolution_success = True
+                        break 
+                        
+                except Exception as e:
+                    error_str = str(e).lower()
+                    if "rate_limit_exceeded" in error_str or "429" in error_str:
+                        print(f"⚠️ {model_id} Rate Limit reached. Falling back to next model...")
+                        self.last_error_log = f"RateLimit on {model_id}"
+                        continue
+                    else:
+                        self.last_error_log = str(e)
+                        print(f"❌ Evolution Crash on {model_id}: {e}")
+                        break
+                        
+        return evolution_success
 
     async def universal_hyper_ingest(self, limit=100, sync_to_supabase=False):
         """[ORIGINAL]: Neon + Supabase + HuggingFace Trinity Sync"""
@@ -386,9 +419,9 @@ assistant
             messages.append({"role": "assistant", "content": h['content'] if isinstance(h, dict) else h[1]})
         messages.append({"role": "user", "content": msg})
 
-        completion = await self.client.chat.completions.create(model="llama-3.3-70b-versatile", messages=messages, stream=True)
+        completion = self.client.chat.completions.create(model="llama-3.3-70b-versatile", messages=messages, stream=True)
         ans = ""
-        async for chunk in completion:
+        for chunk in completion:
             if chunk.choices[0].delta.content:
                 ans += chunk.choices[0].delta.content
                 yield ans
@@ -437,4 +470,4 @@ if __name__ == "__main__":
     else:
         loop = asyncio.get_event_loop()
         loop.create_task(overseer.sovereign_loop())
-        overseer.create_ui().launch(server_name="0.0.0.0", server_port=7860) 
+        overseer.create_ui().launch(server_name="0.0.0.0", server_port=7860)
