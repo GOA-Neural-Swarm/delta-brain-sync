@@ -45,7 +45,7 @@ jobs:
           # 3. HYBRID EVOLUTION ATTEMPT (GEMINI -> GROQ FALLBACK)
           CONTENT=""
 
-          # --- 🔱 ATTEMPT 1: GEMINI 1.5 FLASH (Primary Architect) ---
+          # --- 🔱 ATTEMPT 1: GEMINI FLASH LATEST (Primary Architect) ---
           echo "📡 [GEMINI-CHANNEL]: Requesting architectural rewrite..."
           
           GEMINI_PAYLOAD=$(jq -n \
@@ -54,7 +54,7 @@ jobs:
             --arg task "$HYPER_PROMPT" \
             '{contents: [{parts: [{text: ($sys + "\n\nCURRENT_CODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.2, maxOutputTokens: 4096}}')
 
-          GEMINI_RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY" \
+          GEMINI_RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=$GEMINI_API_KEY" \
             -H "Content-Type: application/json" \
             -d "$GEMINI_PAYLOAD")
 
