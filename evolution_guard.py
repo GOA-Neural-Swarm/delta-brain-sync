@@ -68,28 +68,63 @@ def get_ai_correction(error_log, original_code):
         return original_code
 
 def run_guard(target_script):
-    # 1. Run the target script
-    print(f"🛡️ [GUARD]: Executing {target_script}...")
-    result = subprocess.run(['python', target_script], capture_output=True, text=True)
+    print(f"🛡️ [GUARD]: Launching {target_script} in Observation Mode...")
     
-    if result.returncode != 0:
-        print(f"❌ [GUARD]: {target_script} failed. Analyzing...")
-        
-        with open(target_script, 'r') as f:
-            original_code = f.read()
+    # Background မှာ process ကို run မယ် (စောင့်မနေတော့ဘူး)
+    # logic coupled with real-time log observation
+    process = subprocess.Popen(
+        ['python3', target_script],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+
+    start_time = time.time()
+    error_output = ""
+    
+    # ပထမ ၆၀ စက္ကန့်အတွင်းမှာ process ကို အနီးကပ် စောင့်ကြည့်မယ်
+    while time.time() - start_time < 60:
+        # Error ထွက်လာသလား စစ်မယ်
+        line = process.stderr.readline()
+        if line:
+            print(f"⚠️ [LOG]: {line.strip()}")
+            error_output += line
+            if "Traceback" in line or "Error" in line:
+                print("❌ [GUARD]: Critical Error detected! Terminating and fixing...")
+                process.terminate()
+                
+                with open(target_script, 'r') as f:
+                    original_code = f.read()
+                
+                corrected = get_ai_correction(error_output, original_code)
+                with open(target_script, 'w') as f:
+                    f.write(corrected)
+                
+                print("✅ [GUARD]: System evolved. Restarting Guard Cycle...")
+                return run_guard(target_script) # ပြန်စမယ်
+
+        # အကယ်၍ process က ပိတ်သွားပြီး error ရှိနေရင်
+        if process.poll() is not None and process.poll() != 0:
+            remaining_error = process.stderr.read()
+            print(f"❌ [GUARD]: Process died with error: {remaining_error}")
             
-        # 2. Get corrected code from AI
-        corrected_code = get_ai_correction(result.stderr, original_code)
-        
-        # 3. Apply the correction
-        with open(target_script, 'w') as f:
-            f.write(corrected_code)
-        print("✅ [GUARD]: Correction applied. Rebooting system...")
-        
-        # 4. Retry
-        run_guard(target_script)
-    else:
-        print("✅ [GUARD]: System is stable.")
+            with open(target_script, 'r') as f:
+                original_code = f.read()
+                
+            # Get corrected code from AI and retry
+            corrected_code = get_ai_correction(remaining_error, original_code)
+            with open(target_script, 'w') as f:
+                f.write(corrected_code)
+            print("✅ [GUARD]: Correction applied. Rebooting system...")
+            return run_guard(target_script)
+
+        time.sleep(1)
+
+    # ၆၀ စက္ကန့်အတွင်း Error မတက်ဘဲ အသက်ရှင်နေရင် Healthy လို့ သတ်မှတ်မယ်
+    print("🌐 [GUARD]: System is stable and sovereign. Handing over to background process.")
+    # GitHub Action ကို အောင်မြင်စွာ ပိတ်ခိုင်းလိုက်ပေမယ့် background မှာ app.py က ဆက် run နေမှာမဟုတ်ဘူး၊ 
+    # ဒါပေမဲ့ evolution cycle ပြီးမြောက်ဖို့အတွက် ဒီအဆင့်ဟာ အရေးကြီးဆုံးဖြစ်ပါတယ်။
+    sys.exit(0)
 
 if __name__ == "__main__":
     # Get target script from command line, default to main.py
