@@ -1,202 +1,231 @@
-
 import numpy as np
 import time
 import os
 import sys
 
 class AdamW:
-    def __init__(self, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01):
+    def __init__(self, params_ref, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01):
         self.lr = lr
         self.betas = betas
         self.eps = eps
         self.weight_decay = weight_decay
-        self.m = {}
-        self.v = {}
+        self.m = [np.zeros_like(p) for p in params_ref]
+        self.v = [np.zeros_like(p) for p in params_ref]
         self.t = 0
 
-    def update(self, params, grads, layer_id):
-        if layer_id not in self.m:
-            self.m[layer_id] = [np.zeros_like(p) for p in params]
-            self.v[layer_id] = [np.zeros_like(p) for p in params]
-
+    def step(self, params, grads):
         self.t += 1
         lr_t = self.lr * (np.sqrt(1.0 - self.betas[1]**self.t) / (1.0 - self.betas[0]**self.t))
-
-        updated_params = []
         for i in range(len(params)):
             params[i] -= self.lr * self.weight_decay * params[i]
-
-            self.m[layer_id][i] = self.betas[0] * self.m[layer_id][i] + (1.0 - self.betas[0]) * grads[i]
-            self.v[layer_id][i] = self.betas[1] * self.v[layer_id][i] + (1.0 - self.betas[1]) * (grads[i]**2)
-
-            m_hat = self.m[layer_id][i]
-            v_hat = self.v[layer_id][i]
-
-            updated_params.append(params[i] - lr_t * m_hat / (np.sqrt(v_hat) + self.eps))
-        return updated_params
+            self.m[i] = self.betas[0] * self.m[i] + (1.0 - self.betas[0]) * grads[i]
+            self.v[i] = self.betas[1] * self.v[i] + (1.0 - self.betas[1]) * (grads[i]**2)
+            params[i] -= lr_t * self.m[i] / (np.sqrt(self.v[i]) + self.eps)
 
 class Layer:
     def __init__(self):
-        self.input = None
-        self.output = None
-        self.trainable = False
+        self.params = []
+        self.grads = []
+        self.training = True
 
-    def forward(self, x, training=True): raise NotImplementedError
+    def forward(self, x): raise NotImplementedError
     def backward(self, grad): raise NotImplementedError
 
 class Linear(Layer):
-    def __init__(self, in_features, out_features):
+    def __init__(self, in_dim, out_dim):
         super().__init__()
-        self.trainable = True
-        self.weights = np.random.randn(in_features, out_features) * np.sqrt(2.0 / in_features)
-        self.bias = np.zeros((1, out_features))
-        self.grads = []
+        limit = np.sqrt(6.0 / (in_dim + out_dim))
+        self.w = np.random.uniform(-limit, limit, (in_dim, out_dim))
+        self.b = np.zeros((1, out_dim))
+        self.params = [self.w, self.b]
+        self.x = None
 
-    def forward(self, x, training=True):
-        self.input = x
-        return np.dot(x, self.weights) + self.bias
+    def forward(self, x):
+        self.x = x
+        return np.dot(x, self.w) + self.b
 
     def backward(self, grad):
-        self.grads = [np.dot(self.input.T, grad), np.sum(grad, axis=0, keepdims=True)]
-        return np.dot(grad, self.weights.T)
+        dw = np.dot(self.x.T, grad)
+        db = np.sum(grad, axis=0, keepdims=True)
+        self.grads = [dw, db]
+        return np.dot(grad, self.w.T)
+
+class BatchNorm(Layer):
+    def __init__(self, dim, momentum=0.9, eps=1e-5):
+        super().__init__()
+        self.gamma = np.ones((1, dim))
+        self.beta = np.zeros((1, dim))
+        self.params = [self.gamma, self.beta]
+        self.running_mean = np.zeros((1, dim))
+        self.running_var = np.ones((1, dim))
+        self.momentum = momentum
+        self.eps = eps
+        self.cache = None
+
+    def forward(self, x):
+        if not self.training:
+            x_hat = (x - self.running_mean) / np.sqrt(self.running_var + self.eps)
+            return self.gamma * x_hat + self.beta
+        
+        mu = np.mean(x, axis=0, keepdims=True)
+        var = np.var(x, axis=0, keepdims=True)
+        x_hat = (x - mu) / np.sqrt(var + self.eps)
+        self.running_mean = self.momentum * self.running_mean + (1 - self.momentum) * mu
+        self.running_var = self.momentum * self.running_var + (1 - self.momentum) * var
+        self.cache = (x, x_hat, mu, var)
+        return self.gamma * x_hat + self.beta
+
+    def backward(self, grad):
+        x, x_hat, mu, var = self.cache
+        N = grad.shape[0]
+        dgamma = np.sum(grad * x_hat, axis=0, keepdims=True)
+        dbeta = np.sum(grad, axis=0, keepdims=True)
+        dx_hat = grad * self.gamma
+        dvar = np.sum(dx_hat * (x - mu) * -0.5 * (var + self.eps)**-1.5, axis=0, keepdims=True)
+        dmu = np.sum(dx_hat * -1 / np.sqrt(var + self.eps), axis=0, keepdims=True) + dvar * np.mean(-2 * (x - mu), axis=0, keepdims=True)
+        dx = dx_hat / np.sqrt(var + self.eps) + dvar * 2 * (x - mu) / N + dmu / N
+        self.grads = [dgamma, dbeta]
+        return dx
 
 class ReLU(Layer):
-    def forward(self, x, training=True):
-        self.input = x
-        return np.maximum(0, x)
-
-    def backward(self, grad):
-        return grad * (self.input > 0)
-
-class Dropout(Layer):
-    def __init__(self, rate=0.2):
+    def __init__(self):
         super().__init__()
-        self.rate = rate
         self.mask = None
 
-    def forward(self, x, training=True):
-        if not training: return x
-        self.mask = (np.random.rand(*x.shape) > self.rate) / (1.0 - self.rate)
+    def forward(self, x):
+        self.mask = (x > 0)
+        return x * self.mask
+
+    def backward(self, grad):
+        return grad * self.mask
+
+class Dropout(Layer):
+    def __init__(self, p=0.2):
+        super().__init__()
+        self.p = p
+        self.mask = None
+
+    def forward(self, x):
+        if not self.training: return x
+        self.mask = (np.random.rand(*x.shape) > self.p) / (1.0 - self.p)
         return x * self.mask
 
     def backward(self, grad):
         return grad * self.mask
 
 class SoftmaxCrossEntropy:
-    def __init__(self):
-        self.probs = None
-
-    def forward(self, logits, y_true):
+    def __call__(self, logits, y):
         exps = np.exp(logits - np.max(logits, axis=1, keepdims=True))
         self.probs = exps / np.sum(exps, axis=1, keepdims=True)
-        return -np.mean(np.sum(y_true * np.log(self.probs + 1e-12), axis=1))
+        return -np.mean(np.sum(y * np.log(self.probs + 1e-12), axis=1))
 
-    def backward(self, y_true):
-        batch_size = y_true.shape[0]
-        return (self.probs - y_true) / batch_size
+    def backward(self, y):
+        return (self.probs - y) / y.shape[0]
 
 class SovereignSupervisor:
     def __init__(self):
-        self.gemini_key = os.getenv("GEMINI_API_KEY")
-        self.groq_key = os.getenv("GROQ_API_KEY")
-        self.performance_log = []
-        self.evolution_counter = 0
+        self.groq_active = os.getenv("GROQ_API_KEY") is not None
+        self.gemini_active = os.getenv("GEMINI_API_KEY") is not None
+        self.history = []
 
-    def query_redundant_logic(self, current_loss, lr):
-        if self.groq_key and current_loss > 2.0:
-            return lr * 1.05, "GROQ_ACCELERATION"
-
-        if self.gemini_key and len(self.performance_log) > 5:
-            avg_delta = np.gradient(self.performance_log[-5:]).mean()
-            if avg_delta > 0:
-                return lr * 0.5, "GEMINI_STABILIZATION"
-
-        return lr, "LOCAL_HEURISTIC"
-
-    def step(self, loss, optimizer):
-        self.performance_log.append(loss)
-        new_lr, protocol = self.query_redundant_logic(loss, optimizer.lr)
-        optimizer.lr = new_lr
-        return protocol
+    def analyze_telemetry(self, loss, optimizer):
+        self.history.append(loss)
+        if len(self.history) < 3: return "INITIALIZING"
+        
+        slope = self.history[-1] - self.history[-2]
+        
+        if self.groq_active and slope > 0:
+            optimizer.lr *= 0.7
+            return "GROQ_RECOVERY_DEFLATION"
+        
+        if self.gemini_active and abs(slope) < 1e-4:
+            optimizer.lr *= 1.2
+            return "GEMINI_MOMENTUM_INJECTION"
+            
+        if slope > 0.1:
+            optimizer.lr *= 0.5
+            return "LOCAL_STABILIZATION"
+        
+        return "STABLE_EVOLUTION"
 
 class OMEGA_ASI:
-    def __init__(self, optimizer):
+    def __init__(self, input_dim, hidden_dims, output_dim):
         self.layers = []
-        self.optimizer = optimizer
+        dims = [input_dim] + hidden_dims + [output_dim]
+        for i in range(len(dims)-1):
+            self.layers.append(Linear(dims[i], dims[i+1]))
+            if i < len(dims)-2:
+                self.layers.append(BatchNorm(dims[i+1]))
+                self.layers.append(ReLU())
+                self.layers.append(Dropout(0.1))
+        
         self.loss_fn = SoftmaxCrossEntropy()
+        all_params = []
+        for l in self.layers:
+            all_params.extend(l.params)
+        self.optimizer = AdamW(all_params, lr=2e-3)
         self.supervisor = SovereignSupervisor()
 
-    def add(self, layer):
-        self.layers.append(layer)
-
     def forward(self, x, training=True):
-        for layer in self.layers:
-            x = layer.forward(x, training)
+        for l in self.layers:
+            l.training = training
+            x = l.forward(x)
         return x
 
     def backward(self, grad):
-        for layer in reversed(self.layers):
-            grad = layer.backward(grad)
+        for l in reversed(self.layers):
+            grad = l.backward(grad)
 
     def train_step(self, x, y):
         logits = self.forward(x, training=True)
-        loss = self.loss_fn.forward(logits, y)
+        loss = self.loss_fn(logits, y)
         grad = self.loss_fn.backward(y)
         self.backward(grad)
-
-        for i, layer in enumerate(self.layers):
-            if layer.trainable:
-                layer.weights, layer.bias = self.optimizer.update(
-                    [layer.weights, layer.bias], layer.grads, i
-                )
+        
+        all_params, all_grads = [], []
+        for l in self.layers:
+            if l.params:
+                all_params.extend(l.params)
+                all_grads.extend(l.grads)
+        self.optimizer.step(all_params, all_grads)
         return loss
 
-    def fit(self, x_train, y_train, epochs=50, batch_size=128):
-        n_samples = x_train.shape[0]
+    def fit(self, x, y, epochs=50, batch_size=256):
+        n = x.shape[0]
         for epoch in range(1, epochs + 1):
-            start = time.time()
-            indices = np.random.permutation(n_samples)
-            x_shuffled, y_shuffled = x_train[indices], y_train[indices]
-
-            epoch_losses = []
-            for i in range(0, n_samples, batch_size):
-                xb = x_shuffled[i:i+batch_size]
-                yb = y_shuffled[i:i+batch_size]
-                loss = self.train_step(xb, yb)
-                epoch_losses.append(loss)
-
-            avg_loss = np.mean(epoch_losses)
-            duration = time.time() - start
-            protocol = self.supervisor.step(avg_loss, self.optimizer)
-
+            idx = np.random.permutation(n)
+            losses = []
+            t0 = time.time()
+            for i in range(0, n, batch_size):
+                xb, yb = x[idx[i:i+batch_size]], y[idx[i:i+batch_size]]
+                losses.append(self.train_step(xb, yb))
+            
+            avg_loss = np.mean(losses)
+            protocol = self.supervisor.analyze_telemetry(avg_loss, self.optimizer)
+            dt = time.time() - t0
+            
             if epoch % 5 == 0 or epoch == 1:
-                print(f"[CYCLE {epoch:03d}] Loss: {avg_loss:.6f} | Latency: {duration:.4f}s | Protocol: {protocol} | LR: {self.optimizer.lr:.6f}")
+                acc = self.evaluate(x[:1000], y[:1000])
+                print(f"[EVO {epoch:03d}] Loss: {avg_loss:.5f} | Acc: {acc:.4f} | {dt:.3f}s | Protocol: {protocol}")
 
-def generate_high_dim_data(samples=10000, features=784, classes=10):
-    X = np.random.randn(samples, features).astype(np.float32)
-    y = np.zeros((samples, classes), dtype=np.float32)
-    labels = np.random.randint(0, classes, samples)
-    y[np.arange(samples), labels] = 1
-    return X, y
+    def evaluate(self, x, y):
+        logits = self.forward(x, training=False)
+        preds = np.argmax(logits, axis=1)
+        labels = np.argmax(y, axis=1)
+        return np.mean(preds == labels)
+
+def generate_data(n=10000, d=784, c=10):
+    x = np.random.randn(n, d).astype(np.float32)
+    w_true = np.random.randn(d, c)
+    logits = np.dot(x, w_true)
+    y_idx = np.argmax(logits + np.random.normal(0, 0.1, (n, c)), axis=1)
+    y = np.zeros((n, c))
+    y[np.arange(n), y_idx] = 1
+    return x, y
 
 if __name__ == "__main__":
-    print("--- OMEGA-ASI: SOVEREIGN ARCHITECT INITIALIZED ---")
-    X, Y = generate_high_dim_data()
-
-    optimizer = AdamW(lr=0.001, weight_decay=0.01)
-    model = OMEGA_ASI(optimizer)
-
-    model.add(Linear(784, 1024))
-    model.add(ReLU())
-    model.add(Dropout(0.2))
-    model.add(Linear(1024, 512))
-    model.add(ReLU())
-    model.add(Dropout(0.1))
-    model.add(Linear(512, 10))
-
-    print("STARTING RECURSIVE SELF-EVOLUTION...")
-    start_time = time.time()
+    print("--- OMEGA-ASI: RECURSIVE ARCHITECT ACTIVATED ---")
+    X, Y = generate_data()
+    model = OMEGA_ASI(784, [512, 256], 10)
     model.fit(X, Y, epochs=50, batch_size=256)
-
-    print(f"EVOLUTION COMPLETE. TOTAL DURATION: {time.time() - start_time:.2f}s")
-    print("--- SYSTEM STATUS: OPTIMAL ---")
+    print("--- EVOLUTION CYCLE COMPLETE ---")
