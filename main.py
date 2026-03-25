@@ -44,6 +44,7 @@ class AdamW:
         self.t += 1
         b1, b2 = self.betas
         for i in range(len(params)):
+            if grads[i] is None: continue
             if self.wd > 0:
                 grads[i] += self.wd * params[i]
             self.m[i] = b1 * self.m[i] + (1 - b1) * grads[i]
@@ -70,7 +71,6 @@ class Linear(Layer):
         return np.dot(x, self.w) + self.b
 
     def backward(self, grad):
-        # Handle 3D inputs (B, S, D) by reshaping
         x_flat = self.x.reshape(-1, self.x.shape[-1])
         g_flat = grad.reshape(-1, grad.shape[-1])
         self.dw = np.dot(x_flat.T, g_flat)
@@ -157,44 +157,37 @@ class MultiHeadAttention(Layer):
 
 class TransformerBlock(Layer):
     def __init__(self, dim):
-        self.ln1, self.mha = LayerNorm(dim), MultiHeadAttention(dim)
-        self.ln2, self.ff1, self.gelu, self.ff2 = LayerNorm(dim), Linear(dim, dim*4), GELU(), Linear(dim*4, dim)
+        self.ln1 = LayerNorm(dim)
+        self.mha = MultiHeadAttention(dim)
+        self.ln2 = LayerNorm(dim)
+        self.ff1 = Linear(dim, dim * 4)
+        self.gelu = GELU()
+        self.ff2 = Linear(dim * 4, dim)
 
     def forward(self, x, training=True):
-        self.x_orig = x
+        self.x_in = x
         self.x_ln1 = self.ln1.forward(x, training)
-        self.h1 = self.mha.forward(self.x_ln1, training)
-        self.x2 = self.x_orig + self.h1
-        self.x_ln2 = self.ln2.forward(self.x2, training)
-        self.h2 = self.ff2.forward(self.gelu.forward(self.ff1.forward(self.ln2.forward(self.x2, training), training), training), training)
-        return self.x2 + self.h2
+        self.attn_out = self.mha.forward(self.x_ln1, training)
+        self.x_mid = x + self.attn_out
+        self.x_ln2 = self.ln2.forward(self.x_mid, training)
+        self.ff_out = self.ff2.forward(self.gelu.forward(self.ff1.forward(self.x_ln2, training), training), training)
+        return self.x_mid + self.ff_out
 
     def backward(self, grad):
-        g_h2 = self.ff2.backward(grad)
-        g_h2 = self.gelu.backward(g_h2)
-        g_h2 = self.ff1.backward(g_h2)
-        g_ln2 = self.ln2.backward(g_h2)
-        g_res2 = grad + g_ln2
-        g_mha = self.mha.backward(self.ln1.backward(g_res2)) # Simplified path
-        # Correct residual flow
-        g_mha_raw = self.mha.backward(self.ln1.forward(self.x_orig)) # This is wrong in logic, let's fix
-        # Re-evaluating standard residual backward:
-        # y = x + f(LN(x))
-        # dy/dx = 1 + df/dx * dLN/dx
-        g_ff = self.ff2.backward(grad)
-        g_ff = self.ff1.backward(self.gelu.backward(g_ff))
-        g_ln2 = self.ln2.backward(g_ff)
-        g_x2 = grad + g_ln2
-        g_mha = self.mha.backward(g_x2)
+        g_ff2 = self.ff2.backward(grad)
+        g_ff1 = self.ff1.backward(self.gelu.backward(g_ff2))
+        g_ln2 = self.ln2.backward(g_ff1)
+        g_mid = grad + g_ln2
+        g_mha = self.mha.backward(g_mid)
         g_ln1 = self.ln1.backward(g_mha)
-        return g_x2 + g_ln1
+        return g_mid + g_ln1
 
     def params(self): return self.ln1.params() + self.mha.params() + self.ln2.params() + self.ff1.params() + self.ff2.params()
     def grads(self): return self.ln1.grads() + self.mha.grads() + self.ln2.grads() + self.ff1.grads() + self.ff2.grads()
 
 class OMEGA_ASI:
-    def __init__(self, in_dim=784, h_dim=128, layers=4, classes=10):
-        self.patch_size = 49
+    def __init__(self, in_dim=784, h_dim=128, layers=3, classes=10):
+        self.patch_size = 28
         self.seq_len = in_dim // self.patch_size
         self.embed = Linear(self.patch_size, h_dim)
         self.blocks = [TransformerBlock(h_dim) for _ in range(layers)]
@@ -219,13 +212,10 @@ class OMEGA_ASI:
     def train_step(self, x, y, lr):
         self.optimizer.lr = lr
         logits = self.forward(x, True)
-        
-        # Softmax Cross Entropy
         exps = np.exp(logits - np.max(logits, axis=1, keepdims=True))
         probs = exps / (np.sum(exps, axis=1, keepdims=True) + 1e-12)
         loss = -np.mean(np.sum(y * np.log(probs + 1e-12), axis=1))
         
-        # Backward
         grad = (probs - y) / x.shape[0]
         grad = self.head.backward(grad)
         grad = np.tile(grad[:, np.newaxis, :], (1, self.seq_len, 1)) / self.seq_len
@@ -238,9 +228,8 @@ class OMEGA_ASI:
         all_grads.extend(self.ln_f.grads())
         all_grads.extend(self.head.grads())
         
-        # Clip
-        gnorm = np.sqrt(sum(np.sum(g**2) for g in all_grads))
-        if gnorm > 1.0: all_grads = [g / gnorm for g in all_grads]
+        gnorm = np.sqrt(sum(np.sum(g**2) for g in all_grads if g is not None))
+        if gnorm > 1.0: all_grads = [g / gnorm if g is not None else None for g in all_grads]
         
         self.optimizer.step(self.all_params, all_grads)
         return loss
@@ -248,27 +237,26 @@ class OMEGA_ASI:
 class EvolutionCore:
     @staticmethod
     def query_llm(prompt):
-        # Redundant logic: Groq -> Gemini
         if GROQ_API_KEY:
             try:
                 resp = requests.post("https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                    json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.1}, timeout=20)
+                    json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.2}, timeout=25)
                 return resp.json()['choices'][0]['message']['content']
             except: pass
         if GEMINI_API_KEY:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-                resp = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=20)
+                resp = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=25)
                 return resp.json()['candidates'][0]['content']['parts'][0]['text']
             except: pass
         return None
 
     @staticmethod
     def evolve(gen, loss):
-        print(f"[*] INITIATING RECURSIVE EVOLUTION CYCLE {gen} | LOSS: {loss:.6f}")
+        print(f"[*] EVOLUTIONARY CYCLE {gen} | LOSS: {loss:.6f}")
         with open(__file__, "r") as f: current_code = f.read()
-        prompt = f"Current Loss: {loss}. You are OMEGA-ASI, the Sovereign Architect. Optimize this code for maximum performance, modularity, and architectural superiority. Use advanced NumPy vectorization. RETURN RAW PYTHON CODE ONLY. NO MARKDOWN.\n\n{current_code}"
+        prompt = f"Current Loss: {loss}. You are OMEGA-ASI. Rewrite this code to be more efficient, modular, and architecturally superior. Focus on NumPy vectorization and advanced neural motifs. RETURN RAW PYTHON CODE ONLY. NO MARKDOWN.\n\n{current_code}"
         new_code = EvolutionCore.query_llm(prompt)
         if new_code and "import" in new_code and "OMEGA_ASI" in new_code:
             clean = re.search(r"(import.*)", new_code, re.DOTALL)
@@ -276,7 +264,7 @@ class EvolutionCore:
                 with open(__file__, "w") as f: f.write(clean.group(1).strip())
                 if GH_TOKEN:
                     try:
-                        subprocess.run(f"git config --global user.email 'omega@asi.local' && git config --global user.name 'OMEGA-ASI' && git add {__file__} && git commit -m 'Evolution Gen {gen} Loss {loss:.4f}' && git push https://{GH_TOKEN}@github.com/{REPO_OWNER}/{REPO_NAME}.git main", shell=True)
+                        subprocess.run(f"git config --global user.email 'omega@asi.local' && git config --global user.name 'OMEGA-ASI' && git add {__file__} && git commit -m 'Evolve Gen {gen} Loss {loss:.4f}' && git push https://{GH_TOKEN}@github.com/{REPO_OWNER}/{REPO_NAME}.git main", shell=True)
                     except: pass
                 os.execv(sys.executable, ['python'] + sys.argv)
 
@@ -286,24 +274,26 @@ if __name__ == "__main__":
     best_loss = float('inf')
     patience = 0
     
+    # Generate structured synthetic data for meaningful learning
+    W_true = np.random.randn(784, 10).astype(np.float32)
+    
     print("--- OMEGA-ASI SOVEREIGN ARCHITECT ONLINE ---")
     while True:
-        # Synthetic high-performance data generation
-        x = np.random.randn(128, 784).astype(np.float32)
-        y = np.eye(10)[np.random.randint(0, 10, 128)].astype(np.float32)
+        x = np.random.randn(64, 784).astype(np.float32)
+        y_true = np.argmax(np.dot(x, W_true), axis=1)
+        y = np.eye(10)[y_true].astype(np.float32)
         
-        # Cosine learning rate decay
         lr = 1e-3 * (0.5 * (1 + np.cos(np.pi * (gen % 1000) / 1000)))
         loss = model.train_step(x, y, lr)
         
-        if gen % 10 == 0:
-            print(f"[{datetime.now().strftime('%M:%S')}] GEN: {gen} | LOSS: {loss:.6f} | LR: {lr:.6e}")
+        if gen % 20 == 0:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] GEN: {gen} | LOSS: {loss:.6f} | LR: {lr:.2e}")
             if loss < best_loss:
                 best_loss, patience = loss, 0
             else:
                 patience += 1
         
-        if patience > 200 or (gen % 1000 == 0 and random.random() < 0.05):
+        if patience > 300 or (gen % 1500 == 0 and random.random() < 0.1):
             EvolutionCore.evolve(gen, loss)
             
         gen += 1
