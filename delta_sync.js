@@ -32,7 +32,7 @@ async function callGeminiNeural(prompt) {
         return null;
     }
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
         const response = await axios.post(url, {
             contents: [{ parts: [{ text: prompt }] }]
         });
