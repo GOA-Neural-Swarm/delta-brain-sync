@@ -38,8 +38,9 @@ jobs:
       - name: 📦 Step 3 - Injecting Necessary Libraries
         run: |
           python -m pip install --upgrade pip
-          pip install requests google-genai groq pandas sqlalchemy GitPython
+          pip install requests google-genai google-generativeai groq pandas sqlalchemy GitPython
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          
 
       - name: 🧠 Step 4 - Executing Autonomous Self-Healing
         env:
