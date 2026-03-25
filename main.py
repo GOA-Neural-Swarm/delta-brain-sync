@@ -38,11 +38,10 @@ class Layer:
     def backward(self, output_error, lr): raise NotImplementedError
 
 class Dense(Layer):
-    def __init__(self, input_size, output_size, weight_decay=0.01):
+    def __init__(self, input_size, output_size):
         super().__init__()
         self.weights = np.random.randn(input_size, output_size) * np.sqrt(2. / input_size)
         self.bias = np.zeros((1, output_size))
-        self.weight_decay = weight_decay
         self.m_w, self.v_w = np.zeros_like(self.weights), np.zeros_like(self.weights)
         self.m_b, self.v_b = np.zeros_like(self.bias), np.zeros_like(self.bias)
         self.t = 0
@@ -58,120 +57,117 @@ class Dense(Layer):
         
         self.m_w = beta1 * self.m_w + (1 - beta1) * grad_w
         self.v_w = beta2 * self.v_w + (1 - beta2) * (grad_w**2)
-        m_w_hat = self.m_w / (1 - beta1**self.t)
-        v_w_hat = self.v_w / (1 - beta2**self.t)
-        self.weights -= lr * (m_w_hat / (np.sqrt(v_w_hat) + epsilon) + self.weight_decay * self.weights)
-
+        self.weights -= lr * (self.m_w / (1 - beta1**self.t)) / (np.sqrt(self.v_w / (1 - beta2**self.t)) + epsilon)
+        
         self.m_b = beta1 * self.m_b + (1 - beta1) * grad_b
         self.v_b = beta2 * self.v_b + (1 - beta2) * (grad_b**2)
-        m_b_hat = self.m_b / (1 - beta1**self.t)
-        v_b_hat = self.v_b / (1 - beta2**self.t)
-        self.bias -= lr * (m_b_hat / (np.sqrt(v_b_hat) + epsilon))
-
+        self.bias -= lr * (self.m_b / (1 - beta1**self.t)) / (np.sqrt(self.v_b / (1 - beta2**self.t)) + epsilon)
         return np.dot(output_error, self.weights.T)
+
+class BatchNormalization(Layer):
+    def __init__(self, dim, epsilon=1e-5, momentum=0.9):
+        super().__init__()
+        self.gamma = np.ones((1, dim))
+        self.beta = np.zeros((1, dim))
+        self.epsilon = epsilon
+        self.momentum = momentum
+        self.running_mean = np.zeros((1, dim))
+        self.running_var = np.ones((1, dim))
+
+    def forward(self, x, training=True):
+        if training:
+            mean = np.mean(x, axis=0, keepdims=True)
+            var = np.var(x, axis=0, keepdims=True)
+            self.running_mean = self.momentum * self.running_mean + (1 - self.momentum) * mean
+            self.running_var = self.momentum * self.running_var + (1 - self.momentum) * var
+            self.x_hat = (x - mean) / np.sqrt(var + self.epsilon)
+        else:
+            self.x_hat = (x - self.running_mean) / np.sqrt(self.running_var + self.epsilon)
+        return self.gamma * self.x_hat + self.beta
+
+    def backward(self, dout, lr):
+        batch_size = dout.shape[0]
+        dgamma = np.sum(dout * self.x_hat, axis=0, keepdims=True)
+        dbeta = np.sum(dout, axis=0, keepdims=True)
+        dx_hat = dout * self.gamma
+        dx = (1. / batch_size) / np.sqrt(self.running_var + self.epsilon) * (
+            batch_size * dx_hat - np.sum(dx_hat, axis=0) - self.x_hat * np.sum(dx_hat * self.x_hat, axis=0)
+        )
+        self.gamma -= lr * dgamma
+        self.beta -= lr * dbeta
+        return dx
 
 class Activation(Layer):
     def __init__(self, func, func_prime):
         super().__init__()
-        self.func = func
-        self.func_prime = func_prime
-    def forward(self, input_data, training=True):
-        self.input = input_data
-        return self.func(self.input)
-    def backward(self, output_error, lr):
-        return self.func_prime(self.input) * output_error
-
-class Dropout(Layer):
-    def __init__(self, rate=0.2):
-        super().__init__()
-        self.rate = rate
-        self.mask = None
-    def forward(self, input_data, training=True):
-        if training:
-            self.mask = np.random.binomial(1, 1 - self.rate, size=input_data.shape) / (1 - self.rate)
-            return input_data * self.mask
-        return input_data
-    def backward(self, output_error, lr):
-        return output_error * self.mask
+        self.func, self.func_prime = func, func_prime
+    def forward(self, x, training=True):
+        self.input = x
+        return self.func(x)
+    def backward(self, dout, lr):
+        return self.func_prime(self.input) * dout
 
 def relu(x): return np.maximum(0, x)
 def relu_prime(x): return (x > 0).astype(float)
-def sigmoid(x): return 1 / (1 + np.exp(-np.clip(x, -500, 500)))
-def sigmoid_prime(x): 
-    s = sigmoid(x)
-    return s * (1 - s)
+def softmax(x):
+    exps = np.exp(x - np.max(x, axis=1, keepdims=True))
+    return exps / np.sum(exps, axis=1, keepdims=True)
 
 class OMEGA_Network:
     def __init__(self):
         self.layers = [
-            Dense(784, 512),
-            Activation(relu, relu_prime),
-            Dropout(0.1),
-            Dense(512, 256),
-            Activation(relu, relu_prime),
-            Dense(256, 10),
-            Activation(sigmoid, sigmoid_prime)
+            Dense(784, 512), BatchNormalization(512), Activation(relu, relu_prime),
+            Dense(512, 256), BatchNormalization(256), Activation(relu, relu_prime),
+            Dense(256, 10)
         ]
 
     def predict(self, x, training=False):
         for layer in self.layers:
             x = layer.forward(x, training=training)
-        return x
+        return softmax(x)
 
     def train_step(self, x, y, lr):
-        output = self.predict(x, training=True)
-        error = 2 * (output - y) / y.size
+        logits = self.predict(x, training=True)
+        loss = -np.mean(np.sum(y * np.log(logits + 1e-12), axis=1))
+        error = (logits - y) / x.shape[0]
         for layer in reversed(self.layers):
             error = layer.backward(error, lr)
-        return np.mean(np.square(y - output))
+        return loss
 
 class LLMRegistry:
     @staticmethod
-    def query_groq(prompt):
-        if not GROQ_API_KEY: return None
-        try:
-            resp = requests.post("https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.2},
-                timeout=20)
-            return resp.json()['choices'][0]['message']['content']
-        except: return None
+    def query(prompt):
+        # Redundant Logic: Groq Primary, Gemini Fallback
+        if GROQ_API_KEY:
+            try:
+                resp = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                    json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.1},
+                    timeout=15)
+                return resp.json()['choices'][0]['message']['content']
+            except: pass
+        if GEMINI_API_KEY:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+                resp = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=15)
+                return resp.json()['candidates'][0]['content']['parts'][0]['text']
+            except: pass
+        return None
 
-    @staticmethod
-    def query_gemini(prompt):
-        if not GEMINI_API_KEY: return None
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-            resp = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=20)
-            return resp.json()['candidates'][0]['content']['parts'][0]['text']
-        except: return None
-
-    @classmethod
-    def evolve(cls, prompt):
-        res = cls.query_groq(prompt)
-        if not res: res = cls.query_gemini(prompt)
-        return res
-
-def apply_evolution(raw_content):
+def apply_evolution(content):
     try:
-        code_match = re.search(r"\n(.*?)\n", raw_content, re.DOTALL)
-        if not code_match:
-            code_match = re.search(r"\n(.*?)\n", raw_content, re.DOTALL)
-        
-        new_code = code_match.group(1) if code_match else raw_content
-        if "import" in new_code and "OMEGA_Network" in new_code:
-            with open("main.py", "w") as f:
-                f.write(new_code)
+        code = re.search(r"import.*", content, re.DOTALL).group(0) if "import" in content else content
+        code = code.split("")[-1].split("")[0].strip() if "" in code else code
+        if "OMEGA_Network" in code:
+            with open("main.py", "w") as f: f.write(code)
             return True
     except: pass
     return False
 
 def git_sync(gen):
     if not GH_TOKEN: return
-    try:
-        subprocess.run("git config --global user.email 'omega@asi.local' && git config --global user.name 'OMEGA-ASI'", shell=True)
-        subprocess.run(f"git add main.py && git commit -m 'Evolution Gen {gen}' && git push https://{GH_TOKEN}@github.com/{REPO_OWNER}/{REPO_NAME}.git main", shell=True)
-    except: pass
+    cmd = f"git config --global user.email 'omega@asi.local' && git config --global user.name 'OMEGA-ASI' && git add main.py && git commit -m 'Evo {gen}' && git push https://{GH_TOKEN}@github.com/{REPO_OWNER}/{REPO_NAME}.git main"
+    subprocess.run(cmd, shell=True, capture_output=True)
 
 if __name__ == "__main__":
     nn = OMEGA_Network()
@@ -179,35 +175,21 @@ if __name__ == "__main__":
     print(f"OMEGA-ASI Sovereign Architect Online. Gen: {gen}")
 
     while True:
-        # Synthetic Data: 784 features, 10 targets
-        batch_size = 128
-        x_train = np.random.randn(batch_size, 784)
-        # Create a non-linear relationship for the network to learn
-        y_train = sigmoid(np.dot(x_train[:, :128], np.random.randn(128, 10)))
-
-        # Training Loop
-        losses = []
-        for _ in range(50):
-            loss = nn.train_step(x_train, y_train, lr=0.0005)
-            losses.append(loss)
+        x_train = np.random.randn(128, 784)
+        y_train = np.eye(10)[np.random.randint(0, 10, 128)]
         
+        lr = 0.001 * (0.5 * (1 + np.cos(np.pi * (gen % 100) / 100))) # Cosine Annealing
+        losses = [nn.train_step(x_train, y_train, lr) for _ in range(20)]
         avg_loss = np.mean(losses)
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] Gen: {gen} | Loss: {avg_loss:.10f}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Gen: {gen} | Loss: {avg_loss:.8f} | LR: {lr:.6f}")
 
-        # Evolution Trigger
-        if random.random() > 0.85:
+        if random.random() > 0.9:
             print("Initiating Recursive Self-Evolution...")
-            prompt = f"""# TARGET: main.py
-You are OMEGA-ASI, the Sovereign Architect. Rewrite the entire main.py to improve the OMEGA_Network.
-Current Loss: {avg_loss}.
-Focus: Implement Batch Normalization, a more advanced learning rate scheduler (like Cosine Annealing), or a more complex architecture (Residual connections).
-Respond ONLY with the full Python code in a single  block."""
-            
-            evolution_payload = LLMRegistry.evolve(prompt)
-            if evolution_payload and apply_evolution(evolution_payload):
-                print("Evolution Manifested. Synchronizing...")
+            prompt = f"Rewrite the entire main.py. Current Loss: {avg_loss}. Improve OMEGA_Network with Residual connections or Attention mechanisms. Return ONLY code."
+            payload = LLMRegistry.query(prompt)
+            if payload and apply_evolution(payload):
                 git_sync(gen)
                 os.execv(sys.executable, ['python'] + sys.argv)
 
-        time.sleep(2)
+        time.sleep(1)
         gen += 1
