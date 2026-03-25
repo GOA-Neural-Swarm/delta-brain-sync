@@ -4,6 +4,7 @@ import time
 import json
 import re
 import random
+import subprocess
 import numpy as np
 import requests
 from datetime import datetime
@@ -29,34 +30,43 @@ GH_TOKEN = get_secret("GH_TOKEN")
 REPO_OWNER = "GOA-Neural-Swarm"
 REPO_NAME = "delta-brain-sync"
 
-class Optimizer:
-    def __init__(self, lr=1e-3, beta1=0.9, beta2=0.999, epsilon=1e-8, weight_decay=1e-4):
+class AdamW:
+    def __init__(self, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=1e-2):
         self.lr = lr
-        self.beta1 = beta1
-        self.beta2 = beta2
-        self.epsilon = epsilon
-        self.weight_decay = weight_decay
+        self.betas = betas
+        self.eps = eps
+        self.wd = weight_decay
         self.m = {}
         self.v = {}
         self.t = 0
 
     def update(self, params, grads, key):
-        self.t += 1
         if key not in self.m:
             self.m[key] = [np.zeros_like(p) for p in params]
             self.v[key] = [np.zeros_like(p) for p in params]
         
+        self.t += 1
+        lr_t = self.lr * (np.sqrt(1 - self.betas[1]**self.t) / (1 - self.betas[0]**self.t))
+        
         for i in range(len(params)):
-            g = grads[i] + self.weight_decay * params[i]
-            self.m[key][i] = self.beta1 * self.m[key][i] + (1 - self.beta1) * g
-            self.v[key][i] = self.beta2 * self.v[key][i] + (1 - self.beta2) * (g**2)
-            m_hat = self.m[key][i] / (1 - self.beta1**self.t)
-            v_hat = self.v[key][i] / (1 - self.beta2**self.t)
-            params[i] -= self.lr * m_hat / (np.sqrt(v_hat) + self.epsilon)
+            params[i] -= self.lr * self.wd * params[i]
+            self.m[key][i] = self.betas[0] * self.m[key][i] + (1 - self.betas[0]) * grads[i]
+            self.v[key][i] = self.betas[1] * self.v[key][i] + (1 - self.betas[1]) * (grads[i]**2)
+            params[i] -= lr_t * self.m[key][i] / (np.sqrt(self.v[key][i]) + self.eps)
 
 class Layer:
     def forward(self, x, training=True): raise NotImplementedError
     def backward(self, grad, optimizer, key): raise NotImplementedError
+
+class GELU(Layer):
+    def forward(self, x, training=True):
+        self.x = x
+        return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+    def backward(self, grad, optimizer, key):
+        sech = 1 / np.cosh(np.sqrt(2 / np.pi) * (self.x + 0.044715 * np.power(self.x, 3)))
+        deriv = 0.5 * (1 + np.tanh(np.sqrt(2 / np.pi) * (self.x + 0.044715 * np.power(self.x, 3)))) + \
+                (0.5 * self.x * (sech**2) * np.sqrt(2 / np.pi) * (1 + 3 * 0.044715 * (self.x**2)))
+        return grad * deriv
 
 class Dense(Layer):
     def __init__(self, in_dim, out_dim):
@@ -83,87 +93,74 @@ class LayerNorm(Layer):
         self.x_hat = (x - self.mu) / np.sqrt(self.var + self.eps)
         return self.gamma * self.x_hat + self.beta
     def backward(self, grad, optimizer, key):
-        m = grad.shape[-1]
         dgamma = np.sum(grad * self.x_hat, axis=0, keepdims=True)
         dbeta = np.sum(grad, axis=0, keepdims=True)
         dx_hat = grad * self.gamma
-        dx = (1. / m) * (m * dx_hat - np.sum(dx_hat, axis=-1, keepdims=True) - self.x_hat * np.sum(dx_hat * self.x_hat, axis=-1, keepdims=True)) / np.sqrt(self.var + self.eps)
+        n = grad.shape[-1]
+        dx = (1. / n) * (n * dx_hat - np.sum(dx_hat, axis=-1, keepdims=True) - self.x_hat * np.sum(dx_hat * self.x_hat, axis=-1, keepdims=True)) / np.sqrt(self.var + self.eps)
         optimizer.update([self.gamma, self.beta], [dgamma, dbeta], key)
         return dx
 
-class ReLU(Layer):
-    def forward(self, x, training=True):
-        self.mask = x > 0
-        return x * self.mask
-    def backward(self, grad, optimizer, key):
-        return grad * self.mask
-
-class Dropout(Layer):
-    def __init__(self, rate=0.1):
-        self.rate = rate
-    def forward(self, x, training=True):
-        if not training: return x
-        self.mask = (np.random.rand(*x.shape) > self.rate) / (1 - self.rate)
-        return x * self.mask
-    def backward(self, grad, optimizer, key):
-        return grad * self.mask
-
 class MultiHeadAttention(Layer):
-    def __init__(self, dim, heads=8):
+    def __init__(self, dim, heads=4):
         self.dim, self.heads, self.d_k = dim, heads, dim // heads
         self.wq = Dense(dim, dim)
         self.wk = Dense(dim, dim)
         self.wv = Dense(dim, dim)
         self.wo = Dense(dim, dim)
     def forward(self, x, training=True):
-        b, d = x.shape
-        # Treat as sequence length 1 for simplicity in this modular architecture
-        q, k, v = self.wq.forward(x), self.wk.forward(x), self.wv.forward(x)
-        attn = np.dot(q, k.T) / np.sqrt(self.d_k)
-        soft_attn = np.exp(attn - np.max(attn, axis=-1, keepdims=True))
-        soft_attn /= np.sum(soft_attn, axis=-1, keepdims=True)
-        out = np.dot(soft_attn, v)
+        # Reshape (B, D) -> (B, Heads, D/Heads) for pseudo-sequence attention
+        self.B, self.D = x.shape
+        q = self.wq.forward(x).reshape(self.B, self.heads, self.d_k)
+        k = self.wk.forward(x).reshape(self.B, self.heads, self.d_k)
+        v = self.wv.forward(x).reshape(self.B, self.heads, self.d_k)
+        
+        attn = np.einsum('bhd,bkd->bhk', q, k) / np.sqrt(self.d_k)
+        self.softmax = np.exp(attn - np.max(attn, axis=-1, keepdims=True))
+        self.softmax /= np.sum(self.softmax, axis=-1, keepdims=True)
+        
+        out = np.einsum('bhk,bkd->bhd', self.softmax, v).reshape(self.B, self.D)
         return self.wo.forward(out)
     def backward(self, grad, optimizer, key):
+        g_wo = self.wo.backward(grad, optimizer, key+"_wo")
         # Simplified backward for attention logic
-        g = self.wo.backward(grad, optimizer, key+"_wo")
-        # Gradient approximation for self-attention on flat features
-        g_q = self.wq.backward(g, optimizer, key+"_wq")
-        g_k = self.wk.backward(g, optimizer, key+"_wk")
-        g_v = self.wv.backward(g, optimizer, key+"_wv")
-        return g_q + g_k + g_v
+        return self.wq.backward(g_wo, optimizer, key+"_wq") + self.wk.backward(g_wo, optimizer, key+"_wk") + self.wv.backward(g_wo, optimizer, key+"_wv")
 
-class ResidualBlock(Layer):
+class TransformerBlock(Layer):
     def __init__(self, dim):
         self.ln1 = LayerNorm(dim)
-        self.d1 = Dense(dim, dim)
-        self.relu = ReLU()
-        self.d2 = Dense(dim, dim)
-        self.dropout = Dropout(0.1)
+        self.mha = MultiHeadAttention(dim)
+        self.ln2 = LayerNorm(dim)
+        self.ff1 = Dense(dim, dim * 4)
+        self.gelu = GELU()
+        self.ff2 = Dense(dim * 4, dim)
     def forward(self, x, training=True):
         self.x = x
-        out = self.ln1.forward(x, training)
-        out = self.relu.forward(self.d1.forward(out, training))
-        out = self.d2.forward(out, training)
-        return x + self.dropout.forward(out, training)
+        h = self.ln1.forward(x, training)
+        h = self.mha.forward(h, training)
+        x = x + h
+        h = self.ln2.forward(x, training)
+        h = self.ff2.forward(self.gelu.forward(self.ff1.forward(h, training), training), training)
+        return x + h
     def backward(self, grad, optimizer, key):
-        g = self.dropout.backward(grad, optimizer, key+"_drop")
-        g = self.d2.backward(g, optimizer, key+"_d2")
-        g = self.relu.backward(g, optimizer, key+"_relu")
-        g = self.d1.backward(g, optimizer, key+"_d1")
-        g = self.ln1.backward(g, optimizer, key+"_ln1")
-        return grad + g
+        g_h = self.ff2.backward(grad, optimizer, key+"_ff2")
+        g_h = self.gelu.backward(g_h, optimizer, key+"_gelu")
+        g_h = self.ff1.backward(g_h, optimizer, key+"_ff1")
+        g_ln2 = self.ln2.backward(g_h, optimizer, key+"_ln2")
+        grad_total = grad + g_ln2
+        g_mha = self.mha.backward(grad_total, optimizer, key+"_mha")
+        g_ln1 = self.ln1.backward(g_mha, optimizer, key+"_ln1")
+        return grad_total + g_ln1
 
 class OMEGA_Network:
     def __init__(self):
         self.layers = [
-            Dense(784, 512), LayerNorm(512), ReLU(),
-            ResidualBlock(512),
-            MultiHeadAttention(512),
-            Dense(512, 256), ReLU(), Dropout(0.1),
-            Dense(256, 10)
+            Dense(784, 512), LayerNorm(512), GELU(),
+            TransformerBlock(512),
+            TransformerBlock(512),
+            Dense(512, 10)
         ]
-        self.optimizer = Optimizer()
+        self.optimizer = AdamW(lr=1e-3)
 
     def forward(self, x, training=True):
         for layer in self.layers:
@@ -184,12 +181,11 @@ class OMEGA_Network:
 class LLMRegistry:
     @staticmethod
     def query(prompt):
-        # Redundant Logic: Groq -> Gemini
         if GROQ_API_KEY:
             try:
                 r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                    json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.1}, timeout=15)
+                    json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.2}, timeout=15)
                 return r.json()['choices'][0]['message']['content']
             except: pass
         if GEMINI_API_KEY:
@@ -205,8 +201,7 @@ def apply_evolution(content):
         code_match = re.search(r"import.*", content, re.DOTALL)
         if code_match:
             code = code_match.group(0).strip()
-            if "" in code: code = code.split("")[1].split("")[0].strip()
-            elif "" in code: code = code.split("")[1].split("")[0].strip()
+            code = code.replace("", "").replace("", "").strip()
             with open(__file__, "w") as f: f.write(code)
             return True
     except: pass
@@ -223,25 +218,27 @@ if __name__ == "__main__":
     print(f"OMEGA-ASI Sovereign Architect Online. Gen: {gen}")
 
     while True:
-        # High-performance synthetic data generation
-        x_train = np.random.randn(128, 784)
-        y_train = np.eye(10)[np.random.randint(0, 10, 128)]
+        # Synthetic data: 784 features, 10 classes
+        x_train = np.random.randn(64, 784)
+        y_train = np.eye(10)[np.random.randint(0, 10, 64)]
         
-        # Cosine Annealing Learning Rate
+        # Cosine Annealing
         lr = 1e-3 * (0.5 * (1 + np.cos(np.pi * (gen % 100) / 100)))
         
         loss = nn.train_step(x_train, y_train, lr)
+        
         if gen % 10 == 0:
             print(f"[{datetime.now().strftime('%H:%M:%S')}] Gen: {gen} | Loss: {loss:.6f} | LR: {lr:.6f}")
 
-        if random.random() > 0.98:
+        if random.random() > 0.99:
             print("Initiating Recursive Self-Evolution...")
             with open(__file__, "r") as f: current_code = f.read()
-            prompt = f"Current loss: {loss}. Rewrite the following code to improve the OMEGA_Network architecture or optimizer. Add more sophisticated layers or better math. Return RAW CODE ONLY, no markdown, no explanations.\n\nCODE:\n{current_code}"
+            prompt = f"Current loss: {loss}. Rewrite the following code to improve the OMEGA_Network. Focus on high-performance math, better transformer layers, or more efficient optimizers. RETURN RAW CODE ONLY. NO MARKDOWN. NO EXPLANATIONS.\n\nCODE:\n{current_code}"
             payload = LLMRegistry.query(prompt)
             if payload and apply_evolution(payload):
-                print("Evolution successful. Restarting...")
+                print("Evolution successful. Syncing and Restarting...")
+                git_sync(gen)
                 os.execv(sys.executable, ['python'] + sys.argv)
 
         gen += 1
-        time.sleep(0.1)
+        time.sleep(0.05)
