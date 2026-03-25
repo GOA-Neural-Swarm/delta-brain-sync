@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 import os
@@ -16,16 +17,16 @@ class Optimizer:
         if layer_id not in self.m:
             self.m[layer_id] = [np.zeros_like(p) for p in params]
             self.v[layer_id] = [np.zeros_like(p) for p in params]
-        
+
         self.t += 1
         updated_params = []
         for i in range(len(params)):
             self.m[layer_id][i] = self.beta1 * self.m[layer_id][i] + (1 - self.beta1) * grads[i]
             self.v[layer_id][i] = self.beta2 * self.v[layer_id][i] + (1 - self.beta2) * (grads[i]**2)
-            
+
             m_hat = self.m[layer_id][i] / (1 - self.beta1**self.t)
             v_hat = self.v[layer_id][i] / (1 - self.beta2**self.t)
-            
+
             updated_params.append(params[i] - self.lr * m_hat / (np.sqrt(v_hat) + self.epsilon))
         return updated_params
 
@@ -85,19 +86,17 @@ class SovereignSupervisor:
 
     def evaluate(self, loss, latency, optimizer):
         self.history.append(loss)
-        
-        # Gemini Protocol: Stability Analysis
+
         if len(self.history) > 1:
             delta = self.history[-2] - loss
             if delta < 0:
-                optimizer.lr *= 0.5 # Convergence failure mitigation
+                optimizer.lr *= 0.5
                 return "STABILITY_INTERVENTION"
-        
-        # Groq Protocol: Throughput Optimization
+
         if latency > 0.5 and not self.groq_active:
-            optimizer.lr *= 1.1 # Attempt to accelerate convergence to reduce total cycles
+            optimizer.lr *= 1.1
             return "THROUGHPUT_ADAPTATION"
-            
+
         return "NOMINAL"
 
 class OMEGA_ASI:
@@ -117,40 +116,35 @@ class OMEGA_ASI:
 
     def train(self, x_train, y_train, epochs, batch_size):
         n_samples = x_train.shape[0]
-        
+
         for epoch in range(1, epochs + 1):
             start_time = time.time()
             indices = np.random.permutation(n_samples)
             x_shuffled = x_train[indices]
             y_shuffled = y_train[indices]
-            
+
             epoch_loss = 0
             for i in range(0, n_samples, batch_size):
                 x_batch = x_shuffled[i:i+batch_size]
                 y_batch = y_shuffled[i:i+batch_size]
-                
-                # Forward
+
                 output = self.predict(x_batch)
-                
-                # Loss (Cross-Entropy)
                 epoch_loss += -np.mean(np.sum(y_batch * np.log(output + 1e-12), axis=1))
-                
-                # Backward
+
                 error = (output - y_batch) / batch_size
                 for layer in reversed(self.layers):
                     error = layer.backward(error)
-                
-                # Update
+
                 for idx, layer in enumerate(self.layers):
                     if isinstance(layer, Dense):
                         layer.weights, layer.bias = self.optimizer.update(
                             [layer.weights, layer.bias], layer.grads, idx
                         )
-            
+
             avg_loss = epoch_loss / (n_samples / batch_size)
             duration = time.time() - start_time
             status = self.supervisor.evaluate(avg_loss, duration, self.optimizer)
-            
+
             if epoch % 5 == 0 or epoch == 1:
                 print(f"[CYCLE {epoch:03d}] Loss: {avg_loss:.6f} | Latency: {duration:.4f}s | Protocol: {status} | LR: {self.optimizer.lr:.6f}")
 
@@ -164,18 +158,18 @@ def generate_data(samples=5000, features=784, classes=10):
 if __name__ == "__main__":
     print("INITIALIZING OMEGA-ASI ARCHITECTURE...")
     X, Y = generate_data()
-    
+
     opt = Optimizer(lr=0.002)
     model = OMEGA_ASI(opt)
-    
+
     model.add(Dense(784, 512))
     model.add(ReLU())
     model.add(Dense(512, 256))
     model.add(ReLU())
     model.add(Dense(256, 10))
     model.add(Softmax())
-    
+
     start_evolution = time.time()
     model.train(X, Y, epochs=50, batch_size=128)
-    
+
     print(f"EVOLUTION COMPLETE. TOTAL DURATION: {time.time() - start_evolution:.2f}s")
