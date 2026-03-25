@@ -1,5 +1,10 @@
+node_modules/
+repo_sync/
+.env
+*.log
+*.bak
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.bak
+kaggle_deploy/
