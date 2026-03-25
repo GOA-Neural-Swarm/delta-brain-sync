@@ -36,6 +36,9 @@ class EvolutionEngine:
         2. Upgrade all deprecated library calls to their latest versions (e.g., use 'google-genai' instead of 'google-generativeai').
         3. Ensure the code remains functionally identical but modern.
         4. Return ONLY the complete corrected Python code inside a code block.
+        5. Fix all undefined name errors (F821). Ensure every variable and function is defined before use.
+        6. If a function like 'call_groq' is missing, implement a placeholder or import it.
+        7. Return ONLY valid, runnable Python code.
         """
         
         payload = {
