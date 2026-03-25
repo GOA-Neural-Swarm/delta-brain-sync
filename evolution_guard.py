@@ -4,24 +4,48 @@ import requests
 import json
 import re
 import sys
+import time
 
-# Groq API Configuration
+# API Configurations
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 def get_ai_correction(error_log, original_code):
     print("🧠 [GUARD]: AI is analyzing the error...")
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     
     prompt = f"Fix this Python error:\n{error_log}\n\nCode:\n{original_code}\n\nReturn ONLY the clean code."
+
+    # --- ATTEMPT 1: GEMINI (Primary) ---
+    print("📡 [GUARD-GEMINI]: Requesting correction...")
+    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
+    gemini_payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.2}
+    }
+
+    try:
+        res = requests.post(gemini_url, json=gemini_payload, timeout=30)
+        data = res.json()
+        if res.status_code == 200 and 'candidates' in data:
+            content = data['candidates'][0]['content']['parts'][0]['text']
+            return re.sub(r'```python\n|```', '', content).strip()
+        else:
+            print(f"⚠️ [GEMINI-FAIL]: Status {res.status_code}. Switching to Groq...")
+    except Exception as e:
+        print(f"⚠️ [GEMINI-ERROR]: {e}. Switching to Groq...")
+
+    # --- ATTEMPT 2: GROQ (Fallback) ---
+    print("📡 [GUARD-GROQ]: Requesting fallback correction...")
+    groq_url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     
-    payload = {
+    groq_payload = {
         "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": prompt}]
     }
     
     try:
-        response = requests.post(url, headers=headers, json=payload)
+        response = requests.post(groq_url, headers=headers, json=groq_payload, timeout=30)
         data = response.json()
         
         if 'error' in data and 'rate_limit_exceeded' in str(data):
