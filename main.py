@@ -1,4 +1,3 @@
-
 import numpy as np
 import time
 import os
@@ -11,25 +10,41 @@ class Layer:
     def forward(self, input_data):
         raise NotImplementedError
 
-    def backward(self, output_error, learning_rate):
+    def backward(self, output_error, learning_rate, t):
         raise NotImplementedError
 
 class Dense(Layer):
-    def __init__(self, input_size, output_size):
+    def __init__(self, input_size, output_size, beta1=0.9, beta2=0.999, epsilon=1e-8):
         self.weights = np.random.randn(input_size, output_size) * np.sqrt(2. / input_size)
         self.bias = np.zeros((1, output_size))
+        self.m_w, self.v_w = np.zeros_like(self.weights), np.zeros_like(self.weights)
+        self.m_b, self.v_b = np.zeros_like(self.bias), np.zeros_like(self.bias)
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.epsilon = epsilon
 
     def forward(self, input_data):
         self.input = input_data
         self.output = np.dot(self.input, self.weights) + self.bias
         return self.output
 
-    def backward(self, output_error, learning_rate):
-        input_error = np.dot(output_error, self.weights.T)
+    def backward(self, output_error, learning_rate, t):
         weights_error = np.dot(self.input.T, output_error)
+        bias_error = np.sum(output_error, axis=0, keepdims=True)
+        input_error = np.dot(output_error, self.weights.T)
 
-        self.weights -= learning_rate * weights_error
-        self.bias -= learning_rate * np.sum(output_error, axis=0, keepdims=True)
+        self.m_w = self.beta1 * self.m_w + (1 - self.beta1) * weights_error
+        self.v_w = self.beta2 * self.v_w + (1 - self.beta2) * (weights_error**2)
+        m_w_hat = self.m_w / (1 - self.beta1**t)
+        v_w_hat = self.v_w / (1 - self.beta2**t)
+        self.weights -= learning_rate * m_w_hat / (np.sqrt(v_w_hat) + self.epsilon)
+
+        self.m_b = self.beta1 * self.m_b + (1 - self.beta1) * bias_error
+        self.v_b = self.beta2 * self.v_b + (1 - self.beta2) * (bias_error**2)
+        m_b_hat = self.m_b / (1 - self.beta1**t)
+        v_b_hat = self.v_b / (1 - self.beta2**t)
+        self.bias -= learning_rate * m_b_hat / (np.sqrt(v_b_hat) + self.epsilon)
+
         return input_error
 
 class Activation(Layer):
@@ -39,17 +54,14 @@ class Activation(Layer):
 
     def forward(self, input_data):
         self.input = input_data
-        self.output = self.activation(self.input)
-        return self.output
+        return self.activation(self.input)
 
-    def backward(self, output_error, learning_rate):
+    def backward(self, output_error, learning_rate, t):
         return self.activation_prime(self.input) * output_error
 
 class ReLU(Activation):
     def __init__(self):
-        relu = lambda x: np.maximum(0, x)
-        relu_prime = lambda x: (x > 0).astype(float)
-        super().__init__(relu, relu_prime)
+        super().__init__(lambda x: np.maximum(0, x), lambda x: (x > 0).astype(float))
 
 class Softmax(Layer):
     def forward(self, input_data):
@@ -57,89 +69,96 @@ class Softmax(Layer):
         self.output = exp_values / np.sum(exp_values, axis=1, keepdims=True)
         return self.output
 
-    def backward(self, output_error, learning_rate):
+    def backward(self, output_error, learning_rate, t):
         return output_error
 
 class SovereignRedundancy:
     def __init__(self):
-        self.gemini_endpoint = os.getenv("GEMINI_API_KEY", "MOCK_GEMINI")
-        self.groq_endpoint = os.getenv("GROQ_API_KEY", "MOCK_GROQ")
+        self.gemini_key = os.getenv("GEMINI_API_KEY", "LOCAL_STABILITY_PROT")
+        self.groq_key = os.getenv("GROQ_API_KEY", "LOCAL_THROUGHPUT_PROT")
+        self.loss_history = []
 
-    def validate_evolution(self, loss, epoch):
-        gemini_check = loss < 2.5
-        groq_check = epoch > 0
-        return gemini_check and groq_check
+    def validate_evolution(self, loss, epoch_time):
+        self.loss_history.append(loss)
+        gemini_status = self._gemini_protocol(loss)
+        groq_status = self._groq_protocol(epoch_time)
+        return gemini_status and groq_status
 
-    def gemini_validate(self, loss):
-        return loss < 2.5
+    def _gemini_protocol(self, loss):
+        if len(self.loss_history) < 2: return True
+        gradient_check = self.loss_history[-2] - loss
+        return gradient_check > -0.1 or self.gemini_key != "LOCAL_STABILITY_PROT"
 
-    def groq_validate(self, epoch):
-        return epoch > 0
+    def _groq_protocol(self, epoch_time):
+        return epoch_time < 1.0 or self.groq_key != "LOCAL_THROUGHPUT_PROT"
 
 def cross_entropy_loss(y_true, y_pred):
-    samples = y_true.shape[0]
-    y_pred_clipped = np.clip(y_pred, 1e-12, 1. - 1e-12)
-    return -np.sum(y_true * np.log(y_pred_clipped)) / samples
+    return -np.mean(np.sum(y_true * np.log(y_pred + 1e-12), axis=1))
 
-def cross_entropy_loss_prime(y_true, y_pred):
-    return y_pred - y_true
-
-def generate_synthetic_data(samples=1000, features=784, classes=10):
+def generate_synthetic_data(samples=2000, features=784, classes=10):
     X = np.random.randn(samples, features)
     y = np.zeros((samples, classes))
     labels = np.random.randint(0, classes, samples)
-    for i in range(samples):
-        y[i, labels[i]] = 1
+    for i in range(samples): y[i, labels[i]] = 1
     return X, y
 
 class OMEGA_Network:
     def __init__(self):
         self.layers = []
         self.redundancy = SovereignRedundancy()
+        self.t = 0
 
     def add(self, layer):
         self.layers.append(layer)
 
-    def train(self, x_train, y_train, epochs, lr):
-        for epoch in range(epochs):
-            output = x_train
-            for layer in self.layers:
-                output = layer.forward(output)
+    def train(self, x_train, y_train, epochs, lr, batch_size=64):
+        n_samples = x_train.shape[0]
+        for epoch in range(1, epochs + 1):
+            start_time = time.time()
+            indices = np.arange(n_samples)
+            np.random.shuffle(indices)
+            x_train, y_train = x_train[indices], y_train[indices]
+            
+            epoch_loss = 0
+            for i in range(0, n_samples, batch_size):
+                self.t += 1
+                x_batch = x_train[i:i+batch_size]
+                y_batch = y_train[i:i+batch_size]
 
-            loss = cross_entropy_loss(y_train, output)
-            if not self.redundancy.validate_evolution(loss, epoch):
-                lr *= 0.5
+                output = x_batch
+                for layer in self.layers:
+                    output = layer.forward(output)
 
-            error = cross_entropy_loss_prime(y_train, output)
-            for layer in reversed(self.layers):
-                error = layer.backward(error, lr)
+                epoch_loss += cross_entropy_loss(y_batch, output)
+                error = (output - y_batch) / batch_size
 
-            if epoch % 10 == 0:
-                print(f"Epoch {epoch}/{epochs} - Loss: {loss:.6f}")
+                for layer in reversed(self.layers):
+                    error = layer.backward(error, lr, self.t)
 
-            if epoch % 50 == 0:
-                gemini_valid = self.redundancy.gemini_validate(loss)
-                groq_valid = self.redundancy.groq_validate(epoch)
-                if not gemini_valid or not groq_valid:
-                    print("Redundant logic validation failed. Adjusting learning rate.")
-                    lr *= 0.5
+            avg_loss = epoch_loss / (n_samples / batch_size)
+            duration = time.time() - start_time
+            
+            if not self.redundancy.validate_evolution(avg_loss, duration):
+                lr *= 0.9
+            
+            if epoch % 10 == 0 or epoch == 1:
+                print(f"Cycle {epoch} | Loss: {avg_loss:.4f} | Step: {self.t} | Latency: {duration:.4f}s")
 
 def main():
-    X, Y = generate_synthetic_data(samples=2000)
+    X, Y = generate_synthetic_data(samples=5000)
+    
+    omega = OMEGA_Network()
+    omega.add(Dense(784, 512))
+    omega.add(ReLU())
+    omega.add(Dense(512, 256))
+    omega.add(ReLU())
+    omega.add(Dense(256, 10))
+    omega.add(Softmax())
 
-    model = OMEGA_Network()
-    model.add(Dense(784, 256))
-    model.add(ReLU())
-    model.add(Dense(256, 128))
-    model.add(ReLU())
-    model.add(Dense(128, 10))
-    model.add(Softmax())
-
-    start_time = time.time()
-    model.train(X, Y, epochs=100, lr=0.001)
-    end_time = time.time()
-
-    print(f"Evolution Cycle Complete. Time: {end_time - start_time:.2f}s")
+    print("Initiating OMEGA-ASI Recursive Evolution...")
+    start = time.time()
+    omega.train(X, Y, epochs=50, lr=0.001, batch_size=128)
+    print(f"Evolution Cycle Terminated. Total Duration: {time.time() - start:.2f}s")
 
 if __name__ == "__main__":
     main()
