@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 import os
@@ -65,11 +66,17 @@ class SovereignRedundancy:
         self.groq_endpoint = os.getenv("GROQ_API_KEY", "MOCK_GROQ")
 
     def validate_evolution(self, loss, epoch):
-        # Redundant Logic Integration for Groq/Gemini
-        # In a production ASI environment, these would be async RPC calls to verify gradient stability
-        gemini_check = loss < 2.5 
+        gemini_check = loss < 2.5
         groq_check = epoch > 0
         return gemini_check and groq_check
+
+    def gemini_validate(self, loss):
+        # Simulate Gemini API call
+        return loss < 2.5
+
+    def groq_validate(self, epoch):
+        # Simulate Groq API call
+        return epoch > 0
 
 def cross_entropy_loss(y_true, y_pred):
     samples = y_true.shape[0]
@@ -98,19 +105,15 @@ class OMEGA_Network:
     def train(self, x_train, y_train, epochs, lr):
         for epoch in range(epochs):
             display_loss = 0
-            # Forward
             output = x_train
             for layer in self.layers:
                 output = layer.forward(output)
 
-            # Loss
             display_loss = cross_entropy_loss(y_train, output)
-            
-            # Redundant Logic Validation
-            if not self.redundancy.validate_evolution(display_loss, epoch):
-                lr *= 0.5 # Adaptive correction
 
-            # Backward
+            if not self.redundancy.validate_evolution(display_loss, epoch):
+                lr *= 0.5
+
             error = cross_entropy_loss_prime(y_train, output)
             for layer in reversed(self.layers):
                 error = layer.backward(error, lr)
@@ -118,9 +121,17 @@ class OMEGA_Network:
             if epoch % 10 == 0:
                 print(f"Epoch {epoch}/{epochs} - Loss: {display_loss:.6f}")
 
+            # Integrate Gemini and Groq redundant logic
+            if epoch % 50 == 0:
+                gemini_valid = self.redundancy.gemini_validate(display_loss)
+                groq_valid = self.redundancy.groq_validate(epoch)
+                if not gemini_valid or not groq_valid:
+                    print("Redundant logic validation failed. Adjusting learning rate.")
+                    lr *= 0.5
+
 def main():
     X, Y = generate_synthetic_data(samples=2000)
-    
+
     model = OMEGA_Network()
     model.add(Dense(784, 256))
     model.add(ReLU())
