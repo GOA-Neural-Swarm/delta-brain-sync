@@ -126,8 +126,10 @@ class AdaptiveSupervisor:
     def __init__(self):
         self.history = []
         self.lr_scheduler = None
-        self.groq_api_key = os.getenv("GROQ_API_KEY")
-        self.gemini_api_key = os.getenv("GEMINI_API_KEY")
+        self.api_keys = {
+            "GROQ_API_KEY": os.getenv("GROQ_API_KEY"),
+            "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY")
+        }
 
     def analyze_telemetry(self, loss, optimizer):
         self.history.append(loss)
@@ -135,11 +137,11 @@ class AdaptiveSupervisor:
 
         slope = self.history[-1] - self.history[-2]
 
-        if slope > 0 and self.groq_api_key:
+        if slope > 0 and self.api_keys["GROQ_API_KEY"]:
             optimizer.lr *= 0.7
             return "GROQ_RECOVERY_DEFLATION"
 
-        if abs(slope) < 1e-4 and self.gemini_api_key:
+        if abs(slope) < 1e-4 and self.api_keys["GEMINI_API_KEY"]:
             optimizer.lr *= 1.2
             return "GEMINI_MOMENTUM_INJECTION"
 
