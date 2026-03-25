@@ -1,0 +1,75 @@
+name: 🧬 SOVEREIGN HYPER-EVOLUTION ENGINE
+
+on:
+  push:
+    branches: [ main ]
+    # ပြင်စရာမလိုတဲ့ ဖိုင်တွေကြောင့် workflow မပွင့်အောင် ထိန်းထားမယ်
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+      - '*.bak'
+  schedule:
+    - cron: '0 */12 * * *' # ၁၂ နာရီတစ်ခါ ပုံမှန် စစ်ဆေးမယ်
+  workflow_dispatch: # Manual ခေါ်သုံးလို့ရအောင် လုပ်ထားမယ်
+
+# Cycle တစ်ခုလည်နေတုန်း နောက်ထပ် push တက်လာရင် အဟောင်းကိုရပ်ပြီး အသစ်ကိုပဲ အာရုံစိုက်မယ်
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write # GitHub ထဲ ပြန် push လုပ်ဖို့ လိုအပ်တယ်
+
+jobs:
+  evolution_cycle:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🛰️ Step 1 - Ingesting Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Git history တစ်ခုလုံးကို သိအောင်လုပ်ထားမယ်
+          token: ${{ secrets.GH_TOKEN || github.token }}
+
+      - name: 🐍 Step 2 - Stabilizing Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip' # နောက်တစ်ခါ run ရင် ပိုမြန်အောင် cache လုပ်မယ်
+
+      - name: 📦 Step 3 - Injecting Necessary Libraries
+        run: |
+          python -m pip install --upgrade pip
+          # Evolution Engine အတွက် လိုအပ်တဲ့ Core libraries များ
+          pip install requests google-genai groq pandas sqlalchemy 
+          # ကျန်တဲ့ လိုအပ်ချက်များကို requirements.txt မှ တင်သွင်းမယ်
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: 🧠 Step 4 - Executing Autonomous Self-Healing
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          # Backup ဖိုင်တွေ မရှိအောင် အရင် ရှင်းထုတ်မယ်
+          rm -f *.bak
+          # အဆင့်မြင့် Evolution Engine ကို စတင်နှိုးဆော်မယ်
+          python evolution_engine.py
+
+      - name: 🏁 Step 5 - Manifesting Evolution (Auto-Commit)
+        run: |
+          git config --global user.name 'Sovereign-AI-Bot'
+          git config --global user.email 'bot@sovereign.ai'
+          
+          # ပြင်ဆင်ထားတဲ့ logic တွေကို စစ်ဆေးပြီး သိမ်းဆည်းမယ်
+          git add .
+          
+          # ပြောင်းလဲမှုရှိမှသာ Commit လုပ်မယ်
+          if ! git diff-index --quiet HEAD; then
+            # Backup ဖိုင်တွေကို commit ထဲ မပါအောင် ဖယ်ထုတ်မယ် (Optional)
+            git reset -- *.bak || true
+            
+            git commit -m "🧬 [HYPER-EVOLUTION]: Self-correction applied (Deprecation & Stability Fix) - $(date)"
+            git push origin main --force
+            echo "✅ [SUCCESS]: New genetic material manifested in main branch."
+          else
+            echo "🛡️ [STABLE]: No evolution needed. System is at peak performance."
+          fi
