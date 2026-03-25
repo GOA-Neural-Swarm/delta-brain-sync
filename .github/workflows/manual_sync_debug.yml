@@ -50,6 +50,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
+          npm install axios
           # 1. INGESTION (Capturing the current sync logic for AI analysis)
           if [ -f "delta_sync.js" ]; then
             OLD_LOGIC=$(python3 -c "import json; print(json.dumps(open('delta_sync.js').read()))")
