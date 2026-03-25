@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 import os
@@ -118,7 +119,7 @@ class OMEGA_Network:
             indices = np.arange(n_samples)
             np.random.shuffle(indices)
             x_train, y_train = x_train[indices], y_train[indices]
-            
+
             epoch_loss = 0
             for i in range(0, n_samples, batch_size):
                 self.t += 1
@@ -137,16 +138,16 @@ class OMEGA_Network:
 
             avg_loss = epoch_loss / (n_samples / batch_size)
             duration = time.time() - start_time
-            
+
             if not self.redundancy.validate_evolution(avg_loss, duration):
                 lr *= 0.9
-            
+
             if epoch % 10 == 0 or epoch == 1:
                 print(f"Cycle {epoch} | Loss: {avg_loss:.4f} | Step: {self.t} | Latency: {duration:.4f}s")
 
 def main():
     X, Y = generate_synthetic_data(samples=5000)
-    
+
     omega = OMEGA_Network()
     omega.add(Dense(784, 512))
     omega.add(ReLU())
