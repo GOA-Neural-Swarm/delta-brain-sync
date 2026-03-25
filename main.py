@@ -71,11 +71,9 @@ class SovereignRedundancy:
         return gemini_check and groq_check
 
     def gemini_validate(self, loss):
-        # Simulate Gemini API call
         return loss < 2.5
 
     def groq_validate(self, epoch):
-        # Simulate Groq API call
         return epoch > 0
 
 def cross_entropy_loss(y_true, y_pred):
@@ -104,14 +102,12 @@ class OMEGA_Network:
 
     def train(self, x_train, y_train, epochs, lr):
         for epoch in range(epochs):
-            display_loss = 0
             output = x_train
             for layer in self.layers:
                 output = layer.forward(output)
 
-            display_loss = cross_entropy_loss(y_train, output)
-
-            if not self.redundancy.validate_evolution(display_loss, epoch):
+            loss = cross_entropy_loss(y_train, output)
+            if not self.redundancy.validate_evolution(loss, epoch):
                 lr *= 0.5
 
             error = cross_entropy_loss_prime(y_train, output)
@@ -119,11 +115,10 @@ class OMEGA_Network:
                 error = layer.backward(error, lr)
 
             if epoch % 10 == 0:
-                print(f"Epoch {epoch}/{epochs} - Loss: {display_loss:.6f}")
+                print(f"Epoch {epoch}/{epochs} - Loss: {loss:.6f}")
 
-            # Integrate Gemini and Groq redundant logic
             if epoch % 50 == 0:
-                gemini_valid = self.redundancy.gemini_validate(display_loss)
+                gemini_valid = self.redundancy.gemini_validate(loss)
                 groq_valid = self.redundancy.groq_validate(epoch)
                 if not gemini_valid or not groq_valid:
                     print("Redundant logic validation failed. Adjusting learning rate.")
