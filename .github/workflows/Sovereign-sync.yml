@@ -187,6 +187,7 @@ jobs:
           FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
+          npm install axios
           if [ -f "delta_sync.js" ]; then
             node delta_sync.js
           fi
