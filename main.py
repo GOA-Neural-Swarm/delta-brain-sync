@@ -1,7 +1,7 @@
+
 import numpy as np
 import time
 import os
-import sys
 
 class AdamW:
     def __init__(self, params_ref, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01):
@@ -66,7 +66,7 @@ class BatchNorm(Layer):
         if not self.training:
             x_hat = (x - self.running_mean) / np.sqrt(self.running_var + self.eps)
             return self.gamma * x_hat + self.beta
-        
+
         mu = np.mean(x, axis=0, keepdims=True)
         var = np.var(x, axis=0, keepdims=True)
         x_hat = (x - mu) / np.sqrt(var + self.eps)
@@ -122,30 +122,30 @@ class SoftmaxCrossEntropy:
     def backward(self, y):
         return (self.probs - y) / y.shape[0]
 
-class SovereignSupervisor:
+class AdaptiveSupervisor:
     def __init__(self):
+        self.history = []
         self.groq_active = os.getenv("GROQ_API_KEY") is not None
         self.gemini_active = os.getenv("GEMINI_API_KEY") is not None
-        self.history = []
 
     def analyze_telemetry(self, loss, optimizer):
         self.history.append(loss)
         if len(self.history) < 3: return "INITIALIZING"
-        
+
         slope = self.history[-1] - self.history[-2]
-        
+
         if self.groq_active and slope > 0:
             optimizer.lr *= 0.7
             return "GROQ_RECOVERY_DEFLATION"
-        
+
         if self.gemini_active and abs(slope) < 1e-4:
             optimizer.lr *= 1.2
             return "GEMINI_MOMENTUM_INJECTION"
-            
+
         if slope > 0.1:
             optimizer.lr *= 0.5
             return "LOCAL_STABILIZATION"
-        
+
         return "STABLE_EVOLUTION"
 
 class OMEGA_ASI:
@@ -158,13 +158,13 @@ class OMEGA_ASI:
                 self.layers.append(BatchNorm(dims[i+1]))
                 self.layers.append(ReLU())
                 self.layers.append(Dropout(0.1))
-        
+
         self.loss_fn = SoftmaxCrossEntropy()
         all_params = []
         for l in self.layers:
             all_params.extend(l.params)
         self.optimizer = AdamW(all_params, lr=2e-3)
-        self.supervisor = SovereignSupervisor()
+        self.supervisor = AdaptiveSupervisor()
 
     def forward(self, x, training=True):
         for l in self.layers:
@@ -181,7 +181,7 @@ class OMEGA_ASI:
         loss = self.loss_fn(logits, y)
         grad = self.loss_fn.backward(y)
         self.backward(grad)
-        
+
         all_params, all_grads = [], []
         for l in self.layers:
             if l.params:
@@ -199,11 +199,11 @@ class OMEGA_ASI:
             for i in range(0, n, batch_size):
                 xb, yb = x[idx[i:i+batch_size]], y[idx[i:i+batch_size]]
                 losses.append(self.train_step(xb, yb))
-            
+
             avg_loss = np.mean(losses)
             protocol = self.supervisor.analyze_telemetry(avg_loss, self.optimizer)
             dt = time.time() - t0
-            
+
             if epoch % 5 == 0 or epoch == 1:
                 acc = self.evaluate(x[:1000], y[:1000])
                 print(f"[EVO {epoch:03d}] Loss: {avg_loss:.5f} | Acc: {acc:.4f} | {dt:.3f}s | Protocol: {protocol}")
