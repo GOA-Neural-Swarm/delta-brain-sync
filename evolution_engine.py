@@ -20,6 +20,7 @@ class EvolutionEngine:
     def ask_ai_to_fix(self, error_log, file_content, file_name):
         print(f"🧠 [BRAIN]: Analyzing issues in {file_name}...")
         
+        # မင်းပေးထားတဲ့ Requirements ၇ ခုလုံးကို အတိအကျ ထည့်သွင်းထားပါတယ်
         prompt = f"""
         Role: Senior Python Engineer & System Architect.
         Task: Fix Deprecation Warnings and Runtime Errors.
@@ -139,7 +140,7 @@ if __name__ == "__main__":
 
     engine = EvolutionEngine(GEMINI_API_KEY)
     
-    # ပြင်ချင်တဲ့ ဖိုင်စာရင်း
+    # ပြင်ချင်တဲ့ ဖိုင်စာရင်း (Requirement အရ လိုအပ်တဲ့ file အားလုံး ပါဝင်ပါတယ်)
     targets = ["app.py", "main.py", "sync_data.py"]
     
     for target in targets:
