@@ -1,10 +1,11 @@
+import time
 import subprocess 
 import os
 import requests 
 import json
 import re
 import sys
-import time
+
 
 # API Configurations
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
