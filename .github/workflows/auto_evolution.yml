@@ -53,10 +53,10 @@ jobs:
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
           
-          # 1. Temporary files cleanup
-          rm -f *.bak
+          # 1. Cleanup temporary backups
+          rm -f *.bak || true
           
-          # 2. Update .gitignore to include all requested patterns
+          # 2. Update .gitignore
           cat <<EOF > .gitignore
           node_modules/
           repo_sync/
@@ -70,16 +70,18 @@ jobs:
           kaggle_deploy/
           EOF
           
-          # 3. Process changes and index cleanup
+          # 3. Process changes
           git add .
-          git rm -r --cached __pycache__/ || true
-          git rm --cached *.pyc *.pyo *.pyd *.bak || true
           
-          # 4. Final Verification and Deployment
+          # 4. Clean index without failing if files don't exist
+          git rm -r --cached __pycache__/ || true
+          git rm --cached *.pyc *.pyo *.pyd || true
+          
+          # 5. Commit and Force Push
           if ! git diff --cached --quiet; then
-            git commit -m "🧬 [HYPER-EVOLUTION]: Self-correction applied (Deprecation & Stability Fix) - $(date)"
+            git commit -m "🧬 [HYPER-EVOLUTION]: Auto-fix applied (429 Stability & Cache Clean) - $(date)"
             git push origin main --force
-            echo "✅ [SUCCESS]: New genetic material manifested in main branch."
+            echo "✅ [SUCCESS]: Evolution manifested."
           else
-            echo "🛡️ [STABLE]: No evolution needed. System is at peak performance."
+            echo "🛡️ [STABLE]: No changes needed."
           fi
