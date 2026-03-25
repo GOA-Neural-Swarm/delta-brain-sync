@@ -21,6 +21,11 @@ from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer, BitsAndB
 from firebase_admin import credentials, db, initialize_app, _apps
 import firebase_admin
 
+current_gen_val = 0
+avg_error = 0
+def call_groq(text): return "" 
+def dual_brain_pipeline(p): return ""
+
 # 🔒 Kaggle/Colab Secrets System & Universal Credentials Sync
 try:
     from kaggle_secrets import UserSecretsClient
