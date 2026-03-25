@@ -121,6 +121,7 @@ jobs:
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           echo "🚀 Starting Trinity Debug Sync..."
           node delta_sync.js
