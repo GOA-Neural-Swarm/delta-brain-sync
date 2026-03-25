@@ -127,6 +127,7 @@ class AdaptiveSupervisor:
         self.history = []
         self.groq_active = os.getenv("GROQ_API_KEY") is not None
         self.gemini_active = os.getenv("GEMINI_API_KEY") is not None
+        self.lr_scheduler = None
 
     def analyze_telemetry(self, loss, optimizer):
         self.history.append(loss)
