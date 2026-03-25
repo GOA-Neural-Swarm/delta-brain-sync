@@ -7,9 +7,10 @@
     "start": "node delta_sync.js"
   },
   "dependencies": {
-    "@octokit/rest": "^20.1.1",
-    "@supabase/supabase-js": "^2.95.3",
+    "@octokit/rest": "^20.1.2",
+    "@supabase/supabase-js": "^2.100.0",
+    "axios": "^1.13.6",
     "firebase-admin": "^12.7.0",
-    "pg": "^8.18.0"
+    "pg": "^8.20.0"
   }
 }
