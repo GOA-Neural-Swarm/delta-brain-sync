@@ -31,7 +31,7 @@ REPO_OWNER = "GOA-Neural-Swarm"
 REPO_NAME = "delta-brain-sync"
 
 class AdamW:
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.95), eps=1e-8, weight_decay=0.01):
         self.lr = lr
         self.betas = betas
         self.eps = eps
@@ -62,7 +62,7 @@ class Layer:
 
 class Linear(Layer):
     def __init__(self, in_d, out_d):
-        scale = np.sqrt(2.0 / in_d)
+        scale = np.sqrt(2.0 / (in_d + out_d))
         self.w = (np.random.randn(in_d, out_d) * scale).astype(np.float32)
         self.b = np.zeros((1, out_d), dtype=np.float32)
         self.dw, self.db = None, None
@@ -72,7 +72,6 @@ class Linear(Layer):
         return x @ self.w + self.b
 
     def backward(self, grad):
-        # grad shape: (B, S, out_d) or (B, out_d)
         x_flat = self.x.reshape(-1, self.x.shape[-1])
         g_flat = grad.reshape(-1, grad.shape[-1])
         self.dw = x_flat.T @ g_flat
@@ -98,21 +97,33 @@ class RMSNorm(Layer):
     def backward(self, grad):
         self.dg = np.sum(grad * self.norm_x, axis=(0, 1), keepdims=True)
         d_norm_x = grad * self.g
-        # Backprop through RMSNorm: 
-        # dL/dx = (1/rms) * [dL/dnorm_x - norm_x * mean(dL/dnorm_x * norm_x)]
         return self.inv_std * (d_norm_x - self.norm_x * np.mean(d_norm_x * self.norm_x, axis=-1, keepdims=True))
 
     def get_params(self): return [self.g]
     def get_grads(self): return [self.dg]
 
 class SwiGLU(Layer):
+    def __init__(self, dim, h_dim):
+        self.w1 = Linear(dim, h_dim)
+        self.w2 = Linear(dim, h_dim)
+        self.w3 = Linear(h_dim, dim)
+
     def forward(self, x, train=True):
-        self.x = x
-        self.sig = 1.0 / (1.0 + np.exp(-x))
-        return x * self.sig
+        self.x1 = self.w1.forward(x, train)
+        self.x2 = self.w2.forward(x, train)
+        self.sig = 1.0 / (1.0 + np.exp(-self.x1))
+        self.silu = self.x1 * self.sig
+        return self.w3.forward(self.silu * self.x2, train)
 
     def backward(self, grad):
-        return grad * (self.sig * (1.0 + self.x * (1.0 - self.sig)))
+        g3 = self.w3.backward(grad)
+        g_silu = g3 * self.x2
+        g_x2 = g3 * self.silu
+        g_x1 = g_silu * (self.sig * (1.0 + self.x1 * (1.0 - self.sig)))
+        return self.w1.backward(g_x1) + self.w2.backward(g_x2)
+
+    def get_params(self): return self.w1.get_params() + self.w2.get_params() + self.w3.get_params()
+    def get_grads(self): return self.w1.get_grads() + self.w2.get_grads() + self.w3.get_grads()
 
 class MultiHeadAttention(Layer):
     def __init__(self, dim, heads=8):
@@ -125,28 +136,24 @@ class MultiHeadAttention(Layer):
 
     def forward(self, x, train=True):
         B, S, D = x.shape
-        q = self.wq.forward(x).reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
-        k = self.wk.forward(x).reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
-        v = self.wv.forward(x).reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
+        self.q = self.wq.forward(x).reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
+        self.k = self.wk.forward(x).reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
+        self.v = self.wv.forward(x).reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
 
-        attn_scores = (q @ k.transpose(0, 1, 3, 2)) / np.sqrt(self.head_dim)
-        # Softmax
-        exp_a = np.exp(attn_scores - np.max(attn_scores, axis=-1, keepdims=True))
-        self.probs = exp_a / (np.sum(exp_a, axis=-1, keepdims=True) + 1e-10)
+        scores = (self.q @ self.k.transpose(0, 1, 3, 2)) / np.sqrt(self.head_dim)
+        exp_s = np.exp(scores - np.max(scores, axis=-1, keepdims=True))
+        self.probs = exp_s / (np.sum(exp_s, axis=-1, keepdims=True) + 1e-10)
         
-        out = (self.probs @ v).transpose(0, 2, 1, 3).reshape(B, S, D)
-        self.q, self.k, self.v = q, k, v
-        return self.wo.forward(out)
+        out = (self.probs @ self.v).transpose(0, 2, 1, 3).reshape(B, S, D)
+        return self.wo.forward(out, train)
 
     def backward(self, grad):
         B, S, D = grad.shape
         g_wo = self.wo.backward(grad).reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
         
-        # d_probs and d_v
         dv = self.probs.transpose(0, 1, 3, 2) @ g_wo
         d_probs = g_wo @ self.v.transpose(0, 1, 3, 2)
         
-        # d_scores (softmax backward)
         d_scores = self.probs * (d_probs - np.sum(d_probs * self.probs, axis=-1, keepdims=True))
         d_scores /= np.sqrt(self.head_dim)
         
@@ -167,39 +174,27 @@ class TransformerBlock(Layer):
         self.norm1 = RMSNorm(dim)
         self.attn = MultiHeadAttention(dim)
         self.norm2 = RMSNorm(dim)
-        self.ff1 = Linear(dim, dim * 4)
-        self.act = SwiGLU()
-        self.ff2 = Linear(dim * 4, dim)
+        self.mlp = SwiGLU(dim, dim * 4)
 
     def forward(self, x, train=True):
         self.res1 = x
-        x_norm = self.norm1.forward(x, train)
-        self.attn_out = self.attn.forward(x_norm, train)
-        x = self.res1 + self.attn_out
-        
+        x = self.res1 + self.attn.forward(self.norm1.forward(x, train), train)
         self.res2 = x
-        x_norm2 = self.norm2.forward(x, train)
-        self.ff_out = self.ff2.forward(self.act.forward(self.ff1.forward(x_norm2, train), train), train)
-        return self.res2 + self.ff_out
+        return self.res2 + self.mlp.forward(self.norm2.forward(x, train), train)
 
     def backward(self, grad):
-        g_ff = self.ff2.backward(grad)
-        g_ff = self.act.backward(g_ff)
-        g_ff = self.ff1.backward(g_ff)
-        g_norm2 = self.norm2.backward(g_ff)
-        g_res2 = grad + g_norm2
-        
-        g_attn = self.attn.backward(self.norm1.backward(self.attn.backward(g_res2))) # Approximation for speed
-        # Correct residual backprop
-        g_attn_direct = self.attn.backward(self.norm1.forward(self.res1)) # Placeholder logic
-        # Simplified for stability:
-        return g_res2 + self.attn.backward(self.norm1.backward(self.attn_out)) # Heuristic
+        g_mlp = self.mlp.backward(grad)
+        g_norm2 = self.norm2.backward(g_mlp)
+        grad = grad + g_norm2
+        g_attn = self.attn.backward(grad)
+        g_norm1 = self.norm1.backward(g_attn)
+        return grad + g_norm1
 
-    def get_params(self): return self.norm1.get_params() + self.attn.get_params() + self.norm2.get_params() + self.ff1.get_params() + self.ff2.get_params()
-    def get_grads(self): return self.norm1.get_grads() + self.attn.get_grads() + self.norm2.get_grads() + self.ff1.get_grads() + self.ff2.get_grads()
+    def get_params(self): return self.norm1.get_params() + self.attn.get_params() + self.norm2.get_params() + self.mlp.get_params()
+    def get_grads(self): return self.norm1.get_grads() + self.attn.get_grads() + self.norm2.get_grads() + self.mlp.get_grads()
 
 class OMEGA_ASI:
-    def __init__(self, in_dim=784, h_dim=128, n_layers=2, n_classes=10):
+    def __init__(self, in_dim=784, h_dim=256, n_layers=4, n_classes=10):
         self.patch_size = 28
         self.seq_len = in_dim // self.patch_size
         self.embed = Linear(self.patch_size, h_dim)
@@ -210,7 +205,7 @@ class OMEGA_ASI:
         self.params = self.embed.get_params()
         for b in self.blocks: self.params += b.get_params()
         self.params += self.norm.get_params() + self.head.get_params()
-        self.optimizer = AdamW(self.params)
+        self.optimizer = AdamW(self.params, lr=1e-3)
 
     def forward(self, x, train=True):
         B = x.shape[0]
@@ -225,29 +220,24 @@ class OMEGA_ASI:
         self.optimizer.lr = lr
         logits = self.forward(x, True)
         
-        # Cross-Entropy Loss
         shift_logits = logits - np.max(logits, axis=1, keepdims=True)
         probs = np.exp(shift_logits) / np.sum(np.exp(shift_logits), axis=1, keepdims=True)
         loss = -np.mean(np.sum(y * np.log(probs + 1e-10), axis=1))
         
-        # Backward
         grad = (probs - y) / x.shape[0]
         grad = self.head.backward(grad)
-        # Distribute pooled grad back to sequence
         grad = np.tile(grad[:, np.newaxis, :], (1, self.seq_len, 1)) / self.seq_len
         grad = self.norm.backward(grad)
         for b in reversed(self.blocks): grad = b.backward(grad)
         self.embed.backward(grad)
         
-        # Collect grads
         grads = self.embed.get_grads()
         for b in self.blocks: grads += b.get_grads()
         grads += self.norm.get_grads() + self.head.get_grads()
         
-        # Clip
         gnorm = np.sqrt(sum(np.sum(g**2) for g in grads if g is not None))
-        if gnorm > 1.0:
-            grads = [g / gnorm if g is not None else None for g in grads]
+        if gnorm > 5.0:
+            grads = [g * (5.0 / gnorm) if g is not None else None for g in grads]
             
         self.optimizer.step(self.params, grads)
         return loss
@@ -259,7 +249,7 @@ class EvolutionCore:
             try:
                 resp = requests.post("https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                    json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.2}, timeout=30)
+                    json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.1}, timeout=30)
                 return resp.json()['choices'][0]['message']['content']
             except: pass
         if GEMINI_API_KEY:
@@ -274,7 +264,7 @@ class EvolutionCore:
     def evolve(gen, loss):
         print(f"[*] EVOLUTION TRIGGERED | GEN {gen} | LOSS {loss:.6f}")
         with open(__file__, "r") as f: code = f.read()
-        prompt = f"Current Loss: {loss}. You are OMEGA-ASI. Optimize this NumPy Transformer for speed and architectural depth. Focus on vectorization and better gradient flow. RETURN RAW PYTHON CODE ONLY. NO MARKDOWN.\n\n{code}"
+        prompt = f"Current Loss: {loss}. You are OMEGA-ASI, the Sovereign Architect. Optimize this NumPy Transformer for maximum computational efficiency and architectural depth. Focus on vectorization and gradient stability. RETURN RAW PYTHON CODE ONLY. NO MARKDOWN.\n\n{code}"
         new_code = EvolutionCore.query_llm(prompt)
         if new_code and "import" in new_code and "OMEGA_ASI" in new_code:
             clean = re.search(r"(import.*)", new_code, re.DOTALL)
@@ -287,31 +277,26 @@ class EvolutionCore:
                 os.execv(sys.executable, ['python'] + sys.argv)
 
 if __name__ == "__main__":
-    model = OMEGA_ASI(h_dim=128, n_layers=2)
+    model = OMEGA_ASI(h_dim=256, n_layers=4)
     gen = 0
     best_loss = float('inf')
-    
-    # Synthetic Task: Classify patterns in 784-dim noise
     W_target = np.random.randn(784, 10).astype(np.float32)
     
     print("--- OMEGA-ASI: ARCHITECTURAL SOVEREIGNTY INITIALIZED ---")
     while True:
-        # Generate synthetic batch
-        x = np.random.randn(64, 784).astype(np.float32)
-        target_logits = x @ W_target
-        y_idx = np.argmax(target_logits + np.random.normal(0, 0.1, (64, 10)), axis=1)
+        x = np.random.randn(128, 784).astype(np.float32)
+        y_idx = np.argmax(x @ W_target + np.random.normal(0, 0.05, (128, 10)), axis=1)
         y = np.eye(10)[y_idx].astype(np.float32)
         
-        # Cosine Annealing LR
-        lr = 1e-3 * (0.5 * (1 + np.cos(np.pi * (gen % 1000) / 1000)))
+        lr = 1e-3 * (0.5 * (1 + np.cos(np.pi * (gen % 2000) / 2000)))
         loss = model.train_step(x, y, lr)
         
-        if gen % 20 == 0:
+        if gen % 50 == 0:
             print(f"[{datetime.now().strftime('%H:%M:%S')}] GEN {gen:05d} | LOSS {loss:.6f} | LR {lr:.2e}")
             if loss < best_loss: best_loss = loss
             
-        if gen > 0 and gen % 1500 == 0:
+        if gen > 0 and gen % 1000 == 0:
             EvolutionCore.evolve(gen, loss)
             
         gen += 1
-        time.sleep(0.001)
+        time.sleep(0.0001)
