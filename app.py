@@ -15,7 +15,15 @@ from sqlalchemy.pool import QueuePool
 from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
-import google.generativeai as genai
+from google import genai
+from google.genai import types
+
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+response = client.models.generate_content(
+    model="gemini-2.0-flash", 
+    contents="Your Prompt Here"
+)
+print(response.text)
 
 # 🛸 [GENESIS LAYER]: 
 def bootstrap_system():
