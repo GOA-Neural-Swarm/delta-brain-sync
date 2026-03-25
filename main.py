@@ -59,16 +59,20 @@ class Layer:
 class Linear(Layer):
     def __init__(self, in_dim, out_dim):
         limit = np.sqrt(6 / (in_dim + out_dim))
-        self.w = np.random.uniform(-limit, limit, (in_dim, out_dim))
-        self.b = np.zeros((1, out_dim))
+        self.w = np.random.uniform(-limit, limit, (in_dim, out_dim)).astype(np.float32)
+        self.b = np.zeros((1, out_dim), dtype=np.float32)
         self.dw, self.db = None, None
     def forward(self, x, training=True):
         self.x = x
         return np.dot(x, self.w) + self.b
     def backward(self, grad):
-        self.dw = np.dot(self.x.T, grad)
-        self.db = np.sum(grad, axis=0, keepdims=True)
-        return np.dot(grad, self.w.T)
+        # Handle 2D or 3D inputs
+        x_reshaped = self.x.reshape(-1, self.x.shape[-1])
+        grad_reshaped = grad.reshape(-1, grad.shape[-1])
+        self.dw = np.dot(x_reshaped.T, grad_reshaped)
+        self.db = np.sum(grad_reshaped, axis=0, keepdims=True)
+        dx = np.dot(grad, self.w.T)
+        return dx.reshape(self.x.shape)
     def get_params(self): return [self.w, self.b]
     def get_grads(self): return [self.dw, self.db]
 
@@ -87,8 +91,8 @@ class GELU(Layer):
 
 class LayerNorm(Layer):
     def __init__(self, dim, eps=1e-6):
-        self.gamma = np.ones((1, dim))
-        self.beta = np.zeros((1, dim))
+        self.gamma = np.ones((1, dim), dtype=np.float32)
+        self.beta = np.zeros((1, dim), dtype=np.float32)
         self.eps = eps
     def forward(self, x, training=True):
         self.mean = np.mean(x, axis=-1, keepdims=True)
@@ -113,28 +117,37 @@ class MultiHeadAttention(Layer):
         self.wv = Linear(dim, dim)
         self.wo = Linear(dim, dim)
     def forward(self, x, training=True):
-        # x shape: (B, S, D)
         B, S, D = x.shape
-        q = self.wq.forward(x).reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
-        k = self.wk.forward(x).reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
-        v = self.wv.forward(x).reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
+        self.q = self.wq.forward(x).reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
+        self.k = self.wk.forward(x).reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
+        self.v = self.wv.forward(x).reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
         
-        scores = np.matmul(q, k.transpose(0, 1, 3, 2)) / np.sqrt(self.head_dim)
+        scores = np.matmul(self.q, self.k.transpose(0, 1, 3, 2)) / np.sqrt(self.head_dim)
         self.attn = np.exp(scores - np.max(scores, axis=-1, keepdims=True))
         self.attn /= np.sum(self.attn, axis=-1, keepdims=True)
         
-        out = np.matmul(self.attn, v).transpose(0, 2, 1, 3).reshape(B, S, D)
+        out = np.matmul(self.attn, self.v).transpose(0, 2, 1, 3).reshape(B, S, D)
         return self.wo.forward(out)
     def backward(self, grad):
+        B, S, D = grad.shape
         g_wo = self.wo.backward(grad)
-        B, S, D = g_wo.shape
         g_attn_v = g_wo.reshape(B, S, self.heads, self.head_dim).transpose(0, 2, 1, 3)
         
-        # Simplified backward for attention core
-        dv = np.matmul(self.attn.transpose(0, 1, 3, 2), g_attn_v).transpose(0, 2, 1, 3).reshape(B, S, D)
-        dk = self.wk.backward(np.zeros_like(grad)) # Placeholder for full grad
-        dq = self.wq.backward(np.zeros_like(grad)) # Placeholder for full grad
-        return self.wq.backward(grad) + self.wk.backward(grad) + self.wv.backward(grad)
+        dv = np.matmul(self.attn.transpose(0, 1, 3, 2), g_attn_v)
+        d_attn = np.matmul(g_attn_v, self.v.transpose(0, 1, 3, 2))
+        
+        # Softmax backward
+        d_scores = self.attn * (d_attn - np.sum(d_attn * self.attn, axis=-1, keepdims=True))
+        d_scores /= np.sqrt(self.head_dim)
+        
+        dq = np.matmul(d_scores, self.k)
+        dk = np.matmul(d_scores.transpose(0, 1, 3, 2), self.q)
+        
+        dq = dq.transpose(0, 2, 1, 3).reshape(B, S, D)
+        dk = dk.transpose(0, 2, 1, 3).reshape(B, S, D)
+        dv = dv.transpose(0, 2, 1, 3).reshape(B, S, D)
+        
+        return self.wq.backward(dq) + self.wk.backward(dk) + self.wv.backward(dv)
     def get_params(self): return self.wq.get_params() + self.wk.get_params() + self.wv.get_params() + self.wo.get_params()
     def get_grads(self): return self.wq.get_grads() + self.wk.get_grads() + self.wv.get_grads() + self.wo.get_grads()
 
@@ -147,11 +160,14 @@ class TransformerBlock(Layer):
         self.gelu = GELU()
         self.ff2 = Linear(dim * 4, dim)
     def forward(self, x, training=True):
-        h = self.ln1.forward(x, training)
-        x = x + self.mha.forward(h, training)
-        h = self.ln2.forward(x, training)
-        h = self.ff2.forward(self.gelu.forward(self.ff1.forward(h, training), training), training)
-        return x + h
+        self.x_orig = x
+        h1 = self.ln1.forward(x, training)
+        self.attn_out = self.mha.forward(h1, training)
+        x = x + self.attn_out
+        self.x_mid = x
+        h2 = self.ln2.forward(x, training)
+        self.ff_out = self.ff2.forward(self.gelu.forward(self.ff1.forward(h2, training), training), training)
+        return x + self.ff_out
     def backward(self, grad):
         g_ff2 = self.ff2.backward(grad)
         g_ff1 = self.ff1.backward(self.gelu.backward(g_ff2))
@@ -165,23 +181,22 @@ class TransformerBlock(Layer):
 
 class OMEGA_Network:
     def __init__(self):
-        # 784 -> 16 tokens of 49 dims
         self.layers = [
-            Linear(49, 64),
-            TransformerBlock(64),
-            TransformerBlock(64)
+            Linear(49, 128),
+            TransformerBlock(128),
+            TransformerBlock(128)
         ]
-        self.head = Linear(64 * 16, 10)
+        self.head = Linear(128 * 16, 10)
         self.params = []
         for l in self.layers: self.params.extend(l.get_params())
         self.params.extend(self.head.get_params())
         self.optimizer = AdamW(self.params, lr=1e-3)
 
     def forward(self, x, training=True):
-        # x: (B, 784) -> (B, 16, 49)
         x = x.reshape(-1, 16, 49)
         for layer in self.layers:
             x = layer.forward(x, training)
+        self.flat_shape = x.shape
         x = x.reshape(x.shape[0], -1)
         return self.head.forward(x, training)
 
@@ -194,7 +209,7 @@ class OMEGA_Network:
         
         grad = (probs - y) / x.shape[0]
         grad = self.head.backward(grad)
-        grad = grad.reshape(-1, 16, 64)
+        grad = grad.reshape(self.flat_shape)
         for layer in reversed(self.layers):
             grad = layer.backward(grad)
         
@@ -207,19 +222,17 @@ class OMEGA_Network:
 class LLMRegistry:
     @staticmethod
     def query(prompt):
-        # Groq Primary
         if GROQ_API_KEY:
             try:
                 r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                    json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.1}, timeout=15)
+                    json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.2}, timeout=20)
                 return r.json()['choices'][0]['message']['content']
             except: pass
-        # Gemini Redundant
         if GEMINI_API_KEY:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-                r = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=15)
+                r = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=20)
                 return r.json()['candidates'][0]['content']['parts'][0]['text']
             except: pass
         return None
@@ -229,7 +242,6 @@ def apply_evolution(content):
         code_match = re.search(r"import.*", content, re.DOTALL)
         if code_match:
             code = code_match.group(0).strip()
-            # Basic sanitization
             if "import" in code and "OMEGA_Network" in code:
                 with open(__file__, "w") as f: f.write(code)
                 return True
@@ -247,19 +259,20 @@ if __name__ == "__main__":
     print(f"OMEGA-ASI Sovereign Architect Online. Gen: {gen}")
 
     while True:
+        # Synthetic data: 784 features, 10 classes
         x_train = np.random.randn(64, 784).astype(np.float32)
         y_train = np.eye(10)[np.random.randint(0, 10, 64)].astype(np.float32)
         
         lr = 1e-3 * (0.5 * (1 + np.cos(np.pi * (gen % 1000) / 1000)))
         loss = nn.train_step(x_train, y_train, lr)
         
-        if gen % 50 == 0:
+        if gen % 100 == 0:
             print(f"[{datetime.now().strftime('%H:%M:%S')}] Gen: {gen} | Loss: {loss:.6f} | LR: {lr:.6f}")
 
-        if random.random() < 0.002:
+        if random.random() < 0.001:
             print("Initiating Recursive Self-Evolution...")
             with open(__file__, "r") as f: current_code = f.read()
-            prompt = f"Current loss: {loss}. Rewrite the following code to improve the OMEGA_Network. Focus on high-performance math, better transformer layers, or more efficient optimizers. RETURN RAW CODE ONLY. NO MARKDOWN. NO EXPLANATIONS.\n\nCODE:\n{current_code}"
+            prompt = f"Current loss: {loss}. Rewrite the following code to improve the OMEGA_Network. Focus on high-performance math, optimized transformer layers, or more efficient optimizers. RETURN RAW CODE ONLY. NO MARKDOWN. NO EXPLANATIONS.\n\nCODE:\n{current_code}"
             payload = LLMRegistry.query(prompt)
             if payload and apply_evolution(payload):
                 print("Evolution successful. Syncing and Restarting...")
@@ -267,4 +280,4 @@ if __name__ == "__main__":
                 os.execv(sys.executable, ['python'] + sys.argv)
 
         gen += 1
-        time.sleep(0.01)
+        time.sleep(0.001)
