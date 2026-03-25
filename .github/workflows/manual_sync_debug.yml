@@ -68,14 +68,14 @@ jobs:
           EVOLUTION_SUCCESS=false
           echo "🧬 [EVOLUTION]: Calling Sovereign Architect (Gemini Channel)..."
 
-          # --- 🔱 ATTEMPT 1: GEMINI 1.5 FLASH (Primary Debugger) ---
+          # --- 🔱 ATTEMPT 1: gemini flash latest (Primary Debugger) ---
           GEMINI_PAYLOAD=$(jq -n \
             --arg sys "$SYSTEM_ROLE" \
             --arg code "$OLD_LOGIC" \
             --arg task "$HYPER_PROMPT" \
             '{contents: [{parts: [{text: ($sys + "\n\nCURRENT_LOGIC:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.2}}')
 
-          GEMINI_RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY" \
+          GEMINI_RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=$GEMINI_API_KEY" \
             -H "Content-Type: application/json" \
             -d "$GEMINI_PAYLOAD")
 
