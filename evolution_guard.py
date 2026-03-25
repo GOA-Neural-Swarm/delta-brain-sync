@@ -24,6 +24,11 @@ def get_ai_correction(error_log, original_code):
         response = requests.post(url, headers=headers, json=payload)
         data = response.json()
         
+        if 'error' in data and 'rate_limit_exceeded' in str(data):
+            print("⏳ [RATE-LIMIT]: Sleeping for 20 seconds...")
+            time.sleep(20)
+            return get_ai_correction(error_log, original_code)
+        
         # API Error ရှိမရှိ စစ်ဆေးခြင်း
         if 'choices' in data:
             content = data['choices'][0]['message']['content']
