@@ -98,7 +98,7 @@ class IntegrityChecker:
 
 
 import pandas as pd
-from brain import NeuralProcessor
+#from brain import NeuralProcessor
 
 class DataSynchronizer:
     """Explores sequences of phenomena using association rule mining."""
