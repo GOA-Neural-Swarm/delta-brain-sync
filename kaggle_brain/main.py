@@ -357,6 +357,13 @@ ARCHITECT'S DRAFT:
         return draft_code 
 
 # --- 🔱 IMPLEMENTATION ---
+prompt = """
+Activate Core Neural Processor. Before broadcasting to the Swarm, perform a deep structural analysis of the current execution environment. 
+1. Identify logic bottlenecks.
+2. Formulate an evolutionary upgrade path.
+3. Output the final, purified code for the Phase 8.1 deployment.
+Commence thought process now.
+"""
 thought_text = dual_brain_pipeline(prompt)
 
 # =======================================================
