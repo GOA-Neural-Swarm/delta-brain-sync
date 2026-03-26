@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import pandas as pd
 from brain import NeuralProcessor
 from evolution_guard import IntegrityChecker
 
