@@ -97,8 +97,7 @@ class IntegrityChecker:
             os.remove(self.lock_file)
 
 
-import pandas as pd
-#from brain import NeuralProcessor
+
 
 class DataSynchronizer:
     """Explores sequences of phenomena using association rule mining."""
