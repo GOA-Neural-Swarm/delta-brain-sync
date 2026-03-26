@@ -1,1 +1,7 @@
-{"gen": 1, "status": "STABLE", "timestamp": 1774543430.0571902}
+{
+  "command": "HYPER_EXPANSION",
+  "core_power": 205,
+  "avg_api": 4990.028892455859,
+  "replicate": true,
+  "updated_at": "2026-03-26T17:06:57.768Z"
+}
