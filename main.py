@@ -1,9 +1,8 @@
-
 import numpy as np
 import time
 
 class Tensor:
-    def __init__(self, data, name=""):
+    def __init__(self, data):
         self.d = data.astype('float32')
         self.g = np.zeros_like(self.d)
         self.m = np.zeros_like(self.d)
@@ -21,15 +20,15 @@ class Module:
         return p
 
 class Linear(Module):
-    def __init__(self, i, o, b=True):
-        self.w = Tensor(np.random.randn(i, o) * np.sqrt(2/i))
-        self.b = Tensor(np.zeros((1, o))) if b else None
+    def __init__(self, i, o, bias=True):
+        self.w = Tensor(np.random.randn(i, o) * np.sqrt(2.0 / i))
+        self.b = Tensor(np.zeros((1, o))) if bias else None
     def f(self, x):
         self.x = x
         return x @ self.w.d + (self.b.d if self.b else 0)
     def b(self, g):
         self.w.g = self.x.T @ g
-        if self.b: self.b.g = g.sum(0, keepdims=True)
+        if self.b: self.b.g = np.sum(g, axis=0, keepdims=True)
         return g @ self.w.d.T
 
 class RMSNorm(Module):
@@ -59,42 +58,24 @@ class SwiGLU(Module):
         dx1 = dsw * (self.sig * (1 + self.x1 * (1 - self.sig)))
         return self.w1.b(dx1) + self.w2.b(dx2)
 
-class UnifiedPath(Module):
-    def __init__(self, d, h, proj=False):
-        self.norm = RMSNorm(d)
-        if proj:
-            self.proj = Linear(d, d, False)
-            self.f = self.proj_f
-            self.b = self.proj_b
-        else:
-            self.mlp = SwiGLU(d, h)
-            self.f = self.mlp_f
-            self.b = self.mlp_b
-    def proj_f(self, x):
-        return self.proj.f(self.norm.f(x))
-    def proj_b(self, g):
-        return self.norm.b(self.proj.b(g))
-    def mlp_f(self, x):
-        return self.mlp.f(self.norm.f(x))
-    def mlp_b(self, g):
-        return self.norm.b(self.mlp.b(g))
-
 class SovereignEvolutionBlock(Module):
     def __init__(self, d, h):
-        self.gemini = UnifiedPath(d, h)
-        self.groq = UnifiedPath(d, h, proj=True)
-        self.gate = Tensor(np.array([[0.5]], dtype='float32'))
+        self.ln1 = RMSNorm(d)
+        self.gemini = SwiGLU(d, h)
+        self.ln2 = RMSNorm(d)
+        self.groq = Linear(d, d, False)
+        self.gate = Tensor(np.array([[0.0]], dtype='float32'))
     def f(self, x):
         self.r = x
         self.gv = 1 / (1 + np.exp(-self.gate.d))
-        self.o_gemini = self.gemini.f(x)
-        self.o_groq = self.groq.f(x)
+        self.o_gemini = self.gemini.f(self.ln1.f(x))
+        self.o_groq = self.groq.f(self.ln2.f(x))
         return self.r + self.gv * self.o_gemini + (1 - self.gv) * self.o_groq
     def b(self, g):
         dgv_raw = self.gv * (1 - self.gv)
         self.gate.g = np.sum(g * (self.o_gemini - self.o_groq) * dgv_raw, keepdims=True)
-        g_gemini = self.gemini.b(g * self.gv)
-        g_groq = self.groq.b(g * (1 - self.gv))
+        g_gemini = self.ln1.b(self.gemini.b(g * self.gv))
+        g_groq = self.ln2.b(self.groq.b(g * (1 - self.gv)))
         return g + g_gemini + g_groq
 
 class AdamW:
@@ -110,13 +91,13 @@ class AdamW:
             p.d -= a * p.m / (np.sqrt(p.v) + self.e)
 
 class OMEGA_ASI(Module):
-    def __init__(self, i, h, o, d=4):
+    def __init__(self, i, h, o, d=6):
         self.st = Linear(i, h)
         self.bl = [SovereignEvolutionBlock(h, h * 4) for _ in range(d)]
         self.rn = RMSNorm(h)
         self.hd = Linear(h, o)
         self.ps = self.params()
-        self.opt = AdamW(self.ps, lr=1e-3, wd=0.05)
+        self.opt = AdamW(self.ps, lr=1e-3, wd=0.02)
     def f(self, x):
         x = self.st.f(x)
         for b in self.bl: x = b.f(x)
@@ -137,24 +118,25 @@ class OMEGA_ASI(Module):
         self.opt.step()
         return loss
 
-def get_data(n=10000, d=784, c=10):
+def get_data(n=25000, d=784, c=10):
     x = np.random.randn(n, d).astype('float32')
     w = np.random.randn(d, c).astype('float32')
     y = np.argmax(x @ w + 0.05 * np.random.randn(n, c), axis=1)
-    return (x - x.mean()) / (x.std() + 1e-8), np.eye(c)[y].astype('float32')
+    x = (x - np.mean(x, axis=0)) / (np.std(x, axis=0) + 1e-8)
+    return x, np.eye(c)[y].astype('float32')
 
 if __name__ == "__main__":
-    X, Y = get_data(20000)
-    m = OMEGA_ASI(784, 160, 10, 6)
-    bs, ep = 128, 100
-    lr_init = 2e-3
+    X, Y = get_data()
+    m = OMEGA_ASI(784, 256, 10, 4)
+    bs, ep = 128, 50
+    lr_max = 3e-3
     for e in range(1, ep + 1):
-        m.opt.lr = lr_init * (0.95 ** (e // 5))
+        m.opt.lr = lr_max * 0.5 * (1 + np.cos(np.pi * e / ep))
         idx = np.random.permutation(len(X))
         ls, t0 = [], time.time()
         for i in range(0, len(X), bs):
             ls.append(m.step(X[idx[i:i+bs]], Y[idx[i:i+bs]]))
         v_l = m.f(X[:2000])
         acc = np.mean(np.argmax(v_l, 1) == np.argmax(Y[:2000], 1))
-        print(f"OMEGA_ASI_V2 | EP: {e:03d} | LOSS: {np.mean(ls):.5f} | ACC: {acc:.5f} | T: {time.time()-t0:.2f}s")
-        if acc > 0.999: break
+        print(f"OMEGA_ASI_V3 | EP: {e:03d} | LOSS: {np.mean(ls):.5f} | ACC: {acc:.5f} | LR: {m.opt.lr:.6f} | T: {time.time()-t0:.2f}s")
+        if acc > 0.9995: break
