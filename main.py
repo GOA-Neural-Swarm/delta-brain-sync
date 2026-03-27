@@ -75,29 +75,29 @@ class SiLU(Module):
         s = self.sig
         return g * (s * (1.0 + self.x * (1.0 - s)))
 
-class DualCoreBlock(Module):
+class SovereignBlock(Module):
     def __init__(self, d):
         super().__init__()
         self.ln = LayerNorm(d)
-        self.gemini_path = [Linear(d, d * 2), GELU(), Linear(d * 2, d)]
-        self.groq_path = [Linear(d, d * 2), SiLU(), Linear(d * 2, d)]
-        self.gate = Parameter(np.ones((1, d)) * 0.5)
+        self.gemini_p1 = Linear(d, d * 4)
+        self.gemini_act = GELU()
+        self.gemini_p2 = Linear(d * 4, d)
+        self.groq_p1 = Linear(d, d * 4)
+        self.groq_act = SiLU()
+        self.groq_p2 = Linear(d * 4, d)
+        self.gate = Parameter(np.zeros((1, d)))
     def forward(self, x):
-        self.r = x
+        self.res = x
         x = self.ln.forward(x)
-        self.out_a = x
-        for m in self.gemini_path: self.out_a = m.forward(self.out_a)
-        self.out_b = x
-        for m in self.groq_path: self.out_b = m.forward(self.out_b)
-        g = 1.0 / (1.0 + np.exp(-self.gate.d))
-        return self.r + g * self.out_a + (1.0 - g) * self.out_b
+        self.out_a = self.gemini_p2.forward(self.gemini_act.forward(self.gemini_p1.forward(x)))
+        self.out_b = self.groq_p2.forward(self.groq_act.forward(self.groq_p1.forward(x)))
+        self.g_val = 1.0 / (1.0 + np.exp(-self.gate.d))
+        return self.res + self.g_val * self.out_a + (1.0 - self.g_val) * self.out_b
     def backward(self, g_in):
-        sig_gate = 1.0 / (1.0 + np.exp(-self.gate.d))
-        ga = g_in * sig_gate
-        gb = g_in * (1.0 - sig_gate)
-        self.gate.g = np.sum(g_in * (self.out_a - self.out_b) * sig_gate * (1.0 - sig_gate), axis=0, keepdims=True)
-        for m in reversed(self.gemini_path): ga = m.backward(ga)
-        for m in reversed(self.groq_path): gb = m.backward(gb)
+        dg = self.g_val * (1.0 - self.g_val)
+        self.gate.g = np.sum(g_in * (self.out_a - self.out_b) * dg, axis=0, keepdims=True)
+        ga = self.gemini_p1.backward(self.gemini_act.backward(self.gemini_p2.backward(g_in * self.g_val)))
+        gb = self.groq_p1.backward(self.groq_act.backward(self.groq_p2.backward(g_in * (1.0 - self.g_val))))
         return self.ln.backward(ga + gb) + g_in
 
 class AdamW:
@@ -117,11 +117,11 @@ class OMEGA_ASI(Module):
     def __init__(self, in_d, hid_d, out_d, depth=4):
         super().__init__()
         self.stem = Linear(in_d, hid_d)
-        self.blocks = [DualCoreBlock(hid_d) for _ in range(depth)]
+        self.blocks = [SovereignBlock(hid_d) for _ in range(depth)]
         self.head_ln = LayerNorm(hid_d)
         self.head = Linear(hid_d, out_d)
         self.ps = self.parameters()
-        self.opt = AdamW(self.ps, lr=1e-3, wd=0.05)
+        self.opt = AdamW(self.ps, lr=2e-3, wd=0.01)
     def forward(self, x, training=True):
         self.training = training
         x = self.stem.forward(x)
@@ -133,28 +133,27 @@ class OMEGA_ASI(Module):
         self.stem.backward(g)
     def train_step(self, x, y):
         logits = self.forward(x, True)
-        shift = np.max(logits, axis=1, keepdims=True)
-        ex = np.exp(logits - shift)
+        ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
         probs = ex / np.sum(ex, axis=1, keepdims=True)
         loss = -np.mean(np.sum(y * np.log(probs + 1e-12), axis=1))
         self.backward((probs - y) / y.shape[0])
         self.opt.step()
         return loss
 
-def get_data(n=5000, d=784, c=10):
+def get_data(n=10000, d=784, c=10):
     x = np.random.randn(n, d).astype(np.float32)
     w = np.random.randn(d, c).astype(np.float32)
-    y_idx = np.argmax(x @ w + 0.05 * np.random.randn(n, c), axis=1)
+    y_idx = np.argmax(x @ w + 0.1 * np.random.randn(n, c), axis=1)
     y = np.eye(c)[y_idx].astype(np.float32)
     return (x - np.mean(x)) / np.std(x), y
 
 if __name__ == "__main__":
     X, Y = get_data()
-    model = OMEGA_ASI(784, 128, 10, depth=2)
-    batch_size = 64
-    epochs = 50
+    model = OMEGA_ASI(784, 256, 10, depth=3)
+    batch_size = 128
+    epochs = 100
     
-    print("RECURSIVE SELF-EVOLUTION INITIATED...")
+    print("SOVEREIGN ARCHITECT: EVOLUTIONARY SEQUENCE START")
     for e in range(1, epochs + 1):
         idx = np.random.permutation(len(X))
         losses = []
@@ -164,9 +163,8 @@ if __name__ == "__main__":
             losses.append(model.train_step(bx, by))
         
         dt = time.time() - t0
-        preds = np.argmax(model.forward(X[:1000], False), axis=1)
-        acc = np.mean(preds == np.argmax(Y[:1000], axis=1))
-        print(f"EPOCH {e:02} | LOSS: {np.mean(losses):.4f} | ACC: {acc:.4f} | TIME: {dt:.2f}s")
-        if acc > 0.99: 
-            print("CONVERGENCE TARGET REACHED.")
-            break
+        val_logits = model.forward(X[:1000], False)
+        acc = np.mean(np.argmax(val_logits, axis=1) == np.argmax(Y[:1000], axis=1))
+        print(f"CYCLE {e:03} | LOSS: {np.mean(losses):.5f} | ACC: {acc:.4f} | {dt:.2f}s")
+        if acc > 0.995: break
+    print("EVOLUTIONARY TARGET ATTAINED.")
