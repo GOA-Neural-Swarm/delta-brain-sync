@@ -1,9 +1,8 @@
-
 import numpy as np
 import time
 
 class Tensor:
-    def __init__(self, data):
+    def __init__(self, data, name=""):
         self.d = data.astype('float32')
         self.g = np.zeros_like(self.d)
         self.m = np.zeros_like(self.d)
@@ -59,58 +58,41 @@ class SwiGLU(Module):
         dx1 = dsw * (self.sig * (1 + self.x1 * (1 - self.sig)))
         return self.w1.b(dx1) + self.w2.b(dx2)
 
-class Unified(Module):
-    def __init__(self, d, h):
-        self.w1, self.w2, self.w3 = Linear(d, h, False), Linear(d, h, False), Linear(h, d, False)
-    def f(self, x):
-        self.x1, self.x2 = self.w1.f(x), self.w2.f(x)
-        self.sig = 1 / (1 + np.exp(-np.clip(self.x1, -20, 20)))
-        self.sw = self.x1 * self.sig
-        return self.w3.f(self.sw * self.x2)
-    def b(self, g):
-        g = self.w3.b(g)
-        dx2, dsw = g * self.sw, g * self.x2
-        dx1 = dsw * (self.sig * (1 + self.x1 * (1 - self.sig)))
-        return self.w1.b(dx1) + self.w2.b(dx2)
-
-class SovereignBlock(Module):
+class GeminiPath(Module):
     def __init__(self, d):
-        self.n1 = RMSNorm(d)
-        self.unified = Unified(d, d * 4)
-        self.gate = Tensor(np.zeros((1, d)))
+        self.norm = RMSNorm(d)
+        self.mlp = SwiGLU(d, d * 4)
+    def f(self, x):
+        return self.mlp.f(self.norm.f(x))
+    def b(self, g):
+        return self.norm.b(self.mlp.b(g))
+
+class GroqPath(Module):
+    def __init__(self, d):
+        self.norm = RMSNorm(d)
+        self.proj = Linear(d, d, False)
+    def f(self, x):
+        return self.proj.f(self.norm.f(x))
+    def b(self, g):
+        return self.norm.b(self.proj.b(g))
+
+class SovereignEvolutionBlock(Module):
+    def __init__(self, d):
+        self.gemini = GeminiPath(d)
+        self.groq = GroqPath(d)
+        self.gate = Tensor(np.array([[0.5]], dtype='float32'))
     def f(self, x):
         self.r = x
-        nx = self.n1.f(x)
-        self.gv = 1 / (1 + np.exp(-np.clip(self.gate.d, -20, 20)))
-        self.o_unified = self.unified.f(nx)
-        return self.r + self.gv * self.o_unified
+        self.gv = 1 / (1 + np.exp(-self.gate.d))
+        self.o_gemini = self.gemini.f(x)
+        self.o_groq = self.groq.f(x)
+        return self.r + self.gv * self.o_gemini + (1 - self.gv) * self.o_groq
     def b(self, g):
-        dgv = self.gv * (1 - self.gv)
-        self.gate.g = np.sum(g * self.o_unified * dgv, axis=0, keepdims=True)
-        ga = self.unified.b(g * self.gv)
-        return self.n1.b(ga + g)
-
-class IntegratedBlock(Module):
-    def __init__(self, d):
-        self.n1 = RMSNorm(d)
-        self.unified = Unified(d, d * 4)
-        self.gate = Tensor(np.zeros((1, d)))
-    def f(self, x):
-        self.r = x
-        nx = self.n1.f(x)
-        self.x1, self.x2 = nx, nx
-        self.sig = 1 / (1 + np.exp(-np.clip(nx, -20, 20)))
-        self.sw = nx * self.sig
-        self.o_int = self.unified.f(self.sw * self.x2)
-        self.gv = 1 / (1 + np.exp(-np.clip(self.gate.d, -20, 20)))
-        return self.r + self.gv * self.o_int
-    def b(self, g):
-        dgv = self.gv * (1 - self.gv)
-        self.gate.g = np.sum(g * self.o_int * dgv, axis=0, keepdims=True)
-        dx2, dsw = g * self.gv, self.gv * self.x2
-        dx1 = dsw * (self.sig * (1 + self.x1 * (1 - self.sig)))
-        g1 = self.unified.b(dx1)
-        return self.n1.b(g1 + g)
+        dgv_raw = self.gv * (1 - self.gv)
+        self.gate.g = np.sum(g * (self.o_gemini - self.o_groq) * dgv_raw, keepdims=True)
+        g_gemini = self.gemini.b(g * self.gv)
+        g_groq = self.groq.b(g * (1 - self.gv))
+        return g + g_gemini + g_groq
 
 class AdamW:
     def __init__(self, p, lr=1e-3, b=(0.9, 0.999), e=1e-8, wd=0.01):
@@ -127,11 +109,11 @@ class AdamW:
 class OMEGA_ASI(Module):
     def __init__(self, i, h, o, d=4):
         self.st = Linear(i, h)
-        self.bl = [SovereignBlock(h) for _ in range(d)]
+        self.bl = [SovereignEvolutionBlock(h) for _ in range(d)]
         self.rn = RMSNorm(h)
         self.hd = Linear(h, o)
         self.ps = self.params()
-        self.opt = AdamW(self.ps, lr=2e-3, wd=0.02)
+        self.opt = AdamW(self.ps, lr=1e-3, wd=0.05)
     def f(self, x):
         x = self.st.f(x)
         for b in self.bl: x = b.f(x)
@@ -155,19 +137,21 @@ class OMEGA_ASI(Module):
 def get_data(n=10000, d=784, c=10):
     x = np.random.randn(n, d).astype('float32')
     w = np.random.randn(d, c).astype('float32')
-    y = np.argmax(x @ w + 0.1 * np.random.randn(n, c), axis=1)
-    return (x - x.mean()) / x.std(), np.eye(c)[y].astype('float32')
+    y = np.argmax(x @ w + 0.05 * np.random.randn(n, c), axis=1)
+    return (x - x.mean()) / (x.std() + 1e-8), np.eye(c)[y].astype('float32')
 
 if __name__ == "__main__":
-    X, Y = get_data(15000)
-    m = OMEGA_ASI(784, 128, 10, 4)
-    bs, ep = 64, 50
+    X, Y = get_data(20000)
+    m = OMEGA_ASI(784, 160, 10, 6)
+    bs, ep = 128, 100
+    lr_init = 2e-3
     for e in range(1, ep + 1):
+        m.opt.lr = lr_init * (0.95 ** (e // 5))
         idx = np.random.permutation(len(X))
         ls, t0 = [], time.time()
         for i in range(0, len(X), bs):
             ls.append(m.step(X[idx[i:i+bs]], Y[idx[i:i+bs]]))
-        v_l = m.f(X[:1000])
-        acc = np.mean(np.argmax(v_l, 1) == np.argmax(Y[:1000], 1))
-        print(f"ASI_CORE | EP: {e:02d} | LOSS: {np.mean(ls):.4f} | ACC: {acc:.4f} | T: {time.time()-t0:.2f}s")
-        if acc > 0.998: break
+        v_l = m.f(X[:2000])
+        acc = np.mean(np.argmax(v_l, 1) == np.argmax(Y[:2000], 1))
+        print(f"OMEGA_ASI_V2 | EP: {e:03d} | LOSS: {np.mean(ls):.5f} | ACC: {acc:.5f} | T: {time.time()-t0:.2f}s")
+        if acc > 0.999: break
