@@ -730,10 +730,23 @@ while True:
         else:
             FIXED_DB_URL = DB_URL
             
-            
+        print(f"Sovereign Omni-Sync: Cycle Gen {current_gen} Activated")
+        from evolution_engine import EvolutionEngine
+        from sync_data import DataSynchronizer
+        
+        engine = EvolutionEngine()
+        sync_engine = DataSynchronizer()
+        
+        sync_results = sync_engine.sync()
+        evolution_status = engine.initiate_evolution_step()
+        
+        print(f"Cycle Result: {evolution_status} | Sync: {sync_results['status']}")
+        # ============================================
+
+        print(f"⚙️ [NEURAL BRAIN]: Training Cycle Initiated for Gen {current_gen}...")    
             
 
-        print(f"⚙️ [NEURAL BRAIN]: Training Cycle Initiated for Gen {current_gen}...")
+        
         
         # Neural Training Logic
         total_error = 0
