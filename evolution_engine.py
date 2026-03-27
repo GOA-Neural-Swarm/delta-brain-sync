@@ -1,168 +1,211 @@
-import json
-import os
 import time
-import pandas as pd
-from brain import NeuralProcessor
-from evolution_guard import IntegrityChecker
-
-class EvolutionEngine:
-    """Core controller for Gen 1 synchronization and architectural advancement."""
-    def __init__(self, metadata_path="ai_status.json"):
-        self.metadata_path = metadata_path
-        self.guard = IntegrityChecker()
-        self.processor = NeuralProcessor()
-        self.status = self._load_status()
-
-    def _load_status(self):
-        if os.path.exists(self.metadata_path):
-            with open(self.metadata_path, 'r') as f:
-                return json.load(f)
-        return {"gen": 1, "neural_error": 0.0, "sync_stable": True}
-
-    def _update_status(self, **kwargs):
-        self.status.update(kwargs)
-        with open(self.metadata_path, 'w') as f:
-            json.dump(self.status, f, indent=4)
-
-    def initiate_evolution_step(self):
-        if not self.guard.verify_structural_integrity():
-            return "INTEGRITY_COMPROMISED"
-
-        # Advance to Gen 1 Optimization phase
-        mutation_factor = self.processor.calculate_brier_mixability()
-        new_error = max(0.0, self.status["neural_error"] - mutation_factor)
-        
-        self._update_status(
-            gen=self.status["gen"] + 1,
-            neural_error=new_error,
-            last_evolution=time.time()
-        )
-        return "EVOLUTION_SUCCESS"
-
-if __name__ == "__main__":
-    engine = EvolutionEngine()
-    print(engine.initiate_evolution_step())
-
-
-import numpy as np
-
-class NeuralProcessor:
-    """Advanced cognitive unit utilizing mixable prediction games and SVM-based classification."""
-    
-    def __init__(self):
-        self.synaptic_density = 1.0
-        self.learning_rate = self._calculate_optimal_rate()
-        logger.info("🌌 [NEURAL-PROCESSOR]: Advanced L.I.F SNN Architecture Online.")
-
-    def _calculate_optimal_rate(self):
-        # Optimization based on Neural Memory: Brier game of prediction is mixable
-        # Finding the optimal learning rate and substitution
-        return 0.00729 # Baseline Gen 1 constant
-
-    def calculate_brier_mixability(self):
-        """
-        [ADVANCED NEURAL LOGIC]:
-        Brier Score နှင့် Entropy ကို အခြေခံ၍ Mutation Factor ကို တွက်ချက်သည်။
-        မူရင်း logic ဖြစ်သော Brier game of prediction is mixable ကို dynamic ပြောင်းလဲတွက်ချက်ပေးသည်။
-        """
-        import random
-        try:
-            logger.info("⚙️ [NEURAL]: Calculating Dynamic Brier Mixability Factor...")
-            
-            # ၁။ Base Stability (Brier Score Baseline)
-            # မူရင်း np.random.uniform(0.001, 0.005) ထက် ပိုမိုကျယ်ပြန့်သော evolution range ကို သုံးထားသည်
-            base_stability = 0.75
-            
-            # ၂။ Random Mutation Variance (ဆင့်ကဲဖြစ်စဉ်အတွက် လိုအပ်သော ပြောင်းလဲမှုနှုန်း)
-            mutation_variance = random.uniform(0.01, 0.15)
-            
-            # ၃။ Calculation logic (Mixability Factor)
-            mixability = base_stability + mutation_variance
-            
-            # ၄။ Boundary Control (0.1 နှင့် 0.95 ကြားတွင် ထိန်းညှိခြင်း)
-            final_factor = max(0.1, min(0.95, mixability))
-            
-            logger.info(f"🧬 [EVOLUTION]: Brier Mixability Factor set to {final_factor:.4f}")
-            return final_factor
-
-        except Exception as e:
-            logger.error(f"⚠️ [NEURAL-ERROR]: Mixability calculation failed: {e}")
-            return 0.85  # Safe Evolution Fallback
-
-    def evolve_classifier(self, new_data):
-        """Evolves the internal SVM classifier with incoming phenomenon sequences."""
-        # Implementation of Evolving Classifiers per Neural Memory
-        logger.info("🧠 [NEURAL]: Evolving SVM Classifiers with new data sequence...")
-        pass
-
-    def process_sequence(self, sequence):
-        """Exploration of phenomena sequences via data mining association rules."""
-        # Transition from single phenomenon focus to sequence exploration
-        logger.info(f"🔍 [NEURAL]: Mining association rules for sequence length: {len(sequence)}")
-        return [f"rule_{i}" for i in range(len(sequence))]
-
-
+import subprocess 
 import os
+import requests  
+import json
+import re
+import sys
 import hashlib
+import logging
+import numpy as np
+import pandas as pd
 
+# ============================================================================
+# 🛡️ SYSTEM CONFIGURATIONS & LOGGING
+# ============================================================================
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - 🛡️ [GUARD] - %(levelname)s - %(message)s')
+logger = logging.getLogger("EvolutionGuard")
+
+# API Configurations
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+# 🚨 GUARDRAIL CONFIGURATION: AI ဖျက်ခွင့်မရှိသော အစိတ်အပိုင်းများ (Fully matched from provided snippets)
+MANDATORY_COMPONENTS = [
+    "class EvolutionEngine",
+    "def initiate_evolution_step",
+    "class NeuralProcessor",
+    "def calculate_brier_mixability",
+    "def evolve_classifier",
+    "def process_sequence",
+    "class IntegrityChecker",
+    "def verify_structural_integrity",
+    "class DataSynchronizer",
+    "def extract_association_rules",
+    "def sync",
+    "Brier Score",
+    "SVM-based classification"
+]
+
+# ============================================================================
+# 🧠 CORE 1: INTEGRITY CHECKER (Preserving snippets logic)
+# ============================================================================
 class IntegrityChecker:
     """Ensures architectural stability during Gen 1 mutation cycles."""
     def __init__(self):
-        self.monitored_nodes = ["main.py", "brain.py", "evolution_engine.py"]
+        # Monitored nodes from snippets + core system files
+        self.monitored_nodes = ["main.py", "brain.py", "evolution_engine.py", "sync_data.py"]
         self.lock_file = "trigger.lock"
+        logger.info("Integrity Guard System Activated.")
+
+    def validate_evolution_integrity(self, new_code):
+        """AI ပေးသော ကုဒ်ထဲတွင် လိုအပ်သော Core Logic များ ပါ၊ မပါ စစ်ဆေးခြင်း"""
+        missing_parts = []
+        for component in MANDATORY_COMPONENTS:
+            if component not in new_code:
+                missing_parts.append(component)
+        
+        if missing_parts:
+            logger.error(f"❌ [GUARDRAIL-REJECTED]: Critical logic missing: {missing_parts}")
+            return False
+        
+        logger.info("✅ [GUARDRAIL-PASSED]: Core logic integrity verified.")
+        return True
 
     def verify_structural_integrity(self):
+        """Ensures architectural stability during mutation cycles."""
+        logger.info("Verifying system structural integrity...")
         if os.path.exists(self.lock_file):
+            logger.warning("System is currently LOCKED.")
             return False
+            
         for node in self.monitored_nodes:
             if not os.path.exists(node):
+                logger.error(f"Missing Critical Node: {node}")
+                return False
+            # Syntax validation check
+            if not self.validate_syntax_file(node):
                 return False
         return True
+
+    def validate_syntax_file(self, file_path):
+        try:
+            with open(file_path, 'r') as f:
+                content = f.read()
+            compile(content, file_path, 'exec')
+            return True
+        except Exception as e:
+            logger.error(f"Syntax Error in {file_path}: {str(e)}")
+            return False
 
     def lock_system(self):
         with open(self.lock_file, "w") as f:
             f.write("LOCKED")
+        logger.info("🔒 System Locked.")
 
     def unlock_system(self):
         if os.path.exists(self.lock_file):
             os.remove(self.lock_file)
+            logger.info("🔓 System Unlocked.")
 
+# Singleton instance
+guard = IntegrityChecker()
 
+# ============================================================================
+# 🤖 CORE 2: AI AUTO-HEALING ENGINE (Gemini + Groq with Guardrail Integration)
+# ============================================================================
+def get_ai_correction(error_log, original_code, retry_count=0):
+    MAX_RETRIES = 3
+    if retry_count >= MAX_RETRIES:
+        print("❌ [GUARD]: Max API retries exceeded.")
+        return original_code
 
+    print(f"🧠 [GUARD]: AI analyzing cycle (Attempt {retry_count + 1}/{MAX_RETRIES})...")
+    
+    # AI prompts emphasize keeping Brier mixability and SVM logic
+    prompt = (
+        f"Fix this Python error:\n{error_log}\n\n"
+        f"Code:\n{original_code}\n\n"
+        "IMPORTANT: Do NOT remove 'calculate_brier_mixability', 'evolve_classifier', or 'DataSynchronizer'. "
+        "Keep the Brier Score calculation logic intact. Return ONLY the clean code."
+    )
 
-class DataSynchronizer:
-    """Explores sequences of phenomena using association rule mining."""
-    def __init__(self):
-        self.processor = NeuralProcessor()
-        self.data_path = "data.csv"
-
-    def extract_association_rules(self):
-        """Utilizes data mining tasks to search for association rules within the sync stream."""
-        if not os.path.exists(self.data_path):
-            return []
+    # --- ATTEMPT 1: GEMINI ---
+    try:
+        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+        res = requests.post(gemini_url, json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.2}}, timeout=30)
         
-        raw_data = pd.read_csv(self.data_path)
-        # Gen 1 Optimization: Focus on sequence exploration rather than single points
-        return self.processor.process_sequence(raw_data.columns.tolist())
+        if res.status_code == 429:
+            time.sleep(20 * (2 ** retry_count))
+            return get_ai_correction(error_log, original_code, retry_count + 1)
 
-    def sync(self):
-        rules = self.extract_association_rules()
-        return {"status": "synchronized", "rules_discovered": len(rules)}
+        data = res.json()
+        if res.status_code == 200 and 'candidates' in data:
+            content = data['candidates'][0]['content']['parts'][0]['text']
+            corrected_code = re.sub(r'```python\n|```', '', content).strip()
+            
+            if guard.validate_evolution_integrity(corrected_code):
+                return corrected_code
+            else:
+                return get_ai_correction(error_log, original_code, retry_count + 1)
+    except Exception:
+        print("⚠️ [GEMINI-FAIL]: Switching to Groq...")
 
+    # --- ATTEMPT 2: GROQ ---
+    try:
+        groq_url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+        response = requests.post(groq_url, headers=headers, json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}]}, timeout=30)
+        
+        if response.status_code == 429:
+            time.sleep(20 * (2 ** retry_count))
+            return get_ai_correction(error_log, original_code, retry_count + 1)
 
-from evolution_engine import EvolutionEngine
-from sync_data import DataSynchronizer
-
-def run_system_cycle():
-    """Main execution loop for the Sovereign Omni-Sync Architect."""
-    engine = EvolutionEngine()
-    sync_engine = DataSynchronizer()
+        data = response.json()
+        if 'choices' in data:
+            content = data['choices'][0]['message']['content']
+            corrected_code = re.sub(r'```python\n|```', '', content).strip()
+            
+            if guard.validate_evolution_integrity(corrected_code):
+                return corrected_code
+    except Exception:
+        return original_code
     
-    print("Sovereign Omni-Sync: Cycle Gen 1 Activated")
-    sync_results = sync_engine.sync()
-    evolution_status = engine.initiate_evolution_step()
+    return original_code
+
+def run_guard(target_script):
+    print(f"🛡️ [GUARD]: Launching {target_script} under Sovereign Supervision...")
     
-    print(f"Cycle Result: {evolution_status} | Sync: {sync_results['status']}")
+    process = subprocess.Popen(['python3', target_script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    start_time = time.time()
+    error_output = ""
+    
+    while time.time() - start_time < 60:
+        line = process.stderr.readline()
+        if line:
+            error_output += line
+            if "Traceback" in line or "Error" in line:
+                print("❌ [GUARD]: Structural failure detected. Initiating Healing...")
+                process.terminate()
+                
+                with open(target_script, 'r') as f:
+                    original_code = f.read()
+                
+                corrected = get_ai_correction(error_output, original_code)
+                
+                if corrected != original_code:
+                    with open(target_script, 'w') as f:
+                        f.write(corrected)
+                    print("✅ [GUARD]: Integrity Restored. Rebooting...")
+                    return run_guard(target_script)
+                else:
+                    sys.exit(1)
+
+        if process.poll() is not None and process.poll() != 0:
+            remaining_error = process.stderr.read()
+            with open(target_script, 'r') as f:
+                original_code = f.read()
+            corrected = get_ai_correction(remaining_error, original_code)
+            if corrected != original_code:
+                with open(target_script, 'w') as f:
+                    f.write(corrected)
+                return run_guard(target_script)
+            sys.exit(1)
+        time.sleep(1)
+
+    print("🌐 [GUARD]: System Gen 1 Stability confirmed. Sovereign handover complete.")
+    sys.exit(0)
 
 if __name__ == "__main__":
-    run_system_cycle()
+    target = sys.argv[1] if len(sys.argv) > 1 else "main.py"
+    run_guard(target)
