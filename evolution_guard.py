@@ -5,12 +5,62 @@ import requests
 import json
 import re
 import sys
+import hashlib
+import logging
 
+# ============================================================================
+# 🛡️ SYSTEM CONFIGURATIONS & LOGGING
+# ============================================================================
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - 🛡️ [GUARD] - %(levelname)s - %(message)s')
+logger = logging.getLogger("EvolutionGuard")
 
 # API Configurations
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
+# ============================================================================
+# 🧠 CORE 1: INTEGRITY CHECKER (Preventing Import Errors)
+# ============================================================================
+class IntegrityChecker:
+    """
+    Evolution Integrity Checker (EIC).
+    AI မှ ကုဒ်များကို ပြင်ဆင်သည့်အခါ Error မပါစေရန် စစ်ဆေးပေးသော အဓိက Class ဖြစ်သည်။
+    """
+    def __init__(self):
+        self.monitored_files = ["evolution_engine.py", "app.py", "evolved_module.py", "main.py"]
+        logger.info("Integrity Guard System Activated.")
+
+    def check_file_health(self, file_path):
+        if not os.path.exists(file_path):
+            logger.error(f"Missing Critical File: {file_path}")
+            return False
+        return True
+
+    def validate_syntax(self, code_string):
+        try:
+            compile(code_string, '<string>', 'exec')
+            return True
+        except SyntaxError as e:
+            logger.error(f"Syntax Validation Failed: {str(e)}")
+            return False
+
+    def get_file_hash(self, file_path):
+        hasher = hashlib.sha256()
+        try:
+            with open(file_path, 'rb') as f:
+                buf = f.read()
+                hasher.update(buf)
+            return hasher.hexdigest()
+        except Exception as e:
+            logger.error(f"Hashing Error: {str(e)}")
+            return None
+
+# Singleton instance to be imported by evolution_engine.py
+guard = IntegrityChecker()
+
+# ============================================================================
+# 🤖 CORE 2: AI AUTO-HEALING ENGINE (Gemini + Groq)
+# ============================================================================
 def get_ai_correction(error_log, original_code):
     print("🧠 [GUARD]: AI is analyzing the error...")
     
@@ -18,7 +68,7 @@ def get_ai_correction(error_log, original_code):
 
     # --- ATTEMPT 1: GEMINI (Primary) ---
     print("📡 [GUARD-GEMINI]: Requesting correction...")
-    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
+    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
     gemini_payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"temperature": 0.2}
@@ -126,6 +176,9 @@ def run_guard(target_script):
     # ဒါပေမဲ့ evolution cycle ပြီးမြောက်ဖို့အတွက် ဒီအဆင့်ဟာ အရေးကြီးဆုံးဖြစ်ပါတယ်။
     sys.exit(0)
 
+# ============================================================================
+# 🚀 DIRECT EXECUTION ENTRY POINT
+# ============================================================================
 if __name__ == "__main__":
     # Get target script from command line, default to main.py
     target = sys.argv[1] if len(sys.argv) > 1 else "main.py"
