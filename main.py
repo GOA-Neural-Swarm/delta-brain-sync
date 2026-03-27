@@ -38,12 +38,14 @@ class RMSNorm(Module):
         self.g, self.e = Tensor(np.ones((1, d))), e
     def f(self, x):
         self.x = x
-        self.rms = np.sqrt(np.mean(x**2, axis=-1, keepdims=True) + self.e)
+        self.ms = np.mean(x**2, axis=-1, keepdims=True)
+        self.rms = np.sqrt(self.ms + self.e)
         self.xh = x / self.rms
         return self.g.d * self.xh
     def b(self, g):
         self.g.g += np.sum(g * self.xh, axis=0, keepdims=True)
         dxh = g * self.g.d
+        n = g.shape[-1]
         return (dxh - self.xh * np.mean(dxh * self.xh, axis=-1, keepdims=True)) / self.rms
 
 class GeminiPath(Module):
@@ -68,12 +70,13 @@ class GroqPath(Module):
         self.w2 = Linear(h, d)
     def f(self, x):
         self.x1 = self.w1.f(x)
-        self.act = self.x1 * (self.x1 > 0)
+        self.act = 0.5 * self.x1 * (1 + np.tanh(0.79788 * (self.x1 + 0.044715 * self.x1**3)))
         return self.w2.f(self.act)
     def b(self, g):
         g = self.w2.b(g)
-        dact = g * (self.x1 > 0)
-        return self.w1.b(dact)
+        tanh_out = np.tanh(0.79788 * (self.x1 + 0.044715 * self.x1**3))
+        d_gelu = 0.5 * (1 + tanh_out) + 0.5 * self.x1 * (1 - tanh_out**2) * 0.79788 * (1 + 3 * 0.044715 * self.x1**2)
+        return self.w1.b(g * d_gelu)
 
 class SovereignEvolutionBlock(Module):
     def __init__(self, d, h):
@@ -126,9 +129,10 @@ class OMEGA_ASI(Module):
     def step(self, x, y):
         self.zero_grad()
         logits = self.f(x)
-        exps = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+        shift_logits = logits - np.max(logits, axis=1, keepdims=True)
+        exps = np.exp(shift_logits)
         probs = exps / np.sum(exps, axis=1, keepdims=True)
-        loss = -np.mean(np.sum(y * np.log(probs + 1e-12), axis=1))
+        loss = -np.mean(np.sum(y * (shift_logits - np.log(np.sum(exps, axis=1, keepdims=True) + 1e-12)), axis=1))
         self.b((probs - y) / y.shape[0])
         gn = np.sqrt(sum(np.sum(p.g**2) for p in self.ps))
         if gn > 1.0:
@@ -139,15 +143,15 @@ class OMEGA_ASI(Module):
 def get_data(n=10000, d=784, c=10):
     x = np.random.randn(n, d).astype('float32')
     w = np.random.randn(d, c).astype('float32')
-    y_idx = np.argmax(x @ w + 0.05 * np.random.randn(n, c), axis=1)
+    y_idx = np.argmax(np.sin(x @ w) + 0.1 * np.random.randn(n, c), axis=1)
     x = (x - np.mean(x)) / (np.std(x) + 1e-8)
     return x, np.eye(c)[y_idx].astype('float32')
 
 if __name__ == "__main__":
-    X, Y = get_data(15000)
-    m = OMEGA_ASI(784, 128, 10, 3)
-    bs, ep = 128, 50
-    lr_max = 5e-3
+    X, Y = get_data(20000)
+    m = OMEGA_ASI(784, 128, 10, 4)
+    bs, ep = 128, 60
+    lr_max = 4e-3
     print("CORE: OMEGA-ASI | ARCH: RECURSIVE-EVOLUTION | PATHS: GEMINI-GROQ-HYBRID")
     for e in range(1, ep + 1):
         m.opt.lr = lr_max * 0.5 * (1 + np.cos(np.pi * e / ep))
@@ -155,7 +159,7 @@ if __name__ == "__main__":
         ls, t0 = [], time.time()
         for i in range(0, len(X), bs):
             ls.append(m.step(X[idx[i:i+bs]], Y[idx[i:i+bs]]))
-        v_l = m.f(X[:1000])
-        acc = np.mean(np.argmax(v_l, 1) == np.argmax(Y[:1000], 1))
+        v_l = m.f(X[:2000])
+        acc = np.mean(np.argmax(v_l, 1) == np.argmax(Y[:2000], 1))
         print(f"EPOCH: {e:03d} | LOSS: {np.mean(ls):.5f} | ACC: {acc:.5f} | LR: {m.opt.lr:.6f} | TIME: {time.time()-t0:.2f}s")
-        if acc > 0.999: break
+        if acc > 0.9995: break
