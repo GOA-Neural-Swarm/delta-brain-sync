@@ -18,17 +18,39 @@ logger = logging.getLogger("EvolutionGuard")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
+# 🚨 GUARDRAIL CONFIGURATION: AI ဖျက်ခွင့်မရှိသော အစိတ်အပိုင်းများ
+MANDATORY_COMPONENTS = [
+    "class NeuralProcessor",
+    "def calculate_brier_mixability",
+    "class EvolutionEngine",
+    "def initiate_evolution_step"
+]
+
 # ============================================================================
-# 🧠 CORE 1: INTEGRITY CHECKER (Preventing Import Errors)
+# 🧠 CORE 1: INTEGRITY CHECKER (Preventing Import Errors & Guardrail Enforcement)
 # ============================================================================
 class IntegrityChecker:
     """
     Evolution Integrity Checker (EIC).
-    AI မှ ကုဒ်များကို ပြင်ဆင်သည့်အခါ Error မပါစေရန် စစ်ဆေးပေးသော အဓိက Class ဖြစ်သည်။
+    AI မှ ကုဒ်များကို ပြင်ဆင်သည့်အခါ Error မပါစေရန်နှင့် Core Logic များ မပျောက်ပျက်စေရန် စစ်ဆေးပေးသည်။
     """
     def __init__(self):
         self.monitored_files = ["evolution_engine.py", "app.py", "evolved_module.py", "main.py"]
         logger.info("Integrity Guard System Activated.")
+
+    def validate_evolution_integrity(self, new_code):
+        """AI ပေးသော ကုဒ်ထဲတွင် လိုအပ်သော Core Logic များ ပါ၊ မပါ စစ်ဆေးခြင်း"""
+        missing_parts = []
+        for component in MANDATORY_COMPONENTS:
+            if component not in new_code:
+                missing_parts.append(component)
+        
+        if missing_parts:
+            logger.error(f"❌ [GUARDRAIL-REJECTED]: AI tried to remove critical logic: {missing_parts}")
+            return False
+        
+        logger.info("✅ [GUARDRAIL-PASSED]: Core logic integrity verified.")
+        return True
 
     def verify_structural_integrity(self):
         """Engine မှ တောင်းဆိုနေသော အဓိက Function"""
@@ -75,11 +97,11 @@ class IntegrityChecker:
             logger.error(f"Hashing Error: {str(e)}")
             return None
 
-# Singleton instance to be imported by evolution_engine.py
+# Singleton instance to be used throughout the script
 guard = IntegrityChecker()
 
 # ============================================================================
-# 🤖 CORE 2: AI AUTO-HEALING ENGINE (Gemini + Groq with Advanced Rate Limit Handling)
+# 🤖 CORE 2: AI AUTO-HEALING ENGINE (Gemini + Groq with Guardrail Protection)
 # ============================================================================
 def get_ai_correction(error_log, original_code, retry_count=0):
     MAX_RETRIES = 3
@@ -112,7 +134,14 @@ def get_ai_correction(error_log, original_code, retry_count=0):
         data = res.json()
         if res.status_code == 200 and 'candidates' in data:
             content = data['candidates'][0]['content']['parts'][0]['text']
-            return re.sub(r'```python\n|```', '', content).strip()
+            corrected_code = re.sub(r'```python\n|```', '', content).strip()
+            
+            # 🚨 [NEW] Guardrail Integrity Check
+            if guard.validate_evolution_integrity(corrected_code):
+                return corrected_code
+            else:
+                print("⚠️ [GUARDRAIL]: Output rejected. Re-attempting AI generation...")
+                return get_ai_correction(error_log, original_code, retry_count + 1)
         else:
             print(f"⚠️ [GEMINI-FAIL]: Status {res.status_code}. Switching to Groq...")
     except Exception as e:
@@ -133,7 +162,7 @@ def get_ai_correction(error_log, original_code, retry_count=0):
         
         # Explicit Groq Rate Limit Handling (Status 429)
         if response.status_code == 429:
-            backoff_time = 20 * (2 ** retry_count) # Exponential backoff
+            backoff_time = 20 * (2 ** retry_count) 
             print(f"⏳ [GROQ-RATE-LIMIT]: Status 429 detected. Sleeping for {backoff_time}s...")
             time.sleep(backoff_time)
             return get_ai_correction(error_log, original_code, retry_count + 1)
@@ -147,13 +176,17 @@ def get_ai_correction(error_log, original_code, retry_count=0):
             time.sleep(backoff_time)
             return get_ai_correction(error_log, original_code, retry_count + 1)
         
-        # API Error ရှိမရှိ စစ်ဆေးခြင်း
         if 'choices' in data:
             content = data['choices'][0]['message']['content']
-            return re.sub(r'```python\n|```', '', content).strip()
+            corrected_code = re.sub(r'```python\n|```', '', content).strip()
+            
+            # 🚨 [NEW] Guardrail Integrity Check for Groq
+            if guard.validate_evolution_integrity(corrected_code):
+                return corrected_code
+            else:
+                return original_code # Do not save broken code if fallback also fails guardrail
         else:
             print(f"❌ [GUARD]: API Error Response: {data}")
-            # API Error တက်ရင် Original code ကိုပဲ ပြန်ပေးပြီး Exit လုပ်မယ် (Loop မပတ်အောင်)
             return original_code
             
     except Exception as e:
@@ -163,8 +196,6 @@ def get_ai_correction(error_log, original_code, retry_count=0):
 def run_guard(target_script):
     print(f"🛡️ [GUARD]: Launching {target_script} in Observation Mode...")
     
-    # Background မှာ process ကို run မယ် (စောင့်မနေတော့ဘူး)
-    # logic coupled with real-time log observation
     process = subprocess.Popen(
         ['python3', target_script],
         stdout=subprocess.PIPE,
@@ -175,9 +206,7 @@ def run_guard(target_script):
     start_time = time.time()
     error_output = ""
     
-    # ပထမ ၆၀ စက္ကန့်အတွင်းမှာ process ကို အနီးကပ် စောင့်ကြည့်မယ်
     while time.time() - start_time < 60:
-        # Error ထွက်လာသလား စစ်မယ်
         line = process.stderr.readline()
         if line:
             print(f"⚠️ [LOG]: {line.strip()}")
@@ -191,17 +220,15 @@ def run_guard(target_script):
                 
                 corrected = get_ai_correction(error_output, original_code)
                 
-                # Check if correction was actually made, to avoid loop if AI returned original code
                 if corrected != original_code:
                     with open(target_script, 'w') as f:
                         f.write(corrected)
                     print("✅ [GUARD]: System evolved. Restarting Guard Cycle...")
-                    return run_guard(target_script) # ပြန်စမယ်
+                    return run_guard(target_script) 
                 else:
                     print("⚠️ [GUARD]: AI could not fix the code or max retries reached. Guard stopping.")
                     sys.exit(1)
 
-        # အကယ်၍ process က ပိတ်သွားပြီး error ရှိနေရင်
         if process.poll() is not None and process.poll() != 0:
             remaining_error = process.stderr.read()
             print(f"❌ [GUARD]: Process died with error: {remaining_error}")
@@ -209,10 +236,8 @@ def run_guard(target_script):
             with open(target_script, 'r') as f:
                 original_code = f.read()
                 
-            # Get corrected code from AI and retry
             corrected_code = get_ai_correction(remaining_error, original_code)
             
-            # Check if correction was actually made
             if corrected_code != original_code:
                 with open(target_script, 'w') as f:
                     f.write(corrected_code)
@@ -224,16 +249,12 @@ def run_guard(target_script):
 
         time.sleep(1)
 
-    # ၆၀ စက္ကန့်အတွင်း Error မတက်ဘဲ အသက်ရှင်နေရင် Healthy လို့ သတ်မှတ်မယ်
     print("🌐 [GUARD]: System is stable and sovereign. Handing over to background process.")
-    # GitHub Action ကို အောင်မြင်စွာ ပိတ်ခိုင်းလိုက်ပေမယ့် background မှာ app.py က ဆက် run နေမှာမဟုတ်ဘူး၊ 
-    # ဒါပေမဲ့ evolution cycle ပြီးမြောက်ဖို့အတွက် ဒီအဆင့်ဟာ အရေးကြီးဆုံးဖြစ်ပါတယ်။
     sys.exit(0)
 
 # ============================================================================
 # 🚀 DIRECT EXECUTION ENTRY POINT
 # ============================================================================
 if __name__ == "__main__":
-    # Get target script from command line, default to main.py
     target = sys.argv[1] if len(sys.argv) > 1 else "main.py"
     run_guard(target)
