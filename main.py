@@ -1,9 +1,8 @@
-
 import numpy as np
 import time
 
 class Tensor:
-    def __init__(self, data):
+    def __init__(self, data, name=""):
         self.d = data.astype('float32')
         self.g = np.zeros_like(self.d)
         self.m = np.zeros_like(self.d)
@@ -51,48 +50,72 @@ class RMSNorm(Module):
         n = self.x.shape[-1]
         return (1.0 / self.rms) * (dxh - self.xh * np.mean(dxh * self.xh, axis=-1, keepdims=True))
 
-class RedundantPath(Module):
+class SwiGLU(Module):
     def __init__(self, d, h):
         self.w1 = Linear(d, h, False)
-        self.w2 = Linear(h, d, False)
-        self.gate = Tensor(np.zeros((1, d)))
+        self.w2 = Linear(d, h, False)
+        self.w3 = Linear(h, d, False)
 
     def f(self, x):
-        self.z = self.w1.f(x)
-        self.tanh_z = np.tanh(0.79788 * (self.z + 0.044715 * self.z**3))
-        self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.z, -10, 10)))
-        self.act = self.z * self.sig
-        self.act_g = 0.5 * self.z * (1.0 + self.tanh_z)
-        self.gv = 1.0 / (1.0 + np.exp(-self.gate.d))
-        self.o1 = self.w2.f(self.act)
-        self.o2 = self.w2.f(self.act_g)
-        return x + self.gv * self.o1 + (1.0 - self.gv) * self.o2
+        self.x1 = self.w1.f(x)
+        self.x2 = self.w2.f(x)
+        self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.x1, -10, 10)))
+        self.swish = self.x1 * self.sig
+        self.out = self.swish * self.x2
+        return self.w3.f(self.out)
 
     def b(self, g):
-        dg = g * (self.o1 - self.o2) * (self.gv * (1.0 - self.gv))
-        self.gate.g += np.sum(dg, axis=0, keepdims=True)
-        g1 = self.w2.b(g * self.gv)
-        g2 = self.w2.b(g * (1.0 - self.gv))
-        dsilu = self.sig * (1.0 + self.z * (1.0 - self.sig))
-        dz = 0.5 * (1.0 + self.tanh_z) + 0.5 * self.z * (1.0 - self.tanh_z**2) * 0.79788 * (1.0 + 3.0 * 0.044715 * self.z**2)
-        return g + self.w1.b(g1 * dsilu + g2 * dz)
+        g3 = self.w3.b(g)
+        dx2 = g3 * self.swish
+        dswish = g3 * self.x2
+        dx1 = dswish * (self.sig * (1.0 + self.x1 * (1.0 - self.sig)))
+        return self.w1.b(dx1) + self.w2.b(dx2)
+
+class RedundantEngine(Module):
+    def __init__(self, d, h):
+        self.groq_path = Linear(d, h, False)
+        self.gemini_path = SwiGLU(d, h)
+        self.gate = Tensor(np.zeros((1, d)))
+        self.proj = Linear(h, d, False)
+
+    def f(self, x):
+        self.x = x
+        self.g_val = 1.0 / (1.0 + np.exp(-self.gate.d))
+        self.o_groq = self.groq_path.f(x)
+        self.o_gemini = self.gemini_path.f(x)
+        # Groq path is high-throughput linear, Gemini is deep SwiGLU
+        # Redundancy logic: learnable fusion of deterministic and stochastic paths
+        return x + self.g_val * self.proj.f(self.o_groq) + (1.0 - self.g_val) * self.o_gemini
+
+    def b(self, g):
+        dg_gate = np.sum(g * (self.proj.f(self.o_groq) - self.o_gemini) * (self.g_val * (1.0 - self.g_val)), axis=0, keepdims=True)
+        self.gate.g += dg_gate
+        g_groq = self.proj.b(g * self.g_val)
+        dx_groq = self.groq_path.b(g_groq)
+        dx_gemini = self.gemini_path.b(g * (1.0 - self.g_val))
+        return g + dx_groq + dx_gemini
 
 class EvolutionBlock(Module):
     def __init__(self, d, h):
-        self.ln = RMSNorm(d)
-        self.path = RedundantPath(d, h)
+        self.ln1 = RMSNorm(d)
+        self.engine = RedundantEngine(d, h)
+        self.ln2 = RMSNorm(d)
+        self.mlp = SwiGLU(d, h)
 
     def f(self, x):
-        self.r = x
-        xn = self.ln.f(x)
-        return self.path.f(xn)
+        x = x + self.engine.f(self.ln1.f(x))
+        x = x + self.mlp.f(self.ln2.f(x))
+        return x
 
     def b(self, g):
-        g = self.path.b(g)
-        return g + self.ln.b(g)
+        g_mlp = self.mlp.b(g)
+        g = g + self.ln2.b(g_mlp)
+        g_eng = self.engine.b(g)
+        g = g + self.ln1.b(g_eng)
+        return g
 
 class AdamW:
-    def __init__(self, p, lr=1e-3, b=(0.9, 0.999), e=1e-8, wd=0.01):
+    def __init__(self, p, lr=1e-3, b=(0.9, 0.95), e=1e-8, wd=0.01):
         self.p, self.lr, self.b, self.e, self.wd, self.t = p, lr, b, e, wd, 0
 
     def step(self):
@@ -105,58 +128,73 @@ class AdamW:
             p.d -= at * p.m / (np.sqrt(p.v) + self.e)
 
 class OMEGA_ASI(Module):
-    def __init__(self, i, h, o, d=6):
-        self.st = Linear(i, h)
-        self.bl = [EvolutionBlock(h, h * 4) for _ in range(d)]
-        self.rn = RMSNorm(h)
-        self.hd = Linear(h, o)
-        self.ps = self.params()
-        self.opt = AdamW(self.ps, lr=2e-3, wd=0.02)
+    def __init__(self, i, h, o, d=4):
+        self.emb = Linear(i, h)
+        self.blocks = [EvolutionBlock(h, h * 2) for _ in range(d)]
+        self.norm = RMSNorm(h)
+        self.head = Linear(h, o)
+        self.params_list = self.params()
+        self.opt = AdamW(self.params_list, lr=1e-3, wd=0.05)
 
     def f(self, x):
-        x = self.st.f(x)
-        for b in self.bl: x = b.f(x)
-        return self.hd.f(self.rn.f(x))
+        x = self.emb.f(x)
+        for b in self.blocks: x = b.f(x)
+        return self.head.f(self.norm.f(x))
 
     def b(self, g):
-        g = self.rn.b(self.hd.b(g))
-        for b in reversed(self.bl): g = b.b(g)
-        self.st.b(g)
+        g = self.norm.b(self.head.b(g))
+        for b in reversed(self.blocks): g = b.b(g)
+        self.emb.b(g)
 
     def step(self, x, y):
-        for p in self.ps: p.g.fill(0)
+        for p in self.params_list: p.g.fill(0)
         logits = self.f(x)
         exps = np.exp(logits - np.max(logits, axis=1, keepdims=True))
-        probs = exps / (np.sum(exps, axis=1, keepdims=True) + 1e-12)
-        loss = -np.mean(np.sum(y * np.log(probs + 1e-12), axis=1))
-        self.b((probs - y) / y.shape[0])
-        gn = np.sqrt(sum(np.sum(p.g**2) for p in self.ps))
+        probs = exps / (np.sum(exps, axis=1, keepdims=True) + 1e-10)
+        loss = -np.mean(np.sum(y * np.log(probs + 1e-10), axis=1))
+        self.b((probs - y) / x.shape[0])
+        gn = np.sqrt(sum(np.sum(p.g**2) for p in self.params_list))
         if gn > 1.0:
-            for p in self.ps: p.g /= gn
+            for p in self.params_list: p.g /= gn
         self.opt.step()
         return loss
 
-def get_data(n=10000, d=784, c=10):
-    x = np.random.randn(n, d).astype('float32')
-    w = np.random.randn(d, c).astype('float32')
-    y_idx = np.argmax(x @ w + 0.1 * np.sin(x @ w * 5), axis=1)
-    x = (x - np.mean(x)) / (np.std(x) + 1e-8)
-    return x, np.eye(c)[y_idx].astype('float32')
+def generate_synthetic_data(n=10000, d=784, c=10):
+    X = np.random.randn(n, d).astype('float32')
+    # Complex non-linear relationship
+    W1 = np.random.randn(d, 512)
+    W2 = np.random.randn(512, c)
+    Z = np.maximum(0, X @ W1)
+    Y_logits = Z @ W2
+    Y_idx = np.argmax(Y_logits, axis=1)
+    X = (X - np.mean(X)) / (np.std(X) + 1e-7)
+    return X, np.eye(c)[Y_idx].astype('float32')
 
 if __name__ == "__main__":
-    X, Y = get_data(20000)
-    m = OMEGA_ASI(784, 128, 10, 4)
-    bs, ep = 128, 50
-    lr_max = 4e-3
-    print("SYSTEM: OMEGA-ASI | ARCHITECTURE: MODULAR-REDUNDANT | STATUS: EVOLVING")
-    for e in range(1, ep + 1):
-        m.opt.lr = lr_max * 0.5 * (1 + np.cos(np.pi * e / ep))
-        idx = np.random.permutation(len(X))
-        ls, t0 = [], time.time()
-        for i in range(0, len(X), bs):
-            ls.append(m.step(X[idx[i:i+bs]], Y[idx[i:i+bs]]))
-        v_idx = np.random.choice(len(X), 1000)
-        v_l = m.f(X[v_idx])
-        acc = np.mean(np.argmax(v_l, 1) == np.argmax(Y[v_idx], 1))
-        print(f"EPOCH: {e:02d} | LOSS: {np.mean(ls):.4f} | ACC: {acc:.4f} | LR: {m.opt.lr:.5f} | TIME: {time.time()-t0:.2f}s")
-        if acc > 0.999: break
+    print("SYSTEM: OMEGA-ASI | CORE: RECURSIVE-EVOLUTION | MODE: HIGH-PERFORMANCE")
+    X, Y = generate_synthetic_data(15000)
+    model = OMEGA_ASI(784, 128, 10, 4)
+    batch_size = 64
+    epochs = 30
+    lr_max = 3e-3
+
+    for epoch in range(1, epochs + 1):
+        model.opt.lr = lr_max * 0.5 * (1 + np.cos(np.pi * epoch / epochs))
+        indices = np.random.permutation(len(X))
+        losses = []
+        start_time = time.time()
+        
+        for i in range(0, len(X), batch_size):
+            batch_idx = indices[i:i+batch_size]
+            loss = model.step(X[batch_idx], Y[batch_idx])
+            losses.append(loss)
+            
+        # Validation
+        v_idx = np.random.choice(len(X), 500)
+        v_logits = model.f(X[v_idx])
+        acc = np.mean(np.argmax(v_logits, 1) == np.argmax(Y[v_idx], 1))
+        
+        print(f"EPOCH: {epoch:02d} | LOSS: {np.mean(losses):.5f} | ACC: {acc:.4f} | LR: {model.opt.lr:.6f} | T: {time.time()-start_time:.2f}s")
+        if acc > 0.995: 
+            print("EVOLUTIONARY TARGET REACHED.")
+            break
