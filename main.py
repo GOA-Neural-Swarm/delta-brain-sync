@@ -1,145 +1,139 @@
 import numpy as np
 import time
 
-class P:
-    def __init__(s, d, n=""):
-        s.d = d.astype('f4')
-        s.g = s.m = s.v = np.zeros_like(s.d)
+class Tensor:
+    def __init__(self, data):
+        self.d = data.astype('float32')
+        self.g = np.zeros_like(self.d)
+        self.m = np.zeros_like(self.d)
+        self.v = np.zeros_like(self.d)
 
-class M:
-    def __init__(s): s.t = 1
-    def p(s):
-        r = []
-        for v in s.__dict__.values():
-            if isinstance(v, P): r += [v]
-            elif isinstance(v, M): r += v.p()
-            elif isinstance(v, list): [r.extend(i.p()) for i in v if isinstance(i, M)]
-        return r
+class Module:
+    def params(self):
+        p = []
+        for v in self.__dict__.values():
+            if isinstance(v, Tensor): p.append(v)
+            elif isinstance(v, Module): p.extend(v.params())
+            elif isinstance(v, list):
+                for i in v: 
+                    if isinstance(i, Module): p.extend(i.params())
+        return p
 
-class L(M):
-    def __init__(s, i, o, b=1):
-        super().__init__()
-        s.w = P(np.random.randn(i, o) * (2/i)**.5)
-        s.b = P(np.zeros((1, o))) if b else None
-    def f(s, x):
-        s.x = x
-        o = x @ s.w.d
-        return o + s.b.d if s.b else o
-    def b(s, g):
-        s.w.g = s.x.T @ g
-        if s.b: s.b.g = g.sum(0, keepdims=1)
-        return g @ s.w.d.T
+class Linear(Module):
+    def __init__(self, i, o, b=True):
+        self.w = Tensor(np.random.randn(i, o) * np.sqrt(2/i))
+        self.b = Tensor(np.zeros((1, o))) if b else None
+    def f(self, x):
+        self.x = x
+        return x @ self.w.d + (self.b.d if self.b else 0)
+    def b(self, g):
+        self.w.g = self.x.T @ g
+        if self.b: self.b.g = g.sum(0, keepdims=True)
+        return g @ self.w.d.T
 
-class R(M):
-    def __init__(s, d, e=1e-6):
-        super().__init__()
-        s.g, s.e = P(np.ones((1, d))), e
-    def f(s, x):
-        s.x = x
-        s.rms = np.sqrt((x**2).mean(-1, keepdims=1) + s.e)
-        s.xh = x / s.rms
-        return s.g.d * s.xh
-    def b(s, g):
-        s.g.g = (g * s.xh).sum(0, keepdims=1)
-        dxh = g * s.g.d
-        return (dxh - s.xh * (dxh * s.xh).mean(-1, keepdims=1)) / s.rms
+class RMSNorm(Module):
+    def __init__(self, d, e=1e-6):
+        self.g, self.e = Tensor(np.ones((1, d))), e
+    def f(self, x):
+        self.x = x
+        self.rms = np.sqrt(np.mean(x**2, axis=-1, keepdims=True) + self.e)
+        self.xh = x / self.rms
+        return self.g.d * self.xh
+    def b(self, g):
+        self.g.g = np.sum(g * self.xh, axis=0, keepdims=True)
+        dxh = g * self.g.d
+        return (dxh - self.xh * np.mean(dxh * self.xh, axis=-1, keepdims=True)) / self.rms
 
-class S(M):
-    def __init__(s, d, h):
-        super().__init__()
-        s.w1, s.w2, s.w3 = L(d, h, 0), L(d, h, 0), L(h, d, 0)
-    def f(s, x):
-        s.x1, s.x2 = s.w1.f(x), s.w2.f(x)
-        s.sig = 1 / (1 + np.exp(-s.x1))
-        s.sw = s.x1 * s.sig
-        return s.w3.f(s.sw * s.x2)
-    def b(s, g):
-        g = s.w3.b(g)
-        dx2, dsw = g * s.sw, g * s.x2
-        dx1 = dsw * (s.sig * (1 + s.x1 * (1 - s.sig)))
-        return s.w1.b(dx1) + s.w2.b(dx2)
+class SwiGLU(Module):
+    def __init__(self, d, h):
+        self.w1, self.w2, self.w3 = Linear(d, h, False), Linear(d, h, False), Linear(h, d, False)
+    def f(self, x):
+        self.x1, self.x2 = self.w1.f(x), self.w2.f(x)
+        self.sig = 1 / (1 + np.exp(-np.clip(self.x1, -20, 20)))
+        self.sw = self.x1 * self.sig
+        return self.w3.f(self.sw * self.x2)
+    def b(self, g):
+        g = self.w3.b(g)
+        dx2, dsw = g * self.sw, g * self.x2
+        dx1 = dsw * (self.sig * (1 + self.x1 * (1 - self.sig)))
+        return self.w1.b(dx1) + self.w2.b(dx2)
 
-class G(M):
-    def f(s, x):
-        s.x = x
-        s.sig = 1 / (1 + np.exp(-1.702 * x))
-        return x * s.sig
-    def b(s, g):
-        return g * (s.sig + 1.702 * s.x * s.sig * (1 - s.sig))
+class SovereignBlock(Module):
+    def __init__(self, d):
+        self.n1 = RMSNorm(d)
+        self.gemini_branch = SwiGLU(d, d * 4)
+        self.groq_branch = Linear(d, d, False)
+        self.gate = Tensor(np.zeros((1, d)))
+    def f(self, x):
+        self.r = x
+        nx = self.n1.f(x)
+        self.gv = 1 / (1 + np.exp(-np.clip(self.gate.d, -20, 20)))
+        self.o_gemini = self.gemini_branch.f(nx)
+        self.o_groq = self.groq_branch.f(nx)
+        return self.r + self.gv * self.o_gemini + (1 - self.gv) * self.o_groq
+    def b(self, g):
+        dgv = self.gv * (1 - self.gv)
+        self.gate.g = np.sum(g * (self.o_gemini - self.o_groq) * dgv, axis=0, keepdims=True)
+        ga = self.gemini_branch.b(g * self.gv)
+        gb = self.groq_branch.b(g * (1 - self.gv))
+        return self.n1.b(ga + gb) + g
 
-class B(M):
-    def __init__(s, d):
-        super().__init__()
-        s.n1, s.n2 = R(d), R(d)
-        s.gp, s.p1, s.ac, s.p2 = S(d, d*4), L(d, d*4), G(), L(d*4, d)
-        s.gt = P(np.zeros((1, d)))
-    def f(s, x):
-        s.r = x
-        nx = s.n1.f(x)
-        s.oa, s.ob = s.gp.f(nx), s.p2.f(s.ac.f(s.p1.f(nx)))
-        s.gv = 1 / (1 + np.exp(-s.gt.d))
-        return s.r + s.gv * s.oa + (1 - s.gv) * s.ob
-    def b(s, g):
-        dg = s.gv * (1 - s.gv)
-        s.gt.g = (g * (s.oa - s.ob) * dg).sum(0, keepdims=1)
-        ga = s.gp.b(g * s.gv)
-        gb = s.p1.b(s.ac.b(s.p2.b(g * (1 - s.gv))))
-        return s.n1.b(ga + gb) + g
+class AdamW:
+    def __init__(self, p, lr=1e-3, b=(0.9, 0.999), e=1e-8, wd=0.01):
+        self.p, self.lr, self.b, self.e, self.wd, self.t = p, lr, b, e, wd, 0
+    def step(self):
+        self.t += 1
+        a = self.lr * np.sqrt(1 - self.b[1]**self.t) / (1 - self.b[0]**self.t)
+        for p in self.p:
+            if self.wd > 0: p.d -= self.lr * self.wd * p.d
+            p.m = self.b[0] * p.m + (1 - self.b[0]) * p.g
+            p.v = self.b[1] * p.v + (1 - self.b[1]) * (p.g**2)
+            p.d -= a * p.m / (np.sqrt(p.v) + self.e)
 
-class A:
-    def __init__(s, p, lr=1e-3, b=(.9, .999), e=1e-8, w=.01):
-        s.p, s.lr, s.b, s.e, s.w, s.t = p, lr, b, e, w, 0
-    def step(s):
-        s.t += 1
-        a = s.lr * (1 - s.b[1]**s.t)**.5 / (1 - s.b[0]**s.t)
-        for p in s.p:
-            if s.w > 0: p.d -= s.lr * s.w * p.d
-            p.m = s.b[0] * p.m + (1 - s.b[0]) * p.g
-            p.v = s.b[1] * p.v + (1 - s.b[1]) * (p.g**2)
-            p.d -= a * p.m / (np.sqrt(p.v) + s.e)
-
-class O(M):
-    def __init__(s, i, h, o, d=4):
-        super().__init__()
-        s.st, s.bl = L(i, h), [B(h) for _ in range(d)]
-        s.hn, s.hd = R(h), L(h, o)
-        s.ps = s.p()
-        s.opt = A(s.ps, lr=1e-3, w=.05)
-    def f(s, x):
-        x = s.st.f(x)
-        for b in s.bl: x = b.f(x)
-        return s.hd.f(s.hn.f(x))
-    def b(s, g):
-        g = s.hn.b(s.hd.b(g))
-        for b in reversed(s.bl): g = b.b(g)
-        s.st.b(g)
-    def step(s, x, y):
-        lgt = s.f(x)
-        ex = np.exp(lgt - lgt.max(1, keepdims=1))
-        pr = ex / ex.sum(1, keepdims=1)
-        loss = -np.mean((y * np.log(pr + 1e-12)).sum(1))
-        s.b((pr - y) / y.shape[0])
-        gn = np.sqrt(sum((p.g**2).sum() for p in s.ps))
-        if gn > 1:
-            for p in s.ps: p.g /= gn
-        s.opt.step()
+class OMEGA_ASI(Module):
+    def __init__(self, i, h, o, d=4):
+        self.st = Linear(i, h)
+        self.bl = [SovereignBlock(h) for _ in range(d)]
+        self.rn = RMSNorm(h)
+        self.hd = Linear(h, o)
+        self.ps = self.params()
+        self.opt = AdamW(self.ps, lr=2e-3, wd=0.02)
+    def f(self, x):
+        x = self.st.f(x)
+        for b in self.bl: x = b.f(x)
+        return self.hd.f(self.rn.f(x))
+    def b(self, g):
+        g = self.rn.b(self.hd.b(g))
+        for b in reversed(self.bl): g = b.b(g)
+        self.st.b(g)
+    def step(self, x, y):
+        lgt = self.f(x)
+        lgt -= np.max(lgt, axis=1, keepdims=True)
+        pr = np.exp(lgt) / np.sum(np.exp(lgt), axis=1, keepdims=True)
+        loss = -np.mean(np.sum(y * np.log(pr + 1e-12), axis=1))
+        self.b((pr - y) / y.shape[0])
+        gn = np.sqrt(sum(np.sum(p.g**2) for p in self.ps))
+        if gn > 1.0:
+            for p in self.ps: p.g /= gn
+        self.opt.step()
         return loss
 
-def get_data(n=5000, d=784, c=10):
-    x = np.random.randn(n, d).astype('f4')
-    y_idx = np.argmax(x @ np.random.randn(d, c) + .05 * np.random.randn(n, c), 1)
-    return (x - x.mean()) / x.std(), np.eye(c)[y_idx].astype('f4')
+def get_data(n=10000, d=784, c=10):
+    x = np.random.randn(n, d).astype('float32')
+    w = np.random.randn(d, c).astype('float32')
+    y = np.argmax(x @ w + 0.1 * np.random.randn(n, c), axis=1)
+    return (x - x.mean()) / x.std(), np.eye(c)[y].astype('float32')
 
 if __name__ == "__main__":
-    X, Y = get_data(10000)
-    m = O(784, 128, 10, 4)
+    X, Y = get_data(15000)
+    m = OMEGA_ASI(784, 128, 10, 4)
     bs, ep = 64, 50
     for e in range(1, ep + 1):
         idx = np.random.permutation(len(X))
         ls, t0 = [], time.time()
         for i in range(0, len(X), bs):
             ls.append(m.step(X[idx[i:i+bs]], Y[idx[i:i+bs]]))
-        v_l = m.f(X[:500])
-        acc = (v_l.argmax(1) == Y[:500].argmax(1)).mean()
-        print(f"C {e:02} | L: {np.mean(ls):.4f} | A: {acc:.4f} | T: {time.time()-t0:.1f}s")
-        if acc > .99: break
+        v_l = m.f(X[:1000])
+        acc = np.mean(np.argmax(v_l, 1) == np.argmax(Y[:1000], 1))
+        print(f"ASI_CORE | EP: {e:02d} | LOSS: {np.mean(ls):.4f} | ACC: {acc:.4f} | T: {time.time()-t0:.2f}s")
+        if acc > 0.998: break
