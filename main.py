@@ -59,10 +59,9 @@ class SwiGLU(Module):
         dx1 = dsw * (self.sig * (1 + self.x1 * (1 - self.sig)))
         return self.w1.b(dx1) + self.w2.b(dx2)
 
-class Gemini(Module):
+class Unified(Module):
     def __init__(self, d, h):
-        self.w1, self.w2 = Linear(d, h, False), Linear(d, h, False)
-        self.w3 = Linear(h, d, False)
+        self.w1, self.w2, self.w3 = Linear(d, h, False), Linear(d, h, False), Linear(h, d, False)
     def f(self, x):
         self.x1, self.x2 = self.w1.f(x), self.w2.f(x)
         self.sig = 1 / (1 + np.exp(-np.clip(self.x1, -20, 20)))
@@ -74,56 +73,44 @@ class Gemini(Module):
         dx1 = dsw * (self.sig * (1 + self.x1 * (1 - self.sig)))
         return self.w1.b(dx1) + self.w2.b(dx2)
 
-class Groq(Module):
-    def __init__(self, d):
-        self.w = Linear(d, d, False)
-    def f(self, x):
-        return self.w.f(x)
-    def b(self, g):
-        return self.w.b(g)
-
 class SovereignBlock(Module):
     def __init__(self, d):
         self.n1 = RMSNorm(d)
-        self.gemini = Gemini(d, d * 4)
-        self.groq = Groq(d)
+        self.unified = Unified(d, d * 4)
         self.gate = Tensor(np.zeros((1, d)))
     def f(self, x):
         self.r = x
         nx = self.n1.f(x)
         self.gv = 1 / (1 + np.exp(-np.clip(self.gate.d, -20, 20)))
-        self.o_gemini = self.gemini.f(nx)
-        self.o_groq = self.groq.f(nx)
-        return self.r + self.gv * self.o_gemini + (1 - self.gv) * self.o_groq
+        self.o_unified = self.unified.f(nx)
+        return self.r + self.gv * self.o_unified
     def b(self, g):
         dgv = self.gv * (1 - self.gv)
-        self.gate.g = np.sum(g * (self.o_gemini - self.o_groq) * dgv, axis=0, keepdims=True)
-        ga = self.gemini.b(g * self.gv)
-        gb = self.groq.b(g * (1 - self.gv))
-        return self.n1.b(ga + gb) + g
+        self.gate.g = np.sum(g * self.o_unified * dgv, axis=0, keepdims=True)
+        ga = self.unified.b(g * self.gv)
+        return self.n1.b(ga + g)
 
 class IntegratedBlock(Module):
     def __init__(self, d):
         self.n1 = RMSNorm(d)
-        self.w1, self.w2, self.w3 = Linear(d, d * 4, False), Linear(d, d * 4, False), Linear(d * 4, d, False)
+        self.unified = Unified(d, d * 4)
         self.gate = Tensor(np.zeros((1, d)))
     def f(self, x):
         self.r = x
         nx = self.n1.f(x)
-        self.x1, self.x2 = self.w1.f(nx), self.w2.f(nx)
-        self.sig = 1 / (1 + np.exp(-np.clip(self.x1, -20, 20)))
-        self.sw = self.x1 * self.sig
-        self.o_int = self.w3.f(self.sw * self.x2)
+        self.x1, self.x2 = nx, nx
+        self.sig = 1 / (1 + np.exp(-np.clip(nx, -20, 20)))
+        self.sw = nx * self.sig
+        self.o_int = self.unified.f(self.sw * self.x2)
         self.gv = 1 / (1 + np.exp(-np.clip(self.gate.d, -20, 20)))
-        return self.r + self.gv * self.o_int + (1 - self.gv) * nx
+        return self.r + self.gv * self.o_int
     def b(self, g):
         dgv = self.gv * (1 - self.gv)
-        self.gate.g = np.sum(g * (self.o_int - self.r) * dgv, axis=0, keepdims=True)
+        self.gate.g = np.sum(g * self.o_int * dgv, axis=0, keepdims=True)
         dx2, dsw = g * self.gv, self.gv * self.x2
         dx1 = dsw * (self.sig * (1 + self.x1 * (1 - self.sig)))
-        g1 = self.w1.b(dx1)
-        g2 = self.w2.b(dx2)
-        return self.n1.b(g1 + g2) + g
+        g1 = self.unified.b(dx1)
+        return self.n1.b(g1 + g)
 
 class AdamW:
     def __init__(self, p, lr=1e-3, b=(0.9, 0.999), e=1e-8, wd=0.01):
