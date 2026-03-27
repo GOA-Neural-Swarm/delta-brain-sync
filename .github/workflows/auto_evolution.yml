@@ -44,10 +44,19 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          PYTHONPATH: ${{ github.workspace }}
+          
+          PYTHONPATH: .:${{ github.workspace }}
         run: |
+          
+          find . -name "__pycache__" -type d -exec rm -rf {} +
+          find . -name "*.pyc" -delete
+          
+          
           rm -f *.bak || true
-          python evolution_engine.py
+          
+          
+          
+          python3 -u -m evolution_engine
 
       - name: 🏁 Step 5 - Manifesting Evolution (Auto-Commit)
         env:
