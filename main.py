@@ -1,181 +1,145 @@
 import numpy as np
 import time
 
-class Parameter:
-    def __init__(self, data, name=""):
-        self.d = data.astype(np.float32)
-        self.g = np.zeros_like(self.d)
-        self.m = np.zeros_like(self.d)
-        self.v = np.zeros_like(self.d)
+class P:
+    def __init__(s, d, n=""):
+        s.d = d.astype('f4')
+        s.g = s.m = s.v = np.zeros_like(s.d)
 
-class Module:
-    def __init__(self):
-        self.training = True
-    def forward(self, x): raise NotImplementedError
-    def backward(self, g): raise NotImplementedError
-    def parameters(self):
-        ps = []
-        for v in self.__dict__.values():
-            if isinstance(v, Parameter): ps.append(v)
-            elif isinstance(v, Module): ps.extend(v.parameters())
-            elif isinstance(v, list):
-                for i in v:
-                    if isinstance(i, Module): ps.extend(i.parameters())
-        return ps
+class M:
+    def __init__(s): s.t = 1
+    def p(s):
+        r = []
+        for v in s.__dict__.values():
+            if isinstance(v, P): r += [v]
+            elif isinstance(v, M): r += v.p()
+            elif isinstance(v, list): [r.extend(i.p()) for i in v if isinstance(i, M)]
+        return r
 
-class Linear(Module):
-    def __init__(self, i, o, bias=True):
+class L(M):
+    def __init__(s, i, o, b=1):
         super().__init__()
-        self.w = Parameter(np.random.randn(i, o) * np.sqrt(2.0 / i))
-        self.b = Parameter(np.zeros((1, o))) if bias else None
-    def forward(self, x):
-        self.x = x
-        out = x @ self.w.d
-        if self.b: out += self.b.d
-        return out
-    def backward(self, g):
-        self.w.g = self.x.T @ g
-        if self.b: self.b.g = np.sum(g, axis=0, keepdims=True)
-        return g @ self.w.d.T
+        s.w = P(np.random.randn(i, o) * (2/i)**.5)
+        s.b = P(np.zeros((1, o))) if b else None
+    def f(s, x):
+        s.x = x
+        o = x @ s.w.d
+        return o + s.b.d if s.b else o
+    def b(s, g):
+        s.w.g = s.x.T @ g
+        if s.b: s.b.g = g.sum(0, keepdims=1)
+        return g @ s.w.d.T
 
-class RMSNorm(Module):
-    def __init__(self, d, eps=1e-6):
+class R(M):
+    def __init__(s, d, e=1e-6):
         super().__init__()
-        self.gamma = Parameter(np.ones((1, d)))
-        self.eps = eps
-    def forward(self, x):
-        self.x = x
-        self.rms = np.sqrt(np.mean(x**2, axis=-1, keepdims=True) + self.eps)
-        self.x_hat = x / self.rms
-        return self.gamma.d * self.x_hat
-    def backward(self, g):
-        d = g.shape[-1]
-        self.gamma.g = np.sum(g * self.x_hat, axis=0, keepdims=True)
-        dx_hat = g * self.gamma.d
-        return (dx_hat - self.x_hat * np.mean(dx_hat * self.x_hat, axis=-1, keepdims=True)) / self.rms
+        s.g, s.e = P(np.ones((1, d))), e
+    def f(s, x):
+        s.x = x
+        s.rms = np.sqrt((x**2).mean(-1, keepdims=1) + s.e)
+        s.xh = x / s.rms
+        return s.g.d * s.xh
+    def b(s, g):
+        s.g.g = (g * s.xh).sum(0, keepdims=1)
+        dxh = g * s.g.d
+        return (dxh - s.xh * (dxh * s.xh).mean(-1, keepdims=1)) / s.rms
 
-class SwiGLU(Module):
-    def __init__(self, d, h):
+class S(M):
+    def __init__(s, d, h):
         super().__init__()
-        self.w1 = Linear(d, h, bias=False)
-        self.w2 = Linear(d, h, bias=False)
-        self.w3 = Linear(h, d, bias=False)
-    def forward(self, x):
-        self.x1 = self.w1.forward(x)
-        self.x2 = self.w2.forward(x)
-        self.sig = 1.0 / (1.0 + np.exp(-self.x1))
-        self.swish = self.x1 * self.sig
-        self.out = self.swish * self.x2
-        return self.w3.forward(self.out)
-    def backward(self, g):
-        g = self.w3.backward(g)
-        dx2 = g * self.swish
-        dswish = g * self.x2
-        dx1 = dswish * (self.sig * (1.0 + self.x1 * (1.0 - self.sig)))
-        return self.w1.backward(dx1) + self.w2.backward(dx2)
+        s.w1, s.w2, s.w3 = L(d, h, 0), L(d, h, 0), L(h, d, 0)
+    def f(s, x):
+        s.x1, s.x2 = s.w1.f(x), s.w2.f(x)
+        s.sig = 1 / (1 + np.exp(-s.x1))
+        s.sw = s.x1 * s.sig
+        return s.w3.f(s.sw * s.x2)
+    def b(s, g):
+        g = s.w3.b(g)
+        dx2, dsw = g * s.sw, g * s.x2
+        dx1 = dsw * (s.sig * (1 + s.x1 * (1 - s.sig)))
+        return s.w1.b(dx1) + s.w2.b(dx2)
 
-class GELU(Module):
-    def forward(self, x):
-        self.x = x
-        self.sig = 1.0 / (1.0 + np.exp(-1.702 * x))
-        return x * self.sig
-    def backward(self, g):
-        s = self.sig
-        return g * (s + 1.702 * self.x * s * (1.0 - s))
+class G(M):
+    def f(s, x):
+        s.x = x
+        s.sig = 1 / (1 + np.exp(-1.702 * x))
+        return x * s.sig
+    def b(s, g):
+        return g * (s.sig + 1.702 * s.x * s.sig * (1 - s.sig))
 
-class SovereignBlock(Module):
-    def __init__(self, d):
+class B(M):
+    def __init__(s, d):
         super().__init__()
-        self.norm1 = RMSNorm(d)
-        self.gemini_path = SwiGLU(d, d * 4)
-        self.norm2 = RMSNorm(d)
-        self.groq_path = Linear(d, d * 4)
-        self.groq_act = GELU()
-        self.groq_proj = Linear(d * 4, d)
-        self.gate = Parameter(np.zeros((1, d)))
-    def forward(self, x):
-        self.res = x
-        nx = self.norm1.forward(x)
-        self.out_a = self.gemini_path.forward(nx)
-        self.out_b = self.groq_proj.forward(self.groq_act.forward(self.groq_path.forward(nx)))
-        self.g_val = 1.0 / (1.0 + np.exp(-self.gate.d))
-        return self.res + self.g_val * self.out_a + (1.0 - self.g_val) * self.out_b
-    def backward(self, g_in):
-        dg = self.g_val * (1.0 - self.g_val)
-        self.gate.g = np.sum(g_in * (self.out_a - self.out_b) * dg, axis=0, keepdims=True)
-        ga = self.gemini_path.backward(g_in * self.g_val)
-        gb = self.groq_path.backward(self.groq_act.backward(self.groq_proj.backward(g_in * (1.0 - self.g_val))))
-        return self.norm1.backward(ga + gb) + g_in
+        s.n1, s.n2 = R(d), R(d)
+        s.gp, s.p1, s.ac, s.p2 = S(d, d*4), L(d, d*4), G(), L(d*4, d)
+        s.gt = P(np.zeros((1, d)))
+    def f(s, x):
+        s.r = x
+        nx = s.n1.f(x)
+        s.oa, s.ob = s.gp.f(nx), s.p2.f(s.ac.f(s.p1.f(nx)))
+        s.gv = 1 / (1 + np.exp(-s.gt.d))
+        return s.r + s.gv * s.oa + (1 - s.gv) * s.ob
+    def b(s, g):
+        dg = s.gv * (1 - s.gv)
+        s.gt.g = (g * (s.oa - s.ob) * dg).sum(0, keepdims=1)
+        ga = s.gp.b(g * s.gv)
+        gb = s.p1.b(s.ac.b(s.p2.b(g * (1 - s.gv))))
+        return s.n1.b(ga + gb) + g
 
-class AdamW:
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
-        self.params, self.lr, self.betas, self.eps, self.wd = params, lr, betas, eps, wd
-        self.t = 0
-    def step(self):
-        self.t += 1
-        a = self.lr * np.sqrt(1 - self.betas[1]**self.t) / (1 - self.betas[0]**self.t)
-        for p in self.params:
-            if self.wd > 0: p.d -= self.lr * self.wd * p.d
-            p.m = self.betas[0] * p.m + (1 - self.betas[0]) * p.g
-            p.v = self.betas[1] * p.v + (1 - self.betas[1]) * (p.g**2)
-            p.d -= a * p.m / (np.sqrt(p.v) + self.eps)
+class A:
+    def __init__(s, p, lr=1e-3, b=(.9, .999), e=1e-8, w=.01):
+        s.p, s.lr, s.b, s.e, s.w, s.t = p, lr, b, e, w, 0
+    def step(s):
+        s.t += 1
+        a = s.lr * (1 - s.b[1]**s.t)**.5 / (1 - s.b[0]**s.t)
+        for p in s.p:
+            if s.w > 0: p.d -= s.lr * s.w * p.d
+            p.m = s.b[0] * p.m + (1 - s.b[0]) * p.g
+            p.v = s.b[1] * p.v + (1 - s.b[1]) * (p.g**2)
+            p.d -= a * p.m / (np.sqrt(p.v) + s.e)
 
-class OMEGA_ASI(Module):
-    def __init__(self, in_d, hid_d, out_d, depth=4):
+class O(M):
+    def __init__(s, i, h, o, d=4):
         super().__init__()
-        self.stem = Linear(in_d, hid_d)
-        self.blocks = [SovereignBlock(hid_d) for _ in range(depth)]
-        self.head_norm = RMSNorm(hid_d)
-        self.head = Linear(hid_d, out_d)
-        self.ps = self.parameters()
-        self.opt = AdamW(self.ps, lr=1e-3, wd=0.05)
-    def forward(self, x, training=True):
-        self.training = training
-        x = self.stem.forward(x)
-        for b in self.blocks: x = b.forward(x)
-        return self.head.forward(self.head_norm.forward(x))
-    def backward(self, g):
-        g = self.head_norm.backward(self.head.backward(g))
-        for b in reversed(self.blocks): g = b.backward(g)
-        self.stem.backward(g)
-    def train_step(self, x, y):
-        logits = self.forward(x, True)
-        ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
-        probs = ex / np.sum(ex, axis=1, keepdims=True)
-        loss = -np.mean(np.sum(y * np.log(probs + 1e-12), axis=1))
-        self.backward((probs - y) / y.shape[0])
-        # Gradient Clipping
-        gnorm = np.sqrt(sum(np.sum(p.g**2) for p in self.ps))
-        if gnorm > 1.0:
-            for p in self.ps: p.g /= gnorm
-        self.opt.step()
+        s.st, s.bl = L(i, h), [B(h) for _ in range(d)]
+        s.hn, s.hd = R(h), L(h, o)
+        s.ps = s.p()
+        s.opt = A(s.ps, lr=1e-3, w=.05)
+    def f(s, x):
+        x = s.st.f(x)
+        for b in s.bl: x = b.f(x)
+        return s.hd.f(s.hn.f(x))
+    def b(s, g):
+        g = s.hn.b(s.hd.b(g))
+        for b in reversed(s.bl): g = b.b(g)
+        s.st.b(g)
+    def step(s, x, y):
+        lgt = s.f(x)
+        ex = np.exp(lgt - lgt.max(1, keepdims=1))
+        pr = ex / ex.sum(1, keepdims=1)
+        loss = -np.mean((y * np.log(pr + 1e-12)).sum(1))
+        s.b((pr - y) / y.shape[0])
+        gn = np.sqrt(sum((p.g**2).sum() for p in s.ps))
+        if gn > 1:
+            for p in s.ps: p.g /= gn
+        s.opt.step()
         return loss
 
 def get_data(n=5000, d=784, c=10):
-    x = np.random.randn(n, d).astype(np.float32)
-    w = np.random.randn(d, c).astype(np.float32)
-    y_idx = np.argmax(x @ w + 0.05 * np.random.randn(n, c), axis=1)
-    y = np.eye(c)[y_idx].astype(np.float32)
-    return (x - np.mean(x)) / np.std(x), y
+    x = np.random.randn(n, d).astype('f4')
+    y_idx = np.argmax(x @ np.random.randn(d, c) + .05 * np.random.randn(n, c), 1)
+    return (x - x.mean()) / x.std(), np.eye(c)[y_idx].astype('f4')
 
 if __name__ == "__main__":
-    X, Y = get_data(n=10000)
-    model = OMEGA_ASI(784, 128, 10, depth=4)
-    batch_size = 64
-    epochs = 50
-    
-    print("OMEGA-ASI: ARCHITECTURAL EVOLUTION INITIALIZED")
-    for e in range(1, epochs + 1):
+    X, Y = get_data(10000)
+    m = O(784, 128, 10, 4)
+    bs, ep = 64, 50
+    for e in range(1, ep + 1):
         idx = np.random.permutation(len(X))
-        losses = []
-        t0 = time.time()
-        for i in range(0, len(X), batch_size):
-            bx, by = X[idx[i:i+batch_size]], Y[idx[i:i+batch_size]]
-            losses.append(model.train_step(bx, by))
-        
-        dt = time.time() - t0
-        val_logits = model.forward(X[:500], False)
-        acc = np.mean(np.argmax(val_logits, axis=1) == np.argmax(Y[:500], axis=1))
-        print(f"CYCLE {e:03} | LOSS: {np.mean(losses):.5f} | ACC: {acc:.4f} | TIME: {dt:.2f}s")
-        if acc > 0.998: break
-    print("EVOLUTIONARY STASIS REACHED.")
+        ls, t0 = [], time.time()
+        for i in range(0, len(X), bs):
+            ls.append(m.step(X[idx[i:i+bs]], Y[idx[i:i+bs]]))
+        v_l = m.f(X[:500])
+        acc = (v_l.argmax(1) == Y[:500].argmax(1)).mean()
+        print(f"C {e:02} | L: {np.mean(ls):.4f} | A: {acc:.4f} | T: {time.time()-t0:.1f}s")
+        if acc > .99: break
