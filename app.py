@@ -28,7 +28,7 @@ logger = logging.getLogger("OmegaCore")
 # API Setup (Using gemini-1.5-flash-latest to avoid 404/Deprecation)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
-MODEL_NAME = 'gemini-1.5-flash-latest
+MODEL_NAME = 'gemini-1.5-flash-latest'
 
 # 🛸 [GENESIS LAYER]: 
 def bootstrap_system():
