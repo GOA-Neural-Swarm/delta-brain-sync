@@ -33,24 +33,25 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: 📦 Step 3 - Injecting Necessary Libraries
         run: |
           python -m pip install --upgrade pip
           pip install requests google-genai google-generativeai groq pandas sqlalchemy GitPython
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          
 
       - name: 🧠 Step 4 - Executing Autonomous Self-Healing
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PYTHONPATH: ${{ github.workspace }}
         run: |
-          rm -f *.bak
+          rm -f *.bak || true
           python evolution_engine.py
 
       - name: 🏁 Step 5 - Manifesting Evolution (Auto-Commit)
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
         run: |
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
@@ -79,10 +80,10 @@ jobs:
           git rm -r --cached __pycache__/ || true
           git rm --cached *.pyc *.pyo *.pyd || true
           
-          # 5. Commit and Force Push
+          # 5. Commit and Force Push with Auth URL
           if ! git diff --cached --quiet; then
             git commit -m "🧬 [HYPER-EVOLUTION]: Auto-fix applied (429 Stability & Cache Clean) - $(date)"
-            git push origin main --force
+            git push https://x-access-token:${{ secrets.GH_TOKEN || github.token }}@github.com/${{ github.repository }}.git main --force
             echo "✅ [SUCCESS]: Evolution manifested."
           else
             echo "🛡️ [STABLE]: No changes needed."
