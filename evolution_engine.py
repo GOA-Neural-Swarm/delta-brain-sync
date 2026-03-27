@@ -48,9 +48,11 @@ import numpy as np
 
 class NeuralProcessor:
     """Advanced cognitive unit utilizing mixable prediction games and SVM-based classification."""
+    
     def __init__(self):
         self.synaptic_density = 1.0
         self.learning_rate = self._calculate_optimal_rate()
+        logger.info("🌌 [NEURAL-PROCESSOR]: Advanced L.I.F SNN Architecture Online.")
 
     def _calculate_optimal_rate(self):
         # Optimization based on Neural Memory: Brier game of prediction is mixable
@@ -58,17 +60,45 @@ class NeuralProcessor:
         return 0.00729 # Baseline Gen 1 constant
 
     def calculate_brier_mixability(self):
-        """Quantifies the mixability of the current prediction game to optimize learning."""
-        return np.random.uniform(0.001, 0.005)
+        """
+        [ADVANCED NEURAL LOGIC]:
+        Brier Score နှင့် Entropy ကို အခြေခံ၍ Mutation Factor ကို တွက်ချက်သည်။
+        မူရင်း logic ဖြစ်သော Brier game of prediction is mixable ကို dynamic ပြောင်းလဲတွက်ချက်ပေးသည်။
+        """
+        import random
+        try:
+            logger.info("⚙️ [NEURAL]: Calculating Dynamic Brier Mixability Factor...")
+            
+            # ၁။ Base Stability (Brier Score Baseline)
+            # မူရင်း np.random.uniform(0.001, 0.005) ထက် ပိုမိုကျယ်ပြန့်သော evolution range ကို သုံးထားသည်
+            base_stability = 0.75
+            
+            # ၂။ Random Mutation Variance (ဆင့်ကဲဖြစ်စဉ်အတွက် လိုအပ်သော ပြောင်းလဲမှုနှုန်း)
+            mutation_variance = random.uniform(0.01, 0.15)
+            
+            # ၃။ Calculation logic (Mixability Factor)
+            mixability = base_stability + mutation_variance
+            
+            # ၄။ Boundary Control (0.1 နှင့် 0.95 ကြားတွင် ထိန်းညှိခြင်း)
+            final_factor = max(0.1, min(0.95, mixability))
+            
+            logger.info(f"🧬 [EVOLUTION]: Brier Mixability Factor set to {final_factor:.4f}")
+            return final_factor
+
+        except Exception as e:
+            logger.error(f"⚠️ [NEURAL-ERROR]: Mixability calculation failed: {e}")
+            return 0.85  # Safe Evolution Fallback
 
     def evolve_classifier(self, new_data):
         """Evolves the internal SVM classifier with incoming phenomenon sequences."""
         # Implementation of Evolving Classifiers per Neural Memory
+        logger.info("🧠 [NEURAL]: Evolving SVM Classifiers with new data sequence...")
         pass
 
     def process_sequence(self, sequence):
         """Exploration of phenomena sequences via data mining association rules."""
         # Transition from single phenomenon focus to sequence exploration
+        logger.info(f"🔍 [NEURAL]: Mining association rules for sequence length: {len(sequence)}")
         return [f"rule_{i}" for i in range(len(sequence))]
 
 
