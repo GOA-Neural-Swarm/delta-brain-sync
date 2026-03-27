@@ -79,6 +79,29 @@ class SovereignBlock(Module):
         gb = self.groq_branch.b(g * (1 - self.gv))
         return self.n1.b(ga + gb) + g
 
+class IntegratedBlock(Module):
+    def __init__(self, d):
+        self.n1 = RMSNorm(d)
+        self.w1, self.w2, self.w3 = Linear(d, d * 4, False), Linear(d, d * 4, False), Linear(d * 4, d, False)
+        self.gate = Tensor(np.zeros((1, d)))
+    def f(self, x):
+        self.r = x
+        nx = self.n1.f(x)
+        self.x1, self.x2 = self.w1.f(nx), self.w2.f(nx)
+        self.sig = 1 / (1 + np.exp(-np.clip(self.x1, -20, 20)))
+        self.sw = self.x1 * self.sig
+        self.o_int = self.w3.f(self.sw * self.x2)
+        self.gv = 1 / (1 + np.exp(-np.clip(self.gate.d, -20, 20)))
+        return self.r + self.gv * self.o_int + (1 - self.gv) * nx
+    def b(self, g):
+        dgv = self.gv * (1 - self.gv)
+        self.gate.g = np.sum(g * (self.o_int - self.r) * dgv, axis=0, keepdims=True)
+        dx2, dsw = g * self.gv, self.gv * self.x2
+        dx1 = dsw * (self.sig * (1 + self.x1 * (1 - self.sig)))
+        g1 = self.w1.b(dx1)
+        g2 = self.w2.b(dx2)
+        return self.n1.b(g1 + g2) + g
+
 class AdamW:
     def __init__(self, p, lr=1e-3, b=(0.9, 0.999), e=1e-8, wd=0.01):
         self.p, self.lr, self.b, self.e, self.wd, self.t = p, lr, b, e, wd, 0
@@ -94,7 +117,7 @@ class AdamW:
 class OMEGA_ASI(Module):
     def __init__(self, i, h, o, d=4):
         self.st = Linear(i, h)
-        self.bl = [SovereignBlock(h) for _ in range(d)]
+        self.bl = [IntegratedBlock(h) for _ in range(d)]
         self.rn = RMSNorm(h)
         self.hd = Linear(h, o)
         self.ps = self.params()
