@@ -19,6 +19,16 @@ import google.generativeai as genai
 from brain import NeuralProcessor
 from evolution_guard import guard
 
+# ============================================================================
+# 🛡️ SYSTEM CONFIGURATIONS & LOGGING
+# ============================================================================
+logging.basicConfig(level=logging.INFO, format='%(asctime)s | INFO | [OMEGA-ASI] %(message)s')
+logger = logging.getLogger("OmegaCore")
+
+# API Setup (Using gemini-1.5-flash-latest to avoid 404/Deprecation)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+genai.configure(api_key=GEMINI_API_KEY)
+MODEL_NAME = 'gemini-1.5-flash-latest
 
 # 🛸 [GENESIS LAYER]: 
 def bootstrap_system():
