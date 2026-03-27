@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -50,59 +51,45 @@ class RMSNorm(Module):
         n = self.x.shape[-1]
         return (1.0 / self.rms) * (dxh - self.xh * np.mean(dxh * self.xh, axis=-1, keepdims=True))
 
-class GroqPath(Module):
+class RedundantPath(Module):
     def __init__(self, d, h):
         self.w1 = Linear(d, h, False)
         self.w2 = Linear(h, d, False)
-
-    def f(self, x):
-        self.z = self.w1.f(x)
-        self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.z, -10, 10)))
-        self.act = self.z * self.sig
-        return self.w2.f(self.act)
-
-    def b(self, g):
-        g = self.w2.b(g)
-        dsilu = self.sig * (1.0 + self.z * (1.0 - self.sig))
-        return self.w1.b(g * dsilu)
-
-class GeminiPath(Module):
-    def __init__(self, d, h):
-        self.w1 = Linear(d, h, False)
-        self.w2 = Linear(h, d, False)
+        self.gate = Tensor(np.zeros((1, d)))
 
     def f(self, x):
         self.z = self.w1.f(x)
         self.tanh_z = np.tanh(0.79788 * (self.z + 0.044715 * self.z**3))
-        self.act = 0.5 * self.z * (1.0 + self.tanh_z)
-        return self.w2.f(self.act)
-
-    def b(self, g):
-        g = self.w2.b(g)
-        dz = 0.5 * (1.0 + self.tanh_z) + 0.5 * self.z * (1.0 - self.tanh_z**2) * 0.79788 * (1.0 + 3.0 * 0.044715 * self.z**2)
-        return self.w1.b(g * dz)
-
-class EvolutionBlock(Module):
-    def __init__(self, d, h):
-        self.ln = RMSNorm(d)
-        self.groq = GroqPath(d, h)
-        self.gemini = GeminiPath(d, h)
-        self.gate = Tensor(np.zeros((1, d)))
-
-    def f(self, x):
-        self.r = x
-        xn = self.ln.f(x)
-        self.o1 = self.groq.f(xn)
-        self.o2 = self.gemini.f(xn)
+        self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.z, -10, 10)))
+        self.act = self.z * self.sig
+        self.act_g = 0.5 * self.z * (1.0 + self.tanh_z)
         self.gv = 1.0 / (1.0 + np.exp(-self.gate.d))
-        return self.r + self.gv * self.o1 + (1.0 - self.gv) * self.o2
+        self.o1 = self.w2.f(self.act)
+        self.o2 = self.w2.f(self.act_g)
+        return x + self.gv * self.o1 + (1.0 - self.gv) * self.o2
 
     def b(self, g):
         dg = g * (self.o1 - self.o2) * (self.gv * (1.0 - self.gv))
         self.gate.g += np.sum(dg, axis=0, keepdims=True)
-        g1 = self.groq.b(g * self.gv)
-        g2 = self.gemini.b(g * (1.0 - self.gv))
-        return g + self.ln.b(g1 + g2)
+        g1 = self.w2.b(g * self.gv)
+        g2 = self.w2.b(g * (1.0 - self.gv))
+        dsilu = self.sig * (1.0 + self.z * (1.0 - self.sig))
+        dz = 0.5 * (1.0 + self.tanh_z) + 0.5 * self.z * (1.0 - self.tanh_z**2) * 0.79788 * (1.0 + 3.0 * 0.044715 * self.z**2)
+        return g + self.w1.b(g1 * dsilu + g2 * dz)
+
+class EvolutionBlock(Module):
+    def __init__(self, d, h):
+        self.ln = RMSNorm(d)
+        self.path = RedundantPath(d, h)
+
+    def f(self, x):
+        self.r = x
+        xn = self.ln.f(x)
+        return self.path.f(xn)
+
+    def b(self, g):
+        g = self.path.b(g)
+        return g + self.ln.b(g)
 
 class AdamW:
     def __init__(self, p, lr=1e-3, b=(0.9, 0.999), e=1e-8, wd=0.01):
