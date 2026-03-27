@@ -30,6 +30,26 @@ class IntegrityChecker:
         self.monitored_files = ["evolution_engine.py", "app.py", "evolved_module.py", "main.py"]
         logger.info("Integrity Guard System Activated.")
 
+    def verify_structural_integrity(self):
+        """Engine မှ တောင်းဆိုနေသော အဓိက Function"""
+        logger.info("Verifying system structural integrity...")
+        for file in self.monitored_files:
+            if os.path.exists(file):
+                if not self.validate_syntax_file(file):
+                    return False
+        return True
+
+    def validate_syntax_file(self, file_path):
+        """ဖိုင်တစ်ခုချင်းစီ၏ Syntax ကို စစ်ဆေးရန်"""
+        try:
+            with open(file_path, 'r') as f:
+                content = f.read()
+            compile(content, file_path, 'exec')
+            return True
+        except Exception as e:
+            logger.error(f"Syntax Error in {file_path}: {str(e)}")
+            return False
+    
     def check_file_health(self, file_path):
         if not os.path.exists(file_path):
             logger.error(f"Missing Critical File: {file_path}")
