@@ -1,0 +1,84 @@
+version: '3.9'
+
+services:
+  telefoxx-overseer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_VERSION=3.1.6-OMEGA
+    
+    container_name: telefoxx_sovereign_core
+    image: telefoxx/sovereign-core:latest
+    
+    # 🔄 High-Availability & Self-Healing
+    restart: unless-stopped
+    init: true  
+    shm_size: '256mb' 
+    
+    # 🔒 Resource Optimization
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2048M
+        reservations:
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+    # 📁 Evolution Access (Mounting the code)
+    volumes:
+      - .:/app:rw              
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro 
+
+    networks:
+      - omega_internal_mesh
+
+    # 🔑 Environment Intelligence Layer
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - HEADLESS_MODE=true
+      - PYTHONUNBUFFERED=1
+      - OMEGA_VERSION=3.1.6
+      
+      # --- 🧠 AI CORE CONNECTORS ---
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=gemini-2.0-flash     
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      
+      # --- 🔐 CLOUD & REPO TOOLS ---
+      - NEON_KEY=${NEON_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - REPO_URL=${REPO_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+
+    # 📡 System Vital Monitoring
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/api/v2/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+    # 📝 Intelligent Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10mb"
+        max-file: "5"
+
+    pids_limit: 100            
+    security_opt:
+      - no-new-privileges:false 
+
+networks:
+  omega_internal_mesh:
+    driver: bridge
+    labels:
+      com.telefoxx.network: sovereign_mesh
