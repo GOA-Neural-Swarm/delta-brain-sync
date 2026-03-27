@@ -59,24 +59,47 @@ class SwiGLU(Module):
         dx1 = dsw * (self.sig * (1 + self.x1 * (1 - self.sig)))
         return self.w1.b(dx1) + self.w2.b(dx2)
 
+class Gemini(Module):
+    def __init__(self, d, h):
+        self.w1, self.w2 = Linear(d, h, False), Linear(d, h, False)
+        self.w3 = Linear(h, d, False)
+    def f(self, x):
+        self.x1, self.x2 = self.w1.f(x), self.w2.f(x)
+        self.sig = 1 / (1 + np.exp(-np.clip(self.x1, -20, 20)))
+        self.sw = self.x1 * self.sig
+        return self.w3.f(self.sw * self.x2)
+    def b(self, g):
+        g = self.w3.b(g)
+        dx2, dsw = g * self.sw, g * self.x2
+        dx1 = dsw * (self.sig * (1 + self.x1 * (1 - self.sig)))
+        return self.w1.b(dx1) + self.w2.b(dx2)
+
+class Groq(Module):
+    def __init__(self, d):
+        self.w = Linear(d, d, False)
+    def f(self, x):
+        return self.w.f(x)
+    def b(self, g):
+        return self.w.b(g)
+
 class SovereignBlock(Module):
     def __init__(self, d):
         self.n1 = RMSNorm(d)
-        self.gemini_branch = SwiGLU(d, d * 4)
-        self.groq_branch = Linear(d, d, False)
+        self.gemini = Gemini(d, d * 4)
+        self.groq = Groq(d)
         self.gate = Tensor(np.zeros((1, d)))
     def f(self, x):
         self.r = x
         nx = self.n1.f(x)
         self.gv = 1 / (1 + np.exp(-np.clip(self.gate.d, -20, 20)))
-        self.o_gemini = self.gemini_branch.f(nx)
-        self.o_groq = self.groq_branch.f(nx)
+        self.o_gemini = self.gemini.f(nx)
+        self.o_groq = self.groq.f(nx)
         return self.r + self.gv * self.o_gemini + (1 - self.gv) * self.o_groq
     def b(self, g):
         dgv = self.gv * (1 - self.gv)
         self.gate.g = np.sum(g * (self.o_gemini - self.o_groq) * dgv, axis=0, keepdims=True)
-        ga = self.gemini_branch.b(g * self.gv)
-        gb = self.groq_branch.b(g * (1 - self.gv))
+        ga = self.gemini.b(g * self.gv)
+        gb = self.groq.b(g * (1 - self.gv))
         return self.n1.b(ga + gb) + g
 
 class IntegratedBlock(Module):
@@ -117,7 +140,7 @@ class AdamW:
 class OMEGA_ASI(Module):
     def __init__(self, i, h, o, d=4):
         self.st = Linear(i, h)
-        self.bl = [IntegratedBlock(h) for _ in range(d)]
+        self.bl = [SovereignBlock(h) for _ in range(d)]
         self.rn = RMSNorm(h)
         self.hd = Linear(h, o)
         self.ps = self.params()
