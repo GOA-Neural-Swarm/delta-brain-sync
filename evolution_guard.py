@@ -79,10 +79,15 @@ class IntegrityChecker:
 guard = IntegrityChecker()
 
 # ============================================================================
-# 🤖 CORE 2: AI AUTO-HEALING ENGINE (Gemini + Groq)
+# 🤖 CORE 2: AI AUTO-HEALING ENGINE (Gemini + Groq with Advanced Rate Limit Handling)
 # ============================================================================
-def get_ai_correction(error_log, original_code):
-    print("🧠 [GUARD]: AI is analyzing the error...")
+def get_ai_correction(error_log, original_code, retry_count=0):
+    MAX_RETRIES = 3
+    if retry_count >= MAX_RETRIES:
+        print("❌ [GUARD]: Max API retries exceeded. Aborting to prevent infinite loop.")
+        return original_code
+
+    print(f"🧠 [GUARD]: AI is analyzing the error (Attempt {retry_count + 1}/{MAX_RETRIES})...")
     
     prompt = f"Fix this Python error:\n{error_log}\n\nCode:\n{original_code}\n\nReturn ONLY the clean code."
 
@@ -96,6 +101,14 @@ def get_ai_correction(error_log, original_code):
 
     try:
         res = requests.post(gemini_url, json=gemini_payload, timeout=30)
+        
+        # Explicit Gemini Rate Limit Handling (Status 429)
+        if res.status_code == 429:
+            backoff_time = 20 * (2 ** retry_count) # Exponential backoff: 20s, 40s, 80s
+            print(f"⏳ [GEMINI-RATE-LIMIT]: Status 429 detected. Sleeping for {backoff_time}s...")
+            time.sleep(backoff_time)
+            return get_ai_correction(error_log, original_code, retry_count + 1)
+
         data = res.json()
         if res.status_code == 200 and 'candidates' in data:
             content = data['candidates'][0]['content']['parts'][0]['text']
@@ -117,12 +130,22 @@ def get_ai_correction(error_log, original_code):
     
     try:
         response = requests.post(groq_url, headers=headers, json=groq_payload, timeout=30)
+        
+        # Explicit Groq Rate Limit Handling (Status 429)
+        if response.status_code == 429:
+            backoff_time = 20 * (2 ** retry_count) # Exponential backoff
+            print(f"⏳ [GROQ-RATE-LIMIT]: Status 429 detected. Sleeping for {backoff_time}s...")
+            time.sleep(backoff_time)
+            return get_ai_correction(error_log, original_code, retry_count + 1)
+
         data = response.json()
         
+        # Additional JSON body check for Groq specific rate limit messages
         if 'error' in data and 'rate_limit_exceeded' in str(data):
-            print("⏳ [RATE-LIMIT]: Sleeping for 20 seconds...")
-            time.sleep(20)
-            return get_ai_correction(error_log, original_code)
+            backoff_time = 20 * (2 ** retry_count)
+            print(f"⏳ [GROQ-API-LIMIT]: Sleeping for {backoff_time} seconds...")
+            time.sleep(backoff_time)
+            return get_ai_correction(error_log, original_code, retry_count + 1)
         
         # API Error ရှိမရှိ စစ်ဆေးခြင်း
         if 'choices' in data:
@@ -167,11 +190,16 @@ def run_guard(target_script):
                     original_code = f.read()
                 
                 corrected = get_ai_correction(error_output, original_code)
-                with open(target_script, 'w') as f:
-                    f.write(corrected)
                 
-                print("✅ [GUARD]: System evolved. Restarting Guard Cycle...")
-                return run_guard(target_script) # ပြန်စမယ်
+                # Check if correction was actually made, to avoid loop if AI returned original code
+                if corrected != original_code:
+                    with open(target_script, 'w') as f:
+                        f.write(corrected)
+                    print("✅ [GUARD]: System evolved. Restarting Guard Cycle...")
+                    return run_guard(target_script) # ပြန်စမယ်
+                else:
+                    print("⚠️ [GUARD]: AI could not fix the code or max retries reached. Guard stopping.")
+                    sys.exit(1)
 
         # အကယ်၍ process က ပိတ်သွားပြီး error ရှိနေရင်
         if process.poll() is not None and process.poll() != 0:
@@ -183,10 +211,16 @@ def run_guard(target_script):
                 
             # Get corrected code from AI and retry
             corrected_code = get_ai_correction(remaining_error, original_code)
-            with open(target_script, 'w') as f:
-                f.write(corrected_code)
-            print("✅ [GUARD]: Correction applied. Rebooting system...")
-            return run_guard(target_script)
+            
+            # Check if correction was actually made
+            if corrected_code != original_code:
+                with open(target_script, 'w') as f:
+                    f.write(corrected_code)
+                print("✅ [GUARD]: Correction applied. Rebooting system...")
+                return run_guard(target_script)
+            else:
+                 print("⚠️ [GUARD]: AI could not fix the code or max retries reached. Guard stopping.")
+                 sys.exit(1)
 
         time.sleep(1)
 
