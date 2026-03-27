@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -58,28 +59,30 @@ class SwiGLU(Module):
         dx1 = dsw * (self.sig * (1 + self.x1 * (1 - self.sig)))
         return self.w1.b(dx1) + self.w2.b(dx2)
 
-class GeminiPath(Module):
-    def __init__(self, d):
+class UnifiedPath(Module):
+    def __init__(self, d, h, proj=False):
         self.norm = RMSNorm(d)
-        self.mlp = SwiGLU(d, d * 4)
-    def f(self, x):
+        if proj:
+            self.proj = Linear(d, d, False)
+            self.f = self.proj_f
+            self.b = self.proj_b
+        else:
+            self.mlp = SwiGLU(d, h)
+            self.f = self.mlp_f
+            self.b = self.mlp_b
+    def proj_f(self, x):
+        return self.proj.f(self.norm.f(x))
+    def proj_b(self, g):
+        return self.norm.b(self.proj.b(g))
+    def mlp_f(self, x):
         return self.mlp.f(self.norm.f(x))
-    def b(self, g):
+    def mlp_b(self, g):
         return self.norm.b(self.mlp.b(g))
 
-class GroqPath(Module):
-    def __init__(self, d):
-        self.norm = RMSNorm(d)
-        self.proj = Linear(d, d, False)
-    def f(self, x):
-        return self.proj.f(self.norm.f(x))
-    def b(self, g):
-        return self.norm.b(self.proj.b(g))
-
 class SovereignEvolutionBlock(Module):
-    def __init__(self, d):
-        self.gemini = GeminiPath(d)
-        self.groq = GroqPath(d)
+    def __init__(self, d, h):
+        self.gemini = UnifiedPath(d, h)
+        self.groq = UnifiedPath(d, h, proj=True)
         self.gate = Tensor(np.array([[0.5]], dtype='float32'))
     def f(self, x):
         self.r = x
@@ -109,7 +112,7 @@ class AdamW:
 class OMEGA_ASI(Module):
     def __init__(self, i, h, o, d=4):
         self.st = Linear(i, h)
-        self.bl = [SovereignEvolutionBlock(h) for _ in range(d)]
+        self.bl = [SovereignEvolutionBlock(h, h * 4) for _ in range(d)]
         self.rn = RMSNorm(h)
         self.hd = Linear(h, o)
         self.ps = self.params()
