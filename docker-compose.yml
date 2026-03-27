@@ -1,18 +1,104 @@
-version: '3.8'
+# ============================================================================
+# 🔱 OMEGA-ASI: SOVEREIGN DOCKER ORCHESTRATION (v3.1.0-PRO)
+# ============================================================================
+# Features: 
+# - Resource Isolation (CPU/RAM Caps)
+# - Automated Health Monitoring & Self-Healing
+# - Advanced Log Management (Rotation)
+# - Security Hardening (PID Limits & Init)
+# ============================================================================
+
+version: '3.9'
 
 services:
   telefoxx-overseer:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILD_VERSION=3.1.0-OMEGA
+    
     container_name: telefoxx_sovereign_core
-    restart: always
+    image: telefoxx/sovereign-core:latest
+    
+    # 🔄 High-Availability Protocol
+    restart: unless-stopped
+    
+    # 🛠️ System Integrity & Signal Handling
+    init: true  # Ensures proper handling of zombie processes during code evolution
+    shm_size: '256mb' # Increased for NumPy/Matrix heavy computations
+    
+    # 🔒 Security & Resource Constraints
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'          # Prevent CPU exhaustion during deep-thinking cycles
+          memory: 2048M        # Memory ceiling to prevent OOM on host
+        reservations:
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+    # 📁 Persistent Neural Storage & Evolution Access
+    volumes:
+      - .:/app:rw              # 🧬 Read-Write Mount: Required for self-mutation/evolution
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Optional: Only if Overseer controls other containers
+
+    # 🌐 Network Architecture
+    networks:
+      - omega_internal_mesh
+
+    # 🔑 Environment Orchestration
     env_file: .env
     environment:
+      - NODE_ENV=production
       - HEADLESS_MODE=true
+      - PYTHONUNBUFFERED=1     # Ensures logs are streamed in real-time
+      - OMEGA_VERSION=3.1.0
       - NEON_KEY=${NEON_KEY}
       - GROQ_API_KEY=${GROQ_API_KEY}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - REPO_URL=${REPO_URL}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-    volumes:
-      - .:/app  # 🧬 Crucial: အပြင်က ကုဒ်ဖိုင်ကိုပါ အဆင့်မြှင့်နိုင်အောင် Mount လုပ်ထားတာ
+
+    # 📡 Heartbeat Diagnostic Layer
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/api/v2/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+    # 📝 Log Rotation (Preventing Disk Bloat)
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10mb"
+        max-file: "5"
+
+    # 🛡️ Hardening
+    pids_limit: 100            # Prevent Fork-Bombing during unstable evolution
+    security_opt:
+      - no-new-privileges:false # Set to false only if logic mutation requires elevated perms
+
+# ============================================================================
+# 🌐 NETWORK DEFINITIONS
+# ============================================================================
+networks:
+  omega_internal_mesh:
+    driver: bridge
+    labels:
+      com.telefoxx.network: sovereign_mesh
+      com.telefoxx.security: internal_only
+
+# ============================================================================
+# 💾 VOLUME DEFINITIONS (Optional Named Volumes)
+# ============================================================================
+# volumes:
+#   brain_memory:            # Use this if you want to isolate the .pkl state
+#     driver: local
