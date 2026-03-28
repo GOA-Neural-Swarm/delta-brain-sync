@@ -71,9 +71,10 @@ class EvolutionEngine:
         self.gen = 0
         self.dims = (input_dim, hidden_dim, output_dim)
         self.core = BaseModule(self.dims, lr=0.001)
-        self.gemini = BaseModule(self.dims, lr=0.0008, clip=1.0)
-        self.groq = BaseModule(self.dims, lr=0.002, clip=1.0)
-        self.ensemble_weights = np.array([0.4, 0.3, 0.3], dtype=np.float32)
+        self.modules = [self.core]
+        for _ in range(2):
+            self.modules.append(BaseModule(self.dims, lr=np.random.uniform(0.0008, 0.002), clip=np.random.uniform(0.5, 1.5)))
+        self.ensemble_weights = np.array([1.0 / len(self.modules)] * len(self.modules), dtype=np.float32)
         self.logger = self._setup_logger()
 
     def _setup_logger(self):
@@ -85,29 +86,23 @@ class EvolutionEngine:
         return logger
 
     def forward(self, X):
-        p1 = self.core.forward(X)
-        p2 = self.gemini.forward(X)
-        p3 = self.groq.forward(X)
-        return (p1 * self.ensemble_weights[0] + 
-                p2 * self.ensemble_weights[1] + 
-                p3 * self.ensemble_weights[2])
+        probs = np.array([module.forward(X) for module in self.modules])
+        return np.average(probs, axis=0, weights=self.ensemble_weights)
 
     def backward(self, y):
-        self.core.backward(y)
-        self.gemini.backward(y)
-        self.groq.backward(y)
+        for module in self.modules:
+            module.backward(y)
 
     def evolve(self, losses):
         self.gen += 1
         best_idx = np.argmin(losses)
         self.ensemble_weights[best_idx] += 0.05
         self.ensemble_weights /= self.ensemble_weights.sum()
-        modules = [self.core, self.gemini, self.groq]
-        winner = modules[best_idx]
-        for m in modules:
-            if m != winner:
-                m.W1 = 0.95 * m.W1 + 0.05 * winner.W1
-                m.optW1.lr *= (1.0 + np.random.uniform(-0.02, 0.02))
+        winner = self.modules[best_idx]
+        for module in self.modules:
+            if module != winner:
+                module.W1 = 0.95 * module.W1 + 0.05 * winner.W1
+                module.optW1.lr *= (1.0 + np.random.uniform(-0.02, 0.02))
         self.logger.info(f"GEN {self.gen} | Best: {best_idx} | Weights: {self.ensemble_weights}")
 
 class OmniSyncOrchestrator:
@@ -122,15 +117,15 @@ class OmniSyncOrchestrator:
         while True:
             indices = np.random.choice(len(self.data_x), self.batch_size)
             x_batch, y_batch = self.data_x[indices], self.data_y[indices]
-            l_core = -np.log(self.engine.core.forward(x_batch)[range(self.batch_size), y_batch] + 1e-10).mean()
-            l_gemini = -np.log(self.engine.gemini.forward(x_batch)[range(self.batch_size), y_batch] + 1e-10).mean()
-            l_groq = -np.log(self.engine.groq.forward(x_batch)[range(self.batch_size), y_batch] + 1e-10).mean()
-            probs = self.engine.forward(x_batch)
-            loss = -np.log(probs[range(self.batch_size), y_batch] + 1e-10).mean()
+            losses = []
+            for module in self.engine.modules:
+                probs = module.forward(x_batch)
+                loss = -np.log(probs[range(self.batch_size), y_batch] + 1e-10).mean()
+                losses.append(loss)
             self.engine.backward(y_batch)
             if self.engine.gen % 100 == 0:
-                self.engine.evolve([l_core, l_gemini, l_groq])
-                self.engine.logger.info(f"Loss: {loss:.6f}")
+                self.engine.evolve(losses)
+                self.engine.logger.info(f"Loss: {-np.log(self.engine.forward(x_batch)[range(self.batch_size), y_batch] + 1e-10).mean():.6f}")
                 self._snapshot()
             time.sleep(0.001)
 
