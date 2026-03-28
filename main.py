@@ -107,14 +107,12 @@ class OMEGA_Network:
 
     def train(self, x_train, y_train, epochs, lr):
         for epoch in range(epochs):
-            display_loss = 0
             output = x_train
             for layer in self.layers:
                 output = layer.forward(output)
 
-            display_loss = cross_entropy_loss(y_train, output)
-
-            if not self.redundancy.integrate_redundant_logic(display_loss, epoch):
+            loss = cross_entropy_loss(y_train, output)
+            if not self.redundancy.integrate_redundant_logic(loss, epoch):
                 lr *= 0.5
 
             error = cross_entropy_loss_prime(y_train, output)
@@ -122,7 +120,7 @@ class OMEGA_Network:
                 error = layer.backward(error, lr)
 
             if epoch % 10 == 0:
-                print(f"Epoch {epoch}/{epochs} - Loss: {display_loss:.6f}")
+                print(f"Epoch {epoch}/{epochs} - Loss: {loss:.6f}")
 
 def main():
     X, Y = generate_synthetic_data(samples=2000)
