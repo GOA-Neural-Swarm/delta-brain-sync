@@ -1,0 +1,99 @@
+name: 🧬 SOVEREIGN HYPER-EVOLUTION ENGINE
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+      - '*.bak'
+  schedule:
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  evolution_cycle:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🛰️ Step 1 - Ingesting Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN || github.token }}
+
+      - name: 🐍 Step 2 - Stabilizing Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Step 3 - Injecting Necessary Libraries
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests google-genai google-generativeai groq pandas sqlalchemy GitPython
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: 🧠 Step 4 - Executing Autonomous Self-Healing
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          
+          PYTHONPATH: .:${{ github.workspace }}
+        run: |
+          
+          find . -name "__pycache__" -type d -exec rm -rf {} +
+          find . -name "*.pyc" -delete
+          
+          
+          rm -f *.bak || true
+          
+          
+          
+          python3 -u -m evolution_engine
+
+      - name: 🏁 Step 5 - Manifesting Evolution (Auto-Commit)
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+        run: |
+          git config --global user.name 'Sovereign-AI-Bot'
+          git config --global user.email 'bot@sovereign.ai'
+          
+          # 1. Cleanup temporary backups
+          rm -f *.bak || true
+          
+          # 2. Update .gitignore
+          cat <<EOF > .gitignore
+          node_modules/
+          repo_sync/
+          .env
+          *.log
+          *.bak
+          __pycache__/
+          *.pyc
+          *.pyo
+          *.pyd
+          kaggle_deploy/
+          EOF
+          
+          # 3. Process changes
+          git add .
+          
+          # 4. Clean index without failing if files don't exist
+          git rm -r --cached __pycache__/ || true
+          git rm --cached *.pyc *.pyo *.pyd || true
+          
+          # 5. Commit and Force Push with Auth URL
+          if ! git diff --cached --quiet; then
+            git commit -m "🧬 [HYPER-EVOLUTION]: Auto-fix applied (429 Stability & Cache Clean) - $(date)"
+            git push https://x-access-token:${{ secrets.GH_TOKEN || github.token }}@github.com/${{ github.repository }}.git main --force
+            echo "✅ [SUCCESS]: Evolution manifested."
+          else
+            echo "🛡️ [STABLE]: No changes needed."
+          fi
