@@ -1,4 +1,3 @@
-
 import os
 import sys
 import time
@@ -6,168 +5,145 @@ import json
 import logging
 import numpy as np
 from hashlib import sha256
-from brain import NeuralCore
-from evolution_guard import IntegritySentinel
-from data_synchronizer import DataSynchronizer
+
+class NeuralModule:
+    def __init__(self, name, input_dim=784, hidden_dim=256, output_dim=10):
+        self.name = name
+        self.W1 = np.random.randn(input_dim, hidden_dim) * np.sqrt(2. / input_dim)
+        self.b1 = np.zeros((1, hidden_dim))
+        self.W2 = np.random.randn(hidden_dim, output_dim) * np.sqrt(2. / hidden_dim)
+        self.b2 = np.zeros((1, output_dim))
+        self.lr = 0.001
+        self.history = []
+
+    def forward(self, X):
+        self.z1 = np.dot(X, self.W1) + self.b1
+        self.a1 = np.maximum(0, self.z1)
+        self.z2 = np.dot(self.a1, self.W2) + self.b2
+        exp_scores = np.exp(self.z2 - np.max(self.z2, axis=1, keepdims=True))
+        self.probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+        return self.probs
+
+    def backward(self, X, y_true):
+        m = X.shape[0]
+        dz2 = self.probs.copy()
+        dz2[range(m), y_true] -= 1
+        dz2 /= m
+
+        dW2 = np.dot(self.a1.T, dz2)
+        db2 = np.sum(dz2, axis=0, keepdims=True)
+        
+        da1 = np.dot(dz2, self.W2.T)
+        dz1 = da1 * (self.z1 > 0)
+        
+        dW1 = np.dot(X.T, dz1)
+        db1 = np.sum(dz1, axis=0, keepdims=True)
+
+        self.W1 -= self.lr * dW1
+        self.b1 -= self.lr * db1
+        self.W2 -= self.lr * dW2
+        self.b2 -= self.lr * db2
+
+    def evolve(self, factor=0.01):
+        self.W1 += np.random.normal(0, factor, self.W1.shape)
+        self.W2 += np.random.normal(0, factor, self.W2.shape)
+        self.lr *= 0.99
 
 class OmniSyncOrchestrator:
     def __init__(self):
         self.gen = 1
-        self.error_threshold = 0.05
-        self.system_status = "STABLE"
-        self.brain = NeuralCore()
+        self.input_dim = 784
+        self.output_dim = 10
+        self.core = NeuralModule("CORE")
+        self.gemini = NeuralModule("GEMINI_REDUNDANCY")
+        self.groq = NeuralModule("GROQ_ACCELERATOR")
         self.sentinel = IntegritySentinel()
-        self.data_synchronizer = DataSynchronizer()
         self.start_time = time.time()
-
+        
         logging.basicConfig(
             level=logging.INFO,
-            format='[%(asctime)s] Gen: ' + str(self.gen) + ' | %(levelname)s: %(message)s'
+            format='[%(asctime)s] GEN-%(gen)s | %(levelname)s: %(message)s'
         )
+        self.logger = logging.getLogger("OMEGA-ASI")
 
-    def synchronize_subnodes(self):
-        logging.info("Initiating sub-node synchronization...")
-        sync_results = self.brain.process_sync_sequence()
-        if self.sentinel.verify_logic(sync_results):
-            logging.info("Synchronization verified. Integrity: 1.0")
-            return True
-        else:
-            logging.error("Logic mismatch detected in sub-nodes.")
+    def generate_synthetic_data(self, samples=1000):
+        X = np.random.rand(samples, self.input_dim)
+        y = np.random.randint(0, self.output_dim, samples)
+        return X, y
+
+    def train_cycle(self, epochs=5, batch_size=32):
+        X, y = self.generate_synthetic_data()
+        for epoch in range(epochs):
+            permutation = np.random.permutation(X.shape[0])
+            X_shuffled = X[permutation]
+            y_shuffled = y[permutation]
+            
+            for i in range(0, X.shape[0], batch_size):
+                x_batch = X_shuffled[i:i+batch_size]
+                y_batch = y_shuffled[i:i+batch_size]
+                
+                # Parallel Training of Redundant Logic
+                p_core = self.core.forward(x_batch)
+                p_gemini = self.gemini.forward(x_batch)
+                p_groq = self.groq.forward(x_batch)
+                
+                self.core.backward(x_batch, y_batch)
+                self.gemini.backward(x_batch, y_batch)
+                self.groq.backward(x_batch, y_batch)
+
+            loss = -np.log(p_core[range(len(y_batch)), y_batch] + 1e-9).mean()
+            self.logger.info(f"Epoch {epoch} Loss: {loss:.4f}", extra={'gen': self.gen})
+
+    def verify_consensus(self):
+        test_x, _ = self.generate_synthetic_data(1)
+        r1 = self.core.forward(test_x)
+        r2 = self.gemini.forward(test_x)
+        r3 = self.groq.forward(test_x)
+        
+        variance = np.var([r1, r2, r3])
+        if variance > 0.1:
+            self.logger.error(f"Consensus Failure: Variance {variance:.6f}", extra={'gen': self.gen})
             return False
+        self.logger.info(f"Consensus Verified: Variance {variance:.6f}", extra={'gen': self.gen})
+        return True
 
-    def evolve(self):
-        logging.info("Starting Generation 1 Evolution protocol...")
-        try:
-            self.brain.evolve_neural_weights()
-            self.sentinel.harden_security_protocols()
-            self.gen += 1
-            logging.info(f"Evolution complete. Current Generation: {self.gen}")
-        except Exception as e:
-            self.system_status = "CRITICAL"
-            logging.error(f"Evolution failed: {str(e)}")
+    def evolve_system(self):
+        self.logger.info("Initiating Recursive Self-Evolution...", extra={'gen': self.gen})
+        self.core.evolve()
+        self.gemini.evolve()
+        self.groq.evolve()
+        self.gen += 1
+        self.sentinel.snapshot_state(self)
 
-    def train(self):
-        logging.info("Starting training protocol...")
-        synthetic_data = np.random.rand(100, 784)
-        for epoch in range(10):
-            for batch in range(10):
-                batch_data = synthetic_data[batch*10:(batch+1)*10]
-                self.brain.train(batch_data)
-
-    def run_cycle(self):
+    def run(self):
         while True:
-            if self.synchronize_subnodes():
-                self.brain.compute_meta_learning()
-                if time.time() - self.start_time > 3600:
-                    self.evolve()
+            self.train_cycle()
+            if self.verify_consensus():
+                if time.time() - self.start_time > 60: # Accelerated for demonstration
+                    self.evolve_system()
                     self.start_time = time.time()
-            time.sleep(10)
-
-class NeuralCore:
-    def __init__(self):
-        self.memory_path = "brain_history.txt"
-        self.weights = self._load_weights()
-        self.state_vector = np.random.rand(64)
-        self.input_size = 784
-        self.output_size = 10
-        self.gemini_weights = np.random.rand(784, 64)
-        self.groq_weights = np.random.rand(784, 64)
-
-    def _load_weights(self):
-        if os.path.exists("evolution_logic.json"):
-            with open("evolution_logic.json", "r") as f:
-                return np.array(json.load(f).get("weights", np.random.rand(784, 64).tolist()))
-        return np.random.rand(784, 64)
-
-    def process_sync_sequence(self):
-        input_signal = np.sin(np.random.rand(self.input_size))
-        self.state_vector = np.dot(self.weights, input_signal)
-        self.state_vector = np.tanh(self.state_vector)
-        return self.state_vector.tolist()
-
-    def compute_meta_learning(self):
-        analysis = {
-            "mean_activation": float(np.mean(self.state_vector)),
-            "entropy": float(-np.sum(self.state_vector * np.log(np.abs(self.state_vector) + 1e-9)))
-        }
-        with open(self.memory_path, "a") as f:
-            f.write(json.dumps(analysis) + "\n")
-
-        gemini_analysis = {
-            "mean_activation": float(np.mean(self.gemini_weights)),
-            "entropy": float(-np.sum(self.gemini_weights * np.log(np.abs(self.gemini_weights) + 1e-9)))
-        }
-        with open("gemini_history.txt", "a") as f:
-            f.write(json.dumps(gemini_analysis) + "\n")
-
-        groq_analysis = {
-            "mean_activation": float(np.mean(self.groq_weights)),
-            "entropy": float(-np.sum(self.groq_weights * np.log(np.abs(self.groq_weights) + 1e-9)))
-        }
-        with open("groq_history.txt", "a") as f:
-            f.write(json.dumps(groq_analysis) + "\n")
-
-    def evolve_neural_weights(self):
-        mutation = np.random.normal(0, 0.01, self.weights.shape)
-        self.weights += mutation
-        self.gemini_weights += np.random.normal(0, 0.01, self.gemini_weights.shape)
-        self.groq_weights += np.random.normal(0, 0.01, self.groq_weights.shape)
-        with open("evolution_logic.json", "w") as f:
-            json.dump({"weights": self.weights.tolist()}, f)
-
-    def train(self, batch_data):
-        self.weights += np.dot(batch_data.T, np.random.rand(784, 64))
-        self.gemini_weights += np.dot(batch_data.T, np.random.rand(784, 64))
-        self.groq_weights += np.dot(batch_data.T, np.random.rand(784, 64))
+            else:
+                self.logger.warning("Re-synchronizing modules...", extra={'gen': self.gen})
+                self.gemini.W1 = self.core.W1.copy()
+                self.groq.W1 = self.core.W1.copy()
+            time.sleep(2)
 
 class IntegritySentinel:
     def __init__(self):
-        self.baseline_hashes = self._generate_baselines()
+        self.state_log = "system_integrity.json"
 
-    def _generate_baselines(self):
-        baselines = {}
-        target_files = ['main.py', 'brain.py', 'sync_data.py']
-        for file in target_files:
-            if os.path.exists(file):
-                with open(file, "rb") as f:
-                    baselines[file] = sha256(f.read()).hexdigest()
-        return baselines
-
-    def verify_logic(self, data_stream):
-        if not isinstance(data_stream, list):
-            return False
-        arr = [abs(x) for x in data_stream]
-        if max(arr) > 1.0 or min(arr) < 0.0:
-            return False
-        return True
-
-    def harden_security_protocols(self):
-        if not os.path.exists("trigger.lock"):
-            with open("trigger.lock", "w") as f:
-                f.write("LOCKED_GEN_1")
-
-        current_state = self._generate_baselines()
-        for file, h in self.baseline_hashes.items():
-            if current_state.get(file) != h:
-                print(f"SECURITY ALERT: {file} has been modified outside of evolution cycle.")
-
-class DataSynchronizer:
-    def __init__(self, source="data.csv"):
-        self.source = source
-
-    def ingest_and_clean(self):
-        if not os.path.exists(self.source):
-            return np.random.rand(100, 784)
-
-        return np.random.rand(100, 784)
-
-    def export_evolution_snapshot(self, data_frame, gen):
-        snapshot_path = f"discoveries/gen_{gen}_sync.md"
-        with open(snapshot_path, "w") as f:
-            f.write(f"# Generation {gen} Evolution Snapshot\n")
-            f.write(str(data_frame))
+    def snapshot_state(self, orchestrator):
+        state = {
+            "gen": orchestrator.gen,
+            "core_hash": sha256(orchestrator.core.W1.tobytes()).hexdigest(),
+            "timestamp": time.time()
+        }
+        with open(self.state_log, "a") as f:
+            f.write(json.dumps(state) + "\n")
 
 if __name__ == "__main__":
-    orchestrator = OmniSyncOrchestrator()
-    orchestrator.train()
-    orchestrator.run_cycle()
+    architect = OmniSyncOrchestrator()
+    try:
+        architect.run()
+    except KeyboardInterrupt:
+        print("\nEvolution Paused. State Preserved.")
