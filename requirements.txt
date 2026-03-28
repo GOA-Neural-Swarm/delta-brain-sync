@@ -35,3 +35,5 @@ ftfy
 supabase
 httpx
 asyncio
+
+scikit-learn
