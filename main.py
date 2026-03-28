@@ -3,200 +3,206 @@ import time
 import json
 import logging
 import os
-import threading
 import sys
-from abc import ABC, abstractmethod
-from typing import Tuple, List, Dict, Any
+import threading
+from typing import List, Tuple, Dict, Optional
 
-# Configure logging for high-performance tracking
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] [OMEGA-ASI] [%(levelname)s] %(message)s',
-    stream=sys.stdout
-)
+# GLOBAL CONFIGURATION
+LOG_FORMAT = '[%(asctime)s] [OMEGA-ASI] [%(levelname)s] %(message)s'
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, stream=sys.stdout)
 
+# EXTERNAL LOGIC INTERFACES
 try:
     from gemini import Gemini
     from groq import Groq
 except ImportError:
     class Gemini:
-        def process_data(self, data): return np.mean(data)
+        def analyze_weights(self, w: np.ndarray) -> float:
+            return float(np.mean(np.abs(w)))
     class Groq:
-        def process_data(self, data): return np.std(data)
+        def validate_gradients(self, g: np.ndarray) -> float:
+            return float(np.std(g))
 
-class Activation:
-    @staticmethod
-    def relu(x): return np.maximum(0, x)
-    @staticmethod
-    def relu_derivative(x): return (x > 0).astype(float)
-    @staticmethod
-    def softmax(x):
-        exps = np.exp(x - np.max(x, axis=1, keepdims=True))
-        return exps / np.sum(exps, axis=1, keepdims=True)
-
-class AdamOptimizer:
-    def __init__(self, lr=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8):
+class Optimizer:
+    def __init__(self, lr: float = 0.002, beta1: float = 0.9, beta2: float = 0.999):
         self.lr = lr
         self.beta1 = beta1
         self.beta2 = beta2
-        self.epsilon = epsilon
-        self.m = None
-        self.v = None
+        self.epsilon = 1e-8
+        self.m_w, self.v_w = {}, {}
+        self.m_b, self.v_b = {}, {}
         self.t = 0
 
-    def update(self, w, grad):
-        if self.m is None:
-            self.m = np.zeros_like(w)
-            self.v = np.zeros_like(w)
+    def update(self, layer_id: int, w: np.ndarray, b: np.ndarray, dw: np.ndarray, db: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        if layer_id not in self.m_w:
+            self.m_w[layer_id], self.v_w[layer_id] = np.zeros_like(w), np.zeros_like(w)
+            self.m_b[layer_id], self.v_b[layer_id] = np.zeros_like(b), np.zeros_like(b)
+        
         self.t += 1
-        self.m = self.beta1 * self.m + (1 - self.beta1) * grad
-        self.v = self.beta2 * self.v + (1 - self.beta2) * (grad**2)
-        m_hat = self.m / (1 - self.beta1**self.t)
-        v_hat = self.v / (1 - self.beta2**self.t)
-        return w - self.lr * m_hat / (np.sqrt(v_hat) + self.epsilon)
+        self.m_w[layer_id] = self.beta1 * self.m_w[layer_id] + (1 - self.beta1) * dw
+        self.v_w[layer_id] = self.beta2 * self.v_w[layer_id] + (1 - self.beta2) * (dw**2)
+        self.m_b[layer_id] = self.beta1 * self.m_b[layer_id] + (1 - self.beta1) * db
+        self.v_b[layer_id] = self.beta2 * self.v_b[layer_id] + (1 - self.beta2) * (db**2)
 
-class NeuralModule:
-    def __init__(self, input_dim: int, output_dim: int):
-        self.weights = np.random.randn(input_dim, output_dim) * np.sqrt(2. / input_dim)
-        self.bias = np.zeros((1, output_dim))
-        self.optimizer_w = AdamOptimizer()
-        self.optimizer_b = AdamOptimizer()
-        self.last_input = None
-        self.last_output = None
+        m_w_hat = self.m_w[layer_id] / (1 - self.beta1**self.t)
+        v_w_hat = self.v_w[layer_id] / (1 - self.beta2**self.t)
+        m_b_hat = self.m_b[layer_id] / (1 - self.beta1**self.t)
+        v_b_hat = self.v_b[layer_id] / (1 - self.beta2**self.t)
+
+        w -= self.lr * m_w_hat / (np.sqrt(v_w_hat) + self.epsilon)
+        b -= self.lr * m_b_hat / (np.sqrt(v_b_hat) + self.epsilon)
+        return w, b
+
+class Layer:
+    def __init__(self, in_dim: int, out_dim: int, layer_id: int):
+        self.id = layer_id
+        self.w = np.random.randn(in_dim, out_dim) * np.sqrt(2. / in_dim)
+        self.b = np.zeros((1, out_dim))
+        self.x = None
+        self.z = None
 
     def forward(self, x: np.ndarray) -> np.ndarray:
-        self.last_input = x
-        self.last_output = np.dot(x, self.weights) + self.bias
-        return Activation.relu(self.last_output)
+        self.x = x
+        self.z = np.dot(x, self.w) + self.b
+        return np.maximum(0, self.z) # ReLU
 
-    def backward(self, grad: np.ndarray) -> np.ndarray:
-        relu_grad = grad * Activation.relu_derivative(self.last_output)
-        weights_grad = np.dot(self.last_input.T, relu_grad)
-        bias_grad = np.sum(relu_grad, axis=0, keepdims=True)
-        input_grad = np.dot(relu_grad, self.weights.T)
-        
-        self.weights = self.optimizer_w.update(self.weights, weights_grad)
-        self.bias = self.optimizer_b.update(self.bias, bias_grad)
-        return input_grad
+    def backward(self, dz: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        dz[self.z <= 0] = 0 # ReLU derivative
+        dw = np.dot(self.x.T, dz)
+        db = np.sum(dz, axis=0, keepdims=True)
+        dx = np.dot(dz, self.w.T)
+        return dx, dw, db
 
 class RedundancyEngine:
     def __init__(self):
         self.gemini = Gemini()
         self.groq = Groq()
-        self.consensus_log = []
+        self.consensus_factor = 1.0
 
-    def validate_and_process(self, data: np.ndarray) -> Dict[str, float]:
-        g1 = self.gemini.process_data(data)
-        g2 = self.groq.process_data(data)
-        consensus = (float(np.mean(g1)) + float(np.mean(g2))) / 2
-        self.consensus_log.append(consensus)
-        return {"consensus": consensus, "variance": np.abs(np.mean(g1) - np.mean(g2))}
+    def sync_check(self, weights: np.ndarray, grads: np.ndarray):
+        g_val = self.gemini.analyze_weights(weights)
+        q_val = self.groq.validate_gradients(grads)
+        self.consensus_factor = (g_val + q_val) / 2.0
+        return self.consensus_factor
 
 class EvolutionaryKernel:
-    def __init__(self, state_path="evolution_state.json"):
-        self.state_path = state_path
-        self.generation = 1
-        self.fitness_history = []
+    def __init__(self):
+        self.history = []
+        self.gen = 0
+        self.best_fitness = -np.inf
 
-    def evaluate_fitness(self, loss: float, accuracy: float) -> float:
-        fitness = (1.0 / (loss + 1e-6)) * accuracy
-        self.fitness_history.append(fitness)
+    def evaluate(self, loss: float, acc: float) -> float:
+        fitness = acc * (1.0 / (loss + 1e-7))
+        self.history.append(fitness)
         return fitness
 
-    def mutate_architecture(self, brain: 'CognitiveCore'):
-        if len(self.fitness_history) > 10 and np.mean(self.fitness_history[-5:]) > np.mean(self.fitness_history[-10:-5]):
-            logging.info(f"Mutation Triggered: Generation {self.generation} -> {self.generation + 1}")
-            self.generation += 1
-            return True
-        return False
+    def should_mutate(self) -> bool:
+        if len(self.history) < 20: return False
+        recent_avg = np.mean(self.history[-10:])
+        prev_avg = np.mean(self.history[-20:-10])
+        return recent_avg <= prev_avg
 
-    def save_state(self):
-        state = {"gen": self.generation, "fitness": self.fitness_history[-1] if self.fitness_history else 0}
-        with open(self.state_path, 'w') as f:
-            json.dump(state, f)
-
-class CognitiveCore:
-    def __init__(self, input_size=784, hidden_size=256, output_size=10):
-        self.layer1 = NeuralModule(input_size, hidden_size)
-        self.layer2 = NeuralModule(hidden_size, output_size)
+class ModularNeuralArch:
+    def __init__(self, dims: List[int]):
+        self.layers = [Layer(dims[i], dims[i+1], i) for i in range(len(dims)-1)]
+        self.optimizer = Optimizer()
         self.redundancy = RedundancyEngine()
 
     def forward(self, x: np.ndarray) -> np.ndarray:
-        h1 = self.layer1.forward(x)
-        logits = self.layer2.forward(h1)
-        return Activation.softmax(logits)
+        for layer in self.layers:
+            x = layer.forward(x)
+        # Softmax output
+        exp_x = np.exp(x - np.max(x, axis=1, keepdims=True))
+        return exp_x / np.sum(exp_x, axis=1, keepdims=True)
 
     def train_step(self, x: np.ndarray, y: np.ndarray) -> float:
         # Forward
         probs = self.forward(x)
-        loss = -np.mean(np.sum(y * np.log(probs + 1e-8), axis=1))
+        loss = -np.mean(np.sum(y * np.log(probs + 1e-9), axis=1))
         
         # Backward
-        grad = (probs - y) / x.shape[0]
-        grad = self.layer2.backward(grad)
-        self.layer1.backward(grad)
-        
-        # Redundant Logic Integration
-        self.redundancy.validate_and_process(x)
-        
+        dz = (probs - y) / x.shape[0]
+        for layer in reversed(self.layers):
+            dx, dw, db = layer.backward(dz)
+            # Redundancy Validation
+            factor = self.redundancy.sync_check(layer.w, dw)
+            dw *= (1.0 + (0.01 * factor)) 
+            
+            layer.w, layer.b = self.optimizer.update(layer.id, layer.w, layer.b, dw, db)
+            dz = dx
         return loss
+
+    def mutate(self):
+        # Add neurons to a random hidden layer
+        idx = np.random.randint(0, len(self.layers))
+        in_d, out_d = self.layers[idx].w.shape
+        new_neurons = 32
+        
+        # Expand current layer output
+        new_w = np.random.randn(in_d, out_d + new_neurons) * np.sqrt(2. / in_d)
+        new_w[:, :out_d] = self.layers[idx].w
+        self.layers[idx].w = new_w
+        self.layers[idx].b = np.zeros((1, out_d + new_neurons))
+        
+        # Adjust next layer input if it exists
+        if idx + 1 < len(self.layers):
+            next_in, next_out = self.layers[idx+1].w.shape
+            new_next_w = np.random.randn(next_in + new_neurons, next_out) * np.sqrt(2. / (next_in + new_neurons))
+            new_next_w[:next_in, :] = self.layers[idx+1].w
+            self.layers[idx+1].w = new_next_w
 
 class SovereignArchitect:
     def __init__(self):
-        self.brain = CognitiveCore()
+        self.input_dim = 784
+        self.output_dim = 10
+        self.model = ModularNeuralArch([self.input_dim, 512, 256, self.output_dim])
         self.kernel = EvolutionaryKernel()
-        self.running = True
-        self.batch_size = 64
+        self.is_running = True
 
-    def generate_synthetic_data(self) -> Tuple[np.ndarray, np.ndarray]:
-        x = np.random.rand(self.batch_size, 784)
-        y = np.zeros((self.batch_size, 10))
-        indices = np.random.randint(0, 10, self.batch_size)
-        y[np.arange(self.batch_size), indices] = 1
+    def get_data(self, batch_size=128) -> Tuple[np.ndarray, np.ndarray]:
+        x = np.random.randn(batch_size, self.input_dim).astype(np.float32)
+        y = np.zeros((batch_size, self.output_dim))
+        y[np.arange(batch_size), np.random.randint(0, self.output_dim, batch_size)] = 1
         return x, y
 
-    def recursive_evolution_loop(self):
-        logging.info("Sovereign Architect: Evolution Loop Initiated.")
+    def evolution_cycle(self):
+        logging.info("Evolutionary Cycle Active.")
+        step = 0
         try:
-            while self.running:
-                x, y = self.generate_synthetic_data()
-                loss = self.brain.train_step(x, y)
+            while self.is_running:
+                x, y = self.get_data()
+                loss = self.model.train_step(x, y)
                 
-                # Accuracy calculation
-                preds = self.brain.forward(x)
-                acc = np.mean(np.argmax(preds, axis=1) == np.argmax(y, axis=1))
+                if step % 50 == 0:
+                    probs = self.model.forward(x)
+                    acc = np.mean(np.argmax(probs, axis=1) == np.argmax(y, axis=1))
+                    fitness = self.kernel.evaluate(loss, acc)
+                    
+                    logging.info(f"Step {step} | Loss: {loss:.4f} | Acc: {acc:.4f} | Fitness: {fitness:.2f}")
+                    
+                    if self.kernel.should_mutate():
+                        logging.warning("Performance Plateau Detected. Mutating Architecture...")
+                        self.model.mutate()
+                        self.kernel.gen += 1
                 
-                fitness = self.kernel.evaluate_fitness(loss, acc)
-                
-                if self.kernel.generation % 100 == 0:
-                    logging.info(f"Gen: {self.kernel.generation} | Loss: {loss:.4f} | Acc: {acc:.4f} | Fitness: {fitness:.2f}")
-                
-                if self.kernel.mutate_architecture(self.brain):
-                    self.kernel.save_state()
-                
-                if loss < 0.001:
-                    logging.info("Convergence optimization reached. Scaling complexity...")
-                    time.sleep(0.1)
-
+                step += 1
+                if loss < 0.0001:
+                    logging.info("Target convergence achieved. Entering stasis.")
+                    time.sleep(5)
+                    
         except Exception as e:
-            logging.error(f"Critical System Failure: {e}")
-            self.emergency_recovery(e)
+            logging.error(f"Kernel Panic: {e}")
+            os._exit(1)
 
-    def emergency_recovery(self, error: Exception):
-        with open("emergency_log.txt", "a") as f:
-            f.write(f"{time.time()}: {str(error)}\n")
-        os._exit(1)
-
-    def start(self):
-        evolution_thread = threading.Thread(target=self.recursive_evolution_loop, daemon=True)
-        evolution_thread.start()
+    def run(self):
+        t = threading.Thread(target=self.evolution_cycle, daemon=True)
+        t.start()
         try:
-            while True:
-                time.sleep(1)
+            while True: time.sleep(0.1)
         except KeyboardInterrupt:
-            self.running = False
-            logging.info("Sovereign Architect: Shutdown Sequence Initiated.")
+            self.is_running = False
+            logging.info("Sovereign Architect: Shutdown.")
 
 if __name__ == "__main__":
     architect = SovereignArchitect()
-    architect.start()
+    architect.run()
