@@ -15,8 +15,7 @@ class OmniBrain:
         self.association_rules = {}
         self.learning_rate = 0.01
         self.weights = np.random.rand(784, 10)
-        self.gemini = Gemini()
-        self.groq = Groq()
+        self.gemini_groq = GeminiGroq()
 
     def mine_sequences(self) -> np.ndarray:
         return np.random.rand(100, 784)
@@ -44,10 +43,16 @@ class OmniBrain:
         self.weights -= self.learning_rate * gradients
         return loss
 
-    def gemini_integration(self, data: np.ndarray):
-        self.gemini.process_data(data)
+    def integrate_gemini_groq(self, data: np.ndarray):
+        self.gemini_groq.process_data(data)
 
-    def groq_integration(self, data: np.ndarray):
+class GeminiGroq:
+    def __init__(self):
+        self.gemini = Gemini()
+        self.groq = Groq()
+
+    def process_data(self, data: np.ndarray):
+        self.gemini.process_data(data)
         self.groq.process_data(data)
 
 class SurvivalCore:
@@ -128,8 +133,7 @@ class OmniSync:
                 data = self.brain.mine_sequences()
                 labels = np.random.rand(100, 10)
                 loss = self.brain.train(data, labels)
-                self.brain.gemini_integration(data)
-                self.brain.groq_integration(data)
+                self.brain.integrate_gemini_groq(data)
                 if loss < 0.01:
                     gen += 1
                     self.brain._update_classifier(data)
