@@ -5,6 +5,7 @@ import json
 import logging
 import numpy as np
 from typing import List, Dict
+import threading
 
 class OmniBrain:
     def __init__(self):
@@ -45,11 +46,15 @@ class SurvivalCore:
         self.emergency_log = "emergency_reset.txt"
 
     def recover(self, error: Exception):
-        error_msg = f"CRITICAL_FAILURE: {str(error)}\n{traceback.format_exc()}"
+        error_msg = f"CRITICAL_FAILURE: {str(error)}\n{self.get_traceback(error)}"
         with open(self.recovery_path, "a") as f:
             f.write(error_msg + "\n---\n")
         if self._check_severity(error):
             self.trigger_emergency_reset()
+
+    def get_traceback(self, error: Exception):
+        import traceback
+        return traceback.format_exc()
 
     def _check_severity(self, error: Exception) -> bool:
         return isinstance(error, MemoryError) or isinstance(error, SystemError)
@@ -84,44 +89,7 @@ class EvolutionGuard:
             json.dump(data, f)
             f.truncate()
 
-class Gemini:
-    def __init__(self):
-        self.brain = OmniBrain()
-        self.survival = SurvivalCore()
-        self.guard = EvolutionGuard()
-
-    def boot_sequence(self):
-        logging.info("Initializing Gen 1 Omni-Sync Architecture...")
-        if not self.guard.validate_integrity():
-            self.survival.trigger_emergency_reset()
-        self.sync_subnodes()
-
-    def sync_subnodes(self):
-        status = {
-            "status": "synchronized",
-            "gen": 1,
-            "neural_error": 0.0
-        }
-        with open('ai_status.json', 'w') as f:
-            json.dump(status, f)
-
-    def evolution_loop(self):
-        gen = 1
-        error_rate = 0.0
-        while True:
-            try:
-                data = self.brain.mine_sequences()
-                labels = np.random.rand(100, 10)
-                loss = self.brain.train(data, labels)
-                if loss < 0.01:
-                    gen += 1
-                    self.brain._update_classifier(data)
-                time.sleep(1)
-            except Exception as e:
-                error_rate += 0.1
-                self.survival.recover(e)
-
-class Groq:
+class OmniSync:
     def __init__(self):
         self.brain = OmniBrain()
         self.survival = SurvivalCore()
@@ -159,10 +127,6 @@ class Groq:
                 self.survival.recover(e)
 
 if __name__ == "__main__":
-    gemini = Gemini()
-    groq = Groq()
-    gemini.boot_sequence()
-    groq.boot_sequence()
-    import threading
-    threading.Thread(target=gemini.evolution_loop).start()
-    threading.Thread(target=groq.evolution_loop).start()
+    omni_sync = OmniSync()
+    omni_sync.boot_sequence()
+    threading.Thread(target=omni_sync.evolution_loop).start()
