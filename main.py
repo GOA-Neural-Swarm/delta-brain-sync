@@ -1,3 +1,4 @@
+
 import os
 import sys
 import time
@@ -26,17 +27,16 @@ class AdamWOptimizer:
         return w - self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
 class BaseModule:
-    def __init__(self, dims, lr=1e-3):
+    def __init__(self, dims, lr=1e-3, clip=None):
         self.W1 = np.random.randn(dims[0], dims[1]).astype(np.float32) * np.sqrt(2. / dims[0])
         self.b1 = np.zeros((1, dims[1]), dtype=np.float32)
         self.W2 = np.random.randn(dims[1], dims[2]).astype(np.float32) * np.sqrt(2. / dims[1])
         self.b2 = np.zeros((1, dims[2]), dtype=np.float32)
-        
         self.optW1 = AdamWOptimizer(self.W1.shape, lr=lr)
         self.optb1 = AdamWOptimizer(self.b1.shape, lr=lr)
         self.optW2 = AdamWOptimizer(self.W2.shape, lr=lr)
         self.optb2 = AdamWOptimizer(self.b2.shape, lr=lr)
-        self.history = []
+        self.clip = clip
 
     def forward(self, X):
         self.x = X
@@ -52,40 +52,15 @@ class BaseModule:
         dz2 = self.probs.copy()
         dz2[range(m), y_true] -= 1
         dz2 /= m
-        
         dW2 = np.dot(self.a1.T, dz2)
         db2 = np.sum(dz2, axis=0, keepdims=True)
         da1 = np.dot(dz2, self.W2.T)
         dz1 = da1 * (self.z1 > 0)
         dW1 = np.dot(self.x.T, dz1)
         db1 = np.sum(dz1, axis=0, keepdims=True)
-        
-        self.W2 = self.optW2.step(self.W2, dW2)
-        self.b2 = self.optb2.step(self.b2, db2)
-        self.W1 = self.optW1.step(self.W1, dW1)
-        self.b1 = self.optb1.step(self.b1, db1)
-
-class GeminiModule(BaseModule):
-    def __init__(self, dims, lr=1e-3):
-        super().__init__(dims, lr)
-        self.shadow_W1 = self.W1.copy()
-    
-    def sync_shadow(self):
-        self.W1 = 0.5 * (self.W1 + self.shadow_W1)
-        self.shadow_W1 = self.W1.copy()
-
-class GroqModule(BaseModule):
-    def backward(self, y_true):
-        m = y_true.shape[0]
-        dz2 = self.probs.copy()
-        dz2[range(m), y_true] -= 1
-        dz2 /= m
-        dW2 = np.clip(np.dot(self.a1.T, dz2), -1, 1)
-        db2 = np.sum(dz2, axis=0, keepdims=True)
-        da1 = np.dot(dz2, self.W2.T)
-        dz1 = da1 * (self.z1 > 0)
-        dW1 = np.clip(np.dot(self.x.T, dz1), -1, 1)
-        db1 = np.sum(dz1, axis=0, keepdims=True)
+        if self.clip:
+            dW1 = np.clip(dW1, -self.clip, self.clip)
+            dW2 = np.clip(dW2, -self.clip, self.clip)
         self.W2 = self.optW2.step(self.W2, dW2)
         self.b2 = self.optb2.step(self.b2, db2)
         self.W1 = self.optW1.step(self.W1, dW1)
@@ -96,8 +71,8 @@ class EvolutionEngine:
         self.gen = 0
         self.dims = (input_dim, hidden_dim, output_dim)
         self.core = BaseModule(self.dims, lr=0.001)
-        self.gemini = GeminiModule(self.dims, lr=0.0008)
-        self.groq = GroqModule(self.dims, lr=0.002)
+        self.gemini = BaseModule(self.dims, lr=0.0008, clip=1.0)
+        self.groq = BaseModule(self.dims, lr=0.002, clip=1.0)
         self.ensemble_weights = np.array([0.4, 0.3, 0.3], dtype=np.float32)
         self.logger = self._setup_logger()
 
@@ -125,19 +100,14 @@ class EvolutionEngine:
     def evolve(self, losses):
         self.gen += 1
         best_idx = np.argmin(losses)
-        # Shift ensemble weights towards the winner
         self.ensemble_weights[best_idx] += 0.05
         self.ensemble_weights /= self.ensemble_weights.sum()
-        
-        # Distillation: Core absorbs features from the best performer
         modules = [self.core, self.gemini, self.groq]
         winner = modules[best_idx]
         for m in modules:
             if m != winner:
                 m.W1 = 0.95 * m.W1 + 0.05 * winner.W1
                 m.optW1.lr *= (1.0 + np.random.uniform(-0.02, 0.02))
-        
-        self.gemini.sync_shadow()
         self.logger.info(f"GEN {self.gen} | Best: {best_idx} | Weights: {self.ensemble_weights}")
 
 class OmniSyncOrchestrator:
@@ -152,22 +122,16 @@ class OmniSyncOrchestrator:
         while True:
             indices = np.random.choice(len(self.data_x), self.batch_size)
             x_batch, y_batch = self.data_x[indices], self.data_y[indices]
-            
-            # Individual performance tracking
             l_core = -np.log(self.engine.core.forward(x_batch)[range(self.batch_size), y_batch] + 1e-10).mean()
             l_gemini = -np.log(self.engine.gemini.forward(x_batch)[range(self.batch_size), y_batch] + 1e-10).mean()
             l_groq = -np.log(self.engine.groq.forward(x_batch)[range(self.batch_size), y_batch] + 1e-10).mean()
-            
-            # Global update
             probs = self.engine.forward(x_batch)
             loss = -np.log(probs[range(self.batch_size), y_batch] + 1e-10).mean()
             self.engine.backward(y_batch)
-            
             if self.engine.gen % 100 == 0:
                 self.engine.evolve([l_core, l_gemini, l_groq])
                 self.engine.logger.info(f"Loss: {loss:.6f}")
                 self._snapshot()
-            
             time.sleep(0.001)
 
     def _snapshot(self):
