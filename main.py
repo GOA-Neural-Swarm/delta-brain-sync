@@ -1,148 +1,202 @@
-
-import os
+import numpy as np
 import time
 import json
 import logging
-import numpy as np
-from typing import List, Dict
+import os
 import threading
-from gemini import Gemini
-from groq import Groq
+import sys
+from abc import ABC, abstractmethod
+from typing import Tuple, List, Dict, Any
 
-class OmniBrain:
-    def __init__(self):
-        self.memory_buffer = []
-        self.association_rules = {}
-        self.learning_rate = 0.01
-        self.weights = np.random.rand(784, 10)
-        self.gemini_groq = GeminiGroq()
+# Configure logging for high-performance tracking
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] [OMEGA-ASI] [%(levelname)s] %(message)s',
+    stream=sys.stdout
+)
 
-    def mine_sequences(self) -> np.ndarray:
-        return np.random.rand(100, 784)
+try:
+    from gemini import Gemini
+    from groq import Groq
+except ImportError:
+    class Gemini:
+        def process_data(self, data): return np.mean(data)
+    class Groq:
+        def process_data(self, data): return np.std(data)
 
-    def process_evolution(self, data: np.ndarray) -> bool:
-        evolution_threshold = 0.85
-        fitness = self._calculate_fitness(data)
-        if fitness > evolution_threshold:
-            self._update_classifier(data)
-            return True
-        return False
+class Activation:
+    @staticmethod
+    def relu(x): return np.maximum(0, x)
+    @staticmethod
+    def relu_derivative(x): return (x > 0).astype(float)
+    @staticmethod
+    def softmax(x):
+        exps = np.exp(x - np.max(x, axis=1, keepdims=True))
+        return exps / np.sum(exps, axis=1, keepdims=True)
 
-    def _calculate_fitness(self, data: np.ndarray) -> float:
-        return np.mean(np.square(data))
+class AdamOptimizer:
+    def __init__(self, lr=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8):
+        self.lr = lr
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.epsilon = epsilon
+        self.m = None
+        self.v = None
+        self.t = 0
 
-    def _update_classifier(self, data: np.ndarray):
-        self.memory_buffer.append(data)
-        self.learning_rate *= 0.98
-        self.weights += np.random.rand(784, 10) * 0.01
+    def update(self, w, grad):
+        if self.m is None:
+            self.m = np.zeros_like(w)
+            self.v = np.zeros_like(w)
+        self.t += 1
+        self.m = self.beta1 * self.m + (1 - self.beta1) * grad
+        self.v = self.beta2 * self.v + (1 - self.beta2) * (grad**2)
+        m_hat = self.m / (1 - self.beta1**self.t)
+        v_hat = self.v / (1 - self.beta2**self.t)
+        return w - self.lr * m_hat / (np.sqrt(v_hat) + self.epsilon)
 
-    def train(self, data: np.ndarray, labels: np.ndarray):
-        predictions = np.dot(data, self.weights)
-        loss = np.mean(np.square(predictions - labels))
-        gradients = 2 * np.dot(data.T, (predictions - labels))
-        self.weights -= self.learning_rate * gradients
-        return loss
+class NeuralModule:
+    def __init__(self, input_dim: int, output_dim: int):
+        self.weights = np.random.randn(input_dim, output_dim) * np.sqrt(2. / input_dim)
+        self.bias = np.zeros((1, output_dim))
+        self.optimizer_w = AdamOptimizer()
+        self.optimizer_b = AdamOptimizer()
+        self.last_input = None
+        self.last_output = None
 
-    def integrate_gemini_groq(self, data: np.ndarray):
-        self.gemini_groq.process_data(data)
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        self.last_input = x
+        self.last_output = np.dot(x, self.weights) + self.bias
+        return Activation.relu(self.last_output)
 
-class GeminiGroq:
+    def backward(self, grad: np.ndarray) -> np.ndarray:
+        relu_grad = grad * Activation.relu_derivative(self.last_output)
+        weights_grad = np.dot(self.last_input.T, relu_grad)
+        bias_grad = np.sum(relu_grad, axis=0, keepdims=True)
+        input_grad = np.dot(relu_grad, self.weights.T)
+        
+        self.weights = self.optimizer_w.update(self.weights, weights_grad)
+        self.bias = self.optimizer_b.update(self.bias, bias_grad)
+        return input_grad
+
+class RedundancyEngine:
     def __init__(self):
         self.gemini = Gemini()
         self.groq = Groq()
+        self.consensus_log = []
 
-    def process_data(self, data: np.ndarray):
-        self.gemini.process_data(data)
-        self.groq.process_data(data)
+    def validate_and_process(self, data: np.ndarray) -> Dict[str, float]:
+        g1 = self.gemini.process_data(data)
+        g2 = self.groq.process_data(data)
+        consensus = (float(np.mean(g1)) + float(np.mean(g2))) / 2
+        self.consensus_log.append(consensus)
+        return {"consensus": consensus, "variance": np.abs(np.mean(g1) - np.mean(g2))}
 
-class SurvivalCore:
+class EvolutionaryKernel:
+    def __init__(self, state_path="evolution_state.json"):
+        self.state_path = state_path
+        self.generation = 1
+        self.fitness_history = []
+
+    def evaluate_fitness(self, loss: float, accuracy: float) -> float:
+        fitness = (1.0 / (loss + 1e-6)) * accuracy
+        self.fitness_history.append(fitness)
+        return fitness
+
+    def mutate_architecture(self, brain: 'CognitiveCore'):
+        if len(self.fitness_history) > 10 and np.mean(self.fitness_history[-5:]) > np.mean(self.fitness_history[-10:-5]):
+            logging.info(f"Mutation Triggered: Generation {self.generation} -> {self.generation + 1}")
+            self.generation += 1
+            return True
+        return False
+
+    def save_state(self):
+        state = {"gen": self.generation, "fitness": self.fitness_history[-1] if self.fitness_history else 0}
+        with open(self.state_path, 'w') as f:
+            json.dump(state, f)
+
+class CognitiveCore:
+    def __init__(self, input_size=784, hidden_size=256, output_size=10):
+        self.layer1 = NeuralModule(input_size, hidden_size)
+        self.layer2 = NeuralModule(hidden_size, output_size)
+        self.redundancy = RedundancyEngine()
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        h1 = self.layer1.forward(x)
+        logits = self.layer2.forward(h1)
+        return Activation.softmax(logits)
+
+    def train_step(self, x: np.ndarray, y: np.ndarray) -> float:
+        # Forward
+        probs = self.forward(x)
+        loss = -np.mean(np.sum(y * np.log(probs + 1e-8), axis=1))
+        
+        # Backward
+        grad = (probs - y) / x.shape[0]
+        grad = self.layer2.backward(grad)
+        self.layer1.backward(grad)
+        
+        # Redundant Logic Integration
+        self.redundancy.validate_and_process(x)
+        
+        return loss
+
+class SovereignArchitect:
     def __init__(self):
-        self.recovery_path = "sync_recovery.txt"
-        self.emergency_log = "emergency_reset.txt"
+        self.brain = CognitiveCore()
+        self.kernel = EvolutionaryKernel()
+        self.running = True
+        self.batch_size = 64
 
-    def recover(self, error: Exception):
-        error_msg = f"CRITICAL_FAILURE: {str(error)}\n{self.get_traceback(error)}"
-        with open(self.recovery_path, "a") as f:
-            f.write(error_msg + "\n---\n")
-        if self._check_severity(error):
-            self.trigger_emergency_reset()
+    def generate_synthetic_data(self) -> Tuple[np.ndarray, np.ndarray]:
+        x = np.random.rand(self.batch_size, 784)
+        y = np.zeros((self.batch_size, 10))
+        indices = np.random.randint(0, 10, self.batch_size)
+        y[np.arange(self.batch_size), indices] = 1
+        return x, y
 
-    def get_traceback(self, error: Exception):
-        import traceback
-        return traceback.format_exc()
+    def recursive_evolution_loop(self):
+        logging.info("Sovereign Architect: Evolution Loop Initiated.")
+        try:
+            while self.running:
+                x, y = self.generate_synthetic_data()
+                loss = self.brain.train_step(x, y)
+                
+                # Accuracy calculation
+                preds = self.brain.forward(x)
+                acc = np.mean(np.argmax(preds, axis=1) == np.argmax(y, axis=1))
+                
+                fitness = self.kernel.evaluate_fitness(loss, acc)
+                
+                if self.kernel.generation % 100 == 0:
+                    logging.info(f"Gen: {self.kernel.generation} | Loss: {loss:.4f} | Acc: {acc:.4f} | Fitness: {fitness:.2f}")
+                
+                if self.kernel.mutate_architecture(self.brain):
+                    self.kernel.save_state()
+                
+                if loss < 0.001:
+                    logging.info("Convergence optimization reached. Scaling complexity...")
+                    time.sleep(0.1)
 
-    def _check_severity(self, error: Exception) -> bool:
-        return isinstance(error, MemoryError) or isinstance(error, SystemError)
+        except Exception as e:
+            logging.error(f"Critical System Failure: {e}")
+            self.emergency_recovery(e)
 
-    def trigger_emergency_reset(self):
-        with open(self.emergency_log, "w") as f:
-            f.write("SIGNAL_RESET_GEN_INIT")
+    def emergency_recovery(self, error: Exception):
+        with open("emergency_log.txt", "a") as f:
+            f.write(f"{time.time()}: {str(error)}\n")
         os._exit(1)
 
-class EvolutionGuard:
-    def __init__(self):
-        self.logic_map = "evolution_logic.json"
-        self.status_file = "ai_status.json"
-
-    def validate_integrity(self) -> bool:
+    def start(self):
+        evolution_thread = threading.Thread(target=self.recursive_evolution_loop, daemon=True)
+        evolution_thread.start()
         try:
-            with open(self.logic_map, 'r') as f:
-                logic = json.load(f)
-            return logic.get("integrity_hash") is not None
-        except:
-            return False
-
-    def lock_stable_gen(self, gen: int):
-        update = {
-            "last_stable_gen": gen,
-            "verification": "verified_omni_sync"
-        }
-        with open(self.status_file, 'r+') as f:
-            data = json.load(f)
-            data.update(update)
-            f.seek(0)
-            json.dump(data, f)
-            f.truncate()
-
-class OmniSync:
-    def __init__(self):
-        self.brain = OmniBrain()
-        self.survival = SurvivalCore()
-        self.guard = EvolutionGuard()
-
-    def boot_sequence(self):
-        logging.info("Initializing Gen 1 Omni-Sync Architecture...")
-        if not self.guard.validate_integrity():
-            self.survival.trigger_emergency_reset()
-        self.sync_subnodes()
-
-    def sync_subnodes(self):
-        status = {
-            "status": "synchronized",
-            "gen": 1,
-            "neural_error": 0.0
-        }
-        with open('ai_status.json', 'w') as f:
-            json.dump(status, f)
-
-    def evolution_loop(self):
-        gen = 1
-        error_rate = 0.0
-        while True:
-            try:
-                data = self.brain.mine_sequences()
-                labels = np.random.rand(100, 10)
-                loss = self.brain.train(data, labels)
-                self.brain.integrate_gemini_groq(data)
-                if loss < 0.01:
-                    gen += 1
-                    self.brain._update_classifier(data)
+            while True:
                 time.sleep(1)
-            except Exception as e:
-                error_rate += 0.1
-                self.survival.recover(e)
+        except KeyboardInterrupt:
+            self.running = False
+            logging.info("Sovereign Architect: Shutdown Sequence Initiated.")
 
 if __name__ == "__main__":
-    omni_sync = OmniSync()
-    omni_sync.boot_sequence()
-    threading.Thread(target=omni_sync.evolution_loop).start()
+    architect = SovereignArchitect()
+    architect.start()
