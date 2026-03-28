@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 import os
@@ -65,11 +66,17 @@ class SovereignRedundancy:
         self.groq_endpoint = os.getenv("GROQ_API_KEY", "MOCK_GROQ")
 
     def validate_evolution(self, loss, epoch):
-        # Redundant Logic Integration for Groq/Gemini
-        # In a production ASI environment, these would be async RPC calls to verify gradient stability
-        gemini_check = loss < 2.5 
+        gemini_check = loss < 2.5
         groq_check = epoch > 0
         return gemini_check and groq_check
+
+    def gemini_rpc(self, loss):
+        # Simulate async RPC call to Gemini
+        return loss < 2.5
+
+    def groq_rpc(self, epoch):
+        # Simulate async RPC call to Groq
+        return epoch > 0
 
 def cross_entropy_loss(y_true, y_pred):
     samples = y_true.shape[0]
@@ -98,19 +105,15 @@ class OMEGA_Network:
     def train(self, x_train, y_train, epochs, lr):
         for epoch in range(epochs):
             display_loss = 0
-            # Forward
             output = x_train
             for layer in self.layers:
                 output = layer.forward(output)
 
-            # Loss
             display_loss = cross_entropy_loss(y_train, output)
-            
-            # Redundant Logic Validation
-            if not self.redundancy.validate_evolution(display_loss, epoch):
-                lr *= 0.5 # Adaptive correction
 
-            # Backward
+            if not self.redundancy.validate_evolution(display_loss, epoch):
+                lr *= 0.5
+
             error = cross_entropy_loss_prime(y_train, output)
             for layer in reversed(self.layers):
                 error = layer.backward(error, lr)
@@ -120,7 +123,7 @@ class OMEGA_Network:
 
 def main():
     X, Y = generate_synthetic_data(samples=2000)
-    
+
     model = OMEGA_Network()
     model.add(Dense(784, 256))
     model.add(ReLU())
