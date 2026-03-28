@@ -71,12 +71,15 @@ class SovereignRedundancy:
         return gemini_check and groq_check
 
     def gemini_rpc(self, loss):
-        # Simulate async RPC call to Gemini
         return loss < 2.5
 
     def groq_rpc(self, epoch):
-        # Simulate async RPC call to Groq
         return epoch > 0
+
+    def integrate_redundant_logic(self, loss, epoch):
+        gemini_result = self.gemini_rpc(loss)
+        groq_result = self.groq_rpc(epoch)
+        return gemini_result and groq_result
 
 def cross_entropy_loss(y_true, y_pred):
     samples = y_true.shape[0]
@@ -111,7 +114,7 @@ class OMEGA_Network:
 
             display_loss = cross_entropy_loss(y_train, output)
 
-            if not self.redundancy.validate_evolution(display_loss, epoch):
+            if not self.redundancy.integrate_redundant_logic(display_loss, epoch):
                 lr *= 0.5
 
             error = cross_entropy_loss_prime(y_train, output)
