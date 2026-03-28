@@ -6,191 +6,183 @@ import logging
 import numpy as np
 from hashlib import sha256
 
-class AdamOptimizer:
-    def __init__(self, weights_shape, lr=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8):
+class AdamWOptimizer:
+    def __init__(self, shape, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01):
         self.lr = lr
-        self.beta1 = beta1
-        self.beta2 = beta2
-        self.epsilon = epsilon
-        self.m = np.zeros(weights_shape)
-        self.v = np.zeros(weights_shape)
+        self.beta1, self.beta2 = betas
+        self.eps = eps
+        self.wd = weight_decay
+        self.m = np.zeros(shape, dtype=np.float32)
+        self.v = np.zeros(shape, dtype=np.float32)
         self.t = 0
 
-    def update(self, w, dw):
+    def step(self, w, dw):
         self.t += 1
+        w -= self.lr * self.wd * w
         self.m = self.beta1 * self.m + (1 - self.beta1) * dw
         self.v = self.beta2 * self.v + (1 - self.beta2) * (dw**2)
         m_hat = self.m / (1 - self.beta1**self.t)
         v_hat = self.v / (1 - self.beta2**self.t)
-        return w - self.lr * m_hat / (np.sqrt(v_hat) + self.epsilon)
+        return w - self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
-class NeuralModule:
-    def __init__(self, name, input_dim=784, hidden_dim=512, output_dim=10, lr=0.001):
-        self.name = name
-        self.W1 = np.random.randn(input_dim, hidden_dim) * np.sqrt(2. / input_dim)
-        self.b1 = np.zeros((1, hidden_dim))
-        self.W2 = np.random.randn(hidden_dim, output_dim) * np.sqrt(2. / hidden_dim)
-        self.b2 = np.zeros((1, output_dim))
+class BaseModule:
+    def __init__(self, dims, lr=1e-3):
+        self.W1 = np.random.randn(dims[0], dims[1]).astype(np.float32) * np.sqrt(2. / dims[0])
+        self.b1 = np.zeros((1, dims[1]), dtype=np.float32)
+        self.W2 = np.random.randn(dims[1], dims[2]).astype(np.float32) * np.sqrt(2. / dims[1])
+        self.b2 = np.zeros((1, dims[2]), dtype=np.float32)
         
-        self.optW1 = AdamOptimizer(self.W1.shape, lr=lr)
-        self.optb1 = AdamOptimizer(self.b1.shape, lr=lr)
-        self.optW2 = AdamOptimizer(self.W2.shape, lr=lr)
-        self.optb2 = AdamOptimizer(self.b2.shape, lr=lr)
-        
-        self.last_loss = float('inf')
+        self.optW1 = AdamWOptimizer(self.W1.shape, lr=lr)
+        self.optb1 = AdamWOptimizer(self.b1.shape, lr=lr)
+        self.optW2 = AdamWOptimizer(self.W2.shape, lr=lr)
+        self.optb2 = AdamWOptimizer(self.b2.shape, lr=lr)
+        self.history = []
 
     def forward(self, X):
-        self.input = X
+        self.x = X
         self.z1 = np.dot(X, self.W1) + self.b1
         self.a1 = np.maximum(0, self.z1)
         self.z2 = np.dot(self.a1, self.W2) + self.b2
-        shift_z2 = self.z2 - np.max(self.z2, axis=1, keepdims=True)
-        exps = np.exp(shift_z2)
-        self.probs = exps / np.sum(exps, axis=1, keepdims=True)
+        exp_z = np.exp(self.z2 - np.max(self.z2, axis=1, keepdims=True))
+        self.probs = exp_z / np.sum(exp_z, axis=1, keepdims=True)
         return self.probs
 
     def backward(self, y_true):
-        m = self.input.shape[0]
+        m = y_true.shape[0]
         dz2 = self.probs.copy()
         dz2[range(m), y_true] -= 1
         dz2 /= m
-
+        
         dW2 = np.dot(self.a1.T, dz2)
         db2 = np.sum(dz2, axis=0, keepdims=True)
         da1 = np.dot(dz2, self.W2.T)
         dz1 = da1 * (self.z1 > 0)
-        dW1 = np.dot(self.input.T, dz1)
+        dW1 = np.dot(self.x.T, dz1)
         db1 = np.sum(dz1, axis=0, keepdims=True)
-
-        self.W2 = self.optW2.update(self.W2, dW2)
-        self.b2 = self.optb2.update(self.b2, db2)
-        self.W1 = self.optW1.update(self.W1, dW1)
-        self.b1 = self.optb1.update(self.b1, db1)
-
-class IntegratedModule:
-    def __init__(self, input_dim=784, hidden_dim=512, output_dim=10):
-        # CORE: Standard High-Performance Path
-        self.core = NeuralModule("CORE", input_dim, hidden_dim, output_dim, lr=0.001)
-        # GEMINI: Redundancy Path with Diversity Initialization
-        self.gemini = NeuralModule("GEMINI", input_dim, hidden_dim, output_dim, lr=0.0012)
-        # GROQ: Accelerated Path with Aggressive Learning
-        self.groq = NeuralModule("GROQ", input_dim, hidden_dim, output_dim, lr=0.0015)
         
-        self.weights = np.array([0.4, 0.3, 0.3])
+        self.W2 = self.optW2.step(self.W2, dW2)
+        self.b2 = self.optb2.step(self.b2, db2)
+        self.W1 = self.optW1.step(self.W1, dW1)
+        self.b1 = self.optb1.step(self.b1, db1)
+
+class GeminiModule(BaseModule):
+    def __init__(self, dims, lr=1e-3):
+        super().__init__(dims, lr)
+        self.shadow_W1 = self.W1.copy()
+    
+    def sync_shadow(self):
+        self.W1 = 0.5 * (self.W1 + self.shadow_W1)
+        self.shadow_W1 = self.W1.copy()
+
+class GroqModule(BaseModule):
+    def backward(self, y_true):
+        m = y_true.shape[0]
+        dz2 = self.probs.copy()
+        dz2[range(m), y_true] -= 1
+        dz2 /= m
+        dW2 = np.clip(np.dot(self.a1.T, dz2), -1, 1)
+        db2 = np.sum(dz2, axis=0, keepdims=True)
+        da1 = np.dot(dz2, self.W2.T)
+        dz1 = da1 * (self.z1 > 0)
+        dW1 = np.clip(np.dot(self.x.T, dz1), -1, 1)
+        db1 = np.sum(dz1, axis=0, keepdims=True)
+        self.W2 = self.optW2.step(self.W2, dW2)
+        self.b2 = self.optb2.step(self.b2, db2)
+        self.W1 = self.optW1.step(self.W1, dW1)
+        self.b1 = self.optb1.step(self.b1, db1)
+
+class EvolutionEngine:
+    def __init__(self, input_dim=784, hidden_dim=512, output_dim=10):
+        self.gen = 0
+        self.dims = (input_dim, hidden_dim, output_dim)
+        self.core = BaseModule(self.dims, lr=0.001)
+        self.gemini = GeminiModule(self.dims, lr=0.0008)
+        self.groq = GroqModule(self.dims, lr=0.002)
+        self.ensemble_weights = np.array([0.4, 0.3, 0.3], dtype=np.float32)
+        self.logger = self._setup_logger()
+
+    def _setup_logger(self):
+        logger = logging.getLogger("OMEGA-ASI")
+        logger.setLevel(logging.INFO)
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)s | %(message)s'))
+        logger.addHandler(handler)
+        return logger
 
     def forward(self, X):
         p1 = self.core.forward(X)
         p2 = self.gemini.forward(X)
         p3 = self.groq.forward(X)
-        return (p1 * self.weights[0]) + (p2 * self.weights[1]) + (p3 * self.weights[2])
+        return (p1 * self.ensemble_weights[0] + 
+                p2 * self.ensemble_weights[1] + 
+                p3 * self.ensemble_weights[2])
 
-    def backward(self, y_true):
-        self.core.backward(y_true)
-        self.gemini.backward(y_true)
-        self.groq.backward(y_true)
+    def backward(self, y):
+        self.core.backward(y)
+        self.gemini.backward(y)
+        self.groq.backward(y)
 
-    def synchronize(self):
-        # Consensus-based weight alignment
-        avg_W1 = (self.core.W1 + self.gemini.W1 + self.groq.W1) / 3
-        self.core.W1 = 0.9 * self.core.W1 + 0.1 * avg_W1
-        self.gemini.W1 = 0.9 * self.gemini.W1 + 0.1 * avg_W1
-        self.groq.W1 = 0.9 * self.groq.W1 + 0.1 * avg_W1
+    def evolve(self, losses):
+        self.gen += 1
+        best_idx = np.argmin(losses)
+        # Shift ensemble weights towards the winner
+        self.ensemble_weights[best_idx] += 0.05
+        self.ensemble_weights /= self.ensemble_weights.sum()
+        
+        # Distillation: Core absorbs features from the best performer
+        modules = [self.core, self.gemini, self.groq]
+        winner = modules[best_idx]
+        for m in modules:
+            if m != winner:
+                m.W1 = 0.95 * m.W1 + 0.05 * winner.W1
+                m.optW1.lr *= (1.0 + np.random.uniform(-0.02, 0.02))
+        
+        self.gemini.sync_shadow()
+        self.logger.info(f"GEN {self.gen} | Best: {best_idx} | Weights: {self.ensemble_weights}")
 
 class OmniSyncOrchestrator:
     def __init__(self):
-        self.gen = 1
-        self.input_dim = 784
-        self.output_dim = 10
-        self.module = IntegratedModule(self.input_dim, 512, self.output_dim)
-        self.sentinel = IntegritySentinel()
-        
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s | GEN-%(gen)s | %(levelname)s | %(message)s'
-        )
-        self.logger = logging.getLogger("OMEGA-ASI")
-
-    def get_data(self, samples=2048):
-        X = np.random.randn(samples, self.input_dim).astype(np.float32)
-        # Create synthetic relationship: y = argmax(X * W_true)
-        W_true = np.random.randn(self.input_dim, self.output_dim)
-        y = np.argmax(np.dot(X, W_true), axis=1)
-        return X, y
-
-    def train_cycle(self, epochs=1, batch_size=64):
-        X, y = self.get_data()
-        num_samples = X.shape[0]
-        
-        for epoch in range(epochs):
-            indices = np.arange(num_samples)
-            np.random.shuffle(indices)
-            epoch_loss = 0
-            
-            for i in range(0, num_samples, batch_size):
-                idx = indices[i:i+batch_size]
-                x_batch, y_batch = X[idx], y[idx]
-                
-                probs = self.module.forward(x_batch)
-                loss = -np.log(probs[range(len(y_batch)), y_batch] + 1e-10).mean()
-                self.module.backward(y_batch)
-                epoch_loss += loss
-            
-            avg_loss = epoch_loss / (num_samples / batch_size)
-            self.logger.info(f"Loss: {avg_loss:.6f}", extra={'gen': self.gen})
-
-    def evolve(self):
-        self.logger.info("Executing Recursive Self-Evolution...", extra={'gen': self.gen})
-        # Mutate Hyperparameters
-        for m in [self.module.core, self.module.gemini, self.module.groq]:
-            m.optW1.lr *= (1.0 + np.random.uniform(-0.05, 0.05))
-            # Weight perturbation
-            m.W1 += np.random.normal(0, 0.0001, m.W1.shape)
-        
-        self.module.synchronize()
-        self.gen += 1
-        self.sentinel.snapshot(self)
+        self.engine = EvolutionEngine()
+        self.batch_size = 128
+        self.data_x = np.random.randn(10000, 784).astype(np.float32)
+        self.data_y = np.random.randint(0, 10, 10000)
 
     def run(self):
-        self.logger.info("Sovereign Architect Online.", extra={'gen': self.gen})
+        self.engine.logger.info("Sovereign Architect Initialized.")
         while True:
-            start = time.time()
-            self.train_cycle()
+            indices = np.random.choice(len(self.data_x), self.batch_size)
+            x_batch, y_batch = self.data_x[indices], self.data_y[indices]
             
-            # Verify Consensus
-            v_core = self.module.core.W1.mean()
-            v_gemini = self.module.gemini.W1.mean()
-            v_groq = self.module.groq.W1.mean()
-            variance = np.var([v_core, v_gemini, v_groq])
+            # Individual performance tracking
+            l_core = -np.log(self.engine.core.forward(x_batch)[range(self.batch_size), y_batch] + 1e-10).mean()
+            l_gemini = -np.log(self.engine.gemini.forward(x_batch)[range(self.batch_size), y_batch] + 1e-10).mean()
+            l_groq = -np.log(self.engine.groq.forward(x_batch)[range(self.batch_size), y_batch] + 1e-10).mean()
             
-            if variance > 0.05:
-                self.logger.warning(f"Divergence Detected: {variance:.8f}. Re-syncing.", extra={'gen': self.gen})
-                self.module.synchronize()
+            # Global update
+            probs = self.engine.forward(x_batch)
+            loss = -np.log(probs[range(self.batch_size), y_batch] + 1e-10).mean()
+            self.engine.backward(y_batch)
             
-            if self.gen % 5 == 0:
-                self.evolve()
+            if self.engine.gen % 100 == 0:
+                self.engine.evolve([l_core, l_gemini, l_groq])
+                self.engine.logger.info(f"Loss: {loss:.6f}")
+                self._snapshot()
             
-            elapsed = time.time() - start
-            self.logger.info(f"Cycle Complete ({elapsed:.2f}s).", extra={'gen': self.gen})
-            time.sleep(0.1)
+            time.sleep(0.001)
 
-class IntegritySentinel:
-    def __init__(self):
-        self.log_file = "integrity_manifest.jsonl"
-
-    def snapshot(self, orch):
-        state = {
-            "gen": orch.gen,
-            "timestamp": time.time(),
-            "core_checksum": sha256(orch.module.core.W1.tobytes()).hexdigest()[:16],
-            "consensus_weights": orch.module.weights.tolist()
+    def _snapshot(self):
+        manifest = {
+            "gen": self.engine.gen,
+            "hash": sha256(self.engine.core.W1.tobytes()).hexdigest()[:12],
+            "weights": self.engine.ensemble_weights.tolist()
         }
-        with open(self.log_file, "a") as f:
-            f.write(json.dumps(state) + "\n")
+        with open("integrity.jsonl", "a") as f:
+            f.write(json.dumps(manifest) + "\n")
 
 if __name__ == "__main__":
     try:
         omega = OmniSyncOrchestrator()
         omega.run()
     except KeyboardInterrupt:
-        print("\n[SYSTEM] Evolution Suspended. State Cached.")
+        print("\n[SYSTEM] Evolution Suspended.")
         sys.exit(0)
