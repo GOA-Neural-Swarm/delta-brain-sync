@@ -1,10 +1,13 @@
+
 import os
 import sys
 import time
 import json
 import logging
+import numpy as np
 from brain import NeuralCore
 from evolution_guard import IntegritySentinel
+from data_synchronizer import DataSynchronizer
 
 class OmniSyncOrchestrator:
     def __init__(self):
@@ -13,8 +16,9 @@ class OmniSyncOrchestrator:
         self.system_status = "STABLE"
         self.brain = NeuralCore()
         self.sentinel = IntegritySentinel()
+        self.data_synchronizer = DataSynchronizer()
         self.start_time = time.time()
-        
+
         logging.basicConfig(
             level=logging.INFO,
             format='[%(asctime)s] Gen: ' + str(self.gen) + ' | %(levelname)s: %(message)s'
@@ -41,6 +45,14 @@ class OmniSyncOrchestrator:
             self.system_status = "CRITICAL"
             logging.error(f"Evolution failed: {str(e)}")
 
+    def train(self):
+        logging.info("Starting training protocol...")
+        synthetic_data = np.random.rand(100, 784)
+        for epoch in range(10):
+            for batch in range(10):
+                batch_data = synthetic_data[batch*10:(batch+1)*10]
+                self.brain.train(batch_data)
+
     def run_cycle(self):
         while True:
             if self.synchronize_subnodes():
@@ -52,34 +64,31 @@ class OmniSyncOrchestrator:
 
 if __name__ == "__main__":
     orchestrator = OmniSyncOrchestrator()
+    orchestrator.train()
     orchestrator.run_cycle()
 
-
-import numpy as np
-import json
-import os
 
 class NeuralCore:
     def __init__(self):
         self.memory_path = "brain_history.txt"
         self.weights = self._load_weights()
         self.state_vector = np.random.rand(64)
+        self.input_size = 784
+        self.output_size = 10
 
     def _load_weights(self):
         if os.path.exists("evolution_logic.json"):
             with open("evolution_logic.json", "r") as f:
-                return np.array(json.load(f).get("weights", np.random.rand(64, 64).tolist()))
-        return np.random.rand(64, 64)
+                return np.array(json.load(f).get("weights", np.random.rand(784, 64).tolist()))
+        return np.random.rand(784, 64)
 
     def process_sync_sequence(self):
-        # Gen 1 Optimization: Vectorized synchronization processing
-        input_signal = np.sin(time.time() * self.state_vector)
+        input_signal = np.sin(np.random.rand(self.input_size))
         self.state_vector = np.dot(self.weights, input_signal)
         self.state_vector = np.tanh(self.state_vector)
         return self.state_vector.tolist()
 
     def compute_meta_learning(self):
-        # Recursive self-analysis
         analysis = {
             "mean_activation": float(np.mean(self.state_vector)),
             "entropy": float(-np.sum(self.state_vector * np.log(np.abs(self.state_vector) + 1e-9)))
@@ -88,17 +97,14 @@ class NeuralCore:
             f.write(json.dumps(analysis) + "\n")
 
     def evolve_neural_weights(self):
-        # Perturbation and fitness selection simulation
         mutation = np.random.normal(0, 0.01, self.weights.shape)
         self.weights += mutation
         with open("evolution_logic.json", "w") as f:
             json.dump({"weights": self.weights.tolist()}, f)
 
-import time
+    def train(self, batch_data):
+        self.weights += np.dot(batch_data.T, np.random.rand(784, 64))
 
-
-import hashlib
-import os
 
 class IntegritySentinel:
     def __init__(self):
@@ -114,30 +120,23 @@ class IntegritySentinel:
         return baselines
 
     def verify_logic(self, data_stream):
-        # Advanced integrity check for Gen 1
         if not isinstance(data_stream, list):
             return False
-        # Statistical outlier detection
         arr = [abs(x) for x in data_stream]
         if max(arr) > 1.0 or min(arr) < 0.0:
             return False
         return True
 
     def harden_security_protocols(self):
-        # Implementation of dynamic salt rotation and lock file enforcement
         if not os.path.exists("trigger.lock"):
             with open("trigger.lock", "w") as f:
                 f.write("LOCKED_GEN_1")
-        
-        # Verify current state against baselines
+
         current_state = self._generate_baselines()
         for file, h in self.baseline_hashes.items():
             if current_state.get(file) != h:
                 print(f"SECURITY ALERT: {file} has been modified outside of evolution cycle.")
 
-
-import pandas as pd
-import os
 
 class DataSynchronizer:
     def __init__(self, source="data.csv"):
@@ -145,16 +144,12 @@ class DataSynchronizer:
 
     def ingest_and_clean(self):
         if not os.path.exists(self.source):
-            return pd.DataFrame()
-        
-        df = pd.read_csv(self.source)
-        # Gen 1 Optimization: Automatic feature scaling for neural input
-        numeric_cols = df.select_dtypes(include=['number']).columns
-        df[numeric_cols] = (df[numeric_cols] - df[numeric_cols].min()) / (df[numeric_cols].max() - df[numeric_cols].min())
-        return df
+            return np.random.rand(100, 784)
+
+        return np.random.rand(100, 784)
 
     def export_evolution_snapshot(self, data_frame, gen):
         snapshot_path = f"discoveries/gen_{gen}_sync.md"
         with open(snapshot_path, "w") as f:
             f.write(f"# Generation {gen} Evolution Snapshot\n")
-            f.write(data_frame.describe().to_markdown())
+            f.write(str(data_frame))
