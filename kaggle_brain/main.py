@@ -26,12 +26,14 @@ avg_error = 0
 def call_groq(text): return "" 
 def dual_brain_pipeline(p): return ""
 
-# 🔒 Kaggle/Colab Secrets System & Universal Credentials Sync
+# 🔒 Kaggle/Colab Secrets System
 try:
-    from kaggle_secrets import UserSecretsClient
-    user_secrets = UserSecretsClient()
+    from kaggle_secrets import UserSecretsClient
+    user_secrets = UserSecretsClient()
 except ImportError:
-    user_secrets = None
+    user_secrets = None
+
+    
 
 # 1. Sovereign Requirements Setup
 def install_requirements():
@@ -76,7 +78,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 GH_TOKEN = os.getenv("GH_TOKEN")
 
 if user_secrets:
-    FIREBASE_URL = user_secrets.get_secret("FIREBASE_DB_URL") or FIREBASE_URL
+    FIREBASE_URL = user_secrets.get_secret("FIREBASE_DB_URL") or FIREBASE_URL
     FB_JSON_STR = user_secrets.get_secret("FIREBASE_SERVICE_ACCOUNT") or FB_JSON_STR
     SUPABASE_URL = user_secrets.get_secret("SUPABASE_URL") or SUPABASE_URL
     SUPABASE_KEY = user_secrets.get_secret("SUPABASE_KEY") or SUPABASE_KEY
