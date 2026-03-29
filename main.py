@@ -49,9 +49,9 @@ class SovereignOmniSyncArchitect:
             for batch in range(0, len(self.synthetic_data), self.batch_size):
                 batch_data = self.synthetic_data[batch:batch+self.batch_size]
                 self.brain.train(batch_data)
+                self.gemini.optimize_redundancy()
+                self.groq.optimize_redundancy()
             print(f"Epoch {epoch+1} completed.")
-            self.gemini.optimize_redundancy()
-            self.groq.optimize_redundancy()
 
     def run_evolution_cycle(self):
         print("Sovereign Omni-Sync Architect | GEN 1 | Initializing...")
@@ -74,6 +74,15 @@ class SovereignOmniSyncArchitect:
                     err_log.write(f"Error at {time.ctime()}: {str(e)}\n")
                 time.sleep(5)
 
+    def integrate_gemini_groq(self):
+        self.gemini.integrate_sub_node()
+        self.groq.integrate_sub_node()
+
+    def optimize_gemini_groq(self):
+        self.gemini.optimize_redundancy()
+        self.groq.optimize_redundancy()
+
 if __name__ == "__main__":
     architect = SovereignOmniSyncArchitect()
+    architect.integrate_gemini_groq()
     architect.run_evolution_cycle()
