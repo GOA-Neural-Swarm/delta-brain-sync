@@ -1,4 +1,5 @@
 # --- DATABASE CONNECTIVITY (CRITICAL FOR NEON & POSTGRES) ---
+google-genai
 psycopg2-binary
 sqlalchemy
 
