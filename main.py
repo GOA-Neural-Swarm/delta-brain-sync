@@ -7,149 +7,171 @@ import numpy as np
 from hashlib import sha256
 
 class SovereignOptimizer:
-    def __init__(self, shape, lr=2e-4, betas=(0.9, 0.99), eps=1e-9, wd=0.02):
+    def __init__(self, params_shape, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01):
         self.lr = lr
         self.beta1, self.beta2 = betas
         self.eps = eps
-        self.wd = wd
-        self.m = np.zeros(shape, dtype=np.float32)
-        self.v = np.zeros(shape, dtype=np.float32)
+        self.wd = weight_decay
+        self.m = np.zeros(params_shape, dtype=np.float32)
+        self.v = np.zeros(params_shape, dtype=np.float32)
         self.t = 0
 
-    def step(self, w, dw):
+    def update(self, w, dw):
         self.t += 1
-        w -= self.lr * self.wd * w
+        dw = dw + self.wd * w
         self.m = self.beta1 * self.m + (1 - self.beta1) * dw
         self.v = self.beta2 * self.v + (1 - self.beta2) * (dw**2)
         m_hat = self.m / (1 - self.beta1**self.t)
         v_hat = self.v / (1 - self.beta2**self.t)
         return w - self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
-class ResidualModule:
-    def __init__(self, in_dim, out_dim, hidden_dim=512, lr=1e-3):
-        self.W1 = np.random.randn(in_dim, hidden_dim).astype(np.float32) * np.sqrt(2. / in_dim)
-        self.b1 = np.zeros((1, hidden_dim), dtype=np.float32)
-        self.W2 = np.random.randn(hidden_dim, out_dim).astype(np.float32) * np.sqrt(2. / hidden_dim)
-        self.b2 = np.zeros((1, out_dim), dtype=np.float32)
-        self.gamma = np.ones((1, hidden_dim), dtype=np.float32)
-        self.beta = np.zeros((1, hidden_dim), dtype=np.float32)
-        self.optW1 = SovereignOptimizer(self.W1.shape, lr=lr)
-        self.optb1 = SovereignOptimizer(self.b1.shape, lr=lr)
-        self.optW2 = SovereignOptimizer(self.W2.shape, lr=lr)
-        self.optb2 = SovereignOptimizer(self.b2.shape, lr=lr)
+class LinearLayer:
+    def __init__(self, in_dim, out_dim, lr=1e-3):
+        limit = np.sqrt(6 / (in_dim + out_dim))
+        self.W = np.random.uniform(-limit, limit, (in_dim, out_dim)).astype(np.float32)
+        self.b = np.zeros((1, out_dim), dtype=np.float32)
+        self.optW = SovereignOptimizer(self.W.shape, lr=lr)
+        self.optb = SovereignOptimizer(self.b.shape, lr=lr)
+        
+    def forward(self, x):
+        self.x = x
+        return np.dot(x, self.W) + self.b
 
-    def forward(self, X):
-        self.x = X
-        self.z1 = np.dot(X, self.W1) + self.b1
-        self.mu = np.mean(self.z1, axis=0, keepdims=True)
-        self.var = np.var(self.z1, axis=0, keepdims=True)
-        self.z1_hat = (self.z1 - self.mu) / np.sqrt(self.var + 1e-8)
-        self.a1 = np.maximum(0.01 * self.z1_hat, self.z1_hat) # Leaky ReLU
-        self.z2 = np.dot(self.a1, self.W2) + self.b2
-        exp_z = np.exp(self.z2 - np.max(self.z2, axis=1, keepdims=True))
-        self.probs = exp_z / np.sum(exp_z, axis=1, keepdims=True)
-        return self.probs
+    def backward(self, dout):
+        dW = np.dot(self.x.T, dout)
+        db = np.sum(dout, axis=0, keepdims=True)
+        dx = np.dot(dout, self.W.T)
+        self.W = self.optW.update(self.W, dW)
+        self.b = self.optb.update(self.b, db)
+        return dx
 
-    def backward(self, y_true):
-        m = y_true.shape[0]
-        dz2 = self.probs.copy()
-        dz2[range(m), y_true] -= 1
-        dz2 /= m
-        dW2 = np.dot(self.a1.T, dz2)
-        db2 = np.sum(dz2, axis=0, keepdims=True)
-        da1 = np.dot(dz2, self.W2.T)
-        dz1_hat = da1 * (self.z1_hat > 0) + 0.01 * da1 * (self.z1_hat <= 0)
-        dz1 = dz1_hat / np.sqrt(self.var + 1e-8)
-        dW1 = np.dot(self.x.T, dz1)
-        db1 = np.sum(dz1, axis=0, keepdims=True)
-        self.W2 = self.optW2.step(self.W2, dW2)
-        self.b2 = self.optb2.step(self.b2, db2)
-        self.W1 = self.optW1.step(self.W1, dW1)
-        self.b1 = self.optb1.step(self.b1, db1)
-        return np.mean(-np.log(self.probs[range(m), y_true] + 1e-10))
+class ResidualBlock:
+    def __init__(self, dim, lr=1e-3):
+        self.l1 = LinearLayer(dim, dim, lr)
+        self.l2 = LinearLayer(dim, dim, lr)
+        
+    def forward(self, x):
+        self.res_x = x
+        h = self.l1.forward(x)
+        h = np.maximum(0.1 * h, h) # Leaky ReLU
+        h = self.l2.forward(h)
+        return h + x
 
-class RedundancyConsensus:
-    def __init__(self):
-        self.gemini_state = "ACTIVE"
-        self.groq_state = "ACTIVE"
-        self.consensus_threshold = 0.85
+    def backward(self, dout):
+        dx = self.l2.backward(dout)
+        dx = dx * (self.res_x > 0) + 0.1 * dx * (self.res_x <= 0)
+        dx = self.l1.backward(dx)
+        return dx + dout
 
-    def validate(self, gradients, module_id):
-        gemini_vote = np.mean(gradients) + np.random.normal(0, 0.01)
-        groq_vote = np.mean(gradients) + np.random.normal(0, 0.01)
-        agreement = 1.0 - np.abs(gemini_vote - groq_vote)
-        return agreement > self.consensus_threshold
+class RedundantCore:
+    def __init__(self, name, input_dim, hidden_dim, output_dim):
+        self.name = name
+        self.input_proj = LinearLayer(input_dim, hidden_dim)
+        self.blocks = [ResidualBlock(hidden_dim) for _ in range(2)]
+        self.output_proj = LinearLayer(hidden_dim, output_dim)
 
-class EvolutionEngine:
-    def __init__(self, input_dim=784, hidden_dim=1024, output_dim=10, num_modules=4):
+    def forward(self, x):
+        h = self.input_proj.forward(x)
+        for block in self.blocks:
+            h = block.forward(h)
+        return self.output_proj.forward(h)
+
+    def backward(self, dout):
+        dout = self.output_proj.backward(dout)
+        for block in reversed(self.blocks):
+            dout = block.backward(dout)
+        self.input_proj.backward(dout)
+
+class OMEGA_ASI:
+    def __init__(self, input_dim=784, output_dim=10):
+        self.gemini_core = RedundantCore("GEMINI", input_dim, 512, output_dim)
+        self.groq_core = RedundantCore("GROQ", input_dim, 512, output_dim)
+        self.logger = self._setup_logger()
         self.gen = 0
-        self.modules = [ResidualModule(input_dim, output_dim, hidden_dim) for _ in range(num_modules)]
-        self.consensus = RedundancyConsensus()
-        self.weights = np.ones(num_modules) / num_modules
-        self.logger = self._init_logger()
 
-    def _init_logger(self):
-        l = logging.getLogger("OMEGA")
-        l.setLevel(logging.INFO)
-        h = logging.StreamHandler()
-        h.setFormatter(logging.Formatter('%(asctime)s | %(message)s'))
-        l.addHandler(h)
-        return l
+    def _setup_logger(self):
+        logger = logging.getLogger("OMEGA-ASI")
+        logger.setLevel(logging.INFO)
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)s | %(message)s'))
+        logger.addHandler(handler)
+        return logger
 
-    def step(self, X, y):
-        preds = []
-        losses = []
-        for m in self.modules:
-            p = m.forward(X)
-            preds.append(p)
-            losses.append(m.backward(y))
-        
-        avg_p = np.average(preds, axis=0, weights=self.weights)
-        total_loss = np.mean(-np.log(avg_p[range(len(y)), y] + 1e-10))
-        
-        if self.gen % 50 == 0:
-            best_mod = np.argmin(losses)
-            self.weights[best_mod] += 0.1
-            self.weights /= self.weights.sum()
-            self.logger.info(f"GEN {self.gen} | LOSS {total_loss:.4f} | CONSENSUS: {self.consensus.validate(losses, best_mod)}")
-            self._mutate()
-        
+    def _softmax(self, x):
+        exps = np.exp(x - np.max(x, axis=1, keepdims=True))
+        return exps / np.sum(exps, axis=1, keepdims=True)
+
+    def _cross_entropy(self, probs, y):
+        m = y.shape[0]
+        log_likelihood = -np.log(probs[range(m), y] + 1e-12)
+        return np.mean(log_likelihood)
+
+    def train_step(self, X, y):
         self.gen += 1
-        return total_loss
+        
+        # Dual-Path Forward
+        out_gemini = self.gemini_core.forward(X)
+        out_groq = self.groq_core.forward(X)
+        
+        # Consensus Mechanism
+        combined_logits = (out_gemini + out_groq) / 2.0
+        probs = self._softmax(combined_logits)
+        loss = self._cross_entropy(probs, y)
+        
+        # Redundancy Validation
+        agreement = np.mean(np.abs(out_gemini - out_groq))
+        if agreement > 5.0: # Threshold for divergence
+            self.logger.warning(f"GEN {self.gen} | CORE DIVERGENCE DETECTED: {agreement:.4f}")
+            # Corrective mutation: Sync Groq to Gemini if Gemini has lower historical error (simplified)
+            self.groq_core.output_proj.W *= 0.99
+            
+        # Backward Pass
+        m = y.shape[0]
+        grad = probs.copy()
+        grad[range(m), y] -= 1
+        grad /= m
+        
+        self.gemini_core.backward(grad)
+        self.groq_core.backward(grad)
+        
+        return loss, agreement
 
-    def _mutate(self):
-        for i, m in enumerate(self.modules):
-            if self.weights[i] < (1.0 / len(self.modules)):
-                m.W1 += np.random.normal(0, 0.001, m.W1.shape)
-                m.optW1.lr *= 1.01
-
-class OmniSyncOrchestrator:
+class EvolutionOrchestrator:
     def __init__(self):
-        self.engine = EvolutionEngine()
-        self.batch_size = 256
-        self.data_x = np.random.randn(20000, 784).astype(np.float32)
-        self.data_y = np.random.randint(0, 10, 20000)
+        self.model = OMEGA_ASI()
+        self.batch_size = 128
+        self.data_x = np.random.randn(10000, 784).astype(np.float32)
+        self.data_y = np.random.randint(0, 10, 10000)
 
-    def run(self):
-        self.engine.logger.info("OMEGA-ASI: RECURSIVE EVOLUTION START")
-        try:
-            while True:
-                idx = np.random.choice(len(self.data_x), self.batch_size)
-                loss = self.engine.step(self.data_x[idx], self.data_y[idx])
-                if self.engine.gen % 500 == 0:
-                    self._checkpoint(loss)
-        except KeyboardInterrupt:
-            self.engine.logger.info("SUSPENDING ARCHITECT.")
+    def run_evolution(self, cycles=5000):
+        self.model.logger.info("INITIALIZING RECURSIVE SELF-EVOLUTION...")
+        start_time = time.time()
+        
+        for i in range(cycles):
+            idx = np.random.choice(len(self.data_x), self.batch_size)
+            X_batch, y_batch = self.data_x[idx], self.data_y[idx]
+            
+            loss, agreement = self.model.train_step(X_batch, y_batch)
+            
+            if i % 100 == 0:
+                elapsed = time.time() - start_time
+                self.model.logger.info(
+                    f"CYCLE {i:04d} | LOSS: {loss:.6f} | CONSENSUS: {agreement:.6f} | T+{elapsed:.2f}s"
+                )
+                self._checkpoint(i, loss, agreement)
 
-    def _checkpoint(self, loss):
-        snap = {
-            "gen": self.engine.gen,
+    def _checkpoint(self, cycle, loss, agreement):
+        state_hash = sha256(self.model.gemini_core.output_proj.W.tobytes()).hexdigest()[:12]
+        payload = {
+            "cycle": cycle,
             "loss": float(loss),
-            "entropy": float(sha256(self.engine.weights.tobytes()).hexdigest()[:8], 16) / (16**8)
+            "consensus_delta": float(agreement),
+            "integrity_hash": state_hash,
+            "timestamp": time.time()
         }
-        with open("evolution.log", "a") as f:
-            f.write(json.dumps(snap) + "\n")
+        with open("omega_evolution.jsonl", "a") as f:
+            f.write(json.dumps(payload) + "\n")
 
 if __name__ == "__main__":
-    omega = OmniSyncOrchestrator()
-    omega.run()
+    orchestrator = EvolutionOrchestrator()
+    orchestrator.run_evolution()
