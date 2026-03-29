@@ -101,7 +101,29 @@ class ResidualBlock:
 
     def get_layers(self): return [self.ln, self.l1, self.l2]
 
-class ExpertModule:
+class Gemini:
+    def __init__(self, in_d, h_d, out_d, depth=2):
+        self.proj_in = Linear(in_d, h_d)
+        self.blocks = [ResidualBlock(h_d) for _ in range(depth)]
+        self.proj_out = Linear(h_d, out_d)
+
+    def forward(self, x):
+        x = self.proj_in.forward(x)
+        for b in self.blocks: x = b.forward(x)
+        return self.proj_out.forward(x)
+
+    def backward(self, dout):
+        dout = self.proj_out.backward(dout)
+        for b in reversed(self.blocks): dout = b.backward(dout)
+        return self.proj_in.backward(dout)
+
+    def get_layers(self):
+        layers = [self.proj_in]
+        for b in self.blocks: layers.extend(b.get_layers())
+        layers.append(self.proj_out)
+        return layers
+
+class Groq:
     def __init__(self, in_d, h_d, out_d, depth=2):
         self.proj_in = Linear(in_d, h_d)
         self.blocks = [ResidualBlock(h_d) for _ in range(depth)]
@@ -125,9 +147,10 @@ class ExpertModule:
 
 class SovereignArchitect:
     def __init__(self, in_d=784, h_d=256, out_d=10):
-        self.expert = ExpertModule(in_d, h_d, out_d)
+        self.gemini = Gemini(in_d, h_d, out_d)
+        self.groq = Groq(in_d, h_d, out_d)
         self.gate_w = np.random.randn(1, out_d).astype(np.float32) * 0.01
-        self.layers = self.expert.get_layers()
+        self.layers = self.gemini.get_layers() + self.groq.get_layers()
         params = [l.get_params() for l in self.layers]
         self.flat_params = [p for sub in params for p in sub]
         self.flat_params.append(self.gate_w)
@@ -138,13 +161,15 @@ class SovereignArchitect:
         return ex / np.sum(ex, axis=-1, keepdims=True)
 
     def forward(self, x):
-        self.out = self.expert.forward(x)
+        self.out1 = self.gemini.forward(x)
+        self.out2 = self.groq.forward(x)
         self.gate_logits = self._softmax(self.gate_w)
-        return self.gate_logits * self.out
+        return self.gate_logits * self.out1 + (1 - self.gate_logits) * self.out2
 
     def backward(self, dout):
-        dgate = np.sum(dout * self.out, axis=0, keepdims=True)
-        self.expert.backward(dout * self.gate_logits)
+        dgate = np.sum(dout * self.out1, axis=0, keepdims=True)
+        self.gemini.backward(dout * self.gate_logits)
+        self.groq.backward(dout * (1 - self.gate_logits))
         grads = [l.get_grads() for l in self.layers]
         flat_grads = [g for sub in grads for g in sub]
         flat_grads.append(dgate)
