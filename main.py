@@ -109,6 +109,11 @@ class EvolutionEngine:
                 module.optW1.lr *= (1.0 + np.random.uniform(-0.02, 0.02))
         self.logger.info(f"GEN {self.gen} | Best: {best_idx} | Weights: {self.ensemble_weights}")
 
+    def optimize(self):
+        for module in self.modules:
+            module.optW1.lr *= 0.9
+            module.W1 = np.clip(module.W1, -1.0, 1.0)
+
 class OmniSyncOrchestrator:
     def __init__(self):
         self.engine = EvolutionEngine()
@@ -131,6 +136,7 @@ class OmniSyncOrchestrator:
                 self.engine.evolve(losses)
                 self.engine.logger.info(f"Loss: {-np.log(self.engine.forward(x_batch)[range(self.batch_size), y_batch] + 1e-10).mean():.6f}")
                 self._snapshot()
+                self.engine.optimize()
             time.sleep(0.001)
 
     def _snapshot(self):
@@ -142,27 +148,9 @@ class OmniSyncOrchestrator:
         with open("integrity.jsonl", "a") as f:
             f.write(json.dumps(manifest) + "\n")
 
-class Gemini:
-    def __init__(self, engine):
-        self.engine = engine
-
-    def optimize(self):
-        for module in self.engine.modules:
-            module.optW1.lr *= 0.9
-
-class Groq:
-    def __init__(self, engine):
-        self.engine = engine
-
-    def regularize(self):
-        for module in self.engine.modules:
-            module.W1 = np.clip(module.W1, -1.0, 1.0)
-
 if __name__ == "__main__":
     try:
         omega = OmniSyncOrchestrator()
-        gemini = Gemini(omega.engine)
-        groq = Groq(omega.engine)
         omega.run()
     except KeyboardInterrupt:
         print("\n[SYSTEM] Evolution Suspended.")
