@@ -66,85 +66,9 @@ class BaseModule:
         self.W1 = self.optW1.step(self.W1, dW1)
         self.b1 = self.optb1.step(self.b1, db1)
 
-class GeminiModule:
+class ModularModule(BaseModule):
     def __init__(self, dims, lr=1e-3, clip=None):
-        self.W1 = np.random.randn(dims[0], dims[1]).astype(np.float32) * np.sqrt(2. / dims[0])
-        self.b1 = np.zeros((1, dims[1]), dtype=np.float32)
-        self.W2 = np.random.randn(dims[1], dims[2]).astype(np.float32) * np.sqrt(2. / dims[1])
-        self.b2 = np.zeros((1, dims[2]), dtype=np.float32)
-        self.optW1 = AdamWOptimizer(self.W1.shape, lr=lr)
-        self.optb1 = AdamWOptimizer(self.b1.shape, lr=lr)
-        self.optW2 = AdamWOptimizer(self.W2.shape, lr=lr)
-        self.optb2 = AdamWOptimizer(self.b2.shape, lr=lr)
-        self.clip = clip
-
-    def forward(self, X):
-        self.x = X
-        self.z1 = np.dot(X, self.W1) + self.b1
-        self.a1 = np.maximum(0, self.z1)
-        self.z2 = np.dot(self.a1, self.W2) + self.b2
-        exp_z = np.exp(self.z2 - np.max(self.z2, axis=1, keepdims=True))
-        self.probs = exp_z / np.sum(exp_z, axis=1, keepdims=True)
-        return self.probs
-
-    def backward(self, y_true):
-        m = y_true.shape[0]
-        dz2 = self.probs.copy()
-        dz2[range(m), y_true] -= 1
-        dz2 /= m
-        dW2 = np.dot(self.a1.T, dz2)
-        db2 = np.sum(dz2, axis=0, keepdims=True)
-        da1 = np.dot(dz2, self.W2.T)
-        dz1 = da1 * (self.z1 > 0)
-        dW1 = np.dot(self.x.T, dz1)
-        db1 = np.sum(dz1, axis=0, keepdims=True)
-        if self.clip:
-            dW1 = np.clip(dW1, -self.clip, self.clip)
-            dW2 = np.clip(dW2, -self.clip, self.clip)
-        self.W2 = self.optW2.step(self.W2, dW2)
-        self.b2 = self.optb2.step(self.b2, db2)
-        self.W1 = self.optW1.step(self.W1, dW1)
-        self.b1 = self.optb1.step(self.b1, db1)
-
-class GroqModule:
-    def __init__(self, dims, lr=1e-3, clip=None):
-        self.W1 = np.random.randn(dims[0], dims[1]).astype(np.float32) * np.sqrt(2. / dims[0])
-        self.b1 = np.zeros((1, dims[1]), dtype=np.float32)
-        self.W2 = np.random.randn(dims[1], dims[2]).astype(np.float32) * np.sqrt(2. / dims[1])
-        self.b2 = np.zeros((1, dims[2]), dtype=np.float32)
-        self.optW1 = AdamWOptimizer(self.W1.shape, lr=lr)
-        self.optb1 = AdamWOptimizer(self.b1.shape, lr=lr)
-        self.optW2 = AdamWOptimizer(self.W2.shape, lr=lr)
-        self.optb2 = AdamWOptimizer(self.b2.shape, lr=lr)
-        self.clip = clip
-
-    def forward(self, X):
-        self.x = X
-        self.z1 = np.dot(X, self.W1) + self.b1
-        self.a1 = np.maximum(0, self.z1)
-        self.z2 = np.dot(self.a1, self.W2) + self.b2
-        exp_z = np.exp(self.z2 - np.max(self.z2, axis=1, keepdims=True))
-        self.probs = exp_z / np.sum(exp_z, axis=1, keepdims=True)
-        return self.probs
-
-    def backward(self, y_true):
-        m = y_true.shape[0]
-        dz2 = self.probs.copy()
-        dz2[range(m), y_true] -= 1
-        dz2 /= m
-        dW2 = np.dot(self.a1.T, dz2)
-        db2 = np.sum(dz2, axis=0, keepdims=True)
-        da1 = np.dot(dz2, self.W2.T)
-        dz1 = da1 * (self.z1 > 0)
-        dW1 = np.dot(self.x.T, dz1)
-        db1 = np.sum(dz1, axis=0, keepdims=True)
-        if self.clip:
-            dW1 = np.clip(dW1, -self.clip, self.clip)
-            dW2 = np.clip(dW2, -self.clip, self.clip)
-        self.W2 = self.optW2.step(self.W2, dW2)
-        self.b2 = self.optb2.step(self.b2, db2)
-        self.W1 = self.optW1.step(self.W1, dW1)
-        self.b1 = self.optb1.step(self.b1, db1)
+        super().__init__(dims, lr, clip)
 
 class EvolutionEngine:
     def __init__(self, input_dim=784, hidden_dim=512, output_dim=10):
@@ -153,8 +77,7 @@ class EvolutionEngine:
         self.core = BaseModule(self.dims, lr=0.001)
         self.modules = [self.core]
         for _ in range(2):
-            self.modules.append(GeminiModule(self.dims, lr=np.random.uniform(0.0008, 0.002), clip=np.random.uniform(0.5, 1.5)))
-            self.modules.append(GroqModule(self.dims, lr=np.random.uniform(0.0008, 0.002), clip=np.random.uniform(0.5, 1.5)))
+            self.modules.append(ModularModule(self.dims, lr=np.random.uniform(0.0008, 0.002), clip=np.random.uniform(0.5, 1.5)))
         self.ensemble_weights = np.array([1.0 / len(self.modules)] * len(self.modules), dtype=np.float32)
         self.logger = self._setup_logger()
 
