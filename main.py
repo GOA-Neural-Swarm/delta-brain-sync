@@ -1,6 +1,6 @@
+
 import numpy as np
 import time
-import sys
 
 class AdamW:
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
@@ -55,6 +55,7 @@ class Swish:
         self.x = x
         self.sig = 1.0 / (1.0 + np.exp(-x))
         return x * self.sig
+
     def backward(self, dout):
         return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
 
@@ -124,15 +125,9 @@ class ExpertModule:
 
 class SovereignArchitect:
     def __init__(self, in_d=784, h_d=256, out_d=10):
-        self.experts = {
-            "core": ExpertModule(in_d, h_d, out_d),
-            "gemini": ExpertModule(in_d, h_d, out_d),
-            "groq": ExpertModule(in_d, h_d, out_d)
-        }
-        self.gate_w = np.random.randn(3, out_d).astype(np.float32) * 0.01
-        self.layers = []
-        for e in self.experts.values(): self.layers.extend(e.get_layers())
-        
+        self.expert = ExpertModule(in_d, h_d, out_d)
+        self.gate_w = np.random.randn(1, out_d).astype(np.float32) * 0.01
+        self.layers = self.expert.get_layers()
         params = [l.get_params() for l in self.layers]
         self.flat_params = [p for sub in params for p in sub]
         self.flat_params.append(self.gate_w)
@@ -143,32 +138,13 @@ class SovereignArchitect:
         return ex / np.sum(ex, axis=-1, keepdims=True)
 
     def forward(self, x):
-        self.outs = {k: e.forward(x) for k, e in self.experts.items()}
-        self.gate_logits = self._softmax(self.gate_w) # (3, 10)
-        # Weighted sum of expert outputs
-        # self.outs[k] is (B, 10)
-        res = self.gate_logits[0] * self.outs["core"] + \
-              self.gate_logits[1] * self.outs["gemini"] + \
-              self.gate_logits[2] * self.outs["groq"]
-        return res
+        self.out = self.expert.forward(x)
+        self.gate_logits = self._softmax(self.gate_w)
+        return self.gate_logits * self.out
 
     def backward(self, dout):
-        # dout is (B, 10)
-        dgate = np.zeros_like(self.gate_w)
-        dgate[0] = np.sum(dout * self.outs["core"], axis=0)
-        dgate[1] = np.sum(dout * self.outs["gemini"], axis=0)
-        dgate[2] = np.sum(dout * self.outs["groq"], axis=0)
-        
-        # Softmax grad
-        s = self.gate_logits
-        for i in range(3):
-            grad_sum = sum(dgate[j] * s[j] for j in range(3))
-            dgate[i] = s[i] * (dgate[i] - grad_sum)
-        
-        self.experts["core"].backward(dout * self.gate_logits[0])
-        self.experts["gemini"].backward(dout * self.gate_logits[1])
-        self.experts["groq"].backward(dout * self.gate_logits[2])
-        
+        dgate = np.sum(dout * self.out, axis=0, keepdims=True)
+        self.expert.backward(dout * self.gate_logits)
         grads = [l.get_grads() for l in self.layers]
         flat_grads = [g for sub in grads for g in sub]
         flat_grads.append(dgate)
@@ -187,26 +163,22 @@ class EvolutionOrchestrator:
         for s in range(steps):
             idx = np.random.randint(0, 10000, self.batch_size)
             x, y = self.data_x[idx], self.data_y[idx]
-            
+
             logits = self.model.forward(x)
-            probs = self._softmax(logits)
+            probs = self.model._softmax(logits)
             loss = -np.mean(np.log(probs[range(self.batch_size), y] + 1e-10))
-            
+
             grad = probs.copy()
             grad[range(self.batch_size), y] -= 1
             grad /= self.batch_size
-            
+
             self.model.backward(grad)
-            
+
             if s % 100 == 0:
                 acc = np.mean(np.argmax(probs, axis=1) == y)
                 elapsed = time.time() - start_time
                 print(f"STEP:{s:04d} | LOSS:{loss:.4f} | ACC:{acc:.4f} | TIME:{elapsed:.2f}s")
                 if s % 500 == 0: self.model.optimizer.lr *= 0.8
-
-    def _softmax(self, x):
-        ex = np.exp(x - np.max(x, axis=1, keepdims=True))
-        return ex / np.sum(ex, axis=1, keepdims=True)
 
 if __name__ == "__main__":
     orch = EvolutionOrchestrator()
