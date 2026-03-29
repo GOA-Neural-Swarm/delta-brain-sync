@@ -151,7 +151,7 @@ jobs:
           
           # --- ATTEMPT 1: GEMINI 1.5 FLASH ---
           GEMINI_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{contents: [{parts: [{text: ($sys + "\n\nCURRENT_CODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.4}}')
-          GEMINI_RES=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=$GEMINI_API_KEY" -H "Content-Type: application/json" -d "$GEMINI_PAYLOAD")
+          GEMINI_RES=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" -H "Content-Type: application/json" -d "$GEMINI_PAYLOAD")
           CONTENT=$(echo "$GEMINI_RES" | jq -r '.candidates[0].content.parts[0].text // empty' | sed 's/```python//g; s/```//g')
 
           # --- ATTEMPT 2: GROQ FALLBACK ---
