@@ -1,3 +1,4 @@
+
 import os
 import sys
 import time
@@ -32,7 +33,7 @@ class LinearLayer:
         self.b = np.zeros((1, out_dim), dtype=np.float32)
         self.optW = SovereignOptimizer(self.W.shape, lr=lr)
         self.optb = SovereignOptimizer(self.b.shape, lr=lr)
-        
+
     def forward(self, x):
         self.x = x
         return np.dot(x, self.W) + self.b
@@ -49,11 +50,11 @@ class ResidualBlock:
     def __init__(self, dim, lr=1e-3):
         self.l1 = LinearLayer(dim, dim, lr)
         self.l2 = LinearLayer(dim, dim, lr)
-        
+
     def forward(self, x):
         self.res_x = x
         h = self.l1.forward(x)
-        h = np.maximum(0.1 * h, h) # Leaky ReLU
+        h = np.maximum(0.1 * h, h) 
         h = self.l2.forward(h)
         return h + x
 
@@ -82,10 +83,23 @@ class RedundantCore:
             dout = block.backward(dout)
         self.input_proj.backward(dout)
 
+class IntegratedCore:
+    def __init__(self, input_dim, hidden_dim, output_dim):
+        self.core1 = RedundantCore("GEMINI", input_dim, hidden_dim, output_dim)
+        self.core2 = RedundantCore("GROQ", input_dim, hidden_dim, output_dim)
+
+    def forward(self, x):
+        out1 = self.core1.forward(x)
+        out2 = self.core2.forward(x)
+        return (out1 + out2) / 2.0
+
+    def backward(self, dout):
+        self.core1.backward(dout)
+        self.core2.backward(dout)
+
 class OMEGA_ASI:
     def __init__(self, input_dim=784, output_dim=10):
-        self.gemini_core = RedundantCore("GEMINI", input_dim, 512, output_dim)
-        self.groq_core = RedundantCore("GROQ", input_dim, 512, output_dim)
+        self.core = IntegratedCore(input_dim, 512, output_dim)
         self.logger = self._setup_logger()
         self.gen = 0
 
@@ -108,33 +122,18 @@ class OMEGA_ASI:
 
     def train_step(self, X, y):
         self.gen += 1
-        
-        # Dual-Path Forward
-        out_gemini = self.gemini_core.forward(X)
-        out_groq = self.groq_core.forward(X)
-        
-        # Consensus Mechanism
-        combined_logits = (out_gemini + out_groq) / 2.0
-        probs = self._softmax(combined_logits)
+
+        out = self.core.forward(X)
+        probs = self._softmax(out)
         loss = self._cross_entropy(probs, y)
-        
-        # Redundancy Validation
-        agreement = np.mean(np.abs(out_gemini - out_groq))
-        if agreement > 5.0: # Threshold for divergence
-            self.logger.warning(f"GEN {self.gen} | CORE DIVERGENCE DETECTED: {agreement:.4f}")
-            # Corrective mutation: Sync Groq to Gemini if Gemini has lower historical error (simplified)
-            self.groq_core.output_proj.W *= 0.99
-            
-        # Backward Pass
-        m = y.shape[0]
+
         grad = probs.copy()
-        grad[range(m), y] -= 1
-        grad /= m
-        
-        self.gemini_core.backward(grad)
-        self.groq_core.backward(grad)
-        
-        return loss, agreement
+        grad[range(y.shape[0]), y] -= 1
+        grad /= y.shape[0]
+
+        self.core.backward(grad)
+
+        return loss
 
 class EvolutionOrchestrator:
     def __init__(self):
@@ -146,26 +145,25 @@ class EvolutionOrchestrator:
     def run_evolution(self, cycles=5000):
         self.model.logger.info("INITIALIZING RECURSIVE SELF-EVOLUTION...")
         start_time = time.time()
-        
+
         for i in range(cycles):
             idx = np.random.choice(len(self.data_x), self.batch_size)
             X_batch, y_batch = self.data_x[idx], self.data_y[idx]
-            
-            loss, agreement = self.model.train_step(X_batch, y_batch)
-            
+
+            loss = self.model.train_step(X_batch, y_batch)
+
             if i % 100 == 0:
                 elapsed = time.time() - start_time
                 self.model.logger.info(
-                    f"CYCLE {i:04d} | LOSS: {loss:.6f} | CONSENSUS: {agreement:.6f} | T+{elapsed:.2f}s"
+                    f"CYCLE {i:04d} | LOSS: {loss:.6f} | T+{elapsed:.2f}s"
                 )
-                self._checkpoint(i, loss, agreement)
+                self._checkpoint(i, loss)
 
-    def _checkpoint(self, cycle, loss, agreement):
-        state_hash = sha256(self.model.gemini_core.output_proj.W.tobytes()).hexdigest()[:12]
+    def _checkpoint(self, cycle, loss):
+        state_hash = sha256(self.model.core.core1.output_proj.W.tobytes()).hexdigest()[:12]
         payload = {
             "cycle": cycle,
             "loss": float(loss),
-            "consensus_delta": float(agreement),
             "integrity_hash": state_hash,
             "timestamp": time.time()
         }
