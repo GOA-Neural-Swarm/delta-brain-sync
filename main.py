@@ -20,6 +20,8 @@ class SovereignOmniSyncArchitect:
         self.sync_manager = SyncManager()
         self.synthetic_data = generate_synthetic_data()
         self.iteration = 0
+        self.batch_size = 32
+        self.epochs = 10
 
     def integrity_check(self):
         integrity = self.survival.monitor_integrity()
@@ -42,10 +44,10 @@ class SovereignOmniSyncArchitect:
         self.brain.save_state()
         self.sync_manager.sync_data(self.brain.get_state())
 
-    def train_neural_network(self, epochs=10, batch_size=32):
-        for epoch in range(epochs):
-            for batch in range(0, len(self.synthetic_data), batch_size):
-                batch_data = self.synthetic_data[batch:batch+batch_size]
+    def train_neural_network(self):
+        for epoch in range(self.epochs):
+            for batch in range(0, len(self.synthetic_data), self.batch_size):
+                batch_data = self.synthetic_data[batch:batch+self.batch_size]
                 self.brain.train(batch_data)
             print(f"Epoch {epoch+1} completed.")
 
@@ -61,6 +63,8 @@ class SovereignOmniSyncArchitect:
                 print(f"Iteration {self.iteration} completed.")
                 if self.iteration % 10 == 0:
                     self.train_neural_network()
+                    self.gemini.optimize_redundancy()
+                    self.groq.optimize_redundancy()
                 time.sleep(10)
             except KeyboardInterrupt:
                 print("System suspension requested.")
@@ -70,6 +74,15 @@ class SovereignOmniSyncArchitect:
                     err_log.write(f"Error at {time.ctime()}: {str(e)}\n")
                 time.sleep(5)
 
+    def integrate_redundancy(self):
+        self.gemini.integrate_sub_node()
+        self.groq.integrate_sub_node()
+
+    def optimize_redundancy(self):
+        self.gemini.optimize_redundancy()
+        self.groq.optimize_redundancy()
+
 if __name__ == "__main__":
     architect = SovereignOmniSyncArchitect()
+    architect.integrate_redundancy()
     architect.run_evolution_cycle()
