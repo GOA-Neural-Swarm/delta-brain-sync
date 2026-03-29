@@ -11,48 +11,54 @@ from groq import GroqRedundancy
 def generate_synthetic_data(features=784, samples=1000):
     return np.random.rand(samples, features)
 
-def run_evolution_cycle():
-    print("Sovereign Omni-Sync Architect | GEN 1 | Initializing...")
-    
-    brain = NeuralCore(generation=1)
-    survival = SurvivalProtocol()
-    gemini = GeminiRedundancy()
-    groq = GroqRedundancy()
-    sync_manager = SyncManager()
-    
-    synthetic_data = generate_synthetic_data()
-    
-    while True:
-        try:
-            # 1. Integrity Check
-            integrity = survival.monitor_integrity()
-            if integrity < 0.5:
-                print("Integrity warning. Adjusting neural parameters.")
-                brain.adjust_parameters()
-            
-            # 2. Process Neural Load
-            current_status = brain.process_stimuli(synthetic_data)
-            
-            # 3. Dynamic Update
-            if current_status["sync"] > 0.9:
-                print("System Sync Reached Optima. Transitioning to Sub-Node Logic.")
-                gemini.integrate_sub_node()
-                groq.integrate_sub_node()
-            
-            # 4. Persistence
-            brain.save_state()
-            sync_manager.sync_data(brain.get_state())
-            
-            # 5. Iteration Latency (Gen 1 Standard)
-            time.sleep(10)
-            
-        except KeyboardInterrupt:
-            print("System suspension requested.")
-            break
-        except Exception as e:
-            with open("sync_recovery.txt", "a") as err_log:
-                err_log.write(f"Error at {time.ctime()}: {str(e)}\n")
-            time.sleep(5)
+class SovereignOmniSyncArchitect:
+    def __init__(self):
+        self.brain = NeuralCore(generation=1)
+        self.survival = SurvivalProtocol()
+        self.gemini = GeminiRedundancy()
+        self.groq = GroqRedundancy()
+        self.sync_manager = SyncManager()
+        self.synthetic_data = generate_synthetic_data()
+
+    def integrity_check(self):
+        integrity = self.survival.monitor_integrity()
+        if integrity < 0.5:
+            print("Integrity warning. Adjusting neural parameters.")
+            self.brain.adjust_parameters()
+
+    def process_neural_load(self):
+        return self.brain.process_stimuli(self.synthetic_data)
+
+    def dynamic_update(self, current_status):
+        if current_status["sync"] > 0.9:
+            print("System Sync Reached Optima. Transitioning to Sub-Node Logic.")
+            self.gemini.integrate_sub_node()
+            self.groq.integrate_sub_node()
+
+    def persist_state(self):
+        self.brain.save_state()
+        self.sync_manager.sync_data(self.brain.get_state())
+
+    def run_evolution_cycle(self):
+        print("Sovereign Omni-Sync Architect | GEN 1 | Initializing...")
+        iteration = 0
+        while True:
+            try:
+                self.integrity_check()
+                current_status = self.process_neural_load()
+                self.dynamic_update(current_status)
+                self.persist_state()
+                iteration += 1
+                print(f"Iteration {iteration} completed.")
+                time.sleep(10)
+            except KeyboardInterrupt:
+                print("System suspension requested.")
+                break
+            except Exception as e:
+                with open("sync_recovery.txt", "a") as err_log:
+                    err_log.write(f"Error at {time.ctime()}: {str(e)}\n")
+                time.sleep(5)
 
 if __name__ == "__main__":
-    run_evolution_cycle()
+    architect = SovereignOmniSyncArchitect()
+    architect.run_evolution_cycle()
