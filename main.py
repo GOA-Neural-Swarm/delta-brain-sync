@@ -117,9 +117,31 @@ class GatedCore:
         for b in reversed(self.blocks): dout = b.backward(dout)
         return self.proj_in.backward(dout)
 
+class Gemini:
+    def __init__(self, in_dim, h_dim, out_dim, lr=1e-3):
+        self.core = GatedCore("Gemini", in_dim, h_dim, out_dim, lr)
+
+    def forward(self, x):
+        return self.core.forward(x)
+
+    def backward(self, dout):
+        return self.core.backward(dout)
+
+class Groq:
+    def __init__(self, in_dim, h_dim, out_dim, lr=1e-3):
+        self.core = GatedCore("Groq", in_dim, h_dim, out_dim, lr)
+
+    def forward(self, x):
+        return self.core.forward(x)
+
+    def backward(self, dout):
+        return self.core.backward(dout)
+
 class SovereignArchitect:
     def __init__(self, in_dim=784, h_dim=512, out_dim=10, lr=1e-3):
         self.core = GatedCore("Unified", in_dim, h_dim, out_dim, lr)
+        self.gemini = Gemini(in_dim, h_dim, out_dim, lr)
+        self.groq = Groq(in_dim, h_dim, out_dim, lr)
         self.gate_w = np.zeros((1, out_dim), dtype=np.float32)
         self.opt_gate = AdamW(self.gate_w.shape, lr=lr)
         self.logger = self._init_logger()
@@ -137,13 +159,17 @@ class SovereignArchitect:
 
     def forward(self, x):
         self.o = self.core.forward(x)
+        self.gemini_o = self.gemini.forward(x)
+        self.groq_o = self.groq.forward(x)
         self.g = self._sigmoid(self.gate_w)
-        return self.g * self.o + (1 - self.g) * self.o
+        return self.g * self.o + (1 - self.g) * (self.gemini_o + self.groq_o) / 2
 
     def backward(self, dout):
-        dg = np.sum(dout * (self.o - self.o), axis=0, keepdims=True)
+        dg = np.sum(dout * (self.o - (self.gemini_o + self.groq_o) / 2), axis=0, keepdims=True)
         self.gate_w = self.opt_gate.update(self.gate_w, dg * self.g * (1 - self.g))
         self.core.backward(dout * self.g)
+        self.gemini.backward(dout * (1 - self.g) / 2)
+        self.groq.backward(dout * (1 - self.g) / 2)
         return
 
 class EvolutionOrchestrator:
@@ -185,7 +211,7 @@ class EvolutionOrchestrator:
             self._apply_lr(new_lr)
 
     def _apply_lr(self, lr):
-        for core in [self.model.core]:
+        for core in [self.model.core, self.model.gemini.core, self.model.groq.core]:
             core.proj_in.optW.lr = lr
             core.proj_out.optW.lr = lr
             for b in core.blocks:
