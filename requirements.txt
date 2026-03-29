@@ -1,43 +1,43 @@
 # --- DATABASE CONNECTIVITY (CRITICAL FOR NEON & POSTGRES) ---
 google-genai
-psycopg2-binary
-sqlalchemy
+psycopg2-binary==2.9.11
+sqlalchemy==2.0.48
 
 # --- GRADIO COMPATIBILITY (CRITICAL FIX) ---
 huggingface_hub==0.24.0
 gradio==4.44.1
 
 # --- CORE CONNECTIVITY & UTILITIES ---
-python-dotenv
-python-multipart
-requests
-groq
+python-dotenv==1.2.2
+python-multipart==0.0.22
+requests==2.32.5
+groq==1.1.1
 
 # --- DATA FUSION & PIPELINE ---
-datasets
-pandas
-numpy
+datasets==4.1.1
+pandas==2.3.3
+numpy==2.4.3
 
 # --- NEURAL ENGINES (AI & VISION) ---
-sentence-transformers
-transformers
-diffusers
-torch
-torchvision
-accelerate
-safetensors
+sentence-transformers==5.3.0
+transformers==4.48.3
+diffusers==0.32.2
+torch==2.11.0
+torchvision==0.26.0
+accelerate==1.13.0
+safetensors==0.7.0
 
 # --- IMAGE PROCESSING ---
-opencv-python
-Pillow
-ftfy
+opencv-python==4.13.0.92
+Pillow==10.4.0
+ftfy==6.3.1
 
 # --- 🛰️ AUTONOMOUS SYNC & SUPABASE (COMMANDER'S ADD-ONS) ---
-supabase
-httpx
+supabase==2.28.3
+httpx==0.28.1
 
 # --- 🛠️ TELEFOXX AGI CORE EXTRAS (ADDED FOR FULL MATCH) ---
 GitPython
 Flask
 Flask-SQLAlchemy
-websockets
+websockets==12.0
