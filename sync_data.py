@@ -25,8 +25,25 @@ class NeonSovereignEngine:
             self.db_url = self.db_url.replace("postgres://", "postgresql://", 1)
 
     def connect(self):
-        """ Establish a secure connection to Neon PostgreSQL """
-        return psycopg2.connect(self.db_url, sslmode='verify-full')
+        """
+        Establishes a high-performance, secure connection to the Neon PostgreSQL cluster.
+        Optimized for cloud-native environments (GitHub Actions) with resilient SSL 
+        and TCP keepalive configurations.
+        """
+        try:
+            return psycopg2.connect(
+                self.db_url,
+                sslmode='require',
+                connect_timeout=10,
+                keepalives=1,
+                keepalives_idle=30,
+                keepalives_interval=10,
+                keepalives_count=5,
+                application_name='Sovereign_Evolution_Engine'
+            )
+        except psycopg2.OperationalError as e:
+            logger.error(f"Critical Connection Failure: {e}")
+            raise
 
     def self_heal_schema(self, error_msg):
         """ 
