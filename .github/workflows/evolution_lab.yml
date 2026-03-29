@@ -26,6 +26,13 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
+      # ================= 🔬 REMOTE DIAGNOSIS =================
+      - name: Run Remote Diagnosis
+        run: |
+          echo "🔍 Starting Deep Scan for Package Conflicts..."
+          python debug_env.py
+          echo "------------------------------------------"
+      
       - name: Install Dependencies & Tools
         run: |
           python -m pip install --upgrade pip
