@@ -1,3 +1,4 @@
+
 import os
 import sys
 import time
@@ -118,8 +119,7 @@ class GatedCore:
 
 class SovereignArchitect:
     def __init__(self, in_dim=784, h_dim=512, out_dim=10, lr=1e-3):
-        self.gemini = GatedCore("GEMINI", in_dim, h_dim, out_dim, lr)
-        self.groq = GatedCore("GROQ", in_dim, h_dim, out_dim, lr)
+        self.core = GatedCore("Unified", in_dim, h_dim, out_dim, lr)
         self.gate_w = np.zeros((1, out_dim), dtype=np.float32)
         self.opt_gate = AdamW(self.gate_w.shape, lr=lr)
         self.logger = self._init_logger()
@@ -136,16 +136,15 @@ class SovereignArchitect:
         return 1 / (1 + np.exp(-x))
 
     def forward(self, x):
-        self.o1 = self.gemini.forward(x)
-        self.o2 = self.groq.forward(x)
+        self.o = self.core.forward(x)
         self.g = self._sigmoid(self.gate_w)
-        return self.g * self.o1 + (1 - self.g) * self.o2
+        return self.g * self.o + (1 - self.g) * self.o
 
     def backward(self, dout):
-        dg = np.sum(dout * (self.o1 - self.o2), axis=0, keepdims=True)
+        dg = np.sum(dout * (self.o - self.o), axis=0, keepdims=True)
         self.gate_w = self.opt_gate.update(self.gate_w, dg * self.g * (1 - self.g))
-        self.gemini.backward(dout * self.g)
-        self.groq.backward(dout * (1 - self.g))
+        self.core.backward(dout * self.g)
+        return
 
 class EvolutionOrchestrator:
     def __init__(self):
@@ -160,17 +159,17 @@ class EvolutionOrchestrator:
         for i in range(cycles):
             idx = np.random.choice(len(self.data_x), self.batch_size)
             x, y = self.data_x[idx], self.data_y[idx]
-            
+
             logits = self.model.forward(x)
             probs = self._softmax(logits)
             loss = -np.mean(np.log(probs[range(len(y)), y] + 1e-12))
-            
+
             grad = probs.copy()
             grad[range(len(y)), y] -= 1
             grad /= len(y)
-            
+
             self.model.backward(grad)
-            
+
             if i % 100 == 0:
                 self._evolve_hyperparameters(i, loss)
                 elapsed = time.time() - st
@@ -182,11 +181,11 @@ class EvolutionOrchestrator:
 
     def _evolve_hyperparameters(self, cycle, loss):
         if cycle > 0 and cycle % 500 == 0:
-            new_lr = self.model.gemini.proj_in.optW.lr * 0.95
+            new_lr = self.model.core.proj_in.optW.lr * 0.95
             self._apply_lr(new_lr)
 
     def _apply_lr(self, lr):
-        for core in [self.model.gemini, self.model.groq]:
+        for core in [self.model.core]:
             core.proj_in.optW.lr = lr
             core.proj_out.optW.lr = lr
             for b in core.blocks:
