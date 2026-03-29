@@ -26,11 +26,15 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install Diagnostic Tools
+      - name: Install Dependencies & Tools
         run: |
-          pip install flake8 black mypy bandit requests google-generativeai groq
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
+          python -m pip install --upgrade pip
+          pip install flake8 black mypy bandit
+          if [ -f requirements.txt ]; then 
+            pip install --no-cache-dir -r requirements.txt --upgrade
+          fi
+          pip install --upgrade google-genai groq requests
+      
       # ================= 🩺 2. STRUCTURAL DIAGNOSIS =================
       - name: Diagnosis (Linting & Syntax Check)
         run: |
