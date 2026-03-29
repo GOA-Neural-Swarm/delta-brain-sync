@@ -166,9 +166,11 @@ jobs:
           git pull origin main
           
           # Copy audited files from lab branch to main
-          git checkout evolution-lab -- .
+          # (ဒီနေရာလေးမှာပဲ error မတက်အောင် origin/ ဆိုပြီး remote ကို တိုက်ရိုက်ညွှန်းလိုက်ပါတယ်)
+          git checkout origin/evolution-lab -- .
           
           # Prevent workflow self-modification if not authorized
+          # (မင်းရဲ့ မူလ logic အတိုင်း workflow ဖိုင်တွေကို main အတိုင်း ပြန်ထားမယ့် အပိုင်းပါ)
           git reset HEAD .github/workflows/
           git checkout -- .github/workflows/
           
