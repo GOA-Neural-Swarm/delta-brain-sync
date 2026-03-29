@@ -15,8 +15,7 @@ from sqlalchemy.pool import QueuePool
 from huggingface_hub import HfApi
 from dotenv import load_dotenv
 from groq import Groq
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 # 🛸 [GENESIS LAYER]: 
 def bootstrap_system():
@@ -78,33 +77,15 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 REPO_PATH = "./repo_sync"
 
-# --- 🔱 GEMINI CONFIGURATION (Primary Architect - V2 SDK) ---
-from google import genai  # အပေါ်ဆုံးမှာ import လုပ်ဖို့ မမေ့ပါနဲ့
-
+# --- 🔱 GEMINI CONFIGURATION (Primary Architect) ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-client = None
-
+gemini_model = None
 if GEMINI_API_KEY:
-    try:
-        # Client Setup (V2 SDK အသစ်)
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        print("✅ [GEMINI]: Sovereign Architect (V2) Brain Initialized.")
-    except Exception as e:
-        print(f"❌ [GEMINI]: Initialization Failed: {e}")
+    genai.configure(api_key=GEMINI_API_KEY)
+    gemini_model = genai.GenerativeModel('gemini-flash-latest')
+    print("✅ [GEMINI]: Sovereign Architect Brain Initialized.")
 else:
     print("⚠️ [GEMINI]: API Key missing. Architect mode disabled.")
-
-# --- 🛰️ MODEL GENERATION LOGIC ---
-def generate_brain_evolution(prompt_text):
-    if not client:
-        return None
-        
-    # gemini-2.0-flash က လက်ရှိ အဆင့်မြင့်ဆုံး model ပါ
-    response = client.models.generate_content(
-        model="gemini-2.0-flash", 
-        contents=prompt_text
-    )
-    return response.text
 
 # 🛸 Smart Dependency Loader
 HEADLESS = os.environ.get("HEADLESS_MODE") == "true"
