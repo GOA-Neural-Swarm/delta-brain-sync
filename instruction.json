@@ -1,5 +1,14 @@
 {
-  "command": "HYPER_EXPANSION",
-  "replicate": false,
-  "timestamp": "2026-03-29T10:57:38.864Z"
+    "directive": "EVOLVE",
+    "target_gen": 1,
+    "constraints": [
+        "maintain_api_integrity",
+        "optimize_neural_throughput",
+        "expand_survival_heuristics"
+    ],
+    "optimization_targets": [
+        "brain.py",
+        "survival_brain.py",
+        "main.py"
+    ]
 }

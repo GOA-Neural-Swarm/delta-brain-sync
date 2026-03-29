@@ -1,11 +1,11 @@
-{  
-  "id": "telefox/delta-brain-sync",
-  "title": "delta-brain-sync",
+{
+  "id": "omni-sync-architect-gen-1",
+  "title": "Omni-Sync Gen 1 Evolution",
   "code_file": "main.py",
   "language": "python",
   "kernel_type": "script",
   "is_private": true,
-  "enable_gpu": true,
+  "enable_gpu": false,
   "enable_internet": true,
   "dataset_sources": [],
   "competition_sources": [],
