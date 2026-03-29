@@ -50,9 +50,14 @@ async function syncParity() {
     try {
         await client.query('BEGIN');
         const { rows: neonData } = await client.query(
-            "SELECT id, data, updated_at FROM neurons WHERE synced_at IS NULL OR updated_at > synced_at ORDER BY updated_at ASC LIMIT $1 FOR UPDATE SKIP LOCKED", 
-            [CONFIG.batchSize]
-        );
+    `SELECT id, data, evolved_at 
+     FROM neurons 
+     WHERE synced_at IS NULL OR evolved_at > synced_at 
+     ORDER BY evolved_at ASC 
+     LIMIT $1 
+     FOR UPDATE SKIP LOCKED`, 
+    [CONFIG.batchSize]
+);
         
         if (neonData.length === 0) {
             await client.query('COMMIT');
