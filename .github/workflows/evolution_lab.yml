@@ -33,13 +33,27 @@ jobs:
           python debug_env.py
           echo "------------------------------------------"
       
-      - name: Install Dependencies & Tools
+      - name: Install Critical Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 black mypy bandit
+          # အရင်ဆုံး အခြေခံအကျဆုံး AI libraries တွေကို သွင်းမယ်
+          pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install --no-cache-dir transformers diffusers accelerate safetensors
+          
+      - name: Install UI & Connectors
+        run: |
+          # Gradio နဲ့ သူ့ရဲ့ dependencies တွေကို သီးသန့်သွင်းမယ်
+          pip install --no-cache-dir huggingface_hub==0.24.0 gradio==4.44.1 websockets==12.0
+          
+      - name: Install Remaining Packages
+        run: |
+          # ကျန်တဲ့ database နဲ့ utilities တွေကိုမှ requirements.txt ကနေ သွင်းမယ်
+          # Conflict ဖြစ်နိုင်တဲ့ line တွေကို ignore လုပ်ခိုင်းထားတယ်
           if [ -f requirements.txt ]; then 
-            pip install --no-cache-dir -r requirements.txt --upgrade
+            grep -vE "torch|transformers|gradio|websockets" requirements.txt > req_cleaned.txt
+            pip install --no-cache-dir -r req_cleaned.txt
           fi
+          # နောက်ဆုံးမှ AI SDKs တွေကို သွင်းမယ်
           pip install --upgrade google-genai groq requests
       
       # ================= 🩺 2. STRUCTURAL DIAGNOSIS =================
