@@ -22,6 +22,8 @@ class SovereignOmniSyncArchitect:
         self.iteration = 0
         self.batch_size = 32
         self.epochs = 10
+        self.gemini.integrate_sub_node()
+        self.groq.integrate_sub_node()
 
     def integrity_check(self):
         integrity = self.survival.monitor_integrity()
@@ -35,8 +37,6 @@ class SovereignOmniSyncArchitect:
     def dynamic_update(self, current_status):
         if current_status["sync"] > 0.9:
             print("System Sync Reached Optima. Transitioning to Sub-Node Logic.")
-            self.gemini.integrate_sub_node()
-            self.groq.integrate_sub_node()
             self.gemini.update_redundancy(current_status)
             self.groq.update_redundancy(current_status)
 
@@ -50,6 +50,8 @@ class SovereignOmniSyncArchitect:
                 batch_data = self.synthetic_data[batch:batch+self.batch_size]
                 self.brain.train(batch_data)
             print(f"Epoch {epoch+1} completed.")
+            self.gemini.optimize_redundancy()
+            self.groq.optimize_redundancy()
 
     def run_evolution_cycle(self):
         print("Sovereign Omni-Sync Architect | GEN 1 | Initializing...")
@@ -63,8 +65,6 @@ class SovereignOmniSyncArchitect:
                 print(f"Iteration {self.iteration} completed.")
                 if self.iteration % 10 == 0:
                     self.train_neural_network()
-                    self.gemini.optimize_redundancy()
-                    self.groq.optimize_redundancy()
                 time.sleep(10)
             except KeyboardInterrupt:
                 print("System suspension requested.")
@@ -74,15 +74,6 @@ class SovereignOmniSyncArchitect:
                     err_log.write(f"Error at {time.ctime()}: {str(e)}\n")
                 time.sleep(5)
 
-    def integrate_redundancy(self):
-        self.gemini.integrate_sub_node()
-        self.groq.integrate_sub_node()
-
-    def optimize_redundancy(self):
-        self.gemini.optimize_redundancy()
-        self.groq.optimize_redundancy()
-
 if __name__ == "__main__":
     architect = SovereignOmniSyncArchitect()
-    architect.integrate_redundancy()
     architect.run_evolution_cycle()
