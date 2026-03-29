@@ -1,5 +1,38 @@
-numpy>=1.21.0
-flask>=2.0.0
-requests>=2.26.0
-pandas>=1.3.0
-scikit-learn>=0.24.2
+# --- DATABASE CONNECTIVITY (CRITICAL FOR NEON & POSTGRES) ---
+google-genai
+psycopg2-binary
+sqlalchemy
+
+# --- GRADIO COMPATIBILITY (CRITICAL FIX) ---
+huggingface_hub==0.24.0
+gradio==4.44.1
+
+# --- CORE CONNECTIVITY & UTILITIES ---
+python-dotenv
+python-multipart
+requests
+groq
+
+# --- DATA FUSION & PIPELINE ---
+datasets
+pandas
+numpy
+
+# --- NEURAL ENGINES (AI & VISION) ---
+sentence-transformers
+transformers
+diffusers
+torch
+torchvision
+accelerate
+safetensors
+
+# --- IMAGE PROCESSING ---
+opencv-python
+Pillow
+ftfy
+
+# --- 🛰️ AUTONOMOUS SYNC & SUPABASE (COMMANDER'S ADD-ONS) ---
+supabase
+httpx
+asyncio

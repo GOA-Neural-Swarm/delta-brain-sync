@@ -1,10 +1,18 @@
 version: '3.8'
+
 services:
-  omni-sync-architect:
+  telefoxx-overseer:
     build: .
-    volumes:
-      - .:/app
-    environment:
-      - GEN=1
-      - NODE_ENV=production
+    container_name: telefoxx_sovereign_core
     restart: always
+    env_file: .env
+    environment:
+      - HEADLESS_MODE=true
+      - NEON_KEY=${NEON_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - REPO_URL=${REPO_URL}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    volumes:
+      - .:/app  # 🧬 Crucial: အပြင်က ကုဒ်ဖိုင်ကိုပါ အဆင့်မြှင့်နိုင်အောင် Mount လုပ်ထားတာ

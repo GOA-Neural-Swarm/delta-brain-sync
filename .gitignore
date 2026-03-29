@@ -1,10 +1,4 @@
 __pycache__/
-*.py[cod]
-*$py.class
-trigger.lock
-emergency_reset.txt
-sync_recovery.txt
-.git/
-node_modules/
-dist/
-build/
+*.pyc
+*.pyo
+*.pyd

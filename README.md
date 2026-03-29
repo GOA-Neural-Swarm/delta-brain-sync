@@ -1,17 +1,21 @@
-# Sovereign Omni-Sync Architect
+---
+title: GOA OMNI SYNC
+emoji: 🔱
+colorFrom: indigo
+colorTo: blue
+sdk: gradio
+sdk_version: 4.44.1
+app_file: app.py
+pinned: false
+license: mit
+---
 
-## Current Status
-- **Generation**: 1
-- **Neural Error**: 0.0
-- **System Stability**: Nominal
+# 🔱 TELEFOXX OMNI-SYNC CORE
+Intelligence status: **Operational**
 
-## Evolution Log
-- Gen 1 initialization complete.
-- Neural Core (brain.py) expanded with knowledge fragments.
-- Survival Protocol (survival_brain.py) integrated with file integrity monitoring.
-- Main loop (main.py) optimized for 10s latency reconciliation.
+This space serves as the command center for the GOA Neural Evolution. It monitors the data flow from Hugging Face ArXiv datasets to the Neon Database vault.
 
-## Capabilities
-- Supervised pattern recognition (SVM/Classifiers).
-- Predictive learning rate optimization (Brier Game).
-- Association rule mining.
+## 🛠️ Operational Tasks
+- **Automated Ingestion:** Triggered via GitHub Actions.
+- **Neural Compression:** HydraEngine L2 compression active.
+- **Sync Status:** Monitoring Neon Database real-time.
