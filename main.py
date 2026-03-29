@@ -19,6 +19,7 @@ class SovereignOmniSyncArchitect:
         self.groq = GroqRedundancy()
         self.sync_manager = SyncManager()
         self.synthetic_data = generate_synthetic_data()
+        self.iteration = 0
 
     def integrity_check(self):
         integrity = self.survival.monitor_integrity()
@@ -34,22 +35,32 @@ class SovereignOmniSyncArchitect:
             print("System Sync Reached Optima. Transitioning to Sub-Node Logic.")
             self.gemini.integrate_sub_node()
             self.groq.integrate_sub_node()
+            self.gemini.update_redundancy(current_status)
+            self.groq.update_redundancy(current_status)
 
     def persist_state(self):
         self.brain.save_state()
         self.sync_manager.sync_data(self.brain.get_state())
 
+    def train_neural_network(self, epochs=10, batch_size=32):
+        for epoch in range(epochs):
+            for batch in range(0, len(self.synthetic_data), batch_size):
+                batch_data = self.synthetic_data[batch:batch+batch_size]
+                self.brain.train(batch_data)
+            print(f"Epoch {epoch+1} completed.")
+
     def run_evolution_cycle(self):
         print("Sovereign Omni-Sync Architect | GEN 1 | Initializing...")
-        iteration = 0
         while True:
             try:
                 self.integrity_check()
                 current_status = self.process_neural_load()
                 self.dynamic_update(current_status)
                 self.persist_state()
-                iteration += 1
-                print(f"Iteration {iteration} completed.")
+                self.iteration += 1
+                print(f"Iteration {self.iteration} completed.")
+                if self.iteration % 10 == 0:
+                    self.train_neural_network()
                 time.sleep(10)
             except KeyboardInterrupt:
                 print("System suspension requested.")
