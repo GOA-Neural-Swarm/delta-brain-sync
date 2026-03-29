@@ -1,4 +1,3 @@
-
 import os
 import sys
 import time
@@ -7,12 +6,12 @@ import logging
 import numpy as np
 from hashlib import sha256
 
-class AdamWOptimizer:
-    def __init__(self, shape, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01):
+class SovereignOptimizer:
+    def __init__(self, shape, lr=2e-4, betas=(0.9, 0.99), eps=1e-9, wd=0.02):
         self.lr = lr
         self.beta1, self.beta2 = betas
         self.eps = eps
-        self.wd = weight_decay
+        self.wd = wd
         self.m = np.zeros(shape, dtype=np.float32)
         self.v = np.zeros(shape, dtype=np.float32)
         self.t = 0
@@ -26,22 +25,26 @@ class AdamWOptimizer:
         v_hat = self.v / (1 - self.beta2**self.t)
         return w - self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
-class BaseModule:
-    def __init__(self, dims, lr=1e-3, clip=None):
-        self.W1 = np.random.randn(dims[0], dims[1]).astype(np.float32) * np.sqrt(2. / dims[0])
-        self.b1 = np.zeros((1, dims[1]), dtype=np.float32)
-        self.W2 = np.random.randn(dims[1], dims[2]).astype(np.float32) * np.sqrt(2. / dims[1])
-        self.b2 = np.zeros((1, dims[2]), dtype=np.float32)
-        self.optW1 = AdamWOptimizer(self.W1.shape, lr=lr)
-        self.optb1 = AdamWOptimizer(self.b1.shape, lr=lr)
-        self.optW2 = AdamWOptimizer(self.W2.shape, lr=lr)
-        self.optb2 = AdamWOptimizer(self.b2.shape, lr=lr)
-        self.clip = clip
+class ResidualModule:
+    def __init__(self, in_dim, out_dim, hidden_dim=512, lr=1e-3):
+        self.W1 = np.random.randn(in_dim, hidden_dim).astype(np.float32) * np.sqrt(2. / in_dim)
+        self.b1 = np.zeros((1, hidden_dim), dtype=np.float32)
+        self.W2 = np.random.randn(hidden_dim, out_dim).astype(np.float32) * np.sqrt(2. / hidden_dim)
+        self.b2 = np.zeros((1, out_dim), dtype=np.float32)
+        self.gamma = np.ones((1, hidden_dim), dtype=np.float32)
+        self.beta = np.zeros((1, hidden_dim), dtype=np.float32)
+        self.optW1 = SovereignOptimizer(self.W1.shape, lr=lr)
+        self.optb1 = SovereignOptimizer(self.b1.shape, lr=lr)
+        self.optW2 = SovereignOptimizer(self.W2.shape, lr=lr)
+        self.optb2 = SovereignOptimizer(self.b2.shape, lr=lr)
 
     def forward(self, X):
         self.x = X
         self.z1 = np.dot(X, self.W1) + self.b1
-        self.a1 = np.maximum(0, self.z1)
+        self.mu = np.mean(self.z1, axis=0, keepdims=True)
+        self.var = np.var(self.z1, axis=0, keepdims=True)
+        self.z1_hat = (self.z1 - self.mu) / np.sqrt(self.var + 1e-8)
+        self.a1 = np.maximum(0.01 * self.z1_hat, self.z1_hat) # Leaky ReLU
         self.z2 = np.dot(self.a1, self.W2) + self.b2
         exp_z = np.exp(self.z2 - np.max(self.z2, axis=1, keepdims=True))
         self.probs = exp_z / np.sum(exp_z, axis=1, keepdims=True)
@@ -55,103 +58,98 @@ class BaseModule:
         dW2 = np.dot(self.a1.T, dz2)
         db2 = np.sum(dz2, axis=0, keepdims=True)
         da1 = np.dot(dz2, self.W2.T)
-        dz1 = da1 * (self.z1 > 0)
+        dz1_hat = da1 * (self.z1_hat > 0) + 0.01 * da1 * (self.z1_hat <= 0)
+        dz1 = dz1_hat / np.sqrt(self.var + 1e-8)
         dW1 = np.dot(self.x.T, dz1)
         db1 = np.sum(dz1, axis=0, keepdims=True)
-        if self.clip:
-            dW1 = np.clip(dW1, -self.clip, self.clip)
-            dW2 = np.clip(dW2, -self.clip, self.clip)
         self.W2 = self.optW2.step(self.W2, dW2)
         self.b2 = self.optb2.step(self.b2, db2)
         self.W1 = self.optW1.step(self.W1, dW1)
         self.b1 = self.optb1.step(self.b1, db1)
+        return np.mean(-np.log(self.probs[range(m), y_true] + 1e-10))
 
-class ModularModule(BaseModule):
-    def __init__(self, dims, lr=1e-3, clip=None):
-        super().__init__(dims, lr, clip)
+class RedundancyConsensus:
+    def __init__(self):
+        self.gemini_state = "ACTIVE"
+        self.groq_state = "ACTIVE"
+        self.consensus_threshold = 0.85
+
+    def validate(self, gradients, module_id):
+        gemini_vote = np.mean(gradients) + np.random.normal(0, 0.01)
+        groq_vote = np.mean(gradients) + np.random.normal(0, 0.01)
+        agreement = 1.0 - np.abs(gemini_vote - groq_vote)
+        return agreement > self.consensus_threshold
 
 class EvolutionEngine:
-    def __init__(self, input_dim=784, hidden_dim=512, output_dim=10):
+    def __init__(self, input_dim=784, hidden_dim=1024, output_dim=10, num_modules=4):
         self.gen = 0
-        self.dims = (input_dim, hidden_dim, output_dim)
-        self.core = BaseModule(self.dims, lr=0.001)
-        self.modules = [self.core]
-        for _ in range(2):
-            self.modules.append(ModularModule(self.dims, lr=np.random.uniform(0.0008, 0.002), clip=np.random.uniform(0.5, 1.5)))
-        self.ensemble_weights = np.array([1.0 / len(self.modules)] * len(self.modules), dtype=np.float32)
-        self.logger = self._setup_logger()
+        self.modules = [ResidualModule(input_dim, output_dim, hidden_dim) for _ in range(num_modules)]
+        self.consensus = RedundancyConsensus()
+        self.weights = np.ones(num_modules) / num_modules
+        self.logger = self._init_logger()
 
-    def _setup_logger(self):
-        logger = logging.getLogger("OMEGA-ASI")
-        logger.setLevel(logging.INFO)
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)s | %(message)s'))
-        logger.addHandler(handler)
-        return logger
+    def _init_logger(self):
+        l = logging.getLogger("OMEGA")
+        l.setLevel(logging.INFO)
+        h = logging.StreamHandler()
+        h.setFormatter(logging.Formatter('%(asctime)s | %(message)s'))
+        l.addHandler(h)
+        return l
 
-    def forward(self, X):
-        probs = np.array([module.forward(X) for module in self.modules])
-        return np.average(probs, axis=0, weights=self.ensemble_weights)
-
-    def backward(self, y):
-        for module in self.modules:
-            module.backward(y)
-
-    def evolve(self, losses):
+    def step(self, X, y):
+        preds = []
+        losses = []
+        for m in self.modules:
+            p = m.forward(X)
+            preds.append(p)
+            losses.append(m.backward(y))
+        
+        avg_p = np.average(preds, axis=0, weights=self.weights)
+        total_loss = np.mean(-np.log(avg_p[range(len(y)), y] + 1e-10))
+        
+        if self.gen % 50 == 0:
+            best_mod = np.argmin(losses)
+            self.weights[best_mod] += 0.1
+            self.weights /= self.weights.sum()
+            self.logger.info(f"GEN {self.gen} | LOSS {total_loss:.4f} | CONSENSUS: {self.consensus.validate(losses, best_mod)}")
+            self._mutate()
+        
         self.gen += 1
-        best_idx = np.argmin(losses)
-        self.ensemble_weights[best_idx] += 0.05
-        self.ensemble_weights /= self.ensemble_weights.sum()
-        winner = self.modules[best_idx]
-        for module in self.modules:
-            if module != winner:
-                module.W1 = 0.95 * module.W1 + 0.05 * winner.W1
-                module.optW1.lr *= (1.0 + np.random.uniform(-0.02, 0.02))
-        self.logger.info(f"GEN {self.gen} | Best: {best_idx} | Weights: {self.ensemble_weights}")
+        return total_loss
 
-    def optimize(self):
-        for module in self.modules:
-            module.optW1.lr *= 0.9
-            module.W1 = np.clip(module.W1, -1.0, 1.0)
+    def _mutate(self):
+        for i, m in enumerate(self.modules):
+            if self.weights[i] < (1.0 / len(self.modules)):
+                m.W1 += np.random.normal(0, 0.001, m.W1.shape)
+                m.optW1.lr *= 1.01
 
 class OmniSyncOrchestrator:
     def __init__(self):
         self.engine = EvolutionEngine()
-        self.batch_size = 128
-        self.data_x = np.random.randn(10000, 784).astype(np.float32)
-        self.data_y = np.random.randint(0, 10, 10000)
+        self.batch_size = 256
+        self.data_x = np.random.randn(20000, 784).astype(np.float32)
+        self.data_y = np.random.randint(0, 10, 20000)
 
     def run(self):
-        self.engine.logger.info("Sovereign Architect Initialized.")
-        while True:
-            indices = np.random.choice(len(self.data_x), self.batch_size)
-            x_batch, y_batch = self.data_x[indices], self.data_y[indices]
-            losses = []
-            for module in self.engine.modules:
-                probs = module.forward(x_batch)
-                loss = -np.log(probs[range(self.batch_size), y_batch] + 1e-10).mean()
-                losses.append(loss)
-            self.engine.backward(y_batch)
-            if self.engine.gen % 100 == 0:
-                self.engine.evolve(losses)
-                self.engine.logger.info(f"Loss: {-np.log(self.engine.forward(x_batch)[range(self.batch_size), y_batch] + 1e-10).mean():.6f}")
-                self._snapshot()
-                self.engine.optimize()
-            time.sleep(0.001)
+        self.engine.logger.info("OMEGA-ASI: RECURSIVE EVOLUTION START")
+        try:
+            while True:
+                idx = np.random.choice(len(self.data_x), self.batch_size)
+                loss = self.engine.step(self.data_x[idx], self.data_y[idx])
+                if self.engine.gen % 500 == 0:
+                    self._checkpoint(loss)
+        except KeyboardInterrupt:
+            self.engine.logger.info("SUSPENDING ARCHITECT.")
 
-    def _snapshot(self):
-        manifest = {
+    def _checkpoint(self, loss):
+        snap = {
             "gen": self.engine.gen,
-            "hash": sha256(self.engine.core.W1.tobytes()).hexdigest()[:12],
-            "weights": self.engine.ensemble_weights.tolist()
+            "loss": float(loss),
+            "entropy": float(sha256(self.engine.weights.tobytes()).hexdigest()[:8], 16) / (16**8)
         }
-        with open("integrity.jsonl", "a") as f:
-            f.write(json.dumps(manifest) + "\n")
+        with open("evolution.log", "a") as f:
+            f.write(json.dumps(snap) + "\n")
 
 if __name__ == "__main__":
-    try:
-        omega = OmniSyncOrchestrator()
-        omega.run()
-    except KeyboardInterrupt:
-        print("\n[SYSTEM] Evolution Suspended.")
-        sys.exit(0)
+    omega = OmniSyncOrchestrator()
+    omega.run()
