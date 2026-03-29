@@ -92,7 +92,7 @@ jobs:
           echo "🧬 [AUDIT]: Initiating Supreme AI Correction Cycle..."
 
           # --- 🔱 ATTEMPT 1: GEMINI 2.0 FLASH (Primary) ---
-          GEMINI_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{contents: [{parts: [{text: ($sys + "\n\nCODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.2}}')
+          GEMINI_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{contents: [{parts: [{text: ($sys + "\n\nCODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.2, maxOutputTokens: 8192}}')
           # v1beta endpoint for Gemini 2.0 Flash
           GEMINI_RES=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" -H "Content-Type: application/json" -d "$GEMINI_PAYLOAD")
           
@@ -102,14 +102,14 @@ jobs:
           # --- 🔱 ATTEMPT 2: GROQ FALLBACK ---
           if [ -z "$CONTENT" ] || [ ${#CONTENT} -lt 100 ]; then
             echo "⚠️ [GEMINI-FAIL]: Falling back to Groq Expert Auditor..."
-            GROQ_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.1}')
+            GROQ_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.1, max_tokens: 4096}')
             GROQ_RES=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" -H "Authorization: Bearer $GROQ_API_KEY" -H "Content-Type: application/json" -d "$GROQ_PAYLOAD")
             CONTENT=$(echo "$GROQ_RES" | jq -r '.choices[0].message.content // empty' | sed 's/```python//g; s/```//g')
           fi
 
           # Only overwrite if content is valid (preventing accidental deletion)
           if [ ! -z "$CONTENT" ] && [ ${#CONTENT} -gt 100 ]; then
-            echo "$CONTENT" > "$TARGET"
+            printf "%s\n" "$CONTENT" > "$TARGET"
             echo "✅ [AUDIT-COMPLETE]: Brain logic refined by AI Hybrid (Gemini 2.0)."
           else
             echo "❌ [AUDIT-FAILED]: AI returned empty or invalid content. Keeping original code."
