@@ -150,9 +150,31 @@ class SovereignArchitect:
         flat_grads.append(dgate)
         self.optimizer.step(self.flat_params, flat_grads)
 
+class Gemini:
+    def __init__(self, model):
+        self.model = model
+
+    def forward(self, x):
+        return self.model.forward(x)
+
+    def backward(self, dout):
+        return self.model.backward(dout)
+
+class Groq:
+    def __init__(self, model):
+        self.model = model
+
+    def forward(self, x):
+        return self.model.forward(x)
+
+    def backward(self, dout):
+        return self.model.backward(dout)
+
 class EvolutionOrchestrator:
     def __init__(self):
         self.model = SovereignArchitect()
+        self.gemini = Gemini(self.model)
+        self.groq = Groq(self.model)
         self.data_x = np.random.randn(10000, 784).astype(np.float32)
         self.data_y = np.random.randint(0, 10, 10000)
         self.batch_size = 128
@@ -164,7 +186,7 @@ class EvolutionOrchestrator:
             idx = np.random.randint(0, 10000, self.batch_size)
             x, y = self.data_x[idx], self.data_y[idx]
 
-            logits = self.model.forward(x)
+            logits = self.gemini.forward(x)
             probs = self.model._softmax(logits)
             loss = -np.mean(np.log(probs[range(self.batch_size), y] + 1e-10))
 
@@ -172,7 +194,8 @@ class EvolutionOrchestrator:
             grad[range(self.batch_size), y] -= 1
             grad /= self.batch_size
 
-            self.model.backward(grad)
+            self.gemini.backward(grad)
+            self.groq.backward(grad)
 
             if s % 100 == 0:
                 acc = np.mean(np.argmax(probs, axis=1) == y)
