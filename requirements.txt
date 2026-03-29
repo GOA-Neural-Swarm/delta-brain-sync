@@ -35,7 +35,6 @@ ftfy
 # --- 🛰️ AUTONOMOUS SYNC & SUPABASE (COMMANDER'S ADD-ONS) ---
 supabase
 httpx
-asyncio
 
 # --- 🛠️ TELEFOXX AGI CORE EXTRAS (ADDED FOR FULL MATCH) ---
 GitPython
