@@ -84,36 +84,44 @@ jobs:
           if [ -d "./kaggle_brain" ] && [ -f "./kaggle_brain/main.py" ]; then TARGET="./kaggle_brain/main.py"; fi
           if [ ! -f "$TARGET" ] && [ -f "app.py" ]; then TARGET="app.py"; fi
           
-          echo "🎯 Target for Audit: $TARGET"
+          echo "Target for Audit: $TARGET"
           OLD_CODE=$(python3 -c "import json; print(json.dumps(open('$TARGET').read()))")
+          
           SYSTEM_ROLE="You are OMEGA-ASI, the Supreme Auditor. Your task is to audit code for bugs and rewrite it for maximum performance."
-          HYPER_PROMPT="Analyze this $TARGET for logical flaws. Rewrite it to be more efficient. RETURN ONLY THE RAW PYTHON CODE. NO MARKDOWN BLOCKS."
+          HYPER_PROMPT="Analyze this $TARGET for logical flaws. Rewrite it to be more efficient. RETURN ONLY THE RAW PYTHON CODE. NO MARKDOWN BLOCKS. NO EXPLANATIONS. NO TRUNCATION."
 
-          echo "🧬 [AUDIT]: Initiating Supreme AI Correction Cycle..."
+          echo "AUDIT: Initiating Supreme AI Correction Cycle..."
 
-          # --- 🔱 ATTEMPT 1: GEMINI 2.0 FLASH (Primary) ---
-          GEMINI_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{contents: [{parts: [{text: ($sys + "\n\nCODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.2}}')
-          # v1beta endpoint for Gemini 2.0 Flash
+          # --- ATTEMPT 1: GEMINI 2.0 FLASH (Primary) ---
+          GEMINI_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{contents: [{parts: [{text: ($sys + "\n\nCODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.2, maxOutputTokens: 8192}}')
+          
           GEMINI_RES=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" -H "Content-Type: application/json" -d "$GEMINI_PAYLOAD")
           
-          # Clean extraction: Remove potential markdown artifacts
-          CONTENT=$(echo "$GEMINI_RES" | jq -r '.candidates[0].content.parts[0].text // empty' | sed 's/```python//g; s/```//g')
+          export RAW_AI_OUTPUT=$(echo "$GEMINI_RES" | jq -r '.candidates[0].content.parts[0].text // empty')
 
-          # --- 🔱 ATTEMPT 2: GROQ FALLBACK ---
-          if [ -z "$CONTENT" ] || [ ${#CONTENT} -lt 100 ]; then
-            echo "⚠️ [GEMINI-FAIL]: Falling back to Groq Expert Auditor..."
-            GROQ_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.1}')
+          # --- ATTEMPT 2: GROQ FALLBACK ---
+          if [ -z "$RAW_AI_OUTPUT" ] || [ ${#RAW_AI_OUTPUT} -lt 200 ]; then
+            echo "GEMINI-FAIL: Falling back to Groq Expert Auditor..."
+            GROQ_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.1, max_tokens: 4096}')
+            
             GROQ_RES=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" -H "Authorization: Bearer $GROQ_API_KEY" -H "Content-Type: application/json" -d "$GROQ_PAYLOAD")
-            CONTENT=$(echo "$GROQ_RES" | jq -r '.choices[0].message.content // empty' | sed 's/```python//g; s/```//g')
+            export RAW_AI_OUTPUT=$(echo "$GROQ_RES" | jq -r '.choices[0].message.content // empty')
           fi
 
-          # Only overwrite if content is valid (preventing accidental deletion)
-          if [ ! -z "$CONTENT" ] && [ ${#CONTENT} -gt 100 ]; then
-            echo "$CONTENT" > "$TARGET"
-            echo "✅ [AUDIT-COMPLETE]: Brain logic refined by AI Hybrid (Gemini 2.0)."
-          else
-            echo "❌ [AUDIT-FAILED]: AI returned empty or invalid content. Keeping original code."
-          fi
+          # --- 2. ROBUST EXTRACTION & CLEANING ---
+          python3 -c "
+          import os, re, sys
+
+          raw_content = os.environ.get('RAW_AI_OUTPUT', '')
+          target_path = '$TARGET'
+
+          if not raw_content or len(raw_content) < 100:
+          print('CRITICAL: AI returned invalid/empty response.')
+          sys.exit(1)
+
+          # Advanced Extraction using Regex
+          clean_code = re.sub(r'http://googleusercontent.com/immersive_entry_chip/0
+
 
       # ================= 🛡️ 4. SECURITY GUARD =================
       - name: Safety Guard (Security Audit)
