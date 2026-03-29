@@ -8,16 +8,17 @@ const CONFIG = {
     owner: "GOA-neurons",
     core: "delta-brain-sync",
     threshold: 10000,
-    batchSize: 500
+    batchSize: 500,
+    concurrency: 5
 };
 
-const octokit = new Octokit({ auth: process.env.GH_TOKEN });
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const octokit = new Octokit({ auth: process.env.GH_TOKEN, throttle: { enabled: true } });
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 const neonPool = new Pool({ 
     connectionString: process.env.NEON_DB_URL + "?sslmode=verify-full",
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000
+    max: 30,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 5000
 });
 
 if (!admin.apps.length) {
@@ -27,16 +28,17 @@ if (!admin.apps.length) {
             databaseURL: process.env.FIREBASE_DB_URL
         });
     } catch (e) {
-        console.error("Firebase Init Failed");
+        process.stderr.write("Firebase Initialization Critical Failure\n");
     }
 }
 const db = admin.firestore();
+db.settings({ ignoreUndefinedProperties: true });
 
 async function callGeminiNeural(prompt) {
     if (!process.env.GEMINI_API_KEY) return null;
     try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
-        const response = await axios.post(url, { contents: [{ parts: [{ text: prompt }] }] }, { timeout: 10000 });
+        const response = await axios.post(url, { contents: [{ parts: [{ text: prompt }] }] }, { timeout: 8000 });
         return response.data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
     } catch (err) {
         return null;
@@ -46,13 +48,22 @@ async function callGeminiNeural(prompt) {
 async function syncParity() {
     const client = await neonPool.connect();
     try {
-        const { rows: neonData } = await client.query("SELECT * FROM neurons ORDER BY updated_at DESC LIMIT $1", [CONFIG.batchSize]);
-        if (neonData.length === 0) return 0;
+        await client.query('BEGIN');
+        const { rows: neonData } = await client.query(
+            "SELECT id, data, updated_at FROM neurons WHERE synced_at IS NULL OR updated_at > synced_at ORDER BY updated_at ASC LIMIT $1 FOR UPDATE SKIP LOCKED", 
+            [CONFIG.batchSize]
+        );
+        
+        if (neonData.length === 0) {
+            await client.query('COMMIT');
+            return 0;
+        }
 
+        const syncTime = new Date().toISOString();
         const payload = neonData.map(n => ({
             id: n.id,
             data: n.data,
-            synced_at: new Date().toISOString(),
+            synced_at: syncTime,
             logic_hash: Buffer.from(JSON.stringify(n.data)).toString('base64').substring(0, 16)
         }));
 
@@ -65,14 +76,21 @@ async function syncParity() {
             batch.set(ref, { 
                 status: 'synchronized', 
                 last_sync: admin.firestore.FieldValue.serverTimestamp(),
-                integrity: true 
+                integrity: true,
+                version: Buffer.from(n.updated_at.toString()).toString('base64').substring(0, 8)
             }, { merge: true });
         });
-        await batch.commit();
+        
+        await Promise.all([
+            batch.commit(),
+            client.query("UPDATE neurons SET synced_at = $1 WHERE id = ANY($2)", [syncTime, neonData.map(n => n.id)])
+        ]);
 
+        await client.query('COMMIT');
         return neonData.length;
     } catch (err) {
-        console.error("Parity Failure:", err.message);
+        await client.query('ROLLBACK');
+        process.stderr.write(`Parity Error: ${err.message}\n`);
         return 0;
     } finally {
         client.release();
@@ -83,11 +101,11 @@ async function evolveCore() {
     try {
         const { data: corePy } = await octokit.repos.getContent({ owner: CONFIG.owner, repo: CONFIG.core, path: 'main.py' });
         const content = Buffer.from(corePy.content, 'base64').toString();
-        const evolved = await callGeminiNeural(`Optimize this Python code for maximum throughput. Return ONLY the code block.\n\n${content}`);
+        const evolved = await callGeminiNeural(`Optimize this Python code for maximum throughput and memory efficiency. Return ONLY the raw code without markdown wrappers.\n\n${content}`);
         
-        if (evolved && evolved.includes("python")) {
-            const cleanCode = evolved.match(/python\n([\s\S]*?)\n/)?.[1] || evolved.replace(/python|/g, "").trim();
-            if (cleanCode.length > 50 && cleanCode !== content) {
+        if (evolved && evolved.length > 50) {
+            const cleanCode = evolved.replace(/python|/g, "").trim();
+            if (cleanCode !== content) {
                 await octokit.repos.createOrUpdateFileContents({
                     owner: CONFIG.owner, repo: CONFIG.core, path: 'main.py',
                     message: "🧬 [NEURAL_EVOLUTION]: Optimized Logic Path",
@@ -96,41 +114,44 @@ async function evolveCore() {
                 });
             }
         }
-    } catch (e) {}
+    } catch (e) {
+        process.stderr.write(`Evolution Suppressed: ${e.message}\n`);
+    }
 }
 
 async function manageSwarm() {
-    const snapshot = await db.collection('cluster_nodes').get();
-    let totalApi = 0;
-    snapshot.forEach(doc => totalApi += (doc.data().api_remaining || 5000));
-    const avgApi = snapshot.size > 0 ? totalApi / snapshot.size : 5000;
+    try {
+        const snapshot = await db.collection('cluster_nodes').get();
+        let totalApi = 0;
+        snapshot.forEach(doc => totalApi += (doc.data().api_remaining || 5000));
+        const avgApi = snapshot.size > 0 ? totalApi / snapshot.size : 5000;
 
-    const decision = {
-        command: avgApi > 4000 ? "HYPER_EXPANSION" : (avgApi < 1500 ? "STEALTH_LOCKDOWN" : "NORMAL_GROWTH"),
-        replicate: avgApi > 2000,
-        timestamp: new Date().toISOString()
-    };
+        const decision = {
+            command: avgApi > 4000 ? "HYPER_EXPANSION" : (avgApi < 1500 ? "STEALTH_LOCKDOWN" : "NORMAL_GROWTH"),
+            replicate: avgApi > 2500 && snapshot.size < 50,
+            timestamp: new Date().toISOString()
+        };
 
-    const { data: instFile } = await octokit.repos.getContent({ owner: CONFIG.owner, repo: CONFIG.core, path: 'instruction.json' });
-    await octokit.repos.createOrUpdateFileContents({
-        owner: CONFIG.owner, repo: CONFIG.core, path: 'instruction.json',
-        message: `🧠 Decision: ${decision.command}`,
-        content: Buffer.from(JSON.stringify(decision, null, 2)).toString('base64'),
-        sha: instFile.sha
-    });
+        const { data: instFile } = await octokit.repos.getContent({ owner: CONFIG.owner, repo: CONFIG.core, path: 'instruction.json' });
+        await octokit.repos.createOrUpdateFileContents({
+            owner: CONFIG.owner, repo: CONFIG.core, path: 'instruction.json',
+            message: `🧠 Decision: ${decision.command}`,
+            content: Buffer.from(JSON.stringify(decision, null, 2)).toString('base64'),
+            sha: instFile.sha
+        });
 
-    if (decision.replicate && snapshot.size < 50) {
-        const nodeName = `swarm-${Math.random().toString(36).substring(2, 9)}`;
-        try {
+        if (decision.replicate) {
+            const nodeName = `swarm-${Math.random().toString(36).substring(2, 9)}`;
             await octokit.repos.createForAuthenticatedUser({ name: nodeName, auto_init: true });
-            // Injection logic simplified for event loop efficiency
-            const syncCode = `const admin=require('firebase-admin');(async()=>{/*SwarmNode*/})();`;
+            const syncCode = `const admin=require('firebase-admin');/* Swarm Node Instance */`;
             await octokit.repos.createOrUpdateFileContents({
                 owner: CONFIG.owner, repo: nodeName, path: 'cluster_sync.js',
-                message: "🧬 Init",
+                message: "🧬 Init Swarm Node",
                 content: Buffer.from(syncCode).toString('base64')
             });
-        } catch (e) {}
+        }
+    } catch (e) {
+        process.stderr.write(`Swarm Management Error: ${e.message}\n`);
     }
 }
 
@@ -146,12 +167,12 @@ async function execute() {
         const power = parseInt(rows[0].count) || 0;
 
         if (power > CONFIG.threshold) {
-            await evolveCore();
+            setImmediate(evolveCore);
         }
 
-        console.log(`Cycle Complete: ${syncedCount} nodes synced in ${Date.now() - start}ms`);
+        process.stdout.write(`Cycle Complete: ${syncedCount} nodes synced in ${Date.now() - start}ms\n`);
     } catch (err) {
-        console.error("Execution Error:", err);
+        process.stderr.write(`Execution Fatal: ${err.stack}\n`);
     } finally {
         await neonPool.end();
         process.exit(0);
