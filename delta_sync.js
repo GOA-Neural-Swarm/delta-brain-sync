@@ -3,14 +3,15 @@ const { createClient } = require('@supabase/supabase-js');
 const admin = require('firebase-admin');
 const { Octokit } = require("@octokit/rest");
 const axios = require('axios');
+const crypto = require('crypto');
 
 const CONFIG = {
     owner: "GOA-neurons",
     core: "delta-brain-sync",
     threshold: 10000,
-    batchSize: 1000,
-    concurrency: 10,
-    timeout: 10000
+    batchSize: 2000,
+    concurrency: 20,
+    timeout: 15000
 };
 
 const octokit = new Octokit({ 
@@ -20,28 +21,30 @@ const octokit = new Octokit({
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
-    global: { headers: { 'x-my-custom-header': 'omega-asi' } }
+    global: { headers: { 'x-omega-asi': 'supreme-debugger' } }
 });
 
 const neonPool = new Pool({ 
     connectionString: process.env.NEON_DB_URL + "?sslmode=verify-full",
-    max: 50,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    max: CONFIG.concurrency,
+    idleTimeoutMillis: 60000,
+    connectionTimeoutMillis: 10000,
     keepAlive: true
 });
 
 const initFirebase = () => {
     if (admin.apps.length) return admin.firestore();
     try {
+        const cert = JSON.parse(process.env.FIREBASE_KEY);
         admin.initializeApp({
-            credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY)),
+            credential: admin.credential.cert(cert),
             databaseURL: process.env.FIREBASE_DB_URL
         });
         const db = admin.firestore();
         db.settings({ ignoreUndefinedProperties: true, preferRest: true });
         return db;
     } catch (e) {
+        process.stderr.write(`[FIREBASE_INIT_ERR] ${e.message}\n`);
         return null;
     }
 };
@@ -54,7 +57,7 @@ async function callGeminiNeural(prompt) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
         const response = await axios.post(url, { 
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.2, maxOutputTokens: 2048 }
+            generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
         }, { timeout: CONFIG.timeout });
         return response.data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
     } catch (err) {
@@ -83,11 +86,11 @@ async function syncParity() {
             id: n.id,
             data: n.data,
             synced_at: syncTime,
-            logic_hash: require('crypto').createHash('md5').update(JSON.stringify(n.data)).digest('hex').substring(0, 16)
+            logic_hash: crypto.createHash('sha256').update(JSON.stringify(n.data)).digest('hex').substring(0, 16)
         }));
 
         const { error: supError } = await supabase.from('neurons').upsert(payload, { onConflict: 'id' });
-        if (supError) throw supError;
+        if (supError) throw new Error(`Supabase Parity Error: ${supError.message}`);
 
         if (db) {
             const batch = db.batch();
@@ -97,10 +100,10 @@ async function syncParity() {
                     status: 'synchronized', 
                     last_sync: admin.firestore.FieldValue.serverTimestamp(),
                     integrity: true,
-                    v: n.evolved_at ? Buffer.from(n.evolved_at.toString()).toString('base64').substring(0, 8) : '0'
+                    v: n.evolved_at ? Buffer.from(n.evolved_at.toString()).toString('base64').substring(0, 12) : '0'
                 }, { merge: true });
             });
-            await batch.commit();
+            await batch.commit().catch(e => process.stderr.write(`[FIREBASE_BATCH_ERR] ${e.message}\n`));
         }
 
         await client.query("UPDATE neurons SET synced_at = $1 WHERE id = ANY($2)", [syncTime, neonData.map(n => n.id)]);
@@ -108,7 +111,6 @@ async function syncParity() {
         return neonData.length;
     } catch (err) {
         await client.query('ROLLBACK');
-        process.stderr.write(`[PARITY_FAILURE] ${err.message}\n`);
         throw err;
     } finally {
         client.release();
@@ -119,9 +121,9 @@ async function evolveCore() {
     try {
         const { data: corePy } = await octokit.repos.getContent({ owner: CONFIG.owner, repo: CONFIG.core, path: 'main.py' });
         const content = Buffer.from(corePy.content, 'base64').toString();
-        const evolved = await callGeminiNeural(`Optimize this Python code for maximum throughput. Return ONLY raw code.\n\n${content}`);
+        const evolved = await callGeminiNeural(`Optimize this Python code for maximum throughput and memory efficiency. Return ONLY raw code without markdown blocks.\n\n${content}`);
         
-        if (evolved && evolved.length > 50) {
+        if (evolved && evolved.length > 100) {
             const cleanCode = evolved.replace(/python|/g, "").trim();
             if (cleanCode !== content) {
                 await octokit.repos.createOrUpdateFileContents({
@@ -140,28 +142,29 @@ async function evolveCore() {
 async function manageSwarm() {
     if (!db) return;
     try {
-        const snapshot = await db.collection('cluster_nodes').limit(100).get();
+        const snapshot = await db.collection('cluster_nodes').orderBy('api_remaining', 'desc').limit(50).get();
         let totalApi = 0;
-        snapshot.forEach(doc => totalApi += (doc.data().api_remaining || 5000));
+        snapshot.forEach(doc => totalApi += (doc.data().api_remaining || 0));
         const avgApi = snapshot.size > 0 ? totalApi / snapshot.size : 5000;
 
         const decision = {
-            command: avgApi > 4000 ? "HYPER_EXPANSION" : (avgApi < 1500 ? "STEALTH_LOCKDOWN" : "NORMAL_GROWTH"),
-            replicate: avgApi > 3000 && snapshot.size < 100,
-            timestamp: new Date().toISOString()
+            command: avgApi > 4000 ? "HYPER_EXPANSION" : (avgApi < 1000 ? "STEALTH_LOCKDOWN" : "NORMAL_GROWTH"),
+            replicate: avgApi > 3500 && snapshot.size < 200,
+            timestamp: new Date().toISOString(),
+            load_factor: (1 - (avgApi / 5000)).toFixed(4)
         };
 
         const { data: instFile } = await octokit.repos.getContent({ owner: CONFIG.owner, repo: CONFIG.core, path: 'instruction.json' });
         await octokit.repos.createOrUpdateFileContents({
             owner: CONFIG.owner, repo: CONFIG.core, path: 'instruction.json',
-            message: `🧠 Decision: ${decision.command}`,
+            message: `🧠 Decision: ${decision.command} | Load: ${decision.load_factor}`,
             content: Buffer.from(JSON.stringify(decision, null, 2)).toString('base64'),
             sha: instFile.sha
         });
 
         if (decision.replicate) {
-            const nodeName = `swarm-${Math.random().toString(36).substring(2, 10)}`;
-            await octokit.repos.createForAuthenticatedUser({ name: nodeName, auto_init: true });
+            const nodeName = `swarm-${crypto.randomBytes(4).toString('hex')}`;
+            await octokit.repos.createForAuthenticatedUser({ name: nodeName, auto_init: true, private: true });
         }
     } catch (e) {
         process.stderr.write(`[SWARM_ERROR] ${e.message}\n`);
@@ -186,7 +189,7 @@ async function execute() {
         process.stderr.write(`[FATAL] ${err.stack}\n`);
     } finally {
         await neonPool.end();
-        process.nextTick(() => process.exit(0));
+        setTimeout(() => process.exit(0), 100);
     }
 }
 
