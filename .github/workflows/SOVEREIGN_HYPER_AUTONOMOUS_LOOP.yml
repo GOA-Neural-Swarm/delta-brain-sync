@@ -81,7 +81,8 @@ jobs:
         run: |
           # 1. INGESTION & PURIFICATION
           if [ -f "main.py" ]; then
-            OLD_CODE=$(python3 -c "import json; print(json.dumps(open('main.py').read()))")
+            # Robust JSON capture to handle special characters
+            OLD_CODE=$(python3 -c "import json, sys; print(json.dumps(open('main.py').read()))")
             echo "🧠 [MEMORY-LOADED]: Previous brain state captured."
           else
             OLD_CODE="\"# No prior logic found. Initializing Genesis.\""
@@ -96,24 +97,24 @@ jobs:
           EVOLUTION_SUCCESS=false
           for i in {1..3}; do
             echo "🧬 [EVOLUTION-CYCLE $i/3]: Calling Sovereign Architect..."
-
-            # --- 🔱 ATTEMPT 1: GEMINI 1.5 PRO/FLASH (Primary Architect) ---
+            
+            # --- 🔱 ATTEMPT 1: GEMINI 2.0 FLASH (Primary Architect) ---
             echo "📡 [GEMINI-CHANNEL]: Requesting deep architectural rewrite..."
             
-            # Constructing Gemini Payload
             GEMINI_PAYLOAD=$(jq -n \
               --arg sys "$SYSTEM_ROLE" \
               --arg code "$OLD_CODE" \
               --arg task "$HYPER_PROMPT" \
-              '{contents: [{parts: [{text: ($sys + "\n\nCURRENT_CODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.4}}')
+              '{contents: [{parts: [{text: ($sys + "\n\nCURRENT_CODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.4, maxOutputTokens: 8192}}')
 
             GEMINI_RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" \
               -H "Content-Type: application/json" \
               -d "$GEMINI_PAYLOAD")
 
-            CONTENT=$(echo "$GEMINI_RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty' | sed 's/```python//g; s/```//g')
+            # Improved cleaning: Handles markdown blocks and non-printable characters
+            CONTENT=$(echo "$GEMINI_RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty' | sed -E 's/^```python//; s/^```//; s/```$//; s/\xc2\xa0/ /g')
 
-            # --- 🔱 ATTEMPT 2: GROQ FALLBACK (If Gemini fails or is empty) ---
+            # --- 🔱 ATTEMPT 2: GROQ FALLBACK ---
             if [ -z "$CONTENT" ] || [ ${#CONTENT} -lt 300 ]; then
               echo "⚠️ [GEMINI-FAIL]: Signal weak. Falling back to Groq Expert Coder..."
               
@@ -121,19 +122,21 @@ jobs:
                 --arg sys "$SYSTEM_ROLE" \
                 --arg code "$OLD_CODE" \
                 --arg task "$HYPER_PROMPT" \
-                '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CURRENT_CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.4}')
+                '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CURRENT_CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.4, max_tokens: 4096}')
 
-              GROQ_RESPONSE=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" \
+              GROQ_RESPONSE=$(curl -s -X POST "[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)" \
                 -H "Authorization: Bearer $GROQ_API_KEY" \
                 -H "Content-Type: application/json" \
                 -d "$GROQ_PAYLOAD")
 
-              CONTENT=$(echo "$GROQ_RESPONSE" | jq -r '.choices[0].message.content // empty' | sed 's/```python//g; s/```//g')
+              CONTENT=$(echo "$GROQ_RESPONSE" | jq -r '.choices[0].message.content // empty' | sed -E 's/^```python//; s/^```//; s/```$//; s/\xc2\xa0/ /g')
             fi
 
             # --- 🔱 VALIDATION & STABILIZATION ---
             if [ ! -z "$CONTENT" ] && [ ${#CONTENT} -gt 300 ]; then
-              echo "$CONTENT" > candidate_main.py
+              # Safe write using printf
+              printf "%s\n" "$CONTENT" > candidate_main.py
+              
               if python3 -m py_compile candidate_main.py; then
                 mv candidate_main.py main.py
                 echo "✅ [HYPER-STABILIZED]: Brain successfully evolved and verified via Hybrid Logic."
@@ -141,7 +144,7 @@ jobs:
                 break
               else
                 echo "⚠️ [SYNTAX-HALUCINATION]: Code failed compilation. Retrying cycle $i..."
-                rm candidate_main.py
+                rm -f candidate_main.py
               fi
             else
               echo "❌ [SIGNAL-LOST]: Cycle $i failed to produce valid genetic material."
