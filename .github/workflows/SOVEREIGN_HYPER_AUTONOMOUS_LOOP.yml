@@ -79,6 +79,13 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
+          # 0. PRE-FLIGHT CHECK
+          echo "🔍 Checking workspace integrity..."
+          ls -la
+          if [ ! -f "survival_brain.py" ]; then
+            echo "⚠️ [WARNING]: survival_brain.py not found in root. Emergency fallback disabled."
+          fi
+          
           # 1. INGESTION & PURIFICATION
           if [ -f "main.py" ]; then
             # Robust JSON capture to handle special characters
