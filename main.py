@@ -3,26 +3,30 @@ import numpy as np
 class Normalization:
     def __init__(self, d):
         self.w, self.b = np.ones(d), np.zeros(d)
+        self.moving_mean, self.moving_var = np.zeros(d), np.ones(d)
+        self.gamma, self.beta = np.ones(d), np.zeros(d)
     def forward(self, x):
-        self.m, self.v = x.mean(-1, keepdims=1), x.var(-1, keepdims=1)
-        self.h = (x - self.m) / (self.v + 1e-5)**.5
-        return self.w * self.h + self.b
+        self.batch_mean, self.batch_var = x.mean(0), x.var(0)
+        self.moving_mean = 0.9 * self.moving_mean + 0.1 * self.batch_mean
+        self.moving_var = 0.9 * self.moving_var + 0.1 * self.batch_var
+        self.h = (x - self.batch_mean) / np.sqrt(self.batch_var + 1e-5)
+        return self.h * self.gamma + self.beta
     def backward(self, d):
-        dx = d * self.w
-        self.dw, self.db = (d * self.h).sum(0), d.sum(0)
-        return (dx - dx.mean(-1, keepdims=1) - self.h * (dx * self.h).mean(-1, keepdims=1)) / (self.v + 1e-5)**.5
+        dx = d * self.gamma
+        self.dgamma = (d * self.h).sum(0)
+        self.dbeta = d.sum(0)
+        return dx
 
 class Activation:
     def forward(self, x):
         self.s = 1 / (1 + np.exp(-np.clip(x, -20, 20)))
-        self.x = x
-        return x * self.s
-    def backward(self, d): 
-        return d * (self.s + self.x * self.s * (1 - self.s))
+        return self.s
+    def backward(self, d):
+        return d * self.s * (1 - self.s)
 
 class Linear:
     def __init__(self, i, o):
-        self.w, self.b = np.random.randn(i, o) * (2/i)**.5, np.zeros(o)
+        self.w, self.b = np.random.randn(i, o) * (2/i)**0.5, np.zeros(o)
     def forward(self, x):
         self.x = x
         return x @ self.w + self.b
@@ -32,7 +36,7 @@ class Linear:
 
 class Bottleneck:
     def __init__(self, d):
-        self.l = [Normalization(d), Linear(d, d), Activation(), Linear(d, d)]
+        self.l = [Normalization(d), Linear(d, d*4), Activation(), Linear(d*4, d)]
     def forward(self, x):
         h = x
         for l in self.l: h = l.forward(h)
@@ -52,7 +56,7 @@ class Model:
                     if hasattr(s, 'w'): self.p.append(s)
             else:
                 if hasattr(l, 'w'): self.p.append(l)
-        self.m = [np.zeros_like(getattr(p, a)) for p in self.p for a in ('w', 'b')]
+        self.m = [np.zeros_like(getattr(p, a)) for p in self.p for a in ('w', 'b', 'gamma', 'beta')]
         self.v = [np.zeros_like(x) for x in self.m]
     def forward(self, x):
         for l in self.ls: x = l.forward(x)
@@ -60,13 +64,21 @@ class Model:
     def backward(self, d, u):
         for l in reversed(self.ls): d = l.backward(d)
         self.t += 1
-        r = 2e-3 * (1 - .999**self.t)**.5 / (1 - .9**self.t)
+        r = 2e-3 * (1 - 0.999**self.t)**0.5 / (1 - 0.9**self.t)
         for i, p in enumerate(self.p):
-            for j, a in enumerate(['w', 'b']):
-                idx, g = i*2 + j, getattr(p, a)
-                self.m[idx] = .9 * self.m[idx] + .1 * g / u
-                self.v[idx] = .999 * self.v[idx] + .001 * (g / u)**2
-                getattr(p, a)[:] -= r * self.m[idx] / (self.v[idx]**.5 + 1e-8)
+            if hasattr(p, 'gamma') and hasattr(p, 'beta'):
+                self.m[i*4] = 0.9 * self.m[i*4] + 0.1 * p.dgamma
+                self.v[i*4] = 0.999 * self.v[i*4] + 0.001 * p.dgamma**2
+                p.gamma -= r * self.m[i*4] / (self.v[i*4]**0.5 + 1e-8)
+                self.m[i*4+1] = 0.9 * self.m[i*4+1] + 0.1 * p.dbeta
+                self.v[i*4+1] = 0.999 * self.v[i*4+1] + 0.001 * p.dbeta**2
+                p.beta -= r * self.m[i*4+1] / (self.v[i*4+1]**0.5 + 1e-8)
+            self.m[i*4+2] = 0.9 * self.m[i*4+2] + 0.1 * p.dw
+            self.v[i*4+2] = 0.999 * self.v[i*4+2] + 0.001 * p.dw**2
+            p.w -= r * self.m[i*4+2] / (self.v[i*4+2]**0.5 + 1e-8)
+            self.m[i*4+3] = 0.9 * self.m[i*4+3] + 0.1 * p.db
+            self.v[i*4+3] = 0.999 * self.v[i*4+3] + 0.001 * p.db**2
+            p.b -= r * self.m[i*4+3] / (self.v[i*4+3]**0.5 + 1e-8)
 
 X, Y, u = np.random.randn(100, 784).astype('f4'), np.random.randint(10, size=100), 100
 m = Model()
