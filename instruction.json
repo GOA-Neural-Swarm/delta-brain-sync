@@ -1,5 +1,7 @@
 {
   "command": "HYPER_EXPANSION",
-  "replicate": false,
-  "timestamp": "2026-03-30T16:39:51.703Z"
+  "core_power": 221,
+  "avg_api": 4989.93934557063,
+  "replicate": true,
+  "updated_at": "2026-03-30T18:04:04.803Z"
 }
