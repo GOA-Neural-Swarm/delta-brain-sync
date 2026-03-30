@@ -43,7 +43,7 @@ class Swish:
 class Linear:
     def __init__(self, i, o):
         self.w = np.random.randn(i, o).astype(np.float32) * (2/i)**.5
-        self.b = np.zeros((1, o), 32)
+        self.b = np.zeros((1, o), dtype=np.float32)
     def forward(self, x):
         self.x = x
         return x @ self.w + self.b
@@ -63,12 +63,40 @@ class Block:
         for l in reversed(self.layers): dh = l.backward(dh)
         return dh + d
 
+class Gemini:
+    def __init__(self, d):
+        self.layers = [LN(d), Linear(d, d), Swish(), Linear(d, d)]
+    def forward(self, x):
+        h = x
+        for l in self.layers: h = l.forward(h)
+        return h + x
+    def backward(self, d):
+        dh = d
+        for l in reversed(self.layers): dh = l.backward(dh)
+        return dh + d
+
+class Groq:
+    def __init__(self, d):
+        self.layers = [LN(d), Linear(d, d), Swish(), Linear(d, d)]
+    def forward(self, x):
+        h = x
+        for l in self.layers: h = l.forward(h)
+        return h + x
+    def backward(self, d):
+        dh = d
+        for l in reversed(self.layers): dh = l.backward(dh)
+        return dh + d
+
 class Engine:
     def __init__(self, i=784, h=256, o=10, n=3):
         self.net = [Linear(i, h)] + [Block(h) for _ in range(n)] + [Linear(h, o)]
+        self.gemini = Gemini(h)
+        self.groq = Groq(h)
         self.flat = []
         for l in self.net:
             self.flat.extend(l.layers if hasattr(l, 'layers') else [l])
+        self.flat.extend(self.gemini.layers)
+        self.flat.extend(self.groq.layers)
         self.p = []
         for l in self.flat:
             if hasattr(l, 'w'): self.p += [l.w, l.b]
@@ -77,9 +105,13 @@ class Engine:
 
     def forward(self, x):
         for l in self.net: x = l.forward(x)
+        x = self.gemini.forward(x)
+        x = self.groq.forward(x)
         return x
 
     def backward(self, d):
+        d = self.groq.backward(d)
+        d = self.gemini.backward(d)
         for l in reversed(self.net): d = l.backward(d)
         g = []
         for l in self.flat:
