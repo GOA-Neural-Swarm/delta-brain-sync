@@ -75,7 +75,7 @@ jobs:
             --arg task "$HYPER_PROMPT" \
             '{contents: [{parts: [{text: ($sys + "\n\nCURRENT_LOGIC:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.2}}')
 
-          GEMINI_RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=$GEMINI_API_KEY" \
+          GEMINI_RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" \
             -H "Content-Type: application/json" \
             -d "$GEMINI_PAYLOAD")
 
