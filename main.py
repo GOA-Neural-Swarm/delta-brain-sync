@@ -131,15 +131,37 @@ class ModularNeuralArchitecture:
             grads.extend(l.get_grads())
         self.optimizer.step(self.params, grads)
 
+class Gemini:
+    def __init__(self, model):
+        self.model = model
+
+    def forward(self, x):
+        return self.model.forward(x)
+
+    def backward(self, dout):
+        return self.model.backward(dout)
+
+class Groq:
+    def __init__(self, model):
+        self.model = model
+
+    def forward(self, x):
+        return self.model.forward(x)
+
+    def backward(self, dout):
+        return self.model.backward(dout)
+
 class SovereignEngine:
     def __init__(self, in_d=784, h_d=256, out_d=10):
         self.modular_neural_architecture = ModularNeuralArchitecture(in_d, h_d, out_d)
+        self.gemini = Gemini(self.modular_neural_architecture)
+        self.groq = Groq(self.modular_neural_architecture)
         
     def forward(self, x):
-        return self.modular_neural_architecture.forward(x)
+        return self.gemini.forward(x)
 
     def backward(self, dout):
-        self.modular_neural_architecture.backward(dout)
+        return self.groq.backward(dout)
 
 def train_evolution():
     np.random.seed(0)
