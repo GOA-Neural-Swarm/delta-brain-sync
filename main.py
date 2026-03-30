@@ -73,55 +73,7 @@ class Linear:
     def get_params(self): return [self.W, self.b]
     def get_grads(self): return [self.dW, self.db]
 
-class ResidualBlock:
-    def __init__(self, dim):
-        self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim)
-        self.act = Swish()
-        self.l2 = Linear(dim, dim)
-
-    def forward(self, x):
-        self.res = x
-        h = self.ln.forward(x)
-        h = self.l1.forward(h)
-        h = self.act.forward(h)
-        h = self.l2.forward(h)
-        return h + x
-
-    def backward(self, dout):
-        dh = self.l2.backward(dout)
-        dh = self.act.backward(dh)
-        dh = self.l1.backward(dh)
-        dh = self.ln.backward(dh)
-        return dh + dout
-
-    def get_layers(self): return [self.ln, self.l1, self.l2]
-
-class Gemini:
-    def __init__(self, dim):
-        self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim)
-        self.act = Swish()
-        self.l2 = Linear(dim, dim)
-
-    def forward(self, x):
-        self.res = x
-        h = self.ln.forward(x)
-        h = self.l1.forward(h)
-        h = self.act.forward(h)
-        h = self.l2.forward(h)
-        return h + x
-
-    def backward(self, dout):
-        dh = self.l2.backward(dout)
-        dh = self.act.backward(dh)
-        dh = self.l1.backward(dh)
-        dh = self.ln.backward(dh)
-        return dh + dout
-
-    def get_layers(self): return [self.ln, self.l1, self.l2]
-
-class Groq:
+class ModularBlock:
     def __init__(self, dim):
         self.ln = LayerNorm(dim)
         self.l1 = Linear(dim, dim)
@@ -146,14 +98,14 @@ class Groq:
     def get_layers(self): return [self.ln, self.l1, self.l2]
 
 class SovereignEngine:
-    def __init__(self, in_d=784, h_d=256, out_d=10):
+    def __init__(self, in_d=784, h_d=256, out_d=10, num_blocks=3):
         self.layers = [
             Linear(in_d, h_d),
-            ResidualBlock(h_d),
-            Gemini(h_d),
-            Groq(h_d),
-            Linear(h_d, out_d)
         ]
+        for _ in range(num_blocks):
+            self.layers.append(ModularBlock(h_d))
+        self.layers.append(Linear(h_d, out_d))
+        
         self.flat_layers = []
         for l in self.layers:
             if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
@@ -179,7 +131,7 @@ def train_evolution():
     X = np.random.randn(100, 784).astype(np.float32)
     Y = np.random.randint(0, 10, 100)
     
-    model = SovereignEngine(784, 128, 10)
+    model = SovereignEngine(784, 128, 10, num_blocks=3)
     
     print("PHASE: RECURSIVE_EVOLUTION_START")
     for epoch in range(100):
