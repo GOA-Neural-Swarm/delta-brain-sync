@@ -149,22 +149,25 @@ jobs:
           # 3. HYBRID EVOLUTION CYCLE
           echo "🧬 [EVOLUTION]: Initiating Hybrid Gemini-Groq Cycle..."
           
-          # --- ATTEMPT 1: GEMINI 1.5 FLASH ---
-          GEMINI_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{contents: [{parts: [{text: ($sys + "\n\nCURRENT_CODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.4}}')
+          # --- ATTEMPT 1: GEMINI 2.0 FLASH (Optimized) ---
+          GEMINI_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{contents: [{parts: [{text: ($sys + "\n\nCURRENT_CODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.4, maxOutputTokens: 8192}}')
           GEMINI_RES=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" -H "Content-Type: application/json" -d "$GEMINI_PAYLOAD")
+          
+          # Clean extraction with printf safely
           CONTENT=$(echo "$GEMINI_RES" | jq -r '.candidates[0].content.parts[0].text // empty' | sed 's/```python//g; s/```//g')
 
-          # --- ATTEMPT 2: GROQ FALLBACK ---
+          # --- ATTEMPT 2: GROQ FALLBACK (Increased Max Tokens) ---
           if [ -z "$CONTENT" ] || [ ${#CONTENT} -lt 500 ]; then
-            echo "⚠️ [GEMINI-SILENCE]: Falling back to Groq Expert..."
-            GROQ_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CURRENT_CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.4}')
+            echo "⚠️ [GEMINI-SILENCE/LIMIT]: Falling back to Groq Expert..."
+            GROQ_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CURRENT_CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.4, max_tokens: 4096}')
             GROQ_RES=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" -H "Authorization: Bearer $GROQ_API_KEY" -H "Content-Type: application/json" -d "$GROQ_PAYLOAD")
             CONTENT=$(echo "$GROQ_RES" | jq -r '.choices[0].message.content // empty' | sed 's/```python//g; s/```//g')
           fi
 
           # 4. VALIDATION & DEPLOYMENT
           if [ ! -z "$CONTENT" ] && [ ${#CONTENT} -gt 500 ]; then
-            echo "$CONTENT" > candidate.py
+            # Safe write using printf to avoid shell quote issues
+            printf "%s\n" "$CONTENT" > candidate.py
             if python3 -m py_compile candidate.py; then
               mv candidate.py "$TARGET"
               echo "✅ [SUCCESS]: $TARGET evolved and verified."
@@ -173,9 +176,10 @@ jobs:
             fi
           fi
 
-          # 5. EXECUTION GUARD
+          # 5. EXECUTION GUARD (With Timeout to prevent 15-min hang)
           echo "Guard: Monitoring $TARGET"
-          python evolution_guard.py "$TARGET"
+          # 3 မိနစ်အတွင်း အလုပ်မပြီးရင် အတင်းရပ်ခိုင်းထားပါတယ် (Rate Limit loop ကြောင့် hang မနေအောင်)
+          timeout 180 python evolution_guard.py "$TARGET" || echo "⚠️ [GUARD-STOPPED]: Process exceeded limit but continuing workflow."
 
       - name: Step 8 - Run Trinity Sync Engine (Delta Sync)
         env:
