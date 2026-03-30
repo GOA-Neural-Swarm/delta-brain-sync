@@ -1,5 +1,4 @@
 import numpy as np
-import time
 
 class AdamW:
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
