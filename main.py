@@ -121,6 +121,54 @@ class HighPerformanceBlock:
 
     def get_layers(self): return [self.ln, self.l1, self.l2]
 
+class GeminiBlock:
+    def __init__(self, dim):
+        self.ln = LayerNorm(dim)
+        self.l1 = Linear(dim, dim)
+        self.act = Swish()
+        self.l2 = Linear(dim, dim)
+
+    def forward(self, x):
+        self.res = x
+        h = self.ln.forward(x)
+        h = self.l1.forward(h)
+        h = self.act.forward(h)
+        h = self.l2.forward(h)
+        return h + x
+
+    def backward(self, dout):
+        dh = self.l2.backward(dout)
+        dh = self.act.backward(dh)
+        dh = self.l1.backward(dh)
+        dh = self.ln.backward(dh)
+        return dh + dout
+
+    def get_layers(self): return [self.ln, self.l1, self.l2]
+
+class GroqBlock:
+    def __init__(self, dim):
+        self.ln = LayerNorm(dim)
+        self.l1 = Linear(dim, dim)
+        self.act = Swish()
+        self.l2 = Linear(dim, dim)
+
+    def forward(self, x):
+        self.res = x
+        h = self.ln.forward(x)
+        h = self.l1.forward(h)
+        h = self.act.forward(h)
+        h = self.l2.forward(h)
+        return h + x
+
+    def backward(self, dout):
+        dh = self.l2.backward(dout)
+        dh = self.act.backward(dh)
+        dh = self.l1.backward(dh)
+        dh = self.ln.backward(dh)
+        return dh + dout
+
+    def get_layers(self): return [self.ln, self.l1, self.l2]
+
 class SovereignEngine:
     def __init__(self, in_d=784, h_d=256, out_d=10, num_blocks=3):
         self.layers = [
@@ -128,6 +176,8 @@ class SovereignEngine:
         ]
         for _ in range(num_blocks):
             self.layers.append(HighPerformanceBlock(h_d))
+            self.layers.append(GeminiBlock(h_d))
+            self.layers.append(GroqBlock(h_d))
         self.layers.append(Linear(h_d, out_d))
         
         self.flat_layers = []
