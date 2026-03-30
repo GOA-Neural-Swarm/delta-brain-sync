@@ -1,4 +1,3 @@
-
 import numpy as np
 import time
 
@@ -54,7 +53,6 @@ class Swish:
         self.x = x
         self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
         return x * self.sig
-
     def backward(self, dout):
         return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
 
@@ -97,10 +95,10 @@ class ResidualBlock:
         dh = self.ln.backward(dh)
         return dh + dout
 
-    def get_layers(self): return [self.ln, self.l1, self.act, self.l2]
+    def get_layers(self): return [self.ln, self.l1, self.l2]
 
-class ModularNeuralNetwork:
-    def __init__(self, in_d, h_d, out_d):
+class SovereignEngine:
+    def __init__(self, in_d=784, h_d=256, out_d=10):
         self.layers = [
             Linear(in_d, h_d),
             ResidualBlock(h_d),
@@ -111,10 +109,9 @@ class ModularNeuralNetwork:
         for l in self.layers:
             if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
             else: self.flat_layers.append(l)
-
+        
         params = []
-        for l in self.flat_layers: 
-            if hasattr(l, 'get_params'): params.extend(l.get_params())
+        for l in self.flat_layers: params.extend(l.get_params())
         self.params = params
         self.optimizer = AdamW(self.params, lr=2e-3)
 
@@ -125,64 +122,35 @@ class ModularNeuralNetwork:
     def backward(self, dout):
         for l in reversed(self.layers): dout = l.backward(dout)
         grads = []
-        for l in self.flat_layers: 
-            if hasattr(l, 'get_grads'): grads.extend(l.get_grads())
+        for l in self.flat_layers: grads.extend(l.get_grads())
         self.optimizer.step(self.params, grads)
 
-class Gemini:
-    def __init__(self, model):
-        self.model = model
-
-    def forward(self, x):
-        return self.model.forward(x)
-
-    def backward(self, dout):
-        return self.model.backward(dout)
-
-class Groq:
-    def __init__(self, model):
-        self.model = model
-
-    def forward(self, x):
-        return self.model.forward(x)
-
-    def backward(self, dout):
-        return self.model.backward(dout)
-
-class SovereignEngine:
-    def __init__(self, in_d=784, h_d=256, out_d=10):
-        self.model = ModularNeuralNetwork(in_d, h_d, out_d)
-        self.gemini = Gemini(self.model)
-        self.groq = Groq(self.model)
-
-    def forward(self, x):
-        return self.gemini.forward(x)
-
-    def backward(self, dout):
-        return self.groq.backward(dout)
-
 def train_evolution():
+    # Synthetic Data Generation (100 samples, 784 features)
     X = np.random.randn(100, 784).astype(np.float32)
     Y = np.random.randint(0, 10, 100)
-
+    
     model = SovereignEngine(784, 128, 10)
-
+    
     print("PHASE: RECURSIVE_EVOLUTION_START")
     for epoch in range(100):
+        # Forward
         logits = model.forward(X)
-
+        
+        # Softmax Cross-Entropy
         ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
         probs = ex / np.sum(ex, axis=1, keepdims=True)
-
+        
         loss = -np.mean(np.log(probs[range(100), Y] + 1e-10))
         acc = np.mean(np.argmax(probs, axis=1) == Y)
-
+        
+        # Backward
         d_logits = probs.copy()
         d_logits[range(100), Y] -= 1
         d_logits /= 100
-
+        
         model.backward(d_logits)
-
+        
         if epoch % 10 == 0:
             print(f"EPOCH:{epoch:03d} | LOSS:{loss:.4f} | ACC:{acc:.4f}")
 
