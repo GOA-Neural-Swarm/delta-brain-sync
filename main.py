@@ -121,31 +121,7 @@ class HighPerformanceBlock:
 
     def get_layers(self): return [self.ln, self.l1, self.l2]
 
-class GeminiBlock:
-    def __init__(self, dim):
-        self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim)
-        self.act = Swish()
-        self.l2 = Linear(dim, dim)
-
-    def forward(self, x):
-        self.res = x
-        h = self.ln.forward(x)
-        h = self.l1.forward(h)
-        h = self.act.forward(h)
-        h = self.l2.forward(h)
-        return h + x
-
-    def backward(self, dout):
-        dh = self.l2.backward(dout)
-        dh = self.act.backward(dh)
-        dh = self.l1.backward(dh)
-        dh = self.ln.backward(dh)
-        return dh + dout
-
-    def get_layers(self): return [self.ln, self.l1, self.l2]
-
-class GroqBlock:
+class IntegratedBlock:
     def __init__(self, dim):
         self.ln = LayerNorm(dim)
         self.l1 = Linear(dim, dim)
@@ -175,11 +151,11 @@ class SovereignEngine:
             Linear(in_d, h_d),
         ]
         for _ in range(num_blocks):
-            self.layers.append(ModularBlock(h_d))
+            self.layers.append(IntegratedBlock(h_d))
         self.layers.append(Linear(h_d, out_d))
         
         self.flat_layers = []
-        for l in self.layers:
+        for l in self.layers: 
             if hasattr(l, 'get_layers'): 
                 self.flat_layers.extend(l.get_layers())
             else: 
@@ -197,7 +173,7 @@ class SovereignEngine:
 
     def forward(self, x):
         for l in self.layers: 
-            if isinstance(l, ModularBlock): 
+            if isinstance(l, IntegratedBlock): 
                 x = l.forward(x)
             else: 
                 x = l.forward(x)
@@ -205,7 +181,7 @@ class SovereignEngine:
 
     def backward(self, dout):
         for l in reversed(self.layers): 
-            if isinstance(l, ModularBlock): 
+            if isinstance(l, IntegratedBlock): 
                 dout = l.backward(dout)
             else: 
                 dout = l.backward(dout)
