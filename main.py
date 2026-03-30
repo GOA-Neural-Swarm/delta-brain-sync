@@ -1,229 +1,106 @@
 import numpy as np
 
 class AdamW:
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
-        self.lr = lr
-        self.beta1, self.beta2 = betas
-        self.eps = eps
-        self.wd = wd
-        self.m = [np.zeros_like(p) for p in params]
-        self.v = [np.zeros_like(p) for p in params]
-        self.t = 0
+    def __init__(self, p, lr=1e-3, b=(.9, .999), e=1e-8, wd=.01):
+        self.p, self.lr, self.b1, self.b2, self.e, self.wd, self.t = p, lr, b[0], b[1], e, wd, 0
+        self.m = [np.zeros_like(x) for x in p]
+        self.v = [np.zeros_like(x) for x in p]
 
-    def step(self, params, grads):
+    def step(self, g):
         self.t += 1
-        for i in range(len(params)):
-            params[i] -= self.lr * self.wd * params[i]
-            self.m[i] = self.beta1 * self.m[i] + (1 - self.beta1) * grads[i]
-            self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * (grads[i]**2)
-            m_hat = self.m[i] / (1 - self.beta1**self.t)
-            v_hat = self.v[i] / (1 - self.beta2**self.t)
-            params[i] -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
+        at = self.lr * (1 - self.b2**self.t)**.5 / (1 - self.b1**self.t)
+        for i in range(len(self.p)):
+            self.p[i] -= self.lr * self.wd * self.p[i]
+            self.m[i] = self.b1 * self.m[i] + (1 - self.b1) * g[i]
+            self.v[i] = self.b2 * self.v[i] + (1 - self.b2) * g[i]**2
+            self.p[i] -= at * self.m[i] / (np.sqrt(self.v[i]) + self.e)
 
-class LayerNorm:
-    def __init__(self, dim, eps=1e-5):
-        self.gamma = np.ones((1, dim), dtype=np.float32)
-        self.beta = np.zeros((1, dim), dtype=np.float32)
-        self.eps = eps
+class LN:
+    def __init__(self, d):
+        self.g, self.b, self.e = np.ones((1, d)), np.zeros((1, d)), 1e-5
 
     def forward(self, x):
         self.x = x
-        self.mu = np.mean(x, axis=-1, keepdims=True)
-        self.var = np.var(x, axis=-1, keepdims=True)
-        self.std_inv = 1.0 / np.sqrt(self.var + self.eps)
-        self.x_hat = (x - self.mu) * self.std_inv
-        return self.gamma * self.x_hat + self.beta
+        self.u = x.mean(-1, keepdims=1)
+        self.s = x.var(-1, keepdims=1)
+        self.xh = (x - self.u) / np.sqrt(self.s + self.e)
+        return self.g * self.xh + self.b
 
-    def backward(self, dout):
-        B, D = dout.shape
-        dx_hat = dout * self.gamma
-        dvar = np.sum(dx_hat * (self.x - self.mu) * -0.5 * self.std_inv**3, axis=-1, keepdims=True)
-        dmu = np.sum(dx_hat * -self.std_inv, axis=-1, keepdims=True) + dvar * np.mean(-2.0 * (self.x - self.mu), axis=-1, keepdims=True)
-        dx = dx_hat * self.std_inv + dvar * 2.0 * (self.x - self.mu) / D + dmu / D
-        self.dgamma = np.sum(dout * self.x_hat, axis=0, keepdims=True)
-        self.dbeta = np.sum(dout, axis=0, keepdims=True)
-        return dx
-
-    def get_params(self): return [self.gamma, self.beta]
-    def get_grads(self): return [self.dgamma, self.dbeta]
+    def backward(self, d):
+        self.dg, self.db = (d * self.xh).sum(0, 1), d.sum(0, 1)
+        dxh = d * self.g
+        D = d.shape[-1]
+        return (dxh - dxh.mean(-1, 1) - self.xh * (dxh * self.xh).mean(-1, 1)) / np.sqrt(self.s + self.e)
 
 class Swish:
     def forward(self, x):
         self.x = x
-        self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
+        self.sig = 1 / (1 + np.exp(-np.clip(x, -20, 20)))
         return x * self.sig
-    def backward(self, dout):
-        return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
+    def backward(self, d):
+        return d * (self.sig + self.x * self.sig * (1 - self.sig))
 
 class Linear:
-    def __init__(self, in_d, out_d):
-        self.W = (np.random.randn(in_d, out_d) * np.sqrt(2.0 / in_d)).astype(np.float32)
-        self.b = np.zeros((1, out_d), dtype=np.float32)
-
+    def __init__(self, i, o):
+        self.w = np.random.randn(i, o).astype(np.float32) * (2/i)**.5
+        self.b = np.zeros((1, o), 32)
     def forward(self, x):
         self.x = x
-        return x @ self.W + self.b
+        return x @ self.w + self.b
+    def backward(self, d):
+        self.dw, self.db = self.x.T @ d, d.sum(0, 1)
+        return d @ self.w.T
 
-    def backward(self, dout):
-        self.dW = self.x.T @ dout
-        self.db = np.sum(dout, axis=0, keepdims=True)
-        return dout @ self.W.T
-
-    def get_params(self): return [self.W, self.b]
-    def get_grads(self): return [self.dW, self.db]
-
-class ModularBlock:
-    def __init__(self, dim):
-        self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim)
-        self.act = Swish()
-        self.l2 = Linear(dim, dim)
-
+class Block:
+    def __init__(self, d):
+        self.layers = [LN(d), Linear(d, d), Swish(), Linear(d, d)]
     def forward(self, x):
-        self.res = x
-        h = self.ln.forward(x)
-        h = self.l1.forward(h)
-        h = self.act.forward(h)
-        h = self.l2.forward(h)
+        h = x
+        for l in self.layers: h = l.forward(h)
         return h + x
+    def backward(self, d):
+        dh = d
+        for l in reversed(self.layers): dh = l.backward(dh)
+        return dh + d
 
-    def backward(self, dout):
-        dh = self.l2.backward(dout)
-        dh = self.act.backward(dh)
-        dh = self.l1.backward(dh)
-        dh = self.ln.backward(dh)
-        return dh + dout
-
-    def get_layers(self): return [self.ln, self.l1, self.l2]
-
-class HighPerformanceBlock:
-    def __init__(self, dim):
-        self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim)
-        self.act = Swish()
-        self.l2 = Linear(dim, dim)
-
-    def forward(self, x):
-        self.res = x
-        h = self.ln.forward(x)
-        h = self.l1.forward(h)
-        h = self.act.forward(h)
-        h = self.l2.forward(h)
-        return h + x
-
-    def backward(self, dout):
-        dh = self.l2.backward(dout)
-        dh = self.act.backward(dh)
-        dh = self.l1.backward(dh)
-        dh = self.ln.backward(dh)
-        return dh + dout
-
-    def get_layers(self): return [self.ln, self.l1, self.l2]
-
-class IntegratedBlock:
-    def __init__(self, dim):
-        self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim)
-        self.act = Swish()
-        self.l2 = Linear(dim, dim)
+class Engine:
+    def __init__(self, i=784, h=256, o=10, n=3):
+        self.net = [Linear(i, h)] + [Block(h) for _ in range(n)] + [Linear(h, o)]
+        self.flat = []
+        for l in self.net:
+            self.flat.extend(l.layers if hasattr(l, 'layers') else [l])
+        self.p = []
+        for l in self.flat:
+            if hasattr(l, 'w'): self.p += [l.w, l.b]
+            if hasattr(l, 'g'): self.p += [l.g, l.b]
+        self.opt = AdamW(self.p, 2e-3)
 
     def forward(self, x):
-        self.res = x
-        h = self.ln.forward(x)
-        h = self.l1.forward(h)
-        h = self.act.forward(h)
-        h = self.l2.forward(h)
-        return h + x
-
-    def backward(self, dout):
-        dh = self.l2.backward(dout)
-        dh = self.act.backward(dh)
-        dh = self.l1.backward(dh)
-        dh = self.ln.backward(dh)
-        return dh + dout
-
-    def get_layers(self): return [self.ln, self.l1, self.l2]
-
-class SovereignEngine:
-    def __init__(self, in_d=784, h_d=256, out_d=10, num_blocks=3):
-        self.layers = [
-            Linear(in_d, h_d),
-        ]
-        for _ in range(num_blocks):
-            self.layers.append(IntegratedBlock(h_d))
-        self.layers.append(Linear(h_d, out_d))
-        
-        self.flat_layers = []
-        for l in self.layers: 
-            if hasattr(l, 'get_layers'): 
-                self.flat_layers.extend(l.get_layers())
-            else: 
-                self.flat_layers.append(l)
-        
-        params = []
-        for l in self.flat_layers: 
-            if hasattr(l, 'get_params'): 
-                params.extend(l.get_params())
-            else: 
-                params.append(l.W)
-                params.append(l.b)
-        self.params = params
-        self.optimizer = AdamW(self.params, lr=2e-3)
-
-    def forward(self, x):
-        for l in self.layers: 
-            if isinstance(l, IntegratedBlock): 
-                x = l.forward(x)
-            else: 
-                x = l.forward(x)
+        for l in self.net: x = l.forward(x)
         return x
 
-    def backward(self, dout):
-        for l in reversed(self.layers): 
-            if isinstance(l, IntegratedBlock): 
-                dout = l.backward(dout)
-            else: 
-                dout = l.backward(dout)
-        grads = []
-        for l in self.flat_layers: 
-            if hasattr(l, 'get_grads'): 
-                grads.extend(l.get_grads())
-            else: 
-                grads.append(l.dW)
-                grads.append(l.db)
-        self.optimizer.step(self.params, grads)
+    def backward(self, d):
+        for l in reversed(self.net): d = l.backward(d)
+        g = []
+        for l in self.flat:
+            if hasattr(l, 'dw'): g += [l.dw, l.db]
+            if hasattr(l, 'dg'): g += [l.dg, l.db]
+        self.opt.step(g)
 
-def train_evolution():
-    # Synthetic Data Generation (100 samples, 784 features)
-    X = np.random.randn(100, 784).astype(np.float32)
-    Y = np.random.randint(0, 10, 100)
-    
-    model = SovereignEngine(784, 128, 10, num_blocks=3)
-    
-    print("PHASE: RECURSIVE_EVOLUTION_START")
-    for epoch in range(100):
-        # Forward
-        logits = model.forward(X)
-        
-        # Softmax Cross-Entropy
-        ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
-        probs = ex / np.sum(ex, axis=1, keepdims=True)
-        
-        loss = -np.mean(np.log(probs[range(100), Y] + 1e-10))
-        acc = np.mean(np.argmax(probs, axis=1) == Y)
-        
-        # Backward
-        d_logits = probs.copy()
-        d_logits[range(100), Y] -= 1
-        d_logits /= 100
-        
-        model.backward(d_logits)
-        
-        if epoch % 10 == 0:
-            print(f"EPOCH:{epoch:03d} | LOSS:{loss:.4f} | ACC:{acc:.4f}")
-
-    print("PHASE: EVOLUTION_SUCCESS")
-    print("MODEL_STATUS: OPTIMIZED")
+def train():
+    X, Y = np.random.randn(100, 784).astype(np.float32), np.random.randint(0, 10, 100)
+    m = Engine(784, 128, 10, 3)
+    for e in range(101):
+        logits = m.forward(X)
+        ex = np.exp(logits - logits.max(1, keepdims=1))
+        p = ex / ex.sum(1, keepdims=1)
+        loss = -np.mean(np.log(p[range(100), Y] + 1e-10))
+        dl = p.copy()
+        dl[range(100), Y] -= 1
+        m.backward(dl / 100)
+        if e % 10 == 0:
+            acc = (p.argmax(1) == Y).mean()
+            print(f"E:{e:03} | L:{loss:.4f} | A:{acc:.4f}")
 
 if __name__ == "__main__":
-    train_evolution()
+    train()
