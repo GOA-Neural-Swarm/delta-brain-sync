@@ -79,13 +79,6 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          # 0. PRE-FLIGHT CHECK
-          echo "🔍 Checking workspace integrity..."
-          ls -la
-          if [ ! -f "survival_brain.py" ]; then
-            echo "⚠️ [WARNING]: survival_brain.py not found in root. Emergency fallback disabled."
-          fi
-          
           # 1. INGESTION & PURIFICATION
           if [ -f "main.py" ]; then
             # Robust JSON capture to handle special characters
@@ -131,7 +124,7 @@ jobs:
                 --arg task "$HYPER_PROMPT" \
                 '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CURRENT_CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.4, max_tokens: 4096}')
 
-              # FIXED URL: Removed the markdown brackets that caused Exit Code 3
+              # GROQ URL FIX: Markdown brackets များကို ဖယ်ရှားပြီး URL အစစ်ကိုသာ အသုံးပြုထားသည်
               GROQ_RESPONSE=$(curl -s -X POST "[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)" \
                 -H "Authorization: Bearer $GROQ_API_KEY" \
                 -H "Content-Type: application/json" \
