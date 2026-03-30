@@ -175,29 +175,47 @@ class SovereignEngine:
             Linear(in_d, h_d),
         ]
         for _ in range(num_blocks):
-            self.layers.append(HighPerformanceBlock(h_d))
-            self.layers.append(GeminiBlock(h_d))
-            self.layers.append(GroqBlock(h_d))
+            self.layers.append(ModularBlock(h_d))
         self.layers.append(Linear(h_d, out_d))
         
         self.flat_layers = []
         for l in self.layers:
-            if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
-            else: self.flat_layers.append(l)
+            if hasattr(l, 'get_layers'): 
+                self.flat_layers.extend(l.get_layers())
+            else: 
+                self.flat_layers.append(l)
         
         params = []
-        for l in self.flat_layers: params.extend(l.get_params())
+        for l in self.flat_layers: 
+            if hasattr(l, 'get_params'): 
+                params.extend(l.get_params())
+            else: 
+                params.append(l.W)
+                params.append(l.b)
         self.params = params
         self.optimizer = AdamW(self.params, lr=2e-3)
 
     def forward(self, x):
-        for l in self.layers: x = l.forward(x)
+        for l in self.layers: 
+            if isinstance(l, ModularBlock): 
+                x = l.forward(x)
+            else: 
+                x = l.forward(x)
         return x
 
     def backward(self, dout):
-        for l in reversed(self.layers): dout = l.backward(dout)
+        for l in reversed(self.layers): 
+            if isinstance(l, ModularBlock): 
+                dout = l.backward(dout)
+            else: 
+                dout = l.backward(dout)
         grads = []
-        for l in self.flat_layers: grads.extend(l.get_grads())
+        for l in self.flat_layers: 
+            if hasattr(l, 'get_grads'): 
+                grads.extend(l.get_grads())
+            else: 
+                grads.append(l.dW)
+                grads.append(l.db)
         self.optimizer.step(self.params, grads)
 
 def train_evolution():
