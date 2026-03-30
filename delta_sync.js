@@ -37,7 +37,7 @@ db.settings({ ignoreUndefinedProperties: true });
 async function callGeminiNeural(prompt) {
     if (!process.env.GEMINI_API_KEY) return null;
     try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
         const response = await axios.post(url, { contents: [{ parts: [{ text: prompt }] }] }, { timeout: 8000 });
         return response.data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
     } catch (err) {
