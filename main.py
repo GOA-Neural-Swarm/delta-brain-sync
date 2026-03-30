@@ -46,9 +46,35 @@ class Bottleneck:
         for l in reversed(self.l): g = l.backward(g)
         return d + g
 
+class Gemini:
+    def __init__(self, d):
+        self.l = [Normalization(d), Linear(d, d*2), Activation(), Linear(d*2, d)]
+    def forward(self, x):
+        h = x
+        for l in self.l: h = l.forward(h)
+        return h + x
+    def backward(self, d):
+        g = d
+        for l in reversed(self.l): g = l.backward(g)
+        return d + g
+
+class Groq:
+    def __init__(self, d):
+        self.l = [Normalization(d), Linear(d, d*3), Activation(), Linear(d*3, d)]
+    def forward(self, x):
+        h = x
+        for l in self.l: h = l.forward(h)
+        return h + x
+    def backward(self, d):
+        g = d
+        for l in reversed(self.l): g = l.backward(g)
+        return d + g
+
 class Model:
     def __init__(self, i=784, h=128, o=10, c=3):
         self.ls = [Linear(i, h)] + [Bottleneck(h) for _ in range(c)] + [Linear(h, o)]
+        self.gemini = Gemini(h)
+        self.groq = Groq(h)
         self.p, self.t = [], 0
         for l in self.ls:
             if hasattr(l, 'l'):
@@ -60,8 +86,12 @@ class Model:
         self.v = [np.zeros_like(x) for x in self.m]
     def forward(self, x):
         for l in self.ls: x = l.forward(x)
+        x = self.gemini.forward(x)
+        x = self.groq.forward(x)
         return x
     def backward(self, d, u):
+        d = self.groq.backward(d)
+        d = self.gemini.backward(d)
         for l in reversed(self.ls): d = l.backward(d)
         self.t += 1
         r = 2e-3 * (1 - 0.999**self.t)**0.5 / (1 - 0.9**self.t)
