@@ -18,7 +18,7 @@ def get_ai_correction(error_log, original_code):
 
     # --- ATTEMPT 1: GEMINI (Primary) ---
     print("📡 [GUARD-GEMINI]: Requesting correction...")
-    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
     gemini_payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"temperature": 0.2}
