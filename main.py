@@ -2,7 +2,7 @@ import numpy as np
 
 R = np.random.randn
 
-class N:
+class Normalization:
     def __init__(self, d): 
         self.g, self.b = np.ones(d), np.zeros(d)
         self.dg, self.db = np.zeros(d), np.zeros(d)
@@ -14,14 +14,14 @@ class N:
         self.db = d.sum(0)
         return d * self.g
 
-class A:
+class Activation:
     def __call__(self, x): 
         self.o = 1 / (1 + np.exp(-x.clip(-20, 20)))
         return self.o
     def backward(self, d): 
         return d * self.o * (1 - self.o)
 
-class L:
+class Linear:
     def __init__(self, i, o): 
         self.w, self.b = R(i, o) * (2 / i)**.5, np.zeros(o)
         self.dw, self.db = np.zeros((i, o)), np.zeros(o)
@@ -34,9 +34,9 @@ class L:
         self.db = d.sum(0)
         return d @ self.w.T
 
-class B:
+class Bottleneck:
     def __init__(self, d, f): 
-        self.l = [N(d), L(d, d * f), A(), L(d * f, d)]
+        self.l = [Normalization(d), Linear(d, d * f), Activation(), Linear(d * f, d)]
     def __call__(self, x):
         h = x
         for l in self.l: h = l(h)
@@ -46,9 +46,33 @@ class B:
         for l in reversed(self.l): g = l.backward(g)
         return d + g
 
-class M:
+class Gemini:
+    def __init__(self, d, f): 
+        self.l = [Normalization(d), Linear(d, d * f), Activation(), Linear(d * f, d)]
+    def __call__(self, x):
+        h = x
+        for l in self.l: h = l(h)
+        return h + x
+    def backward(self, d):
+        g = d
+        for l in reversed(self.l): g = l.backward(g)
+        return d + g
+
+class Groq:
+    def __init__(self, d, f): 
+        self.l = [Normalization(d), Linear(d, d * f), Activation(), Linear(d * f, d)]
+    def __call__(self, x):
+        h = x
+        for l in self.l: h = l(h)
+        return h + x
+    def backward(self, d):
+        g = d
+        for l in reversed(self.l): g = l.backward(g)
+        return d + g
+
+class Model:
     def __init__(self, i=784, h=128, o=10, c=3):
-        self.L = [L(i, h)] + [B(h, 4) for _ in range(c)] + [B(h, 2), B(h, 3), L(h, o)]
+        self.L = [Linear(i, h)] + [Bottleneck(h, 4) for _ in range(c)] + [Gemini(h, 2), Groq(h, 3), Linear(h, o)]
         self.p = [(s, a) for l in self.L for s in (l.l if hasattr(l, 'l') else [l]) for a in ('w', 'g', 'b') if hasattr(s, a)]
         self.m = [np.zeros(getattr(s, a).shape) for s, a in self.p]
         self.v = [x * 0 for x in self.m]
@@ -70,7 +94,7 @@ class M:
                 setattr(s, a, getattr(s, a) - r * self.m[i] / (self.v[i]**.5 + 1e-8))
 
 X, Y, S = R(100, 784).astype('f4'), np.random.randint(0, 10, 100), 100
-m = M()
+m = Model()
 
 for e in range(101):
     z = m.fwd(X)
