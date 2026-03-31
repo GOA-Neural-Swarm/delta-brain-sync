@@ -88,7 +88,7 @@ REPO_PATH = "/kaggle/working/sovereign_repo_sync" if user_secrets else "/tmp/sov
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or (user_secrets.get_secret("GEMINI_API_KEY") if user_secrets else None)
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel('gemini-2.0-flash')
+    gemini_model = genai.GenerativeModel('gemini-flash-latest')
     print("✅ [GEMINI]: Auditor Brain Initialized.")
 else:
     print("⚠️ [GEMINI]: API Key missing. Auditor mode disabled.")
