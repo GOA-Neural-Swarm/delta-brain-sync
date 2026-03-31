@@ -52,9 +52,41 @@ class Block:
             g = l.bwd(g)
         return d + g
 
+class Gemini:
+    def __init__(self, d, f):
+        self.l = [Normalization(d), Linear(d, d*f), Activation(), Linear(d*f, d)]
+
+    def __call__(self, x):
+        h = x
+        for l in self.l:
+            h = l(h)
+        return h + x
+
+    def bwd(self, d):
+        g = d
+        for l in reversed(self.l):
+            g = l.bwd(g)
+        return d + g
+
+class Groq:
+    def __init__(self, d, f):
+        self.l = [Normalization(d), Linear(d, d*f), Activation(), Linear(d*f, d)]
+
+    def __call__(self, x):
+        h = x
+        for l in self.l:
+            h = l(h)
+        return h + x
+
+    def bwd(self, d):
+        g = d
+        for l in reversed(self.l):
+            g = l.bwd(g)
+        return d + g
+
 class Model:
     def __init__(self, i=784, h=128, o=10, c=3):
-        self.layers = [Linear(i, h)] + [Block(h, f) for f in [4]*c + [2, 3]] + [Linear(h, o)]
+        self.layers = [Linear(i, h)] + [Block(h, f) for f in [4]*c] + [Gemini(h, 2), Groq(h, 3)] + [Linear(h, o)]
         self.params, self.t = [], 0
         for l in self.layers:
             if hasattr(l, 'l'):
