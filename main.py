@@ -1,5 +1,4 @@
 import numpy as np
-import time
 
 class AdamW:
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
@@ -95,7 +94,7 @@ class ResidualBlock:
         dh = self.ln.backward(dh)
         return dh + dout
 
-    def get_layers(self): return [self.ln, self.l1, self.l2]
+    def get_layers(self): return [self.ln, self.l1, self.act, self.l2]
 
 class ModularNeuralArchitecture:
     def __init__(self, in_d, h_d, out_d):
@@ -114,7 +113,8 @@ class ModularNeuralArchitecture:
         
         params = []
         for l in self.flat_layers: 
-            params.extend(l.get_params())
+            if hasattr(l, 'get_params'): 
+                params.extend(l.get_params())
         self.params = params
         self.optimizer = AdamW(self.params, lr=2e-3)
 
@@ -128,7 +128,8 @@ class ModularNeuralArchitecture:
             dout = l.backward(dout)
         grads = []
         for l in self.flat_layers: 
-            grads.extend(l.get_grads())
+            if hasattr(l, 'get_grads'): 
+                grads.extend(l.get_grads())
         self.optimizer.step(self.params, grads)
 
 class IntegratedGeminiGroq:
