@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 class AdamW:
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
@@ -94,10 +95,10 @@ class ResidualBlock:
         dh = self.ln.backward(dh)
         return dh + dout
 
-    def get_layers(self): return [self.ln, self.l1, self.act, self.l2]
+    def get_layers(self): return [self.ln, self.l1, self.l2]
 
-class ModularNeuralArchitecture:
-    def __init__(self, in_d, h_d, out_d):
+class SovereignEngine:
+    def __init__(self, in_d=784, h_d=256, out_d=10):
         self.layers = [
             Linear(in_d, h_d),
             ResidualBlock(h_d),
@@ -106,52 +107,23 @@ class ModularNeuralArchitecture:
         ]
         self.flat_layers = []
         for l in self.layers:
-            if hasattr(l, 'get_layers'): 
-                self.flat_layers.extend(l.get_layers())
-            else: 
-                self.flat_layers.append(l)
+            if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
+            else: self.flat_layers.append(l)
         
         params = []
-        for l in self.flat_layers: 
-            if hasattr(l, 'get_params'): 
-                params.extend(l.get_params())
+        for l in self.flat_layers: params.extend(l.get_params())
         self.params = params
         self.optimizer = AdamW(self.params, lr=2e-3)
 
     def forward(self, x):
-        for l in self.layers: 
-            x = l.forward(x)
+        for l in self.layers: x = l.forward(x)
         return x
 
     def backward(self, dout):
-        for l in reversed(self.layers): 
-            dout = l.backward(dout)
+        for l in reversed(self.layers): dout = l.backward(dout)
         grads = []
-        for l in self.flat_layers: 
-            if hasattr(l, 'get_grads'): 
-                grads.extend(l.get_grads())
+        for l in self.flat_layers: grads.extend(l.get_grads())
         self.optimizer.step(self.params, grads)
-
-class IntegratedGeminiGroq:
-    def __init__(self, model):
-        self.model = model
-
-    def forward(self, x):
-        return self.model.forward(x)
-
-    def backward(self, dout):
-        return self.model.backward(dout)
-
-class SovereignEngine:
-    def __init__(self, in_d=784, h_d=256, out_d=10):
-        self.model = ModularNeuralArchitecture(in_d, h_d, out_d)
-        self.integrated = IntegratedGeminiGroq(self.model)
-
-    def forward(self, x):
-        return self.integrated.forward(x)
-
-    def backward(self, dout):
-        return self.integrated.backward(dout)
 
 def train_evolution():
     # Synthetic Data Generation (100 samples, 784 features)
