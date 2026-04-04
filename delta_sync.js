@@ -1,3 +1,4 @@
+
 const { Pool } = require('pg');
 const { createClient } = require('@supabase/supabase-js');
 const admin = require('firebase-admin');
@@ -14,7 +15,7 @@ const CONFIG = {
 
 const octokit = new Octokit({ auth: process.env.GH_TOKEN, throttle: { enabled: true } });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-const neonPool = new Pool({ 
+const neonPool = new Pool({
     connectionString: process.env.NEON_DB_URL + "?sslmode=verify-full",
     max: 30,
     idleTimeoutMillis: 10000,
@@ -28,7 +29,8 @@ if (!admin.apps.length) {
             databaseURL: process.env.FIREBASE_DB_URL
         });
     } catch (e) {
-        process.stderr.write("Firebase Initialization Critical Failure\n");
+        console.error("Firebase Initialization Critical Failure:", e);
+        process.exit(1);
     }
 }
 const db = admin.firestore();
@@ -41,6 +43,7 @@ async function callGeminiNeural(prompt) {
         const response = await axios.post(url, { contents: [{ parts: [{ text: prompt }] }] }, { timeout: 8000 });
         return response.data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
     } catch (err) {
+        console.error("Gemini Neural Error:", err);
         return null;
     }
 }
@@ -50,15 +53,15 @@ async function syncParity() {
     try {
         await client.query('BEGIN');
         const { rows: neonData } = await client.query(
-    `SELECT id, data, evolved_at 
-     FROM neurons 
-     WHERE synced_at IS NULL OR evolved_at > synced_at 
-     ORDER BY evolved_at ASC 
-     LIMIT $1 
-     FOR UPDATE SKIP LOCKED`, 
-    [CONFIG.batchSize]
-);
-        
+            `SELECT id, data, evolved_at 
+             FROM neurons 
+             WHERE synced_at IS NULL OR evolved_at > synced_at 
+             ORDER BY evolved_at ASC 
+             LIMIT $1 
+             FOR UPDATE SKIP LOCKED`,
+            [CONFIG.batchSize]
+        );
+
         if (neonData.length === 0) {
             await client.query('COMMIT');
             return 0;
@@ -73,19 +76,23 @@ async function syncParity() {
         }));
 
         const { error: supError } = await supabase.from('neurons').upsert(payload, { onConflict: 'id' });
-        if (supError) throw supError;
+        if (supError) {
+            console.error("Supabase Error:", supError);
+            await client.query('ROLLBACK');
+            return 0;
+        }
 
         const batch = db.batch();
         neonData.forEach(n => {
             const ref = db.collection('neurons').doc(`node_${n.id}`);
-            batch.set(ref, { 
-                status: 'synchronized', 
+            batch.set(ref, {
+                status: 'synchronized',
                 last_sync: admin.firestore.FieldValue.serverTimestamp(),
                 integrity: true,
                 version: Buffer.from(n.updated_at.toString()).toString('base64').substring(0, 8)
             }, { merge: true });
         });
-        
+
         await Promise.all([
             batch.commit(),
             client.query("UPDATE neurons SET synced_at = $1 WHERE id = ANY($2)", [syncTime, neonData.map(n => n.id)])
@@ -94,8 +101,8 @@ async function syncParity() {
         await client.query('COMMIT');
         return neonData.length;
     } catch (err) {
+        console.error("Parity Error:", err);
         await client.query('ROLLBACK');
-        process.stderr.write(`Parity Error: ${err.message}\n`);
         return 0;
     } finally {
         client.release();
@@ -107,20 +114,20 @@ async function evolveCore() {
         const { data: corePy } = await octokit.repos.getContent({ owner: CONFIG.owner, repo: CONFIG.core, path: 'main.py' });
         const content = Buffer.from(corePy.content, 'base64').toString();
         const evolved = await callGeminiNeural(`Optimize this Python code for maximum throughput and memory efficiency. Return ONLY the raw code without markdown wrappers.\n\n${content}`);
-        
+
         if (evolved && evolved.length > 50) {
             const cleanCode = evolved.replace(/python|/g, "").trim();
             if (cleanCode !== content) {
                 await octokit.repos.createOrUpdateFileContents({
                     owner: CONFIG.owner, repo: CONFIG.core, path: 'main.py',
-                    message: "🧬 [NEURAL_EVOLUTION]: Optimized Logic Path",
+                    message: "\ud83e\uddec [NEURAL_EVOLUTION]: Optimized Logic Path",
                     content: Buffer.from(cleanCode).toString('base64'),
                     sha: corePy.sha
                 });
             }
         }
     } catch (e) {
-        process.stderr.write(`Evolution Suppressed: ${e.message}\n`);
+        console.error("Evolution Suppressed:", e);
     }
 }
 
@@ -140,7 +147,7 @@ async function manageSwarm() {
         const { data: instFile } = await octokit.repos.getContent({ owner: CONFIG.owner, repo: CONFIG.core, path: 'instruction.json' });
         await octokit.repos.createOrUpdateFileContents({
             owner: CONFIG.owner, repo: CONFIG.core, path: 'instruction.json',
-            message: `🧠 Decision: ${decision.command}`,
+            message: `\ud83e\udde0 Decision: ${decision.command}`,
             content: Buffer.from(JSON.stringify(decision, null, 2)).toString('base64'),
             sha: instFile.sha
         });
@@ -151,12 +158,12 @@ async function manageSwarm() {
             const syncCode = `const admin=require('firebase-admin');/* Swarm Node Instance */`;
             await octokit.repos.createOrUpdateFileContents({
                 owner: CONFIG.owner, repo: nodeName, path: 'cluster_sync.js',
-                message: "🧬 Init Swarm Node",
+                message: "\ud83e\uddec Init Swarm Node",
                 content: Buffer.from(syncCode).toString('base64')
             });
         }
     } catch (e) {
-        process.stderr.write(`Swarm Management Error: ${e.message}\n`);
+        console.error("Swarm Management Error:", e);
     }
 }
 
@@ -175,9 +182,9 @@ async function execute() {
             setImmediate(evolveCore);
         }
 
-        process.stdout.write(`Cycle Complete: ${syncedCount} nodes synced in ${Date.now() - start}ms\n`);
+        console.log(`Cycle Complete: ${syncedCount} nodes synced in ${Date.now() - start}ms`);
     } catch (err) {
-        process.stderr.write(`Execution Fatal: ${err.stack}\n`);
+        console.error("Execution Fatal:", err.stack);
     } finally {
         await neonPool.end();
         process.exit(0);
