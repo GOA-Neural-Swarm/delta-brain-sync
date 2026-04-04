@@ -132,31 +132,9 @@ class ModularNeuralArchitecture:
                 grads.extend(l.get_grads())
         self.optimizer.step(self.params, grads)
 
-class Gemini:
-    def __init__(self, model):
-        self.model = model
-
-    def forward(self, x):
-        return self.model.forward(x)
-
-    def backward(self, dout):
-        return self.model.backward(dout)
-
-class Groq:
-    def __init__(self, model):
-        self.model = model
-
-    def forward(self, x):
-        return self.model.forward(x)
-
-    def backward(self, dout):
-        return self.model.backward(dout)
-
 class IntegratedModel:
     def __init__(self, model):
         self.model = model
-        self.gemini = Gemini(model)
-        self.groq = Groq(model)
 
     def forward(self, x):
         return self.model.forward(x)
