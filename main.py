@@ -152,11 +152,11 @@ class SovereignEngine:
         self.model.backward(dout)
 
 def train_evolution():
-    # Synthetic Data Generation (100 samples, 784 features)
-    X = np.random.randn(100, 784).astype(np.float32)
-    Y = np.random.randint(0, 10, 100)
+    # Synthetic Data Generation (1000 samples, 784 features)
+    X = np.random.randn(1000, 784).astype(np.float32)
+    Y = np.random.randint(0, 10, 1000)
     
-    model = SovereignEngine(784, 128, 10)
+    model = SovereignEngine(784, 256, 10)
     
     print("PHASE: RECURSIVE_EVOLUTION_START")
     for epoch in range(100):
@@ -166,13 +166,13 @@ def train_evolution():
         # Softmax Cross-Entropy
         ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
         probs = ex / np.sum(ex, axis=1, keepdims=True)
-        loss = -np.mean(np.log(probs[range(100), Y] + 1e-10))
+        loss = -np.mean(np.log(probs[range(1000), Y] + 1e-10))
         acc = np.mean(np.argmax(probs, axis=1) == Y)
 
         # Backward
         d_logits = probs.copy()
-        d_logits[range(100), Y] -= 1
-        d_logits /= 100
+        d_logits[range(1000), Y] -= 1
+        d_logits /= 1000
         
         model.backward(d_logits)
         
