@@ -97,35 +97,7 @@ class ResidualBlock:
 
     def get_layers(self): return [self.ln, self.l1, self.l2]
 
-class Gemini:
-    def __init__(self, in_d, h_d, out_d):
-        self.layers = [
-            Linear(in_d, h_d),
-            ResidualBlock(h_d),
-            ResidualBlock(h_d),
-            Linear(h_d, out_d)
-        ]
-        self.flat_layers = []
-        for l in self.layers:
-            if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
-            else: self.flat_layers.append(l)
-        
-        params = []
-        for l in self.flat_layers: params.extend(l.get_params())
-        self.params = params
-        self.optimizer = AdamW(self.params, lr=2e-3)
-
-    def forward(self, x):
-        for l in self.layers: x = l.forward(x)
-        return x
-
-    def backward(self, dout):
-        for l in reversed(self.layers): dout = l.backward(dout)
-        grads = []
-        for l in self.flat_layers: grads.extend(l.get_grads())
-        self.optimizer.step(self.params, grads)
-
-class Groq:
+class ModularNeuralArchitecture:
     def __init__(self, in_d, h_d, out_d):
         self.layers = [
             Linear(in_d, h_d),
@@ -155,15 +127,13 @@ class Groq:
 
 class SovereignEngine:
     def __init__(self, in_d=784, h_d=256, out_d=10):
-        self.gemini = Gemini(in_d, h_d, out_d)
-        self.groq = Groq(in_d, h_d, out_d)
+        self.modular_architecture = ModularNeuralArchitecture(in_d, h_d, out_d)
 
     def forward(self, x):
-        return self.gemini.forward(x), self.groq.forward(x)
+        return self.modular_architecture.forward(x)
 
-    def backward(self, dout_gemini, dout_groq):
-        self.gemini.backward(dout_gemini)
-        self.groq.backward(dout_groq)
+    def backward(self, dout):
+        self.modular_architecture.backward(dout)
 
 def train_evolution():
     # Synthetic Data Generation (100 samples, 784 features)
@@ -175,31 +145,24 @@ def train_evolution():
     print("PHASE: RECURSIVE_EVOLUTION_START")
     for epoch in range(100):
         # Forward
-        logits_gemini, logits_groq = model.forward(X)
+        logits = model.forward(X)
         
         # Softmax Cross-Entropy
-        ex_gemini = np.exp(logits_gemini - np.max(logits_gemini, axis=1, keepdims=True))
-        probs_gemini = ex_gemini / np.sum(ex_gemini, axis=1, keepdims=True)
-        ex_groq = np.exp(logits_groq - np.max(logits_groq, axis=1, keepdims=True))
-        probs_groq = ex_groq / np.sum(ex_groq, axis=1, keepdims=True)
+        ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+        probs = ex / np.sum(ex, axis=1, keepdims=True)
         
-        loss_gemini = -np.mean(np.log(probs_gemini[range(100), Y] + 1e-10))
-        loss_groq = -np.mean(np.log(probs_groq[range(100), Y] + 1e-10))
-        acc_gemini = np.mean(np.argmax(probs_gemini, axis=1) == Y)
-        acc_groq = np.mean(np.argmax(probs_groq, axis=1) == Y)
+        loss = -np.mean(np.log(probs[range(100), Y] + 1e-10))
+        acc = np.mean(np.argmax(probs, axis=1) == Y)
         
         # Backward
-        d_logits_gemini = probs_gemini.copy()
-        d_logits_gemini[range(100), Y] -= 1
-        d_logits_gemini /= 100
-        d_logits_groq = probs_groq.copy()
-        d_logits_groq[range(100), Y] -= 1
-        d_logits_groq /= 100
+        d_logits = probs.copy()
+        d_logits[range(100), Y] -= 1
+        d_logits /= 100
         
-        model.backward(d_logits_gemini, d_logits_groq)
+        model.backward(d_logits)
         
         if epoch % 10 == 0:
-            print(f"EPOCH:{epoch:03d} | LOSS_GEMINI:{loss_gemini:.4f} | LOSS_GROQ:{loss_groq:.4f} | ACC_GEMINI:{acc_gemini:.4f} | ACC_GROQ:{acc_groq:.4f}")
+            print(f"EPOCH:{epoch:03d} | LOSS:{loss:.4f} | ACC:{acc:.4f}")
 
     print("PHASE: EVOLUTION_SUCCESS")
     print("MODEL_STATUS: OPTIMIZED")
