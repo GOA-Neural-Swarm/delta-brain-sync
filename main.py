@@ -107,22 +107,28 @@ class ModularNeuralArchitecture:
         ]
         self.flat_layers = []
         for l in self.layers:
-            if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
-            else: self.flat_layers.append(l)
+            if hasattr(l, 'get_layers'): 
+                self.flat_layers.extend(l.get_layers())
+            else: 
+                self.flat_layers.append(l)
         
         params = []
-        for l in self.flat_layers: params.extend(l.get_params())
+        for l in self.flat_layers: 
+            params.extend(l.get_params())
         self.params = params
         self.optimizer = AdamW(self.params, lr=2e-3)
 
     def forward(self, x):
-        for l in self.layers: x = l.forward(x)
+        for l in self.layers: 
+            x = l.forward(x)
         return x
 
     def backward(self, dout):
-        for l in reversed(self.layers): dout = l.backward(dout)
+        for l in reversed(self.layers): 
+            dout = l.backward(dout)
         grads = []
-        for l in self.flat_layers: grads.extend(l.get_grads())
+        for l in self.flat_layers: 
+            grads.extend(l.get_grads())
         self.optimizer.step(self.params, grads)
 
 class SovereignEngine:
