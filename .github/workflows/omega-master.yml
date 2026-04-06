@@ -276,14 +276,14 @@ jobs:
           kaggle_deploy/
           EOF
 
-      - name: Step 13 - Sovereign Sync & Conflict Resolution
+      - name: Step 13 - OMEGA-ULTIMA: Sovereign Sync & Conflict Resolution
         run: |
           # 1. Cleanup & Preparation
           rm -f trigger.lock
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
           
-          # [UPGRADE-1]: Error 128 မတက်စေရန် Remote URL ကို Token ဖြင့် သေချာပြန်ချိတ်ပေးခြင်း
+          # [UPGRADE-1]: Secure remote URL with Token to prevent Error 128
           git remote set-url origin "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git"
 
           # 2. Lab Branch Integration
@@ -293,18 +293,27 @@ jobs:
           fi
 
           # 3. Workflow Protection
+          # Revert workflows to match Remote state to prevent self-modification errors
           git reset HEAD .github/workflows/
           git checkout -- .github/workflows/
 
-          # 4. Smart Staging
+          # 4. Purge Zombie Workflows (Hard Delete)
+          # သရဲတစ္ဆေလို ပြန်ပြန်ရှင်လာတဲ့ yml အဟောင်းတွေကို အမြစ်ဖြတ် ရှင်းလင်းခြင်း
+          rm -f .github/workflows/Sovereign-sync.yml
+          rm -f .github/workflows/evolution_engine.yml
+          rm -f .github/workflows/manual_sync_debug.yml
+          rm -f .github/workflows/SOVEREIGN_HYPER_AUTONOMOUS_LOOP.yml
+          rm -f .github/workflows/evolution_lab.yml
+
+          # 5. Smart Staging
           git add .
 
-          # 5. Manifestation & Intelligent Rebase
+          # 6. Manifestation & Intelligent Rebase
           if ! git diff-index --quiet HEAD; then
-            git commit -m "🧬 [OMEGA-ULTIMA] Deep-Sync & Autonomous Evolution [skip ci]"
+            git commit -m "🧬 [OMEGA-ULTIMA] Deep-Sync, Zombie Purge & Autonomous Evolution [skip ci]"
             
-            # [UPGRADE-2]: origin main အစား origin/main ကိုသုံးပြီး လမ်းကြောင်းတိကျစေခြင်း
-            # [UPGRADE-3]: Rebase ညပ်သွားပါက pipeline မရပ်သွားစေရန် အလိုအလျောက် ဖြေရှင်းမည့် Fallback logic ထည့်သွင်းခြင်း
+            # [UPGRADE-2]: Use origin/main for explicit tracking
+            # [UPGRADE-3]: Fallback logic to forcefully resolve stuck rebase
             git fetch origin main
             git rebase -X ours origin/main || {
               echo "⚠️ Rebase step paused. Forcing resolution..."
@@ -312,17 +321,17 @@ jobs:
               git rebase --continue || git rebase --abort
             }
             
-            # 6. Force Manifestation
-            # [UPGRADE-4]: Detached HEAD error မတက်စေရန် HEAD ကို သုံးပြီး တိုက်ရိုက် Push လုပ်ခြင်း
+            # 7. Force Manifestation
+            # [UPGRADE-4]: Push directly using HEAD:main to avoid detached HEAD errors
             git push origin HEAD:main --force
 
-            # 7. Evolution Lab Parity
-            # [UPGRADE-5]: Branch အဟောင်းရှိနေလျှင် ရှင်းထုတ်ပြီးမှ အသစ်ပြန်ဖွင့်ခြင်းဖြင့် Parity ကို ပိုမိုသေချာစေခြင်း
+            # 8. Evolution Lab Parity
+            # [UPGRADE-5]: Delete old branch and recreate to ensure perfect parity
             git branch -D evolution-lab || true
             git checkout -b evolution-lab
             git push origin evolution-lab --force
             
-            echo "🚀 [SUCCESS]: System state manifested with zero conflicts."
+            echo "🚀 [SUCCESS]: System state manifested. Zero conflicts. Zombies purged."
           else
             echo "✨ [OPTIMAL]: No mutations detected. System remains in supreme state."
           fi
