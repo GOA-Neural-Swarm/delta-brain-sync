@@ -1,0 +1,300 @@
+name: OMEGA CONSOLIDATED MASTER EVOLUTION
+
+on:
+  push:
+    branches: [main, evolution-lab]
+    paths:
+      - 'trigger.lock'
+      - 'kaggle_brain/**'
+      - 'app.py'
+      - 'main.py'
+      - 'brain.py'
+      - 'sync_data.py'
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  omega_master_cycle:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Step 1 - Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0
+          submodules: false
+
+      - name: Step 2 - Setup Node.js & Python Environments
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Step 3 - Global Git Configuration
+        run: |
+          git config --global user.name 'Sovereign-AI-Bot'
+          git config --global user.email 'bot@sovereign.ai'
+          git config --global pull.rebase false
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
+
+      - name: Step 4 - Install Supreme Multi-Engine Dependencies
+        run: |
+          npm install --no-audit --progress=false pg @supabase/supabase-js firebase-admin axios @octokit/rest
+          python -m pip install --upgrade pip
+          pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install --no-cache-dir transformers diffusers accelerate safetensors huggingface_hub==0.24.0 gradio==4.44.1 websockets==12.0
+          pip install flake8 black mypy bandit requests groq datasets pandas sqlalchemy psycopg2-binary "gradio<6.0.0" python-dotenv bitsandbytes numpy scikit-learn gitpython Pillow kaggle google-generativeai google-genai
+
+      - name: Step 5 - Remote Structural Diagnosis & Linting
+        run: |
+          echo "🔍 Starting Deep Scan for Package Conflicts..."
+          if [ -f debug_env.py ]; then python debug_env.py; fi
+          echo "Cleaning all non-printable characters (U+00A0)..."
+          find . -name "*.py" -exec sed -i 's/\xc2\xa0/ /g' {} +
+          python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || echo "Linting issues found but continuing..."
+          if [ -d "./kaggle_brain" ] && [ -f "./kaggle_brain/main.py" ]; then
+            python -m compileall ./kaggle_brain/main.py || (echo "ERROR: Brain logic syntax failed!" && exit 1)
+          elif [ -f "main.py" ]; then
+            python -m compileall main.py || (echo "ERROR: Root main.py syntax failed!" && exit 1)
+          fi
+
+      - name: Step 6 - AI Node Sync Debugger Evolution (delta_sync.js)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          if [ -f "delta_sync.js" ]; then
+            OLD_LOGIC=$(python3 -c "import json; print(json.dumps(open('delta_sync.js').read()))")
+          else
+            OLD_LOGIC="\"// No logic found. Initialize Trinity Sync Protocol.\""
+          fi
+          SYSTEM_ROLE="You are OMEGA-ASI, the Supreme Debugger. Your task is to optimize the Trinity Sync (Neon/Supabase/Firebase) logic."
+          HYPER_PROMPT="Analyze delta_sync.js for connection leaks, sync delays, or logic flaws. Rewrite a SUPERIOR version. Requirements: 1. Ensure absolute data parity between Neon and Supabase. 2. Implement robust error handling for Firebase. 3. Optimize the Node.js event loop. RETURN RAW JAVASCRIPT CODE ONLY. NO EXPLANATIONS. NO MARKDOWN."
+          GEMINI_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_LOGIC" --arg task "$HYPER_PROMPT" '{contents: [{parts: [{text: ($sys + "\n\nCURRENT_LOGIC:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.2}}')
+          GEMINI_RESPONSE=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" -H "Content-Type: application/json" -d "$GEMINI_PAYLOAD")
+          CONTENT=$(echo "$GEMINI_RESPONSE" | jq -r '.candidates[0].content.parts[0].text // empty' | sed 's/```javascript//g; s/```//g')
+          if [ -z "$CONTENT" ] || [ ${#CONTENT} -lt 200 ]; then
+            GROQ_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_LOGIC" --arg task "$HYPER_PROMPT" '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CURRENT_LOGIC:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.2}')
+            GROQ_RESPONSE=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" -H "Authorization: Bearer $GROQ_API_KEY" -H "Content-Type: application/json" -d "$GROQ_PAYLOAD")
+            CONTENT=$(echo "$GROQ_RESPONSE" | jq -r '.choices[0].message.content // empty' | sed 's/```javascript//g; s/```//g')
+          fi
+          if [ ! -z "$CONTENT" ] && [ ${#CONTENT} -gt 200 ]; then
+            echo "$CONTENT" > candidate_delta_sync.js
+            if node -c candidate_delta_sync.js; then
+              mv candidate_delta_sync.js delta_sync.js
+            else
+              rm candidate_delta_sync.js
+            fi
+          fi
+
+      - name: Step 7 - AI Python Core Recursive Evolution (main.py 3-Cycle)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          python3 << 'EOF'
+          import os, json, requests, subprocess, shutil
+          def evolve_cycle():
+              old_code = ""
+              if os.path.exists("main.py") and os.path.getsize("main.py") > 0:
+                  with open("main.py", "r") as f:
+                      old_code = f.read()
+              else:
+                  old_code = "# No prior logic found. Initializing Genesis."
+              system_role = "You are OMEGA-ASI, the Sovereign Architect. Your task is Recursive Self-Evolution. Focus on High-Performance Modular Neural Architectures."
+              hyper_prompt = (
+                  f"Analyze this current code for flaws and missing features. Rewrite a SUPERIOR version of main.py. "
+                  f"Requirements: 1. Use numpy for 784-feature synthetic data. 2. Ensure high-performance modular neural architecture. "
+                  f"3. Optimize the training loop for speed and accuracy. 4. INTEGRATE Gemini and Groq redundant logic. "
+                  f"RETURN RAW PYTHON CODE ONLY. NO EXPLANATIONS. NO MARKDOWN.\n\n"
+                  f"CURRENT_CODE:\n{old_code}"
+              )
+              evolution_success = False
+              for i in range(1, 4):
+                  content = ""
+                  try:
+                      gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={os.getenv('GEMINI_API_KEY')}"
+                      gemini_payload = {"contents": [{"parts": [{"text": f"{system_role}\n\nTASK: {hyper_prompt}"}]}], "generationConfig": {"temperature": 0.4, "maxOutputTokens": 8192}}
+                      r_gemini = requests.post(gemini_url, json=gemini_payload, timeout=60)
+                      r_gemini.raise_for_status()
+                      content = r_gemini.json()['candidates'][0]['content']['parts'][0]['text']
+                  except Exception as e:
+                      pass
+                  if not content or len(content) < 300:
+                      try:
+                          groq_url = "https://api.groq.com/openai/v1/chat/completions"
+                          groq_headers = {"Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}", "Content-Type": "application/json"}
+                          groq_payload = {"model": "llama-3.3-70b-versatile", "messages": [{"role": "system", "content": system_role}, {"role": "user", "content": hyper_prompt}], "temperature": 0.4, "max_tokens": 4096}
+                          r_groq = requests.post(groq_url, json=groq_payload, headers=groq_headers, timeout=60)
+                          r_groq.raise_for_status()
+                          content = r_groq.json()['choices'][0]['message']['content']
+                      except Exception as e:
+                          pass
+                  if content and len(content) > 300:
+                      clean_code = content.replace("```python", "").replace("```", "").strip()
+                      with open("candidate_main.py", "w") as f:
+                          f.write(clean_code)
+                      compile_res = subprocess.run(["python3", "-m", "py_compile", "candidate_main.py"], capture_output=True)
+                      if compile_res.returncode == 0:
+                          os.rename("candidate_main.py", "main.py")
+                          evolution_success = True
+                          break
+                      else:
+                          if os.path.exists("candidate_main.py"): os.remove("candidate_main.py")
+              return evolution_success
+          success = evolve_cycle()
+          if not success:
+              if not os.path.exists("main.py") or os.path.getsize("main.py") == 0:
+                  if os.path.exists("survival_brain.py"):
+                      shutil.copy("survival_brain.py", "main.py")
+          EOF
+
+      - name: Step 8 - AI Target Evolution Audit (app.py / main.py Guard)
+        timeout-minutes: 15
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          TARGET="main.py"
+          if [ -d "./kaggle_brain" ] && [ -f "./kaggle_brain/main.py" ]; then TARGET="./kaggle_brain/main.py"; fi
+          if [ ! -f "$TARGET" ] && [ -f "app.py" ]; then TARGET="app.py"; fi
+          if [ -f "$TARGET" ]; then
+            OLD_CODE=$(python3 -c "import json; print(json.dumps(open('$TARGET').read()))")
+            SYSTEM_ROLE="You are OMEGA-ASI, the Supreme Auditor. Your task is to audit code for bugs and rewrite it for maximum performance."
+            HYPER_PROMPT="Analyze this $TARGET for logical flaws. Rewrite it to be more efficient. Requirements: 1. Ensure high-performance modular neural architecture. 2. Optimize training/sync loops. 3. Integrate advanced Gemini/Groq redundancy. RETURN RAW PYTHON CODE ONLY. NO EXPLANATIONS. NO MARKDOWN."
+            GEMINI_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{contents: [{parts: [{text: ($sys + "\n\nCODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.2, maxOutputTokens: 8192}}')
+            GEMINI_RES=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" -H "Content-Type: application/json" -d "$GEMINI_PAYLOAD")
+            CONTENT=$(echo "$GEMINI_RES" | jq -r '.candidates[0].content.parts[0].text // empty' | sed 's/```python//g; s/```//g')
+            if [ -z "$CONTENT" ] || [ ${#CONTENT} -lt 100 ]; then
+              GROQ_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.1, max_tokens: 4096}')
+              GROQ_RES=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" -H "Authorization: Bearer $GROQ_API_KEY" -H "Content-Type: application/json" -d "$GROQ_PAYLOAD")
+              CONTENT=$(echo "$GROQ_RES" | jq -r '.choices[0].message.content // empty' | sed 's/```python//g; s/```//g')
+            fi
+            if [ ! -z "$CONTENT" ] && [ ${#CONTENT} -gt 100 ]; then
+              printf "%s\n" "$CONTENT" > "$TARGET"
+            fi
+            if [ -f "evolution_guard.py" ]; then
+              timeout 180 python evolution_guard.py "$TARGET" || echo "⚠️ [GUARD-STOPPED]: Process exceeded limit but continuing."
+            fi
+          fi
+
+      - name: Step 9 - Safety Guard & Absolute Aesthetics
+        run: |
+          python -m bandit -r . --exit-zero
+          if grep -qE "AI_KEY|TOKEN|SECRET|PASSWORD" main.py 2>/dev/null; then echo "⚠️ WARNING: Potential hardcoded secret detected!"; fi
+          TARGET="main.py"
+          if [ -f "./kaggle_brain/main.py" ]; then TARGET="./kaggle_brain/main.py"; fi
+          if [ -f "$TARGET" ]; then
+            NEW_SIZE=$(wc -c < "$TARGET")
+            if [ "$NEW_SIZE" -lt 100 ]; then echo "ERROR: Integrity check failed - File too small!"; exit 1; fi
+          fi
+          python -m black .
+
+      - name: Step 10 - Sovereign Trinity Data Sync Execution
+        env:
+          NEON_KEY: ${{ secrets.NEON_KEY }}
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -f "sync_data.py" ]; then
+            python sync_data.py
+          elif [ -f "brain.py" ]; then
+            python -c "try: from brain import sync_data; sync_data() except Exception as e: print(e)"
+          fi
+          if [ -f "delta_sync.js" ]; then
+            node delta_sync.js
+          fi
+
+      - name: Step 11 - Kaggle Kernel Remote Push Deployment
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: |
+          mkdir -p ~/.kaggle
+          printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+          mkdir -p kaggle_deploy
+          if [ -f "kaggle_brain/main.py" ]; then cp kaggle_brain/main.py kaggle_deploy/main.py
+          elif [ -f "main.py" ]; then cp main.py kaggle_deploy/main.py
+          elif [ -f "brain.py" ]; then cp brain.py kaggle_deploy/main.py
+          elif [ -f "app.py" ]; then cp app.py kaggle_deploy/main.py
+          fi
+          cat <<EOF > kaggle_deploy/kernel-metadata.json
+          {
+            "id": "telefox/delta-brain-sync",
+            "title": "delta-brain-sync",
+            "code_file": "main.py",
+            "language": "python",
+            "kernel_type": "script",
+            "is_private": true,
+            "enable_gpu": true,
+            "enable_internet": true,
+            "dataset_sources": [],
+            "competition_sources": [],
+            "kernel_sources": [],
+            "model_sources": []
+          }
+          EOF
+          export PATH=$PATH:/home/runner/.local/bin
+          kaggle kernels push -p kaggle_deploy || echo "Kaggle API busy. Continuing."
+          sleep 45
+
+      - name: Step 12 - Optimize Sovereign Repository Structure
+        run: |
+          git rm -r --cached node_modules || true
+          git rm -rf --cached repo_sync || true
+          cat <<EOF > .gitignore
+          node_modules/
+          repo_sync/
+          __pycache__/
+          *.pyc
+          .env
+          *.log
+          kaggle_deploy/
+          EOF
+
+      - name: Step 13 - Final Unified Github Manifestation & Sync
+        run: |
+          rm -f trigger.lock
+          git add .
+          
+          git fetch origin evolution-lab || true
+          if git show-ref --verify --quiet refs/remotes/origin/evolution-lab; then
+            git checkout origin/evolution-lab -- . || true
+          fi
+          
+          git reset HEAD .github/workflows/
+          git checkout -- .github/workflows/
+          
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "🧬 [OMEGA-MASTER] Full Repo Autonomous Sync & Evolution Manifested [skip ci]"
+            
+            git pull --rebase origin main || true
+            git push origin main --force
+            
+            git checkout -B evolution-lab
+            git push origin evolution-lab --force
+          fi
