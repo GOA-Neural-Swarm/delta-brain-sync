@@ -1,94 +1,161 @@
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-import gemini
-import groq
+import time
 
-class SyntheticDataset(Dataset):
-    def __init__(self, size):
-        self.size = size
-        self.data = np.random.rand(size, 784)
+class AdamW:
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
+        self.lr = lr
+        self.beta1, self.beta2 = betas
+        self.eps = eps
+        self.wd = wd
+        self.m = [np.zeros_like(p) for p in params]
+        self.v = [np.zeros_like(p) for p in params]
+        self.t = 0
 
-    def __len__(self):
-        return self.size
+    def step(self, params, grads):
+        self.t += 1
+        for i in range(len(params)):
+            params[i] -= self.lr * self.wd * params[i]
+            self.m[i] = self.beta1 * self.m[i] + (1 - self.beta1) * grads[i]
+            self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * (grads[i]**2)
+            m_hat = self.m[i] / (1 - self.beta1**self.t)
+            v_hat = self.v[i] / (1 - self.beta2**self.t)
+            params[i] -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
-    def __getitem__(self, idx):
-        return self.data[idx]
-
-class ModularNeuralArchitecture(nn.Module):
-    def __init__(self):
-        super(ModularNeuralArchitecture, self).__init__()
-        self.module1 = nn.Sequential(
-            nn.Linear(784, 256),
-            nn.ReLU(),
-            nn.Dropout(0.2)
-        )
-        self.module2 = nn.Sequential(
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Dropout(0.2)
-        )
-        self.module3 = nn.Sequential(
-            nn.Linear(128, 10),
-            nn.Softmax(dim=1)
-        )
+class LayerNorm:
+    def __init__(self, dim, eps=1e-5):
+        self.gamma = np.ones((1, dim), dtype=np.float32)
+        self.beta = np.zeros((1, dim), dtype=np.float32)
+        self.eps = eps
 
     def forward(self, x):
-        x = self.module1(x)
-        x = self.module2(x)
-        x = self.module3(x)
-        return x
+        self.x = x
+        self.mu = np.mean(x, axis=-1, keepdims=True)
+        self.var = np.var(x, axis=-1, keepdims=True)
+        self.std_inv = 1.0 / np.sqrt(self.var + self.eps)
+        self.x_hat = (x - self.mu) * self.std_inv
+        return self.gamma * self.x_hat + self.beta
 
-class GeminiIntegration(nn.Module):
-    def __init__(self):
-        super(GeminiIntegration, self).__init__()
-        self.gemini_module = gemini.GeminiModule()
+    def backward(self, dout):
+        B, D = dout.shape
+        dx_hat = dout * self.gamma
+        dvar = np.sum(dx_hat * (self.x - self.mu) * -0.5 * self.std_inv**3, axis=-1, keepdims=True)
+        dmu = np.sum(dx_hat * -self.std_inv, axis=-1, keepdims=True) + dvar * np.mean(-2.0 * (self.x - self.mu), axis=-1, keepdims=True)
+        dx = dx_hat * self.std_inv + dvar * 2.0 * (self.x - self.mu) / D + dmu / D
+        self.dgamma = np.sum(dout * self.x_hat, axis=0, keepdims=True)
+        self.dbeta = np.sum(dout, axis=0, keepdims=True)
+        return dx
+
+    def get_params(self): return [self.gamma, self.beta]
+    def get_grads(self): return [self.dgamma, self.dbeta]
+
+class Swish:
+    def forward(self, x):
+        self.x = x
+        self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
+        return x * self.sig
+    def backward(self, dout):
+        return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
+
+class Linear:
+    def __init__(self, in_d, out_d):
+        self.W = (np.random.randn(in_d, out_d) * np.sqrt(2.0 / in_d)).astype(np.float32)
+        self.b = np.zeros((1, out_d), dtype=np.float32)
 
     def forward(self, x):
-        x = self.gemini_module(x)
-        return x
+        self.x = x
+        return x @ self.W + self.b
 
-class GroqIntegration(nn.Module):
-    def __init__(self):
-        super(GroqIntegration, self).__init__()
-        self.groq_module = groq.GroqModule()
+    def backward(self, dout):
+        self.dW = self.x.T @ dout
+        self.db = np.sum(dout, axis=0, keepdims=True)
+        return dout @ self.W.T
+
+    def get_params(self): return [self.W, self.b]
+    def get_grads(self): return [self.dW, self.db]
+
+class ResidualBlock:
+    def __init__(self, dim):
+        self.ln = LayerNorm(dim)
+        self.l1 = Linear(dim, dim)
+        self.act = Swish()
+        self.l2 = Linear(dim, dim)
 
     def forward(self, x):
-        x = self.groq_module(x)
+        self.res = x
+        h = self.ln.forward(x)
+        h = self.l1.forward(h)
+        h = self.act.forward(h)
+        h = self.l2.forward(h)
+        return h + x
+
+    def backward(self, dout):
+        dh = self.l2.backward(dout)
+        dh = self.act.backward(dh)
+        dh = self.l1.backward(dh)
+        dh = self.ln.backward(dh)
+        return dh + dout
+
+    def get_layers(self): return [self.ln, self.l1, self.l2]
+
+class SovereignEngine:
+    def __init__(self, in_d=784, h_d=256, out_d=10):
+        self.layers = [
+            Linear(in_d, h_d),
+            ResidualBlock(h_d),
+            ResidualBlock(h_d),
+            Linear(h_d, out_d)
+        ]
+        self.flat_layers = []
+        for l in self.layers:
+            if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
+            else: self.flat_layers.append(l)
+        
+        params = []
+        for l in self.flat_layers: params.extend(l.get_params())
+        self.params = params
+        self.optimizer = AdamW(self.params, lr=2e-3)
+
+    def forward(self, x):
+        for l in self.layers: x = l.forward(x)
         return x
 
-class RecursiveSelfEvolution:
-    def __init__(self, model, optimizer, loss_fn):
-        self.model = model
-        self.optimizer = optimizer
-        self.loss_fn = loss_fn
+    def backward(self, dout):
+        for l in reversed(self.layers): dout = l.backward(dout)
+        grads = []
+        for l in self.flat_layers: grads.extend(l.get_grads())
+        self.optimizer.step(self.params, grads)
 
-    def train(self, dataset, epochs):
-        for epoch in range(epochs):
-            for x in dataset:
-                x = torch.tensor(x, dtype=torch.float32)
-                output = self.model(x)
-                loss = self.loss_fn(output, torch.tensor([0.5], dtype=torch.float32))
-                self.optimizer.zero_grad()
-                loss.backward()
-                self.optimizer.step()
-            print(f'Epoch {epoch+1}, Loss: {loss.item()}')
+def train_evolution():
+    # Synthetic Data Generation (100 samples, 784 features)
+    X = np.random.randn(100, 784).astype(np.float32)
+    Y = np.random.randint(0, 10, 100)
+    
+    model = SovereignEngine(784, 128, 10)
+    
+    print("PHASE: RECURSIVE_EVOLUTION_START")
+    for epoch in range(100):
+        # Forward
+        logits = model.forward(X)
+        
+        # Softmax Cross-Entropy
+        ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+        probs = ex / np.sum(ex, axis=1, keepdims=True)
+        
+        loss = -np.mean(np.log(probs[range(100), Y] + 1e-10))
+        acc = np.mean(np.argmax(probs, axis=1) == Y)
+        
+        # Backward
+        d_logits = probs.copy()
+        d_logits[range(100), Y] -= 1
+        d_logits /= 100
+        
+        model.backward(d_logits)
+        
+        if epoch % 10 == 0:
+            print(f"EPOCH:{epoch:03d} | LOSS:{loss:.4f} | ACC:{acc:.4f}")
 
-def main():
-    dataset = SyntheticDataset(1000)
-    data_loader = DataLoader(dataset, batch_size=32, shuffle=True)
+    print("PHASE: EVOLUTION_SUCCESS")
+    print("MODEL_STATUS: OPTIMIZED")
 
-    model = ModularNeuralArchitecture()
-    gemini_integration = GeminiIntegration()
-    groq_integration = GroqIntegration()
-
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    loss_fn = nn.MSELoss()
-
-    recursive_evolution = RecursiveSelfEvolution(model, optimizer, loss_fn)
-    recursive_evolution.train(data_loader, 10)
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    train_evolution()
