@@ -276,7 +276,7 @@ jobs:
           kaggle_deploy/
           EOF
 
-      - name: Step 13 - OMEGA-ULTIMA: Sovereign Sync & Conflict Resolution
+      - name: Step 13 - Sovereign Sync & Conflict Resolution
         run: |
           # 1. Cleanup & Preparation
           rm -f trigger.lock
