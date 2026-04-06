@@ -1,4 +1,3 @@
-
 import subprocess
 import sys
 import pkg_resources
@@ -14,13 +13,17 @@ for name, version in sorted(installed_packages.items()):
 print("\n⚠️ [CONFLICT CHECK]: Checking websockets dependencies...")
 try:
     import websockets
+
     print(f"✅ websockets is already installed. Version: {websockets.__version__}")
 except ImportError:
     print("❌ websockets is NOT installed.")
 
 # Check why pip is failing
 print("\n🛠️ [PIP TEST]: Simulating dry-run installation...")
-result = subprocess.run([sys.executable, "-m", "pip", "install", "websockets==12.0", "--dry-run"], 
-                        capture_output=True, text=True)
+result = subprocess.run(
+    [sys.executable, "-m", "pip", "install", "websockets==12.0", "--dry-run"],
+    capture_output=True,
+    text=True,
+)
 print(result.stdout)
 print(result.stderr)
