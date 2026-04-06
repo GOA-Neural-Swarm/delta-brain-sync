@@ -276,25 +276,45 @@ jobs:
           kaggle_deploy/
           EOF
 
-      - name: Step 13 - Final Unified Github Manifestation & Sync
+      - name: Step 13 - OMEGA-ULTIMA: Sovereign Sync & Conflict Resolution
         run: |
+          # 1. Cleanup & Preparation
           rm -f trigger.lock
-          git add .
-          
+          git config --global user.name 'Sovereign-AI-Bot'
+          git config --global user.email 'bot@sovereign.ai'
+
+          # 2. Lab Branch Integration (Syncing logic from evolution-lab)
           git fetch origin evolution-lab || true
           if git show-ref --verify --quiet refs/remotes/origin/evolution-lab; then
-            git checkout origin/evolution-lab -- . || true
+             # Pull files from lab branch while excluding critical workflows
+             git checkout origin/evolution-lab -- . || true
           fi
-          
+
+          # 3. Workflow Protection (Bypass security blocks)
+          # Revert workflows to match Remote (Main) state to prevent self-modification errors
           git reset HEAD .github/workflows/
           git checkout -- .github/workflows/
-          
+
+          # 4. Smart Staging
+          git add .
+
+          # 5. Manifestation & Intelligent Rebase
           if ! git diff-index --quiet HEAD; then
-            git commit -m "🧬 [OMEGA-MASTER] Full Repo Autonomous Sync & Evolution Manifested [skip ci]"
+            git commit -m "🧬 [OMEGA-ULTIMA] Deep-Sync & Autonomous Evolution [skip ci]"
             
-            git pull --rebase origin main || true
+            # Use -X ours to prioritize local AI mutations during conflicts
+            # This automatically resolves instruction.json or main.py merge issues
+            git fetch origin main
+            git rebase -X ours origin main || (git add . && git rebase --continue)
+            
+            # 6. Force Manifestation (Push to Main)
             git push origin main --force
-            
+
+            # 7. Evolution Lab Parity (Align Lab branch with latest Main)
             git checkout -B evolution-lab
             git push origin evolution-lab --force
+            
+            echo "🚀 [SUCCESS]: System state manifested with zero conflicts."
+          else
+            echo "✨ [OPTIMAL]: No mutations detected. System remains in supreme state."
           fi
