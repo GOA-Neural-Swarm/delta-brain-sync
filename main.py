@@ -117,7 +117,9 @@ class SovereignEngine:
         self.all_layers.append(self.head)
 
         self.params = []
-        for l in self.all_layers: self.params.extend(l.get_params())
+        for l in self.all_layers: 
+            if hasattr(l, 'get_params'): 
+                self.params.extend(l.get_params())
         self.optimizer = AdamW(self.params, lr=2e-3, wd=0.01)
 
     def forward(self, x):
@@ -131,7 +133,9 @@ class SovereignEngine:
         self.stem.backward(dout)
 
         grads = []
-        for l in self.all_layers: grads.extend(l.get_grads())
+        for l in self.all_layers: 
+            if hasattr(l, 'get_grads'): 
+                grads.extend(l.get_grads())
         self.optimizer.step(self.params, grads)
 
 def train_evolution():
