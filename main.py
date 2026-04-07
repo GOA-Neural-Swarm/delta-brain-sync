@@ -1,4 +1,3 @@
-
 import numpy as np
 import time
 
@@ -42,18 +41,22 @@ class LayerNorm:
     def get_params(self): return [self.gamma, self.beta]
     def get_grads(self): return [self.dgamma, self.dbeta]
 
-class Swish:
+class GeLU:
     def forward(self, x):
         self.x = x
-        self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
-        return x * self.sig
+        return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
 
     def backward(self, dout):
-        return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
+        x = self.x
+        tanh_part = np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))
+        pdf = (1 / np.cosh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))**2
+        derivative = 0.5 * (1 + tanh_part) + 0.5 * x * pdf * np.sqrt(2 / np.pi) * (1 + 3 * 0.044715 * x**2)
+        return dout * derivative
 
 class Linear:
     def __init__(self, in_d, out_d):
-        self.W = (np.random.randn(in_d, out_d) * np.sqrt(2.0 / in_d)).astype(np.float32)
+        limit = np.sqrt(6 / (in_d + out_d))
+        self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
         self.b = np.zeros((1, out_d), dtype=np.float32)
 
     def forward(self, x):
@@ -68,116 +71,116 @@ class Linear:
     def get_params(self): return [self.W, self.b]
     def get_grads(self): return [self.dW, self.db]
 
-class GeminiBlock:
+class SovereignHybridBlock:
+    """Integrated Gemini-Groq Logic: Gated Linear Unit with Residual Bottleneck"""
     def __init__(self, dim):
         self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim * 4)
-        self.act = Swish()
-        self.l2 = Linear(dim * 4, dim)
+        self.l_gate = Linear(dim, dim * 2)
+        self.l_proj = Linear(dim * 2, dim)
+        self.act = GeLU()
 
     def forward(self, x):
         self.res = x
         h = self.ln.forward(x)
-        h = self.l1.forward(h)
-        h = self.act.forward(h)
-        h = self.l2.forward(h)
+        h = self.l_gate.forward(h)
+        
+        # Split for Gating (Gemini/Groq Fusion)
+        self.h_a, self.h_b = np.split(h, 2, axis=-1)
+        gated = self.act.forward(self.h_a) * self.h_b
+        
+        self.h_gated = np.concatenate([gated, gated], axis=-1) # Redundant path optimization
+        h = self.l_proj.forward(self.h_gated)
         return h + x
 
     def backward(self, dout):
-        dh = self.l2.backward(dout)
-        dh = self.act.backward(dh)
-        dh = self.l1.backward(dh)
-        dh = self.ln.backward(dh)
-        return dh + dout
+        dout_proj = self.l_proj.backward(dout)
+        
+        # Backward through gating
+        dg_a_full, dg_b_full = np.split(dout_proj, 2, axis=-1)
+        dg = dg_a_full + dg_b_full
+        
+        dh_a = self.act.backward(dg * self.h_b)
+        dh_b = dg * self.act.forward(self.h_a)
+        
+        dh_gate = np.concatenate([dh_a, dh_b], axis=-1)
+        dh = self.l_gate.backward(dh_gate)
+        return self.ln.backward(dh) + dout
 
-    def get_layers(self): return [self.ln, self.l1, self.l2]
-
-class GroqBlock:
-    def __init__(self, dim):
-        self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim * 4)
-        self.act = Swish()
-        self.l2 = Linear(dim * 4, dim)
-
-    def forward(self, x):
-        self.res = x
-        h = self.ln.forward(x)
-        h = self.l1.forward(h)
-        h = self.act.forward(h)
-        h = self.l2.forward(h)
-        return h + x
-
-    def backward(self, dout):
-        dh = self.l2.backward(dout)
-        dh = self.act.backward(dh)
-        dh = self.l1.backward(dh)
-        dh = self.ln.backward(dh)
-        return dh + dout
-
-    def get_layers(self): return [self.ln, self.l1, self.l2]
+    def get_layers(self): return [self.ln, self.l_gate, self.l_proj]
 
 class SovereignEngine:
-    def __init__(self, in_d=784, h_d=256, out_d=10, num_blocks=3):
-        self.layers = [Linear(in_d, h_d)]
-        for _ in range(num_blocks):
-            self.layers.append(GeminiBlock(h_d))
-            self.layers.append(GroqBlock(h_d))
-        self.layers.append(Linear(h_d, out_d))
-
-        self.flat_layers = []
-        for l in self.layers:
-            if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
-            else: self.flat_layers.append(l)
-
+    def __init__(self, in_d=784, h_d=256, out_d=10, num_blocks=4):
+        self.stem = Linear(in_d, h_d)
+        self.blocks = [SovereignHybridBlock(h_d) for _ in range(num_blocks)]
+        self.head = Linear(h_d, out_d)
+        
+        self.all_layers = [self.stem]
+        for b in self.blocks: self.all_layers.extend(b.get_layers())
+        self.all_layers.append(self.head)
+        
         self.params = []
-        for l in self.flat_layers: self.params.extend(l.get_params())
-        self.optimizer = AdamW(self.params, lr=1e-3, wd=0.05)
+        for l in self.all_layers: self.params.extend(l.get_params())
+        self.optimizer = AdamW(self.params, lr=2e-3, wd=0.01)
 
     def forward(self, x):
-        for l in self.layers: x = l.forward(x)
-        return x
+        x = self.stem.forward(x)
+        for b in self.blocks: x = b.forward(x)
+        return self.head.forward(x)
 
     def backward(self, dout):
-        for l in reversed(self.layers): dout = l.backward(dout)
+        dout = self.head.backward(dout)
+        for b in reversed(self.blocks): dout = b.backward(dout)
+        self.stem.backward(dout)
+        
         grads = []
-        for l in self.flat_layers: grads.extend(l.get_grads())
+        for l in self.all_layers: grads.extend(l.get_grads())
         self.optimizer.step(self.params, grads)
 
 def train_evolution():
     np.random.seed(42)
-    N, D, C = 256, 784, 10
+    N, D, C = 1024, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     Y = np.random.randint(0, C, N)
+    
+    batch_size = 128
+    model = SovereignEngine(in_d=D, h_d=128, out_d=C, num_blocks=3)
 
-    model = SovereignEngine(in_d=D, h_d=128, out_d=C, num_blocks=2)
-
-    print("PHASE: OMEGA_RECURSIVE_INIT")
+    print("--- OMEGA-ASI: RECURSIVE EVOLUTION INITIATED ---")
     start_time = time.time()
 
-    for epoch in range(1, 101):
-        # Forward
-        logits = model.forward(X)
-
-        # Softmax Cross-Entropy
-        shift_logits = logits - np.max(logits, axis=1, keepdims=True)
-        exps = np.exp(shift_logits)
-        probs = exps / np.sum(exps, axis=1, keepdims=True)
-
-        loss = -np.mean(np.log(probs[range(N), Y] + 1e-12))
-        acc = np.mean(np.argmax(probs, axis=1) == Y)
-
-        # Backward
-        d_logits = probs.copy()
-        d_logits[range(N), Y] -= 1
-        d_logits /= N
-
-        model.backward(d_logits)
+    for epoch in range(1, 151):
+        idx = np.random.permutation(N)
+        epoch_loss = 0
+        epoch_acc = 0
+        
+        for i in range(0, N, batch_size):
+            batch_idx = idx[i:i+batch_size]
+            xb, yb = X[batch_idx], Y[batch_idx]
+            
+            # Forward
+            logits = model.forward(xb)
+            
+            # Fast Softmax Cross-Entropy
+            exps = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+            probs = exps / np.sum(exps, axis=1, keepdims=True)
+            
+            loss = -np.mean(np.log(probs[range(len(yb)), yb] + 1e-12))
+            acc = np.mean(np.argmax(probs, axis=1) == yb)
+            
+            # Backward
+            d_logits = probs.copy()
+            d_logits[range(len(yb)), yb] -= 1
+            d_logits /= len(yb)
+            model.backward(d_logits)
+            
+            epoch_loss += loss * (len(yb) / N)
+            epoch_acc += acc * (len(yb) / N)
 
         if epoch % 10 == 0 or epoch == 1:
             elapsed = time.time() - start_time
-            print(f"EVO_STEP:{epoch:03d} | LOSS:{loss:.6f} | ACC:{acc:.4f} | TIME:{elapsed:.2f}s")
+            print(f"STEP:{epoch:03d} | LOSS:{epoch_loss:.5f} | ACC:{epoch_acc:.4f} | T:{elapsed:.2f}s")
 
-    print("PHASE: EVOLUTION_SUCCESS | STATUS: ARCHITECTURE_OPTIMIZED")
+    print(f"--- EVOLUTION COMPLETE | FINAL ACC: {epoch_acc:.4f} ---")
 
 if __name__ == "__main__":
     train_evolution()
