@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -67,8 +68,31 @@ class Linear:
     def get_params(self): return [self.W, self.b]
     def get_grads(self): return [self.dW, self.db]
 
-class SovereignBlock:
-    """Integrated Gemini-Groq High-Performance Module"""
+class GeminiBlock:
+    def __init__(self, dim):
+        self.ln = LayerNorm(dim)
+        self.l1 = Linear(dim, dim * 4)
+        self.act = Swish()
+        self.l2 = Linear(dim * 4, dim)
+
+    def forward(self, x):
+        self.res = x
+        h = self.ln.forward(x)
+        h = self.l1.forward(h)
+        h = self.act.forward(h)
+        h = self.l2.forward(h)
+        return h + x
+
+    def backward(self, dout):
+        dh = self.l2.backward(dout)
+        dh = self.act.backward(dh)
+        dh = self.l1.backward(dh)
+        dh = self.ln.backward(dh)
+        return dh + dout
+
+    def get_layers(self): return [self.ln, self.l1, self.l2]
+
+class GroqBlock:
     def __init__(self, dim):
         self.ln = LayerNorm(dim)
         self.l1 = Linear(dim, dim * 4)
@@ -96,9 +120,10 @@ class SovereignEngine:
     def __init__(self, in_d=784, h_d=256, out_d=10, num_blocks=3):
         self.layers = [Linear(in_d, h_d)]
         for _ in range(num_blocks):
-            self.layers.append(SovereignBlock(h_d))
+            self.layers.append(GeminiBlock(h_d))
+            self.layers.append(GroqBlock(h_d))
         self.layers.append(Linear(h_d, out_d))
-        
+
         self.flat_layers = []
         for l in self.layers:
             if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
@@ -128,16 +153,16 @@ def train_evolution():
 
     print("PHASE: OMEGA_RECURSIVE_INIT")
     start_time = time.time()
-    
+
     for epoch in range(1, 101):
         # Forward
         logits = model.forward(X)
-        
+
         # Softmax Cross-Entropy
         shift_logits = logits - np.max(logits, axis=1, keepdims=True)
         exps = np.exp(shift_logits)
         probs = exps / np.sum(exps, axis=1, keepdims=True)
-        
+
         loss = -np.mean(np.log(probs[range(N), Y] + 1e-12))
         acc = np.mean(np.argmax(probs, axis=1) == Y)
 
@@ -145,7 +170,7 @@ def train_evolution():
         d_logits = probs.copy()
         d_logits[range(N), Y] -= 1
         d_logits /= N
-        
+
         model.backward(d_logits)
 
         if epoch % 10 == 0 or epoch == 1:
