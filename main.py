@@ -1,4 +1,3 @@
-
 import numpy as np
 import time
 
@@ -54,7 +53,6 @@ class Swish:
         self.x = x
         self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
         return x * self.sig
-
     def backward(self, dout):
         return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
 
@@ -99,68 +97,19 @@ class ResidualBlock:
 
     def get_layers(self): return [self.ln, self.l1, self.l2]
 
-class Gemini:
-    def __init__(self, dim):
-        self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim)
-        self.act = Swish()
-        self.l2 = Linear(dim, dim)
-
-    def forward(self, x):
-        self.res = x
-        h = self.ln.forward(x)
-        h = self.l1.forward(h)
-        h = self.act.forward(h)
-        h = self.l2.forward(h)
-        return h + x
-
-    def backward(self, dout):
-        dh = self.l2.backward(dout)
-        dh = self.act.backward(dh)
-        dh = self.l1.backward(dh)
-        dh = self.ln.backward(dh)
-        return dh + dout
-
-    def get_layers(self): return [self.ln, self.l1, self.l2]
-
-class Groq:
-    def __init__(self, dim):
-        self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim)
-        self.act = Swish()
-        self.l2 = Linear(dim, dim)
-
-    def forward(self, x):
-        self.res = x
-        h = self.ln.forward(x)
-        h = self.l1.forward(h)
-        h = self.act.forward(h)
-        h = self.l2.forward(h)
-        return h + x
-
-    def backward(self, dout):
-        dh = self.l2.backward(dout)
-        dh = self.act.backward(dh)
-        dh = self.l1.backward(dh)
-        dh = self.ln.backward(dh)
-        return dh + dout
-
-    def get_layers(self): return [self.ln, self.l1, self.l2]
-
 class SovereignEngine:
     def __init__(self, in_d=784, h_d=256, out_d=10):
         self.layers = [
             Linear(in_d, h_d),
             ResidualBlock(h_d),
-            Gemini(h_d),
-            Groq(h_d),
+            ResidualBlock(h_d),
             Linear(h_d, out_d)
         ]
         self.flat_layers = []
         for l in self.layers:
             if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
             else: self.flat_layers.append(l)
-
+        
         params = []
         for l in self.flat_layers: params.extend(l.get_params())
         self.params = params
@@ -177,27 +126,31 @@ class SovereignEngine:
         self.optimizer.step(self.params, grads)
 
 def train_evolution():
+    # Synthetic Data Generation (100 samples, 784 features)
     X = np.random.randn(100, 784).astype(np.float32)
     Y = np.random.randint(0, 10, 100)
-
+    
     model = SovereignEngine(784, 128, 10)
-
+    
     print("PHASE: RECURSIVE_EVOLUTION_START")
     for epoch in range(100):
+        # Forward
         logits = model.forward(X)
-
+        
+        # Softmax Cross-Entropy
         ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
         probs = ex / np.sum(ex, axis=1, keepdims=True)
-
+        
         loss = -np.mean(np.log(probs[range(100), Y] + 1e-10))
         acc = np.mean(np.argmax(probs, axis=1) == Y)
-
+        
+        # Backward
         d_logits = probs.copy()
         d_logits[range(100), Y] -= 1
         d_logits /= 100
-
+        
         model.backward(d_logits)
-
+        
         if epoch % 10 == 0:
             print(f"EPOCH:{epoch:03d} | LOSS:{loss:.4f} | ACC:{acc:.4f}")
 
