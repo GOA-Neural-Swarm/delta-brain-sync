@@ -297,12 +297,7 @@ jobs:
           git reset HEAD .github/workflows/
           git checkout -- .github/workflows/
 
-          # 4. Purge Zombie Workflows (Hard Delete)
-          rm -f .github/workflows/Sovereign-sync.yml
-          rm -f .github/workflows/evolution_engine.yml
-          rm -f .github/workflows/manual_sync_debug.yml
-          rm -f .github/workflows/SOVEREIGN_HYPER_AUTONOMOUS_LOOP.yml
-          # evolution_lab.yml is NOT deleted as per user instruction
+
 
           # 5. Smart Staging
           git add .
