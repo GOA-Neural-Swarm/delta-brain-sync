@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -24,7 +25,7 @@ class GELU:
     def forward(self, x):
         self.x = x
         return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
-    
+
     def backward(self, dout):
         x = self.x
         sech_part = np.cosh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))
@@ -77,40 +78,32 @@ class Linear:
     def get_grads(self): return [self.dW, self.db]
 
 class RedundantComputeBlock:
-    """Integrates Gemini and Groq redundant logic paths for high-reliability inference."""
     def __init__(self, dim):
         self.ln = LayerNorm(dim)
-        # Path Alpha (Gemini Optimized)
         self.w_gemini = Linear(dim, dim * 2)
         self.act_gemini = GELU()
         self.v_gemini = Linear(dim * 2, dim)
-        # Path Beta (Groq Optimized)
         self.w_groq = Linear(dim, dim * 2)
         self.act_groq = GELU()
         self.v_groq = Linear(dim * 2, dim)
-        # Fusion Gate
         self.gate = np.array([0.5], dtype=np.float32)
 
     def forward(self, x):
         self.res = x
         norm_x = self.ln.forward(x)
-        
-        # Parallel Execution
         self.h_gemini = self.v_gemini.forward(self.act_gemini.forward(self.w_gemini.forward(norm_x)))
         self.h_groq = self.v_groq.forward(self.act_groq.forward(self.w_groq.forward(norm_x)))
-        
-        # Redundant Fusion
         return self.gate * self.h_gemini + (1.0 - self.gate) * self.h_groq + x
 
     def backward(self, dout):
         d_gemini = self.v_gemini.backward(dout * self.gate)
         d_gemini = self.act_gemini.backward(d_gemini)
         d_gemini = self.w_gemini.backward(d_gemini)
-        
+
         d_groq = self.v_groq.backward(dout * (1.0 - self.gate))
         d_groq = self.act_groq.backward(d_groq)
         d_groq = self.w_groq.backward(d_groq)
-        
+
         dx = self.ln.backward(d_gemini + d_groq)
         return dx + dout
 
@@ -130,7 +123,7 @@ class SovereignArchitect:
         for l in self.layers:
             if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
             else: self.flat_layers.append(l)
-        
+
         params = []
         for l in self.flat_layers: params.extend(l.get_params())
         self.params = params
@@ -151,45 +144,41 @@ def train_evolution():
     N, D, C = 1000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     Y = np.random.randint(0, C, N)
-    
+
     batch_size = 64
     model = SovereignArchitect(D, 128, C)
-    
+
     print("PHASE: RECURSIVE_EVOLUTION_INITIATED")
     start_time = time.time()
-    
+
     for epoch in range(50):
         indices = np.random.permutation(N)
         epoch_loss = 0
         epoch_acc = 0
-        
+
         for i in range(0, N, batch_size):
             idx = indices[i:i+batch_size]
             xb, yb = X[idx], Y[idx]
             actual_bs = xb.shape[0]
-            
-            # Forward
+
             logits = model.forward(xb)
-            
-            # Stable Softmax
+
             shift_logits = logits - np.max(logits, axis=1, keepdims=True)
             exps = np.exp(shift_logits)
             probs = exps / np.sum(exps, axis=1, keepdims=True)
-            
-            # Loss & Accuracy
+
             loss = -np.mean(np.log(probs[range(actual_bs), yb] + 1e-10))
             acc = np.mean(np.argmax(probs, axis=1) == yb)
-            
+
             epoch_loss += loss * (actual_bs / N)
             epoch_acc += acc * (actual_bs / N)
-            
-            # Backward
+
             d_logits = probs.copy()
             d_logits[range(actual_bs), yb] -= 1
             d_logits /= actual_bs
-            
+
             model.backward(d_logits)
-            
+
         if epoch % 5 == 0:
             elapsed = time.time() - start_time
             print(f"EVO_STEP:{epoch:03d} | LOSS:{epoch_loss:.4f} | ACC:{epoch_acc:.4f} | TIME:{elapsed:.2f}s")
