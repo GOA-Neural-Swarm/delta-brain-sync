@@ -298,12 +298,11 @@ jobs:
           git checkout -- .github/workflows/
 
           # 4. Purge Zombie Workflows (Hard Delete)
-          # သရဲတစ္ဆေလို ပြန်ပြန်ရှင်လာတဲ့ yml အဟောင်းတွေကို အမြစ်ဖြတ် ရှင်းလင်းခြင်း
           rm -f .github/workflows/Sovereign-sync.yml
           rm -f .github/workflows/evolution_engine.yml
           rm -f .github/workflows/manual_sync_debug.yml
           rm -f .github/workflows/SOVEREIGN_HYPER_AUTONOMOUS_LOOP.yml
-          rm -f .github/workflows/evolution_lab.yml
+          # evolution_lab.yml is NOT deleted as per user instruction
 
           # 5. Smart Staging
           git add .
@@ -313,7 +312,6 @@ jobs:
             git commit -m "🧬 [OMEGA-ULTIMA] Deep-Sync, Zombie Purge & Autonomous Evolution [skip ci]"
             
             # [UPGRADE-2]: Use origin/main for explicit tracking
-            # [UPGRADE-3]: Fallback logic to forcefully resolve stuck rebase
             git fetch origin main
             git rebase -X ours origin/main || {
               echo "⚠️ Rebase step paused. Forcing resolution..."
@@ -322,11 +320,9 @@ jobs:
             }
             
             # 7. Force Manifestation
-            # [UPGRADE-4]: Push directly using HEAD:main to avoid detached HEAD errors
             git push origin HEAD:main --force
 
             # 8. Evolution Lab Parity
-            # [UPGRADE-5]: Delete old branch and recreate to ensure perfect parity
             git branch -D evolution-lab || true
             git checkout -b evolution-lab
             git push origin evolution-lab --force
