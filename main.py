@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -46,7 +47,7 @@ class GELU:
     def forward(self, x):
         self.x = x
         return 0.5 * x * (1.0 + np.tanh(np.sqrt(2.0 / np.pi) * (x + 0.044715 * np.power(x, 3))))
-    
+
     def backward(self, dout):
         x = self.x
         sech = 1.0 / np.cosh(np.sqrt(2.0 / np.pi) * (x + 0.044715 * x**3))
@@ -77,7 +78,7 @@ class SovereignBlock:
         self.l1 = Linear(dim, dim * expansion)
         self.act = GELU()
         self.l2 = Linear(dim * expansion, dim)
-        
+
     def forward(self, x):
         self.res = x
         h = self.norm.forward(x)
@@ -99,21 +100,17 @@ class RedundancyEngine:
     def __init__(self):
         self.loss_history = []
         self.grad_variance = []
-        
+
     def validate(self, current_loss, grads, lr):
         self.loss_history.append(current_loss)
         g_norm = np.sqrt(sum(np.sum(g**2) for g in grads))
         self.grad_variance.append(g_norm)
-        
+
         if len(self.loss_history) < 10: return lr, "STABLE"
 
-        # Gemini Logic: Semantic Trend Analysis
-        gemini_signal = np.polyfit(range(10), self.loss_history[-10:], 1)[0] # Slope
-        
-        # Groq Logic: Deterministic Throughput Stability
+        gemini_signal = np.polyfit(range(10), self.loss_history[-10:], 1)[0]
         groq_signal = np.std(self.grad_variance[-10:]) / (np.mean(self.grad_variance[-10:]) + 1e-8)
-        
-        # Consensus Protocol
+
         if gemini_signal > 0 and groq_signal > 0.5:
             return lr * 0.7, "RECOVERING"
         if gemini_signal < -0.01 and groq_signal < 0.2:
@@ -126,11 +123,11 @@ class SovereignArchitect:
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
         self.output_norm = RMSNorm(h_d)
         self.head = Linear(h_d, out_d)
-        
+
         self.all_layers = [self.input_proj]
         for b in self.blocks: self.all_layers.extend(b.get_layers())
         self.all_layers.extend([self.output_norm, self.head])
-        
+
         self.params = []
         for l in self.all_layers: self.params.extend(l.get_params())
         self.optimizer = AdamW(self.params, lr=2e-4, wd=0.1)
@@ -147,7 +144,7 @@ class SovereignArchitect:
         dout = self.output_norm.backward(dout)
         for b in reversed(self.blocks): dout = b.backward(dout)
         dout = self.input_proj.backward(dout)
-        
+
         grads = []
         for l in self.all_layers: grads.extend(l.get_grads())
         self.optimizer.step(self.params, grads)
@@ -157,47 +154,46 @@ def execute_evolution():
     N, D, C = 2048, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     Y = np.random.randint(0, C, N)
-    
+
     model = SovereignArchitect(in_d=D, h_d=256, out_d=C, depth=4)
     batch_size = 128
     epochs = 100
-    
+
     print("SYSTEM_INIT: OMEGA-ASI RECURSIVE_EVOLUTION")
     start = time.time()
-    
+
     for ep in range(epochs):
         idx = np.random.permutation(N)
         X, Y = X[idx], Y[idx]
-        
+
         total_loss = 0
         correct = 0
-        
+
         for i in range(0, N, batch_size):
             xb, yb = X[i:i+batch_size], Y[i:i+batch_size]
             bs = xb.shape[0]
-            
+
             logits = model.forward(xb)
-            
-            # Fast Softmax
+
             exp_l = np.exp(logits - np.max(logits, axis=1, keepdims=True))
             probs = exp_l / np.sum(exp_l, axis=1, keepdims=True)
-            
+
             loss = -np.mean(np.log(probs[range(bs), yb] + 1e-12))
             total_loss += loss * bs
             correct += np.sum(np.argmax(probs, axis=1) == yb)
-            
+
             d_logits = probs.copy()
             d_logits[range(bs), yb] -= 1
             d_logits /= bs
-            
+
             grads = model.backward(d_logits)
-            
+
         avg_loss = total_loss / N
         avg_acc = correct / N
-        
+
         new_lr, state = model.redundancy.validate(avg_loss, grads, model.optimizer.lr)
         model.optimizer.lr = new_lr
-        
+
         if ep % 10 == 0:
             elapsed = time.time() - start
             print(f"EP:{ep:03d} | LOSS:{avg_loss:.4f} | ACC:{avg_acc:.4f} | LR:{model.optimizer.lr:.2e} | STATE:{state} | T:{elapsed:.2f}s")
