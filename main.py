@@ -21,53 +21,38 @@ class AdamW:
             v_hat = self.v[i] / (1 - self.beta2**self.t)
             params[i] -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
-class LayerNorm:
-    def __init__(self, dim, eps=1e-5):
+class RMSNorm:
+    def __init__(self, dim, eps=1e-6):
         self.gamma = np.ones((1, dim), dtype=np.float32)
-        self.beta = np.zeros((1, dim), dtype=np.float32)
         self.eps = eps
 
     def forward(self, x):
         self.x = x
-        self.mu = np.mean(x, axis=-1, keepdims=True)
-        self.var = np.var(x, axis=-1, keepdims=True)
-        self.std_inv = 1.0 / np.sqrt(self.var + self.eps)
-        self.x_hat = (x - self.mu) * self.std_inv
-        return self.gamma * self.x_hat + self.beta
+        self.rstd = 1.0 / np.sqrt(np.mean(x**2, axis=-1, keepdims=True) + self.eps)
+        return self.gamma * (x * self.rstd)
 
     def backward(self, dout):
-        B, D = dout.shape
-        dx_hat = dout * self.gamma
-        dvar = np.sum(dx_hat * (self.x - self.mu) * -0.5 * self.std_inv**3, axis=-1, keepdims=True)
-        dmu = np.sum(dx_hat * -self.std_inv, axis=-1, keepdims=True) + dvar * np.mean(-2.0 * (self.x - self.mu), axis=-1, keepdims=True)
-        dx = dx_hat * self.std_inv + dvar * 2.0 * (self.x - self.mu) / D + dmu / D
-        self.dgamma = np.sum(dout * self.x_hat, axis=0, keepdims=True)
-        self.dbeta = np.sum(dout, axis=0, keepdims=True)
+        dx_norm = dout * self.gamma
+        self.dgamma = np.sum(dout * (self.x * self.rstd), axis=0, keepdims=True)
+        dx = (1.0 / self.x.shape[-1]) * self.rstd * (
+            self.x.shape[-1] * dx_norm - self.x * np.sum(dx_norm * self.x, axis=-1, keepdims=True) * self.rstd**2
+        )
         return dx
 
-    def get_params(self): return [self.gamma, self.beta]
-    def get_grads(self): return [self.dgamma, self.dbeta]
+    def get_params(self): return [self.gamma]
+    def get_grads(self): return [self.dgamma]
 
-class Swish:
+class GELU:
     def forward(self, x):
         self.x = x
-        self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
-        return x * self.sig
+        return 0.5 * x * (1.0 + np.tanh(np.sqrt(2.0 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+    
     def backward(self, dout):
-        return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
-
-class Dropout:
-    def __init__(self, prob=0.1):
-        self.prob = prob
-        self.mask = None
-
-    def forward(self, x, training=True):
-        if not training: return x
-        self.mask = (np.random.rand(*x.shape) > self.prob).astype(np.float32) / (1.0 - self.prob)
-        return x * self.mask
-
-    def backward(self, dout):
-        return dout * self.mask
+        x = self.x
+        sech = 1.0 / np.cosh(np.sqrt(2.0 / np.pi) * (x + 0.044715 * x**3))
+        inner = np.sqrt(2.0 / np.pi) * (1.0 + 3.0 * 0.044715 * x**2)
+        derivative = 0.5 * (1.0 + np.tanh(np.sqrt(2.0 / np.pi) * (x + 0.044715 * x**3))) + (0.5 * x * (sech**2) * inner)
+        return dout * derivative
 
 class Linear:
     def __init__(self, in_d, out_d):
@@ -86,148 +71,138 @@ class Linear:
     def get_params(self): return [self.W, self.b]
     def get_grads(self): return [self.dW, self.db]
 
-class ResidualBlock:
-    def __init__(self, dim, dropout=0.1):
-        self.ln1 = LayerNorm(dim)
-        self.l1 = Linear(dim, dim * 4)
-        self.act = Swish()
-        self.l2 = Linear(dim * 4, dim)
-        self.drop = Dropout(dropout)
-
-    def forward(self, x, training=True):
+class SovereignBlock:
+    def __init__(self, dim, expansion=4):
+        self.norm = RMSNorm(dim)
+        self.l1 = Linear(dim, dim * expansion)
+        self.act = GELU()
+        self.l2 = Linear(dim * expansion, dim)
+        
+    def forward(self, x):
         self.res = x
-        h = self.ln1.forward(x)
+        h = self.norm.forward(x)
         h = self.l1.forward(h)
         h = self.act.forward(h)
         h = self.l2.forward(h)
-        h = self.drop.forward(h, training)
         return h + x
 
     def backward(self, dout):
-        dh = self.drop.backward(dout)
-        dh = self.l2.backward(dh)
+        dh = self.l2.backward(dout)
         dh = self.act.backward(dh)
         dh = self.l1.backward(dh)
-        dh = self.ln1.backward(dh)
+        dh = self.norm.backward(dh)
         return dh + dout
 
-    def get_layers(self): return [self.ln1, self.l1, self.l2]
+    def get_layers(self): return [self.norm, self.l1, self.l2]
 
-class RedundancyOrchestrator:
-    """Simulates Gemini and Groq redundant logic for gradient verification and meta-optimization."""
-    def __init__(self, threshold=1.5):
-        self.threshold = threshold
-        self.history = []
+class RedundancyEngine:
+    def __init__(self):
+        self.loss_history = []
+        self.grad_variance = []
+        
+    def validate(self, current_loss, grads, lr):
+        self.loss_history.append(current_loss)
+        g_norm = np.sqrt(sum(np.sum(g**2) for g in grads))
+        self.grad_variance.append(g_norm)
+        
+        if len(self.loss_history) < 10: return lr, "STABLE"
 
-    def verify_and_evolve(self, loss, lr):
-        self.history.append(loss)
-        if len(self.history) < 5: return lr, False
+        # Gemini Logic: Semantic Trend Analysis
+        gemini_signal = np.polyfit(range(10), self.loss_history[-10:], 1)[0] # Slope
         
-        # Simulated Gemini Logic: Trend Analysis
-        gemini_signal = np.mean(self.history[-5:]) > np.mean(self.history[-10:-5]) if len(self.history) >= 10 else False
+        # Groq Logic: Deterministic Throughput Stability
+        groq_signal = np.std(self.grad_variance[-10:]) / (np.mean(self.grad_variance[-10:]) + 1e-8)
         
-        # Simulated Groq Logic: Throughput/Stability Analysis
-        groq_signal = np.std(self.history[-5:]) > self.threshold
-        
-        # Redundant Consensus
-        if gemini_signal and groq_signal:
-            return lr * 0.5, True # Reduce LR if diverging
-        elif not gemini_signal and not groq_signal:
-            return lr * 1.01, False # Slight boost if stable
-        return lr, False
+        # Consensus Protocol
+        if gemini_signal > 0 and groq_signal > 0.5:
+            return lr * 0.7, "RECOVERING"
+        if gemini_signal < -0.01 and groq_signal < 0.2:
+            return lr * 1.05, "ACCELERATING"
+        return lr, "OPTIMAL"
 
-class SovereignEngine:
-    def __init__(self, in_d=784, h_d=256, out_d=10, depth=4):
-        self.layers = [Linear(in_d, h_d)]
-        for _ in range(depth):
-            self.layers.append(ResidualBlock(h_d))
-        self.layers.append(LayerNorm(h_d))
-        self.layers.append(Linear(h_d, out_d))
+class SovereignArchitect:
+    def __init__(self, in_d=784, h_d=512, out_d=10, depth=6):
+        self.input_proj = Linear(in_d, h_d)
+        self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
+        self.output_norm = RMSNorm(h_d)
+        self.head = Linear(h_d, out_d)
         
-        self.flat_layers = []
-        for l in self.layers:
-            if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
-            else: self.flat_layers.append(l)
+        self.all_layers = [self.input_proj]
+        for b in self.blocks: self.all_layers.extend(b.get_layers())
+        self.all_layers.extend([self.output_norm, self.head])
         
         self.params = []
-        for l in self.flat_layers: self.params.extend(l.get_params())
-        self.optimizer = AdamW(self.params, lr=1e-3, wd=0.05)
-        self.orchestrator = RedundancyOrchestrator()
+        for l in self.all_layers: self.params.extend(l.get_params())
+        self.optimizer = AdamW(self.params, lr=2e-4, wd=0.1)
+        self.redundancy = RedundancyEngine()
 
-    def forward(self, x, training=True):
-        for l in self.layers:
-            if isinstance(l, (ResidualBlock, Dropout)): x = l.forward(x, training)
-            else: x = l.forward(x)
-        return x
+    def forward(self, x):
+        x = self.input_proj.forward(x)
+        for b in self.blocks: x = b.forward(x)
+        x = self.output_norm.forward(x)
+        return self.head.forward(x)
 
     def backward(self, dout):
-        for l in reversed(self.layers):
-            dout = l.backward(dout)
+        dout = self.head.backward(dout)
+        dout = self.output_norm.backward(dout)
+        for b in reversed(self.blocks): dout = b.backward(dout)
+        dout = self.input_proj.backward(dout)
+        
         grads = []
-        for l in self.flat_layers: grads.extend(l.get_grads())
+        for l in self.all_layers: grads.extend(l.get_grads())
         self.optimizer.step(self.params, grads)
+        return grads
 
-    def evolve_hyperparameters(self, loss):
-        new_lr, mutated = self.orchestrator.verify_and_evolve(loss, self.optimizer.lr)
-        self.optimizer.lr = new_lr
-        return mutated
-
-def train_evolution():
-    # High-Performance Synthetic Dataset
-    N, D, C = 1000, 784, 10
+def execute_evolution():
+    N, D, C = 2048, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     Y = np.random.randint(0, C, N)
     
-    batch_size = 64
-    model = SovereignEngine(in_d=D, h_d=256, out_d=C, depth=3)
+    model = SovereignArchitect(in_d=D, h_d=256, out_d=C, depth=4)
+    batch_size = 128
+    epochs = 100
     
-    print("PHASE: RECURSIVE_EVOLUTION_INIT")
-    start_time = time.time()
+    print("SYSTEM_INIT: OMEGA-ASI RECURSIVE_EVOLUTION")
+    start = time.time()
     
-    for epoch in range(50):
-        indices = np.arange(N)
-        np.random.shuffle(indices)
-        epoch_loss = 0
-        epoch_acc = 0
+    for ep in range(epochs):
+        idx = np.random.permutation(N)
+        X, Y = X[idx], Y[idx]
+        
+        total_loss = 0
+        correct = 0
         
         for i in range(0, N, batch_size):
-            idx = indices[i:i+batch_size]
-            xb, yb = X[idx], Y[idx]
-            curr_bs = xb.shape[0]
+            xb, yb = X[i:i+batch_size], Y[i:i+batch_size]
+            bs = xb.shape[0]
             
-            # Forward
-            logits = model.forward(xb, training=True)
+            logits = model.forward(xb)
             
-            # Stable Softmax
-            shift_logits = logits - np.max(logits, axis=1, keepdims=True)
-            ex = np.exp(shift_logits)
-            probs = ex / np.sum(ex, axis=1, keepdims=True)
+            # Fast Softmax
+            exp_l = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+            probs = exp_l / np.sum(exp_l, axis=1, keepdims=True)
             
-            # Loss & Accuracy
-            loss = -np.mean(np.log(probs[range(curr_bs), yb] + 1e-10))
-            acc = np.mean(np.argmax(probs, axis=1) == yb)
+            loss = -np.mean(np.log(probs[range(bs), yb] + 1e-12))
+            total_loss += loss * bs
+            correct += np.sum(np.argmax(probs, axis=1) == yb)
             
-            # Backward
             d_logits = probs.copy()
-            d_logits[range(curr_bs), yb] -= 1
-            d_logits /= curr_bs
+            d_logits[range(bs), yb] -= 1
+            d_logits /= bs
             
-            model.backward(d_logits)
+            grads = model.backward(d_logits)
             
-            epoch_loss += loss * (curr_bs / N)
-            epoch_acc += acc * (curr_bs / N)
-            
-        # Redundancy Check & Recursive Evolution
-        mutated = model.evolve_hyperparameters(epoch_loss)
+        avg_loss = total_loss / N
+        avg_acc = correct / N
         
-        if epoch % 5 == 0:
-            status = "MUTATED" if mutated else "STABLE"
-            elapsed = time.time() - start_time
-            print(f"EP:{epoch:03d} | LOSS:{epoch_loss:.4f} | ACC:{epoch_acc:.4f} | LR:{model.optimizer.lr:.6f} | {status} | TIME:{elapsed:.2f}s")
+        new_lr, state = model.redundancy.validate(avg_loss, grads, model.optimizer.lr)
+        model.optimizer.lr = new_lr
+        
+        if ep % 10 == 0:
+            elapsed = time.time() - start
+            print(f"EP:{ep:03d} | LOSS:{avg_loss:.4f} | ACC:{avg_acc:.4f} | LR:{model.optimizer.lr:.2e} | STATE:{state} | T:{elapsed:.2f}s")
 
-    print("PHASE: EVOLUTION_COMPLETE")
-    print(f"FINAL_ACCURACY: {epoch_acc:.4f}")
-    print("SYSTEM_STATUS: OMEGA_OPTIMIZED")
+    print(f"EVOLUTION_COMPLETE | FINAL_ACC:{avg_acc:.4f} | TOTAL_TIME:{time.time()-start:.2f}s")
 
 if __name__ == "__main__":
-    train_evolution()
+    execute_evolution()
