@@ -11,13 +11,8 @@ class AdamW:
         self.v = [np.zeros_like(p) for p in params]
         self.t = 0
 
-    def step(self, params, grads, clip_norm=1.0):
+    def step(self, params, grads):
         self.t += 1
-        total_norm = np.sqrt(sum(np.sum(g**2) for g in grads))
-        clip_coef = clip_norm / (total_norm + 1e-6)
-        if clip_coef < 1:
-            grads = [g * clip_coef for g in grads]
-
         for i in range(len(params)):
             params[i] -= self.lr * self.wd * params[i]
             self.m[i] = self.beta1 * self.m[i] + (1 - self.beta1) * grads[i]
@@ -61,21 +56,9 @@ class Swish:
     def backward(self, dout):
         return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
 
-class Dropout:
-    def __init__(self, p=0.1):
-        self.p = p
-        self.mask = None
-    def forward(self, x, train=True):
-        if not train: return x
-        self.mask = (np.random.rand(*x.shape) > self.p) / (1.0 - self.p)
-        return x * self.mask
-    def backward(self, dout):
-        return dout * self.mask
-
 class Linear:
     def __init__(self, in_d, out_d):
-        limit = np.sqrt(6.0 / (in_d + out_d))
-        self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
+        self.W = (np.random.randn(in_d, out_d) * np.sqrt(2.0 / in_d)).astype(np.float32)
         self.b = np.zeros((1, out_d), dtype=np.float32)
 
     def forward(self, x):
@@ -90,60 +73,29 @@ class Linear:
     def get_params(self): return [self.W, self.b]
     def get_grads(self): return [self.dW, self.db]
 
-class SovereignRedundancy:
+class ResidualBlock:
     def __init__(self, dim):
-        self.path_gemini = Linear(dim, dim)
-        self.path_groq = Linear(dim, dim)
-        self.gate = np.ones((1, dim), dtype=np.float32) * 0.5
+        self.ln = LayerNorm(dim)
+        self.l1 = Linear(dim, dim)
+        self.act = Swish()
+        self.l2 = Linear(dim, dim)
 
     def forward(self, x):
-        self.x = x
-        self.out_gemini = self.path_gemini.forward(x)
-        self.out_groq = self.path_groq.forward(x)
-        return self.gate * self.out_gemini + (1 - self.gate) * self.out_groq
-
-    def backward(self, dout):
-        d_gemini = dout * self.gate
-        d_groq = dout * (1 - self.gate)
-        self.dgate = np.sum(dout * (self.out_gemini - self.out_groq), axis=0, keepdims=True)
-        dx_gemini = self.path_gemini.backward(d_gemini)
-        dx_groq = self.path_groq.backward(d_groq)
-        return dx_gemini + dx_groq
-
-    def get_layers(self): return [self.path_gemini, self.path_groq]
-    def get_params(self): return [self.gate]
-    def get_grads(self): return [self.dgate]
-
-class ResidualBlock:
-    def __init__(self, dim, dropout_p=0.1):
-        self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim * 4)
-        self.act = Swish()
-        self.l2 = Linear(dim * 4, dim)
-        self.drop = Dropout(dropout_p)
-        self.redundancy = SovereignRedundancy(dim)
-
-    def forward(self, x, train=True):
         self.res = x
         h = self.ln.forward(x)
         h = self.l1.forward(h)
         h = self.act.forward(h)
         h = self.l2.forward(h)
-        h = self.drop.forward(h, train)
-        h = self.redundancy.forward(h)
         return h + x
 
     def backward(self, dout):
-        dh = self.redundancy.backward(dout)
-        dh = self.drop.backward(dh)
-        dh = self.l2.backward(dh)
+        dh = self.l2.backward(dout)
         dh = self.act.backward(dh)
         dh = self.l1.backward(dh)
         dh = self.ln.backward(dh)
         return dh + dout
 
-    def get_layers(self): 
-        return [self.ln, self.l1, self.l2, self.redundancy]
+    def get_layers(self): return [self.ln, self.l1, self.l2]
 
 class SovereignEngine:
     def __init__(self, in_d=784, h_d=256, out_d=10):
@@ -151,87 +103,59 @@ class SovereignEngine:
             Linear(in_d, h_d),
             ResidualBlock(h_d),
             ResidualBlock(h_d),
-            LayerNorm(h_d),
             Linear(h_d, out_d)
         ]
         self.flat_layers = []
         for l in self.layers:
-            if hasattr(l, 'get_layers'): 
-                for sub in l.get_layers():
-                    self.flat_layers.append(sub)
-            else:
-                self.flat_layers.append(l)
+            if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
+            else: self.flat_layers.append(l)
         
         params = []
         for l in self.flat_layers: params.extend(l.get_params())
-        if hasattr(self.layers[1], 'redundancy'):
-            params.extend(self.layers[1].redundancy.get_params())
-            params.extend(self.layers[2].redundancy.get_params())
-            
         self.params = params
-        self.optimizer = AdamW(self.params, lr=1e-3, wd=0.05)
+        self.optimizer = AdamW(self.params, lr=2e-3)
 
-    def forward(self, x, train=True):
-        for l in self.layers:
-            if isinstance(l, (ResidualBlock, Dropout)):
-                x = l.forward(x, train)
-            else:
-                x = l.forward(x)
+    def forward(self, x):
+        for l in self.layers: x = l.forward(x)
         return x
 
     def backward(self, dout):
-        for l in reversed(self.layers):
-            dout = l.backward(dout)
+        for l in reversed(self.layers): dout = l.backward(dout)
         grads = []
         for l in self.flat_layers: grads.extend(l.get_grads())
-        if hasattr(self.layers[1], 'redundancy'):
-            grads.extend(self.layers[1].redundancy.get_grads())
-            grads.extend(self.layers[2].redundancy.get_grads())
         self.optimizer.step(self.params, grads)
 
 def train_evolution():
-    np.random.seed(42)
-    N, D, C = 1000, 784, 10
-    X = np.random.randn(N, D).astype(np.float32)
-    Y = np.random.randint(0, C, N)
+    # Synthetic Data Generation (100 samples, 784 features)
+    X = np.random.randn(100, 784).astype(np.float32)
+    Y = np.random.randint(0, 10, 100)
     
-    batch_size = 64
-    model = SovereignEngine(D, 256, C)
+    model = SovereignEngine(784, 128, 10)
     
-    print("PHASE: RECURSIVE_EVOLUTION_INITIATED")
-    start_time = time.time()
-    
-    for epoch in range(50):
-        indices = np.random.permutation(N)
-        epoch_loss = 0
-        epoch_acc = 0
+    print("PHASE: RECURSIVE_EVOLUTION_START")
+    for epoch in range(100):
+        # Forward
+        logits = model.forward(X)
         
-        for i in range(0, N, batch_size):
-            idx = indices[i:i+batch_size]
-            xb, yb = X[idx], Y[idx]
-            
-            logits = model.forward(xb, train=True)
-            
-            shift_logits = logits - np.max(logits, axis=1, keepdims=True)
-            ex = np.exp(shift_logits)
-            probs = ex / np.sum(ex, axis=1, keepdims=True)
-            
-            loss = -np.mean(np.log(probs[range(len(yb)), yb] + 1e-10))
-            epoch_loss += loss * len(yb)
-            epoch_acc += np.sum(np.argmax(probs, axis=1) == yb)
-            
-            d_logits = probs.copy()
-            d_logits[range(len(yb)), yb] -= 1
-            d_logits /= len(yb)
-            
-            model.backward(d_logits)
-            
-        if epoch % 5 == 0:
-            avg_loss = epoch_loss / N
-            avg_acc = epoch_acc / N
-            print(f"EPOCH:{epoch:03d} | LOSS:{avg_loss:.4f} | ACC:{avg_acc:.4f} | TIME:{time.time()-start_time:.2f}s")
+        # Softmax Cross-Entropy
+        ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+        probs = ex / np.sum(ex, axis=1, keepdims=True)
+        
+        loss = -np.mean(np.log(probs[range(100), Y] + 1e-10))
+        acc = np.mean(np.argmax(probs, axis=1) == Y)
+        
+        # Backward
+        d_logits = probs.copy()
+        d_logits[range(100), Y] -= 1
+        d_logits /= 100
+        
+        model.backward(d_logits)
+        
+        if epoch % 10 == 0:
+            print(f"EPOCH:{epoch:03d} | LOSS:{loss:.4f} | ACC:{acc:.4f}")
 
-    print("PHASE: EVOLUTION_SUCCESS | STATUS: OMEGA_OPTIMIZED")
+    print("PHASE: EVOLUTION_SUCCESS")
+    print("MODEL_STATUS: OPTIMIZED")
 
 if __name__ == "__main__":
     train_evolution()
