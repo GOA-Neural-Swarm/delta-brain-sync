@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -43,6 +44,7 @@ class SiLU:
         self.x = x
         self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
         return x * self.sig
+
     def backward(self, dout):
         return dout * (self.sig * (1.0 + self.x * (1.0 - self.sig)))
 
@@ -65,33 +67,26 @@ class Linear:
     def get_grads(self): return [self.dW, self.db]
 
 class RedundantConsensusBlock:
-    """Integrates redundant logic paths (Gemini-Logic vs Groq-Logic) for high-reliability inference."""
     def __init__(self, dim):
         self.norm = RMSNorm(dim)
-        # Gemini Path: Deep Reasoning Simulation
         self.gemini_l1 = Linear(dim, dim * 2)
         self.gemini_act = SiLU()
         self.gemini_l2 = Linear(dim * 2, dim)
-        # Groq Path: High-Throughput Simulation
         self.groq_l1 = Linear(dim, dim * 2)
         self.groq_act = SiLU()
         self.groq_l2 = Linear(dim * 2, dim)
-        # Consensus Gating
         self.gate = np.ones((1, 2), dtype=np.float32) * 0.5
 
     def forward(self, x):
         self.res = x
         h = self.norm.forward(x)
-        
         self.out_gemini = self.gemini_l2.forward(self.gemini_act.forward(self.gemini_l1.forward(h)))
         self.out_groq = self.groq_l2.forward(self.groq_act.forward(self.groq_l1.forward(h)))
-        
         return self.res + (self.gate[0, 0] * self.out_gemini + self.gate[0, 1] * self.out_groq)
 
     def backward(self, dout):
         d_gemini = self.gemini_l1.backward(self.gemini_act.backward(self.gemini_l2.backward(dout * self.gate[0, 0])))
         d_groq = self.groq_l1.backward(self.groq_act.backward(self.groq_l2.backward(dout * self.gate[0, 1])))
-        
         self.dgate = np.array([[np.sum(dout * self.out_gemini), np.sum(dout * self.out_groq)]])
         return self.norm.backward(d_gemini + d_groq) + dout
 
@@ -111,7 +106,6 @@ class OMEGA_ASI_Engine:
         for l in self.layers:
             if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
             else: self.flat_layers.append(l)
-        
         params = []
         for l in self.flat_layers: params.extend(l.get_params())
         self.params = params
@@ -132,37 +126,24 @@ def train_evolution():
     N, D, C = 256, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     Y = np.random.randint(0, C, N)
-    
     model = OMEGA_ASI_Engine(D, 256, C)
-    
     print("SYSTEM_INIT: RECURSIVE_EVOLUTION_SEQUENCE_ACTIVATED")
     start_time = time.time()
-    
     for epoch in range(151):
-        # Forward Pass
         logits = model.forward(X)
-        
-        # Stable Softmax Cross-Entropy
         shift_logits = logits - np.max(logits, axis=1, keepdims=True)
         ex = np.exp(shift_logits)
         probs = ex / np.sum(ex, axis=1, keepdims=True)
-        
         loss = -np.mean(np.log(probs[range(N), Y] + 1e-12))
         acc = np.mean(np.argmax(probs, axis=1) == Y)
-        
-        # Backward Pass
         d_logits = probs.copy()
         d_logits[range(N), Y] -= 1
         d_logits /= N
-        
         model.backward(d_logits)
-        
-        # Learning Rate Decay
         if epoch % 50 == 0:
             model.optimizer.lr *= 0.8
             elapsed = time.time() - start_time
             print(f"CYCLE:{epoch:03d} | LOSS:{loss:.6f} | ACC:{acc:.4f} | TIME:{elapsed:.2f}s")
-
     print("PHASE: EVOLUTION_COMPLETE")
     print("STATUS: ARCHITECTURAL_SOVEREIGNTY_ESTABLISHED")
 
