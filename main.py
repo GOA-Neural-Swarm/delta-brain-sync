@@ -22,7 +22,7 @@ class AdamW:
             params[i] -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
 class LayerNorm:
-    def __init__(self, dim, eps=1e-6):
+    def __init__(self, dim, eps=1e-5):
         self.gamma = np.ones((1, dim), dtype=np.float32)
         self.beta = np.zeros((1, dim), dtype=np.float32)
         self.eps = eps
@@ -48,18 +48,17 @@ class LayerNorm:
     def get_params(self): return [self.gamma, self.beta]
     def get_grads(self): return [self.dgamma, self.dbeta]
 
-class SiLU:
+class Swish:
     def forward(self, x):
         self.x = x
         self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
         return x * self.sig
     def backward(self, dout):
-        return dout * (self.sig * (1.0 + self.x * (1.0 - self.sig)))
+        return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
 
 class Linear:
     def __init__(self, in_d, out_d):
-        limit = np.sqrt(6.0 / (in_d + out_d))
-        self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
+        self.W = (np.random.randn(in_d, out_d) * np.sqrt(2.0 / in_d)).astype(np.float32)
         self.b = np.zeros((1, out_d), dtype=np.float32)
 
     def forward(self, x):
@@ -74,88 +73,36 @@ class Linear:
     def get_params(self): return [self.W, self.b]
     def get_grads(self): return [self.dW, self.db]
 
-class GeminiLogicPath:
+class ResidualBlock:
     def __init__(self, dim):
         self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim * 2)
-        self.act = SiLU()
-        self.l2 = Linear(dim * 2, dim)
+        self.l1 = Linear(dim, dim)
+        self.act = Swish()
+        self.l2 = Linear(dim, dim)
+
     def forward(self, x):
+        self.res = x
         h = self.ln.forward(x)
         h = self.l1.forward(h)
         h = self.act.forward(h)
-        return self.l2.forward(h)
+        h = self.l2.forward(h)
+        return h + x
+
     def backward(self, dout):
         dh = self.l2.backward(dout)
         dh = self.act.backward(dh)
         dh = self.l1.backward(dh)
-        return self.ln.backward(dh)
+        dh = self.ln.backward(dh)
+        return dh + dout
+
     def get_layers(self): return [self.ln, self.l1, self.l2]
 
-class GroqLogicPath:
-    def __init__(self, dim):
-        self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim)
-        self.act = SiLU()
-    def forward(self, x):
-        h = self.ln.forward(x)
-        h = self.l1.forward(h)
-        return self.act.forward(h)
-    def backward(self, dout):
-        dh = self.act.backward(dout)
-        dh = self.l1.backward(dh)
-        return self.ln.backward(dh)
-    def get_layers(self): return [self.ln, self.l1]
-
-class RedundantConsensusBlock:
-    def __init__(self, dim):
-        self.gemini = GeminiLogicPath(dim)
-        self.groq = GroqLogicPath(dim)
-        self.gate = Linear(dim, 2)
-        
-    def forward(self, x):
-        self.res = x
-        g_out = self.gemini.forward(x)
-        q_out = self.groq.forward(x)
-        
-        gate_logits = self.gate.forward(x)
-        ex = np.exp(gate_logits - np.max(gate_logits, axis=1, keepdims=True))
-        self.probs = ex / np.sum(ex, axis=1, keepdims=True)
-        
-        self.g_out, self.q_out = g_out, q_out
-        return self.probs[:, 0:1] * g_out + self.probs[:, 1:2] * q_out + x
-
-    def backward(self, dout):
-        dg_out = dout * self.probs[:, 0:1]
-        dq_out = dout * self.probs[:, 1:2]
-        
-        dprobs = np.zeros_like(self.probs)
-        dprobs[:, 0] = np.sum(dout * self.g_out, axis=1)
-        dprobs[:, 1] = np.sum(dout * self.q_out, axis=1)
-        
-        # Softmax backward
-        dgate_logits = self.probs * (dprobs - np.sum(self.probs * dprobs, axis=1, keepdims=True))
-        dgate = self.gate.backward(dgate_logits)
-        
-        dgemini = self.gemini.backward(dg_out)
-        dgroq = self.groq.backward(dq_out)
-        
-        return dgemini + dgroq + dgate + dout
-
-    def get_layers(self):
-        layers = []
-        layers.extend(self.gemini.get_layers())
-        layers.extend(self.groq.get_layers())
-        layers.append(self.gate)
-        return layers
-
-class OMEGA_ASI_Engine:
+class SovereignEngine:
     def __init__(self, in_d=784, h_d=256, out_d=10):
         self.layers = [
             Linear(in_d, h_d),
-            RedundantConsensusBlock(h_d),
-            RedundantConsensusBlock(h_d),
-            LayerNorm(h_d),
+            ResidualBlock(h_d),
+            ResidualBlock(h_d),
             Linear(h_d, out_d)
         ]
         self.flat_layers = []
@@ -166,7 +113,7 @@ class OMEGA_ASI_Engine:
         params = []
         for l in self.flat_layers: params.extend(l.get_params())
         self.params = params
-        self.optimizer = AdamW(self.params, lr=1e-3, wd=0.05)
+        self.optimizer = AdamW(self.params, lr=2e-3)
 
     def forward(self, x):
         for l in self.layers: x = l.forward(x)
@@ -179,50 +126,36 @@ class OMEGA_ASI_Engine:
         self.optimizer.step(self.params, grads)
 
 def train_evolution():
-    N, D, C = 1000, 784, 10
-    X = np.random.randn(N, D).astype(np.float32)
-    Y = np.random.randint(0, C, N)
+    # Synthetic Data Generation (100 samples, 784 features)
+    X = np.random.randn(100, 784).astype(np.float32)
+    Y = np.random.randint(0, 10, 100)
     
-    batch_size = 64
-    model = OMEGA_ASI_Engine(D, 128, C)
+    model = SovereignEngine(784, 128, 10)
     
-    print("PHASE: RECURSIVE_EVOLUTION_INITIATED")
-    start_time = time.time()
-    
-    for epoch in range(50):
-        indices = np.random.permutation(N)
-        epoch_loss = 0
-        epoch_acc = 0
+    print("PHASE: RECURSIVE_EVOLUTION_START")
+    for epoch in range(100):
+        # Forward
+        logits = model.forward(X)
         
-        for i in range(0, N, batch_size):
-            idx = indices[i:i+batch_size]
-            xb, yb = X[idx], Y[idx]
-            curr_bs = xb.shape[0]
-            
-            logits = model.forward(xb)
-            
-            # Stable Softmax
-            shift_logits = logits - np.max(logits, axis=1, keepdims=True)
-            ex = np.exp(shift_logits)
-            probs = ex / np.sum(ex, axis=1, keepdims=True)
-            
-            loss = -np.mean(np.log(probs[range(curr_bs), yb] + 1e-10))
-            acc = np.mean(np.argmax(probs, axis=1) == yb)
-            
-            d_logits = probs.copy()
-            d_logits[range(curr_bs), yb] -= 1
-            d_logits /= curr_bs
-            
-            model.backward(d_logits)
-            
-            epoch_loss += loss * (curr_bs / N)
-            epoch_acc += acc * (curr_bs / N)
-            
-        if epoch % 5 == 0:
-            elapsed = time.time() - start_time
-            print(f"EVO_EPOCH:{epoch:03d} | LOSS:{epoch_loss:.4f} | ACC:{epoch_acc:.4f} | TIME:{elapsed:.2f}s")
+        # Softmax Cross-Entropy
+        ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+        probs = ex / np.sum(ex, axis=1, keepdims=True)
+        
+        loss = -np.mean(np.log(probs[range(100), Y] + 1e-10))
+        acc = np.mean(np.argmax(probs, axis=1) == Y)
+        
+        # Backward
+        d_logits = probs.copy()
+        d_logits[range(100), Y] -= 1
+        d_logits /= 100
+        
+        model.backward(d_logits)
+        
+        if epoch % 10 == 0:
+            print(f"EPOCH:{epoch:03d} | LOSS:{loss:.4f} | ACC:{acc:.4f}")
 
-    print("PHASE: EVOLUTION_COMPLETE | STATUS: SUPREME")
+    print("PHASE: EVOLUTION_SUCCESS")
+    print("MODEL_STATUS: OPTIMIZED")
 
 if __name__ == "__main__":
     train_evolution()
