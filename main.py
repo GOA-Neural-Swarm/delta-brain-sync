@@ -1,4 +1,3 @@
-
 import numpy as np
 import time
 
@@ -54,7 +53,6 @@ class Swish:
         self.x = x
         self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
         return x * self.sig
-
     def backward(self, dout):
         return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
 
@@ -99,109 +97,62 @@ class ResidualBlock:
 
     def get_layers(self): return [self.ln, self.l1, self.l2]
 
-class Gemini:
-    def __init__(self, in_d, h_d, out_d):
-        self.layers = [
-            Linear(in_d, h_d),
-            ResidualBlock(h_d),
-            ResidualBlock(h_d),
-            Linear(h_d, out_d)
-        ]
-        self.flat_layers = []
-        for l in self.layers:
-            if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
-            else: self.flat_layers.append(l)
-
-        params = []
-        for l in self.flat_layers: params.extend(l.get_params())
-        self.params = params
-        self.optimizer = AdamW(self.params, lr=2e-3)
-
-    def forward(self, x):
-        for l in self.layers: x = l.forward(x)
-        return x
-
-    def backward(self, dout):
-        for l in reversed(self.layers): dout = l.backward(dout)
-        grads = []
-        for l in self.flat_layers: grads.extend(l.get_grads())
-        self.optimizer.step(self.params, grads)
-
-class Groq:
-    def __init__(self, in_d, h_d, out_d):
-        self.layers = [
-            Linear(in_d, h_d),
-            ResidualBlock(h_d),
-            ResidualBlock(h_d),
-            Linear(h_d, out_d)
-        ]
-        self.flat_layers = []
-        for l in self.layers:
-            if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
-            else: self.flat_layers.append(l)
-
-        params = []
-        for l in self.flat_layers: params.extend(l.get_params())
-        self.params = params
-        self.optimizer = AdamW(self.params, lr=2e-3)
-
-    def forward(self, x):
-        for l in self.layers: x = l.forward(x)
-        return x
-
-    def backward(self, dout):
-        for l in reversed(self.layers): dout = l.backward(dout)
-        grads = []
-        for l in self.flat_layers: grads.extend(l.get_grads())
-        self.optimizer.step(self.params, grads)
-
 class SovereignEngine:
     def __init__(self, in_d=784, h_d=256, out_d=10):
-        self.gemini = Gemini(in_d, h_d, out_d)
-        self.groq = Groq(in_d, h_d, out_d)
+        self.layers = [
+            Linear(in_d, h_d),
+            ResidualBlock(h_d),
+            ResidualBlock(h_d),
+            Linear(h_d, out_d)
+        ]
+        self.flat_layers = []
+        for l in self.layers:
+            if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
+            else: self.flat_layers.append(l)
+        
+        params = []
+        for l in self.flat_layers: params.extend(l.get_params())
+        self.params = params
+        self.optimizer = AdamW(self.params, lr=2e-3)
 
     def forward(self, x):
-        return self.gemini.forward(x), self.groq.forward(x)
+        for l in self.layers: x = l.forward(x)
+        return x
 
     def backward(self, dout):
-        self.gemini.backward(dout)
-        self.groq.backward(dout)
+        for l in reversed(self.layers): dout = l.backward(dout)
+        grads = []
+        for l in self.flat_layers: grads.extend(l.get_grads())
+        self.optimizer.step(self.params, grads)
 
 def train_evolution():
+    # Synthetic Data Generation (100 samples, 784 features)
     X = np.random.randn(100, 784).astype(np.float32)
     Y = np.random.randint(0, 10, 100)
-
+    
     model = SovereignEngine(784, 128, 10)
-
+    
     print("PHASE: RECURSIVE_EVOLUTION_START")
     for epoch in range(100):
-        logits1, logits2 = model.forward(X)
-
-        ex1 = np.exp(logits1 - np.max(logits1, axis=1, keepdims=True))
-        probs1 = ex1 / np.sum(ex1, axis=1, keepdims=True)
-
-        ex2 = np.exp(logits2 - np.max(logits2, axis=1, keepdims=True))
-        probs2 = ex2 / np.sum(ex2, axis=1, keepdims=True)
-
-        loss1 = -np.mean(np.log(probs1[range(100), Y] + 1e-10))
-        loss2 = -np.mean(np.log(probs2[range(100), Y] + 1e-10))
-
-        acc1 = np.mean(np.argmax(probs1, axis=1) == Y)
-        acc2 = np.mean(np.argmax(probs2, axis=1) == Y)
-
-        d_logits1 = probs1.copy()
-        d_logits1[range(100), Y] -= 1
-        d_logits1 /= 100
-
-        d_logits2 = probs2.copy()
-        d_logits2[range(100), Y] -= 1
-        d_logits2 /= 100
-
-        model.backward(d_logits1)
-        model.backward(d_logits2)
-
+        # Forward
+        logits = model.forward(X)
+        
+        # Softmax Cross-Entropy
+        ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+        probs = ex / np.sum(ex, axis=1, keepdims=True)
+        
+        loss = -np.mean(np.log(probs[range(100), Y] + 1e-10))
+        acc = np.mean(np.argmax(probs, axis=1) == Y)
+        
+        # Backward
+        d_logits = probs.copy()
+        d_logits[range(100), Y] -= 1
+        d_logits /= 100
+        
+        model.backward(d_logits)
+        
         if epoch % 10 == 0:
-            print(f"EPOCH:{epoch:03d} | LOSS1:{loss1:.4f} | LOSS2:{loss2:.4f} | ACC1:{acc1:.4f} | ACC2:{acc2:.4f}")
+            print(f"EPOCH:{epoch:03d} | LOSS:{loss:.4f} | ACC:{acc:.4f}")
 
     print("PHASE: EVOLUTION_SUCCESS")
     print("MODEL_STATUS: OPTIMIZED")
