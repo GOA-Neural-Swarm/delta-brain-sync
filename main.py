@@ -75,7 +75,38 @@ class Linear:
     def get_params(self): return [self.W, self.b]
     def get_grads(self): return [self.dW, self.db]
 
-class RedundantConsensusBlock:
+class Gemini:
+    def __init__(self, dim):
+        self.norm = RMSNorm(dim)
+        self.w_alpha = Linear(dim, dim * 2)
+        self.act_alpha = GeGLU()
+        self.proj_alpha = Linear(dim * 2, dim)
+        self.w_beta = Linear(dim, dim * 2)
+        self.act_beta = GeGLU()
+        self.proj_beta = Linear(dim * 2, dim)
+
+    def forward(self, x):
+        self.res = x
+        h = self.norm.forward(x)
+        self.out_alpha = self.proj_alpha.forward(self.act_alpha.forward(self.w_alpha.forward(h)))
+        self.out_beta = self.proj_beta.forward(self.act_beta.forward(self.w_beta.forward(h)))
+        return self.res + 0.5 * (self.out_alpha + self.out_beta)
+
+    def backward(self, dout):
+        d_consensus = 0.5 * dout
+        db = self.proj_beta.backward(d_consensus)
+        db = self.act_beta.backward(db)
+        db = self.w_beta.backward(db)
+        da = self.proj_alpha.backward(d_consensus)
+        da = self.act_alpha.backward(da)
+        da = self.w_alpha.backward(da)
+        dn = self.norm.backward(da + db)
+        return dn + dout
+
+    def get_layers(self):
+        return [self.norm, self.w_alpha, self.proj_alpha, self.w_beta, self.proj_beta]
+
+class Groq:
     def __init__(self, dim):
         self.norm = RMSNorm(dim)
         self.w_alpha = Linear(dim, dim * 2)
@@ -109,7 +140,7 @@ class RedundantConsensusBlock:
 class SovereignEngine:
     def __init__(self, in_d=784, h_d=256, out_d=10, depth=3):
         self.stem = Linear(in_d, h_d)
-        self.blocks = [RedundantConsensusBlock(h_d) for _ in range(depth)]
+        self.blocks = [Gemini(h_d) if i % 2 == 0 else Groq(h_d) for i in range(depth)]
         self.head_norm = RMSNorm(h_d)
         self.head = Linear(h_d, out_d)
         self.flat_layers = [self.stem]
