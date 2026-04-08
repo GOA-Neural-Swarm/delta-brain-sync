@@ -48,16 +48,13 @@ class LayerNorm:
     def get_params(self): return [self.gamma, self.beta]
     def get_grads(self): return [self.dgamma, self.dbeta]
 
-class GELU:
+class Swish:
     def forward(self, x):
         self.x = x
-        return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
-    
+        self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
+        return x * self.sig
     def backward(self, dout):
-        x = self.x
-        cdf = 0.5 * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
-        pdf = np.exp(-0.5 * x**2) / np.sqrt(2 * np.pi)
-        return dout * (cdf + x * pdf)
+        return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
 
 class Linear:
     def __init__(self, in_d, out_d):
@@ -76,64 +73,36 @@ class Linear:
     def get_params(self): return [self.W, self.b]
     def get_grads(self): return [self.dW, self.db]
 
-class RedundantExpertBlock:
+class ResidualBlock:
     def __init__(self, dim):
-        # Gemini Path
-        self.ln_g = LayerNorm(dim)
-        self.l1_g = Linear(dim, dim * 2)
-        self.act_g = GELU()
-        self.l2_g = Linear(dim * 2, dim)
-        
-        # Groq Path
-        self.ln_q = LayerNorm(dim)
-        self.l1_q = Linear(dim, dim * 2)
-        self.act_q = GELU()
-        self.l2_q = Linear(dim * 2, dim)
+        self.ln = LayerNorm(dim)
+        self.l1 = Linear(dim, dim)
+        self.act = Swish()
+        self.l2 = Linear(dim, dim)
 
     def forward(self, x):
         self.res = x
-        # Gemini Logic
-        g = self.ln_g.forward(x)
-        g = self.l1_g.forward(g)
-        g = self.act_g.forward(g)
-        self.out_g = self.l2_g.forward(g)
-        
-        # Groq Logic
-        q = self.ln_q.forward(x)
-        q = self.l1_q.forward(q)
-        q = self.act_q.forward(q)
-        self.out_q = self.l2_q.forward(q)
-        
-        return (self.out_g + self.out_q) * 0.5 + x
+        h = self.ln.forward(x)
+        h = self.l1.forward(h)
+        h = self.act.forward(h)
+        h = self.l2.forward(h)
+        return h + x
 
     def backward(self, dout):
-        # Gradient split
-        d_path = dout * 0.5
-        
-        # Groq Backward
-        dq = self.l2_q.backward(d_path)
-        dq = self.act_q.backward(dq)
-        dq = self.l1_q.backward(dq)
-        dq = self.ln_q.backward(dq)
-        
-        # Gemini Backward
-        dg = self.l2_g.backward(d_path)
-        dg = self.act_g.backward(dg)
-        dg = self.l1_g.backward(dg)
-        dg = self.ln_g.backward(dg)
-        
-        return dg + dq + dout
+        dh = self.l2.backward(dout)
+        dh = self.act.backward(dh)
+        dh = self.l1.backward(dh)
+        dh = self.ln.backward(dh)
+        return dh + dout
 
-    def get_layers(self):
-        return [self.ln_g, self.l1_g, self.l2_g, self.ln_q, self.l1_q, self.l2_q]
+    def get_layers(self): return [self.ln, self.l1, self.l2]
 
-class OMEGA_ASI_Engine:
+class SovereignEngine:
     def __init__(self, in_d=784, h_d=256, out_d=10):
         self.layers = [
             Linear(in_d, h_d),
-            RedundantExpertBlock(h_d),
-            RedundantExpertBlock(h_d),
-            LayerNorm(h_d),
+            ResidualBlock(h_d),
+            ResidualBlock(h_d),
             Linear(h_d, out_d)
         ]
         self.flat_layers = []
@@ -144,7 +113,7 @@ class OMEGA_ASI_Engine:
         params = []
         for l in self.flat_layers: params.extend(l.get_params())
         self.params = params
-        self.optimizer = AdamW(self.params, lr=1e-3, wd=0.05)
+        self.optimizer = AdamW(self.params, lr=2e-3)
 
     def forward(self, x):
         for l in self.layers: x = l.forward(x)
@@ -157,61 +126,36 @@ class OMEGA_ASI_Engine:
         self.optimizer.step(self.params, grads)
 
 def train_evolution():
-    # High-Performance Synthetic Data
-    N, D, C = 1000, 784, 10
-    X = np.random.randn(N, D).astype(np.float32)
-    Y = np.random.randint(0, C, N)
+    # Synthetic Data Generation (100 samples, 784 features)
+    X = np.random.randn(100, 784).astype(np.float32)
+    Y = np.random.randint(0, 10, 100)
     
-    batch_size = 64
-    model = OMEGA_ASI_Engine(D, 128, C)
+    model = SovereignEngine(784, 128, 10)
     
-    print("SYSTEM_INIT: OMEGA-ASI SOVEREIGN ARCHITECT ACTIVE")
-    print(f"RECURSIVE_EVOLUTION_MODE: ENABLED | SAMPLES: {N} | BATCH: {batch_size}")
-    
-    start_time = time.time()
-    for epoch in range(50):
-        indices = np.arange(N)
-        np.random.shuffle(indices)
+    print("PHASE: RECURSIVE_EVOLUTION_START")
+    for epoch in range(100):
+        # Forward
+        logits = model.forward(X)
         
-        epoch_loss = 0
-        epoch_acc = 0
-        batches = 0
+        # Softmax Cross-Entropy
+        ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+        probs = ex / np.sum(ex, axis=1, keepdims=True)
         
-        for i in range(0, N, batch_size):
-            idx = indices[i:i+batch_size]
-            xb, yb = X[idx], Y[idx]
-            curr_bs = xb.shape[0]
-            
-            # Forward
-            logits = model.forward(xb)
-            
-            # Fast Softmax Cross-Entropy
-            shift_logits = logits - np.max(logits, axis=1, keepdims=True)
-            ex = np.exp(shift_logits)
-            probs = ex / np.sum(ex, axis=1, keepdims=True)
-            
-            loss = -np.mean(np.log(probs[range(curr_bs), yb] + 1e-10))
-            acc = np.mean(np.argmax(probs, axis=1) == yb)
-            
-            # Backward
-            d_logits = probs.copy()
-            d_logits[range(curr_bs), yb] -= 1
-            d_logits /= curr_bs
-            
-            model.backward(d_logits)
-            
-            epoch_loss += loss
-            epoch_acc += acc
-            batches += 1
-            
-        if epoch % 5 == 0:
-            avg_loss = epoch_loss / batches
-            avg_acc = epoch_acc / batches
-            elapsed = time.time() - start_time
-            print(f"EVO_STEP:{epoch:03d} | LOSS:{avg_loss:.4f} | ACC:{avg_acc:.4f} | TIME:{elapsed:.2f}s")
+        loss = -np.mean(np.log(probs[range(100), Y] + 1e-10))
+        acc = np.mean(np.argmax(probs, axis=1) == Y)
+        
+        # Backward
+        d_logits = probs.copy()
+        d_logits[range(100), Y] -= 1
+        d_logits /= 100
+        
+        model.backward(d_logits)
+        
+        if epoch % 10 == 0:
+            print(f"EPOCH:{epoch:03d} | LOSS:{loss:.4f} | ACC:{acc:.4f}")
 
-    print("PHASE: EVOLUTION_SUCCESS | ARCHITECTURE: OPTIMIZED")
-    print("REDUNDANCY_CHECK: GEMINI_PATH=OK | GROQ_PATH=OK")
+    print("PHASE: EVOLUTION_SUCCESS")
+    print("MODEL_STATUS: OPTIMIZED")
 
 if __name__ == "__main__":
     train_evolution()
