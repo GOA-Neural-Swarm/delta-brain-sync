@@ -1,3 +1,4 @@
+
 import numpy as np
 
 class Optimizer:
@@ -70,7 +71,7 @@ class Linear:
     def get_params(self): return [self.W, self.b]
     def get_grads(self): return [self.dW, self.db]
 
-class SovereignBlock:
+class Gemini:
     def __init__(self, dim):
         self.ln = LayerNorm(dim)
         self.l1 = Linear(dim, dim * 4)
@@ -94,13 +95,55 @@ class SovereignBlock:
 
     def get_layers(self): return [self.ln, self.l1, self.l2]
 
+class Groq:
+    def __init__(self, dim):
+        self.ln = LayerNorm(dim)
+        self.l1 = Linear(dim, dim * 4)
+        self.act = SiLU()
+        self.l2 = Linear(dim * 4, dim)
+
+    def forward(self, x):
+        self.res = x
+        h = self.ln.forward(x)
+        h = self.l1.forward(h)
+        h = self.act.forward(h)
+        h = self.l2.forward(h)
+        return h + x
+
+    def backward(self, dout):
+        dh = self.l2.backward(dout)
+        dh = self.act.backward(dh)
+        dh = self.l1.backward(dh)
+        dh = self.ln.backward(dh)
+        return dh + dout
+
+    def get_layers(self): return [self.ln, self.l1, self.l2]
+
+class SovereignBlock:
+    def __init__(self, dim):
+        self.gemini = Gemini(dim)
+        self.groq = Groq(dim)
+
+    def forward(self, x):
+        self.res = x
+        h = self.gemini.forward(x)
+        h = self.groq.forward(h)
+        return h + x
+
+    def backward(self, dout):
+        dh = self.groq.backward(dout)
+        dh = self.gemini.backward(dh)
+        return dh + dout
+
+    def get_layers(self): return self.gemini.get_layers() + self.groq.get_layers()
+
 class SovereignEngine:
     def __init__(self, in_d=784, h_d=256, out_d=10, depth=3):
         self.layers = [Linear(in_d, h_d)]
         for _ in range(depth):
             self.layers.append(SovereignBlock(h_d))
         self.layers.append(Linear(h_d, out_d))
-        
+
         self.flat_layers = []
         for l in self.layers:
             if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
@@ -118,11 +161,11 @@ class SovereignEngine:
         for l in reversed(self.layers): dout = l.backward(dout)
         grads = []
         for l in self.flat_layers: grads.extend(l.get_grads())
-        
+
         gnorm = np.sqrt(sum(np.sum(g**2) for g in grads))
         if gnorm > 1.0:
             for g in grads: g *= (1.0 / gnorm)
-            
+
         self.optimizer.step(self.params, grads)
 
 def train_evolution():
@@ -135,7 +178,7 @@ def train_evolution():
     print("PHASE: RECURSIVE_EVOLUTION_START")
     for epoch in range(101):
         logits = model.forward(X)
-        
+
         shift_logits = logits - np.max(logits, axis=1, keepdims=True)
         ex = np.exp(shift_logits)
         probs = ex / np.sum(ex, axis=1, keepdims=True)
