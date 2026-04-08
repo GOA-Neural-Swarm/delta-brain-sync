@@ -1,5 +1,5 @@
 import subprocess
-import sys
+import sys 
 import pkg_resources
 
 print("🔬 [DIAGNOSIS]: Starting Environment Audit...")
