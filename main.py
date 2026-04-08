@@ -1,9 +1,8 @@
-
 import numpy as np
 import time
 
 class AdamW:
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.95), eps=1e-8, wd=0.05):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
         self.lr = lr
         self.beta1, self.beta2 = betas
         self.eps = eps
@@ -12,52 +11,54 @@ class AdamW:
         self.v = [np.zeros_like(p) for p in params]
         self.t = 0
 
-    def step(self, params, grads, clip_norm=1.0):
+    def step(self, params, grads):
         self.t += 1
-        g_norm = np.sqrt(sum(np.sum(g**2) for g in grads))
-        scale = min(1.0, clip_norm / (g_norm + 1e-6))
-
         for i in range(len(params)):
-            g = grads[i] * scale
             params[i] -= self.lr * self.wd * params[i]
-            self.m[i] = self.beta1 * self.m[i] + (1 - self.beta1) * g
-            self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * (g**2)
+            self.m[i] = self.beta1 * self.m[i] + (1 - self.beta1) * grads[i]
+            self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * (grads[i]**2)
             m_hat = self.m[i] / (1 - self.beta1**self.t)
             v_hat = self.v[i] / (1 - self.beta2**self.t)
             params[i] -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
-class RMSNorm:
-    def __init__(self, dim, eps=1e-6):
+class LayerNorm:
+    def __init__(self, dim, eps=1e-5):
         self.gamma = np.ones((1, dim), dtype=np.float32)
+        self.beta = np.zeros((1, dim), dtype=np.float32)
         self.eps = eps
 
     def forward(self, x):
         self.x = x
-        self.rstd = 1.0 / np.sqrt(np.mean(x**2, axis=-1, keepdims=True) + self.eps)
-        return self.gamma * (x * self.rstd)
+        self.mu = np.mean(x, axis=-1, keepdims=True)
+        self.var = np.var(x, axis=-1, keepdims=True)
+        self.std_inv = 1.0 / np.sqrt(self.var + self.eps)
+        self.x_hat = (x - self.mu) * self.std_inv
+        return self.gamma * self.x_hat + self.beta
 
     def backward(self, dout):
-        dx_norm = dout * self.gamma
-        self.dgamma = np.sum(dout * (self.x * self.rstd), axis=0, keepdims=True)
-        n = self.x.shape[-1]
-        dx = (1.0 / n) * self.rstd * (n * dx_norm - self.x * np.sum(dx_norm * self.x, axis=-1, keepdims=True) * self.rstd**2)
+        B, D = dout.shape
+        dx_hat = dout * self.gamma
+        dvar = np.sum(dx_hat * (self.x - self.mu) * -0.5 * self.std_inv**3, axis=-1, keepdims=True)
+        dmu = np.sum(dx_hat * -self.std_inv, axis=-1, keepdims=True) + dvar * np.mean(-2.0 * (self.x - self.mu), axis=-1, keepdims=True)
+        dx = dx_hat * self.std_inv + dvar * 2.0 * (self.x - self.mu) / D + dmu / D
+        self.dgamma = np.sum(dout * self.x_hat, axis=0, keepdims=True)
+        self.dbeta = np.sum(dout, axis=0, keepdims=True)
         return dx
 
-    def get_params(self): return [self.gamma]
-    def get_grads(self): return [self.dgamma]
+    def get_params(self): return [self.gamma, self.beta]
+    def get_grads(self): return [self.dgamma, self.dbeta]
 
-class SwiGLU:
+class Swish:
     def forward(self, x):
         self.x = x
-        self.sig = 1.0 / (1.0 + np.exp(-x))
+        self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
         return x * self.sig
-
     def backward(self, dout):
         return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
 
 class Linear:
-    def __init__(self, in_d, out_d, init_scale=0.02):
-        self.W = (np.random.randn(in_d, out_d) * init_scale).astype(np.float32)
+    def __init__(self, in_d, out_d):
+        self.W = (np.random.randn(in_d, out_d) * np.sqrt(2.0 / in_d)).astype(np.float32)
         self.b = np.zeros((1, out_d), dtype=np.float32)
 
     def forward(self, x):
@@ -72,143 +73,89 @@ class Linear:
     def get_params(self): return [self.W, self.b]
     def get_grads(self): return [self.dW, self.db]
 
-class SovereignBlock:
-    def __init__(self, dim, expansion=4):
-        self.norm = RMSNorm(dim)
-        self.w1 = Linear(dim, dim * expansion)
-        self.w2 = Linear(dim, dim * expansion)
-        self.act = SwiGLU()
-        self.w3 = Linear(dim * expansion, dim)
+class ResidualBlock:
+    def __init__(self, dim):
+        self.ln = LayerNorm(dim)
+        self.l1 = Linear(dim, dim)
+        self.act = Swish()
+        self.l2 = Linear(dim, dim)
 
     def forward(self, x):
         self.res = x
-        h = self.norm.forward(x)
-        x1 = self.w1.forward(h)
-        x2 = self.w2.forward(h)
-        h = self.act.forward(x1) * x2
-        self.x1_act = h
-        self.x2 = x2
-        self.x1 = x1
-        h = self.w3.forward(h)
+        h = self.ln.forward(x)
+        h = self.l1.forward(h)
+        h = self.act.forward(h)
+        h = self.l2.forward(h)
         return h + x
 
     def backward(self, dout):
-        dw3 = self.w3.backward(dout)
-        dx2 = dw3 * (self.act.forward(self.x1))
-        dx1_act = dw3 * self.x2
-        dx1 = self.act.backward(dx1_act)
-        dh = self.w1.backward(dx1) + self.w2.backward(dx2)
-        return self.norm.backward(dh) + dout
+        dh = self.l2.backward(dout)
+        dh = self.act.backward(dh)
+        dh = self.l1.backward(dh)
+        dh = self.ln.backward(dh)
+        return dh + dout
 
-    def get_layers(self): return [self.norm, self.w1, self.w2, self.w3]
+    def get_layers(self): return [self.ln, self.l1, self.l2]
 
-class RedundancyEngine:
-    def __init__(self, window=15):
-        self.window = window
-        self.losses = []
-        self.grads = []
-        self.ema_loss = None
-
-    def process(self, loss, grads, lr):
-        self.losses.append(loss)
-        g_norm = np.sqrt(sum(np.sum(g**2) for g in grads))
-        self.grads.append(g_norm)
-
-        if self.ema_loss is None: self.ema_loss = loss
-        else: self.ema_loss = 0.9 * self.ema_loss + 0.1 * loss
-
-        if len(self.losses) < self.window: return lr, "WARMUP"
-
-        gemini_signal = np.polyfit(range(self.window), self.losses[-self.window:], 1)[0]
-        groq_signal = np.std(self.grads[-self.window:]) / (np.mean(self.grads[-self.window:]) + 1e-8)
-
-        if gemini_signal > 0:
-            return lr * 0.5, "GEMINI_RECOVERY"
-        if groq_signal > 0.8:
-            return lr * 0.8, "GROQ_STABILIZE"
-        if gemini_signal < -0.001 and groq_signal < 0.3:
-            return min(lr * 1.1, 1e-2), "OMEGA_ACCELERATE"
-
-        return lr, "OPTIMAL"
-
-class SovereignArchitect:
-    def __init__(self, in_d=784, h_d=256, out_d=10, depth=4):
-        self.input_proj = Linear(in_d, h_d)
-        self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
-        self.output_norm = RMSNorm(h_d)
-        self.head = Linear(h_d, out_d)
-
-        self.layers = [self.input_proj]
-        for b in self.blocks: self.layers.extend(b.get_layers())
-        self.layers.extend([self.output_norm, self.head])
-
-        self.params = []
-        for l in self.layers: self.params.extend(l.get_params())
-        self.optimizer = AdamW(self.params, lr=1e-3, wd=0.1)
-        self.redundancy = RedundancyEngine()
+class SovereignEngine:
+    def __init__(self, in_d=784, h_d=256, out_d=10):
+        self.layers = [
+            Linear(in_d, h_d),
+            ResidualBlock(h_d),
+            ResidualBlock(h_d),
+            Linear(h_d, out_d)
+        ]
+        self.flat_layers = []
+        for l in self.layers:
+            if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
+            else: self.flat_layers.append(l)
+        
+        params = []
+        for l in self.flat_layers: params.extend(l.get_params())
+        self.params = params
+        self.optimizer = AdamW(self.params, lr=2e-3)
 
     def forward(self, x):
-        x = self.input_proj.forward(x)
-        for b in self.blocks: x = b.forward(x)
-        return self.head.forward(self.output_norm.forward(x))
+        for l in self.layers: x = l.forward(x)
+        return x
 
     def backward(self, dout):
-        dout = self.output_norm.backward(self.head.backward(dout))
-        for b in reversed(self.blocks): dout = b.backward(dout)
-        self.input_proj.backward(dout)
-
+        for l in reversed(self.layers): dout = l.backward(dout)
         grads = []
-        for l in self.layers: grads.extend(l.get_grads())
+        for l in self.flat_layers: grads.extend(l.get_grads())
         self.optimizer.step(self.params, grads)
-        return grads
 
-def execute_evolution():
-    N, D, C = 4096, 784, 10
-    X = np.random.randn(N, D).astype(np.float32)
-    Y = np.random.randint(0, C, N)
+def train_evolution():
+    # Synthetic Data Generation (100 samples, 784 features)
+    X = np.random.randn(100, 784).astype(np.float32)
+    Y = np.random.randint(0, 10, 100)
+    
+    model = SovereignEngine(784, 128, 10)
+    
+    print("PHASE: RECURSIVE_EVOLUTION_START")
+    for epoch in range(100):
+        # Forward
+        logits = model.forward(X)
+        
+        # Softmax Cross-Entropy
+        ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+        probs = ex / np.sum(ex, axis=1, keepdims=True)
+        
+        loss = -np.mean(np.log(probs[range(100), Y] + 1e-10))
+        acc = np.mean(np.argmax(probs, axis=1) == Y)
+        
+        # Backward
+        d_logits = probs.copy()
+        d_logits[range(100), Y] -= 1
+        d_logits /= 100
+        
+        model.backward(d_logits)
+        
+        if epoch % 10 == 0:
+            print(f"EPOCH:{epoch:03d} | LOSS:{loss:.4f} | ACC:{acc:.4f}")
 
-    model = SovereignArchitect(in_d=D, h_d=128, out_d=C, depth=3)
-    batch_size = 256
-    epochs = 50
-
-    print("SYSTEM_INIT: OMEGA-ASI RECURSIVE_EVOLUTION")
-    start_time = time.time()
-
-    for ep in range(epochs):
-        idx = np.random.permutation(N)
-        X, Y = X[idx], Y[idx]
-        epoch_loss, epoch_acc = 0, 0
-
-        for i in range(0, N, batch_size):
-            xb, yb = X[i:i+batch_size], Y[i:i+batch_size]
-            bs = xb.shape[0]
-
-            logits = model.forward(xb)
-            shift_logits = logits - np.max(logits, axis=1, keepdims=True)
-            exps = np.exp(shift_logits)
-            probs = exps / np.sum(exps, axis=1, keepdims=True)
-
-            loss = -np.mean(np.log(probs[range(bs), yb] + 1e-10))
-            epoch_loss += loss * bs
-            epoch_acc += np.sum(np.argmax(probs, axis=1) == yb)
-
-            d_logits = probs.copy()
-            d_logits[range(bs), yb] -= 1
-            d_logits /= bs
-
-            grads = model.backward(d_logits)
-
-        avg_loss = epoch_loss / N
-        avg_acc = epoch_acc / N
-
-        new_lr, state = model.redundancy.process(avg_loss, grads, model.optimizer.lr)
-        model.optimizer.lr = new_lr
-
-        if ep % 5 == 0:
-            print(f"EP:{ep:03d} | LOSS:{avg_loss:.4f} | ACC:{avg_acc:.4f} | LR:{model.optimizer.lr:.2e} | STATE:{state}")
-
-    total_time = time.time() - start_time
-    print(f"EVOLUTION_COMPLETE | FINAL_ACC:{avg_acc:.4f} | TOTAL_TIME:{total_time:.2f}s")
+    print("PHASE: EVOLUTION_SUCCESS")
+    print("MODEL_STATUS: OPTIMIZED")
 
 if __name__ == "__main__":
-    execute_evolution()
+    train_evolution()
