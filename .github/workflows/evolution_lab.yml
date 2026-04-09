@@ -171,8 +171,7 @@ jobs:
           
           # Prevent workflow self-modification if not authorized
           # (မငြးရဲ့ မူလ logic အတိုငြး workflow ဖိုငတြှကေို main အတိုငြး ပှနထြားမယ့ြ အပိုငြးပါ)
-          git reset HEAD .github/workflows/
-          git checkout -- .github/workflows/
+
           
           git add .
           if ! git diff-index --quiet HEAD; then
