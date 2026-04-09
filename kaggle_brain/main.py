@@ -1,3 +1,5 @@
+# [SOVEREIGN_CORE_START]
+
 import os
 import subprocess      
 import sys 
@@ -545,31 +547,49 @@ def autonomous_git_push(gen, thought, modified_files):
         os.system("git config user.email 'goa-neurons@neural-swarm.ai'")
         print("✅ [STEP 3]: Git Identity & Origin Re-established.")
 
-        # --- STEP 4: HYPER-INJECTION (OMNI-FILE HANDLING) ---
-        print("🧬 [STEP 4]: Injecting Evolutionary Code Assets...")
-        # directory file copy 
+        # --- STEP 4: HYPER-INJECTION (FULLY HYBRID) ---
+        print("🧬 [STEP 4]: Injecting & Merging Evolutionary Code Assets...")
         os.chdir(original_cwd)
-        
-        # [OMNI-LOGIC]: AI file list copy 
         injected_count = 0
+        
+        # 🔱 1. [OMNI-LOGIC]: AI ပြင်ဆင်လိုက်သော ဖိုင်အားလုံးကို Sync လုပ်ခြင်း (main.py မပါ)
         if modified_files:
             for file in modified_files:
-                if os.path.exists(file):
-                    shutil.copy(file, os.path.join(REPO_PATH, file))
+                if os.path.exists(file) and file != "main.py":
+                    # Sub-directories တွေပါရင် သေချာဆောက်ပေးမယ်
+                    target_path = os.path.join(REPO_PATH, file)
+                    os.makedirs(os.path.dirname(target_path) or '.', exist_ok=True)
+                    shutil.copy(file, target_path)
                     print(f"   -> 🧬 INJECTED (AI MODIFIED): {file}")
                     injected_count += 1
-        
-        # [CORE-PROTECTION]: 
-        static_targets = ["main.py", "brain.py", "ai_experiment.py"]
+
+        # 🛡️ 2. [CORE-PROTECTION]: AI မပြင်ပေမယ့် Sync လုပ်ရမယ့် မူလဖိုင်များ
+        static_targets = ["brain.py", "ai_experiment.py"]
         for file in static_targets:
-            
             if os.path.exists(file) and file not in (modified_files or []):
-                shutil.copy(file, os.path.join(REPO_PATH, file))
+                target_path = os.path.join(REPO_PATH, file)
+                os.makedirs(os.path.dirname(target_path) or '.', exist_ok=True)
+                shutil.copy(file, target_path)
                 print(f"   -> 🛡️ SYNCED (CORE ASSET): {file}")
                 injected_count += 1
-        
-        print(f"✅ [STEP 4]: Injection Complete. {injected_count} assets synchronized.")
 
+        # 🔱 3. [SURGICAL MERGE]: main.py အတွက် အထူးပေါင်းစပ်ခြင်း (The Master DNA)
+        evolved_main = "main.py"
+        if os.path.exists(evolved_main):
+            # (A) Kaggle_brain ထဲကို Sovereign Logic မပျက်ဘဲ ပေါင်းထည့်မယ်
+            target_brain = os.path.join(REPO_PATH, "Kaggle_brain", "main.py")
+            os.makedirs(os.path.dirname(target_brain), exist_ok=True)
+            merge_sovereign_logic(evolved_main, target_brain)
+            print(f"   -> 🔱 MERGED (SOVEREIGN DNA): Kaggle_brain/main.py")
+            injected_count += 1
+            
+            # (B) Root ထဲက main.py ကိုတော့ AI Upgrade အတိုင်း သိမ်းမယ်
+            shutil.copy(evolved_main, os.path.join(REPO_PATH, "main.py"))
+            print(f"   -> 🧬 SYNCED (ROOT EVOLUTION): main.py")
+            injected_count += 1
+
+        print(f"✅ [STEP 4]: Hybrid Injection Complete. {injected_count} assets synchronized.")
+        
         # --- STEP 5: MANIFESTATION (COMMIT & FORCE PUSH) ---
         print("🚀 [STEP 5]: Manifesting Evolution to GitHub...")
         os.chdir(REPO_PATH) 
@@ -840,3 +860,14 @@ assistant
         print(f"🚨 [CORE CRASH]: {e}")
         if HEADLESS: break
         time.sleep(10)
+
+if __name__ == "__main__":
+    
+    pass
+
+# [SOVEREIGN_CORE_END]
+
+# [AI_EVOLUTION_ZONE_START]
+
+# [AI_EVOLUTION_ZONE_END]
+        
