@@ -13,7 +13,7 @@ class GeGLU:
     def backward(self, dout):
         x = self.x
         tanh_out = np.tanh(0.7978845608 * (x + 0.044715 * x**3))
-        sech2 = 1.0 - tanh2
+        sech2 = 1.0 - tanh_out**2
         grad = 0.5 * (1 + tanh_out) + (0.5 * x * sech2 * 0.7978845608 * (1 + 3 * 0.044715 * x**2))
         return dout * grad
 
@@ -47,6 +47,7 @@ class Swish:
         self.x = x
         self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
         return x * self.sig
+
     def backward(self, dout):
         return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
 
@@ -70,7 +71,8 @@ class RedundantEngine:
     def __init__(self, dim):
         self.gemini_path = Linear(dim, dim)
         self.groq_path = Linear(dim, dim)
-        self.alpha = 0.5 # Consensus weight
+        self.alpha = 0.5  # Consensus weight
+        self.gate_w = np.random.randn(dim, 2).astype(np.float32)
 
     def forward(self, x):
         self.out_gemini = self.gemini_path.forward(x)
@@ -100,10 +102,10 @@ class RedundantEngine:
         return dx_gemini + dx_groq + dx_gate
 
     def get_params(self):
-        return [self.gemini_path.W, self.gemini_path.b, self.groq_path.W, self.groq_path.b]
+        return [self.gemini_path.W, self.gemini_path.b, self.groq_path.W, self.groq_path.b, self.gate_w]
 
     def get_grads(self):
-        return [self.gemini_path.dW, self.gemini_path.db, self.groq_path.dW, self.groq_path.db]
+        return [self.gemini_path.dW, self.gemini_path.db, self.groq_path.dW, self.groq_path.db, self.d_gate_w]
 
 class SovereignBlock:
     def __init__(self, dim, expansion=4):
@@ -111,15 +113,15 @@ class SovereignBlock:
         self.engine = RedundantEngine(dim)
         self.ln2 = LayerNorm(dim)
         self.l1 = Linear(dim, dim * expansion)
-        self.act = FastGELU()
-        self.l2 = Linear(dim * 2, dim)
+        self.act = GeGLU()
+        self.l2 = Linear(dim * expansion, dim)
 
     def forward(self, x):
         res = x
         h = self.ln1.forward(x)
         h = self.engine.forward(h)
         x = res + h
-        
+
         res = x
         h = self.ln2.forward(x)
         h = self.l1.forward(h)
@@ -174,14 +176,14 @@ class SovereignArchitect:
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
         self.head_ln = LayerNorm(h_d)
         self.head = Linear(h_d, out_d)
-        
+
         self.layers = [self.stem] + self.blocks + [self.head_ln, self.head]
         self.params = []
         for l in self.layers:
             if hasattr(l, 'get_params'): self.params.extend(l.get_params())
             elif hasattr(l, 'W'): self.params.extend([l.W, l.b])
             else: self.params.extend([l.gamma, l.beta])
-            
+
         self.optimizer = AdamW(self.params, lr=2e-3, wd=0.02)
 
     def forward(self, x):
@@ -232,7 +234,7 @@ def run_evolution():
             d_logits /= m
 
             grads = model.backward(d_logits)
-            
+
             gnorm = np.sqrt(sum(np.sum(g**2) for g in grads))
             if gnorm > 1.0:
                 grads = [g * (1.0 / gnorm) for g in grads]
