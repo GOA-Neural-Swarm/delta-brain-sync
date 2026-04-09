@@ -13,16 +13,16 @@ class AdamW:
 
     def step(self, params, grads):
         self.t += 1
-        lr_t = self.lr * (np.sqrt(1 - self.beta2**self.t) / (1 - self.beta1**self.t))
         for i in range(len(params)):
-            if self.wd != 0:
-                params[i] -= self.lr * self.wd * params[i]
+            params[i] -= self.lr * self.wd * params[i]
             self.m[i] = self.beta1 * self.m[i] + (1 - self.beta1) * grads[i]
             self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * (grads[i]**2)
-            params[i] -= lr_t * self.m[i] / (np.sqrt(self.v[i]) + self.eps)
+            m_hat = self.m[i] / (1 - self.beta1**self.t)
+            v_hat = self.v[i] / (1 - self.beta2**self.t)
+            params[i] -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
 class LayerNorm:
-    def __init__(self, dim, eps=1e-6):
+    def __init__(self, dim, eps=1e-5):
         self.gamma = np.ones((1, dim), dtype=np.float32)
         self.beta = np.zeros((1, dim), dtype=np.float32)
         self.eps = eps
@@ -37,28 +37,28 @@ class LayerNorm:
 
     def backward(self, dout):
         B, D = dout.shape
+        dx_hat = dout * self.gamma
+        dvar = np.sum(dx_hat * (self.x - self.mu) * -0.5 * self.std_inv**3, axis=-1, keepdims=True)
+        dmu = np.sum(dx_hat * -self.std_inv, axis=-1, keepdims=True) + dvar * np.mean(-2.0 * (self.x - self.mu), axis=-1, keepdims=True)
+        dx = dx_hat * self.std_inv + dvar * 2.0 * (self.x - self.mu) / D + dmu / D
         self.dgamma = np.sum(dout * self.x_hat, axis=0, keepdims=True)
         self.dbeta = np.sum(dout, axis=0, keepdims=True)
-        dx_hat = dout * self.gamma
-        dx = (1. / D) * self.std_inv * (D * dx_hat - np.sum(dx_hat, axis=-1, keepdims=True) - self.x_hat * np.sum(dx_hat * self.x_hat, axis=-1, keepdims=True))
         return dx
 
     def get_params(self): return [self.gamma, self.beta]
     def get_grads(self): return [self.dgamma, self.dbeta]
 
-class SiLU:
+class Swish:
     def forward(self, x):
         self.x = x
         self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
         return x * self.sig
-
     def backward(self, dout):
-        return dout * (self.sig * (1.0 + self.x * (1.0 - self.sig)))
+        return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
 
 class Linear:
     def __init__(self, in_d, out_d):
-        limit = np.sqrt(6.0 / (in_d + out_d))
-        self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
+        self.W = (np.random.randn(in_d, out_d) * np.sqrt(2.0 / in_d)).astype(np.float32)
         self.b = np.zeros((1, out_d), dtype=np.float32)
 
     def forward(self, x):
@@ -73,12 +73,12 @@ class Linear:
     def get_params(self): return [self.W, self.b]
     def get_grads(self): return [self.dW, self.db]
 
-class SovereignBlock:
+class ResidualBlock:
     def __init__(self, dim):
         self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim * 4)
-        self.act = SiLU()
-        self.l2 = Linear(dim * 4, dim)
+        self.l1 = Linear(dim, dim)
+        self.act = Swish()
+        self.l2 = Linear(dim, dim)
 
     def forward(self, x):
         self.res = x
@@ -86,7 +86,7 @@ class SovereignBlock:
         h = self.l1.forward(h)
         h = self.act.forward(h)
         h = self.l2.forward(h)
-        return h + self.res
+        return h + x
 
     def backward(self, dout):
         dh = self.l2.backward(dout)
@@ -98,21 +98,22 @@ class SovereignBlock:
     def get_layers(self): return [self.ln, self.l1, self.l2]
 
 class SovereignEngine:
-    def __init__(self, in_d, h_d, out_d, n_blocks=2):
-        self.layers = [Linear(in_d, h_d)]
-        for _ in range(n_blocks):
-            self.layers.append(SovereignBlock(h_d))
-        self.layers.append(LayerNorm(h_d))
-        self.layers.append(Linear(h_d, out_d))
-        
+    def __init__(self, in_d=784, h_d=256, out_d=10):
+        self.layers = [
+            Linear(in_d, h_d),
+            ResidualBlock(h_d),
+            ResidualBlock(h_d),
+            Linear(h_d, out_d)
+        ]
         self.flat_layers = []
         for l in self.layers:
             if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
             else: self.flat_layers.append(l)
-
-        self.params = []
-        for l in self.flat_layers: self.params.extend(l.get_params())
-        self.optimizer = AdamW(self.params, lr=1e-3, wd=0.01)
+        
+        params = []
+        for l in self.flat_layers: params.extend(l.get_params())
+        self.params = params
+        self.optimizer = AdamW(self.params, lr=2e-3)
 
     def forward(self, x):
         for l in self.layers: x = l.forward(x)
@@ -124,47 +125,36 @@ class SovereignEngine:
         for l in self.flat_layers: grads.extend(l.get_grads())
         self.optimizer.step(self.params, grads)
 
-def get_batch(X, Y, batch_size):
-    idx = np.random.choice(len(X), batch_size)
-    return X[idx], Y[idx]
-
 def train_evolution():
-    np.random.seed(42)
-    N, D, C = 1000, 784, 10
-    X = np.random.randn(N, D).astype(np.float32)
-    Y = np.random.randint(0, C, N)
-
-    model = SovereignEngine(D, 256, C, n_blocks=3)
-    batch_size = 64
-    epochs = 200
-
-    print("PHASE: RECURSIVE_EVOLUTION_START")
-    start_time = time.time()
+    # Synthetic Data Generation (100 samples, 784 features)
+    X = np.random.randn(100, 784).astype(np.float32)
+    Y = np.random.randint(0, 10, 100)
     
-    for epoch in range(epochs):
-        X_b, Y_b = get_batch(X, Y, batch_size)
+    model = SovereignEngine(784, 128, 10)
+    
+    print("PHASE: RECURSIVE_EVOLUTION_START")
+    for epoch in range(100):
+        # Forward
+        logits = model.forward(X)
         
-        logits = model.forward(X_b)
-        
-        # Cross-Entropy Loss with Softmax
+        # Softmax Cross-Entropy
         ex = np.exp(logits - np.max(logits, axis=1, keepdims=True))
         probs = ex / np.sum(ex, axis=1, keepdims=True)
         
-        loss = -np.mean(np.log(probs[range(batch_size), Y_b] + 1e-10))
+        loss = -np.mean(np.log(probs[range(100), Y] + 1e-10))
+        acc = np.mean(np.argmax(probs, axis=1) == Y)
         
+        # Backward
         d_logits = probs.copy()
-        d_logits[range(batch_size), Y_b] -= 1
-        d_logits /= batch_size
+        d_logits[range(100), Y] -= 1
+        d_logits /= 100
         
         model.backward(d_logits)
         
-        if epoch % 20 == 0:
-            # Full set accuracy
-            full_logits = model.forward(X)
-            acc = np.mean(np.argmax(full_logits, axis=1) == Y)
-            print(f"EPOCH:{epoch:03d} | LOSS:{loss:.4f} | ACC:{acc:.4f} | TIME:{(time.time()-start_time):.2f}s")
+        if epoch % 10 == 0:
+            print(f"EPOCH:{epoch:03d} | LOSS:{loss:.4f} | ACC:{acc:.4f}")
 
-    print(f"PHASE: EVOLUTION_SUCCESS | FINAL_ACC:{acc:.4f}")
+    print("PHASE: EVOLUTION_SUCCESS")
     print("MODEL_STATUS: OPTIMIZED")
 
 if __name__ == "__main__":
