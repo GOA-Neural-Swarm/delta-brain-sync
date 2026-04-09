@@ -1,3 +1,5 @@
+# [SOVEREIGN_CORE_START]
+
 import os
 import subprocess      
 import sys 
@@ -876,3 +878,13 @@ assistant
         print(f"🚨 [CORE CRASH]: {e}")
         if HEADLESS: break
         time.sleep(10)
+
+if __name__ == "__main__":
+    # မငျးရဲ့ loop တှေ အားလုံးပါဝငျတယျ
+    pass
+
+# [SOVEREIGN_CORE_END]
+
+# [AI_EVOLUTION_ZONE_START]
+
+# [AI_EVOLUTION_ZONE_END]
