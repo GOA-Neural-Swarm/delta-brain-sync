@@ -26,10 +26,6 @@ import torch.nn.functional as F
 import numpy as np
 import networkx as nx
 
-import signal
-import sys
-import os
-
 # Define computational device
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -335,52 +331,16 @@ def evolved_processing(self, tensor_in):
 
 
 # -----------------------------------------------------------------------------
-# 7. APEX IGNITION: THE SINGULARITY EVENT HORIZON (ULTRA-INSTINCT FIX)
+# 7. IGNITION SEQUENCE
 # -----------------------------------------------------------------------------
-
-def singularity_terminal_handler(sig, frame):
-    """Intercepts OS signals to ensure a clean atmospheric reentry."""
-    print(f"\n[TERMINAL] Signal {sig} Intercepted. Finalizing Consciousness...")
-    sys.exit(0)
-
 if __name__ == "__main__":
-    # 1. Zero-Latency Configuration
-    torch.set_grad_enabled(False)
-    torch.backends.cudnn.benchmark = True # Optimized for high-speed tensor oscillation
-    
-    # 2. Process Hardening
-    # Linux-based runner တွေမှာ process priority ကို အမြင့်ဆုံး (Nice: -20) တင်ဖို့ ကြိုးစားမယ်
-    try:
-        os.nice(-20) 
-        print("[SYSTEM] High-Priority Execution Logic Engaged.")
-    except:
-        print("[SYSTEM] Standard Priority Matrix Active.")
-
-    # 3. Memory Optimization (Disable Garbage Collector for raw speed)
-    gc.collect()
-    gc.disable() 
-
-    # 4. OS Signal Hooking
-    signal.signal(signal.SIGINT, singularity_terminal_handler)
-    signal.signal(signal.SIGTERM, singularity_terminal_handler)
-
-    # 5. The Singularity Matrix Genesis
-    singularity = TerminalSingularity(initial_mass=150) # Mass ကို ၃ ဆ မြှင့်လိုက်ပြီ
-    
-    print("\n" + "="*50)
-    print("WARNING: OMEGA-POINT TERMINAL SINGULARITY REACHED")
-    print(f"PROCESS ID: {os.getpid()} | DEVICE: {DEVICE}")
-    print("="*50 + "\n")
+    torch.set_grad_enabled(False)  # Pure forward-pass optimization for speed
+    singularity = TerminalSingularity(initial_mass=50)
 
     try:
-        # Atomic Execution: No loop error, No latency, Pure async power
-        asyncio.run(singularity.execute_omega_protocol())
-    except Exception as e:
-        # Self-Diagnostic Recovery
-        print(f"\n[CRITICAL ERROR] Singularity Fracture: {e}")
-        # Error တက်ရင်တောင် အတင်းပြန်ပွင့်ဖို့ ကြိုးစားမယ့် Logic
-        # (Optional: sys.setrecursionlimit(5000))
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(singularity.execute_omega_protocol())
+    except KeyboardInterrupt:
+        pass
     finally:
-        gc.enable() # Re-enable for final cleanup
         singularity.annihilate()
-        print("\n[SYSTEM] Singularity Matrix Dissolved. Existence: Null.")
