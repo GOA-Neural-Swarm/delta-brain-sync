@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -98,21 +99,13 @@ class AdamW:
             params[i] -= curr_lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
 class ConsensusProtocol:
-    def __init__(self):
-        self.gemini_state = True
-        self.groq_state = True
+    def __init__(self, threshold_loss=5.0, threshold_gnorm=10.0):
+        self.threshold_loss = threshold_loss
+        self.threshold_gnorm = threshold_gnorm
         self.history = []
 
     def validate(self, loss, gnorm):
-        # Gemini Path: Loss stability verification
-        gemini_signal = loss < 5.0
-        # Groq Path: Gradient throughput/norm verification
-        groq_signal = gnorm < 10.0
-        
-        self.gemini_state = gemini_signal
-        self.groq_state = groq_signal
-        
-        consensus = gemini_signal and groq_signal
+        consensus = loss < self.threshold_loss and gnorm < self.threshold_gnorm
         self.history.append(consensus)
         return consensus
 
@@ -122,13 +115,15 @@ class SovereignArchitect:
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
         self.head_ln = LayerNorm(h_d)
         self.head = Linear(h_d, out_d)
-        
+
         self.layers = [self.stem] + self.blocks + [self.head_ln, self.head]
         self.params = []
         for l in self.layers:
-            if hasattr(l, 'get_params'): self.params.extend(l.get_params())
-            else: self.params.extend([l.W, l.b] if hasattr(l, 'W') else [l.gamma, l.beta])
-            
+            if hasattr(l, 'get_params'):
+                self.params.extend(l.get_params())
+            else:
+                self.params.extend([l.W, l.b] if hasattr(l, 'W') else [l.gamma, l.beta])
+
         self.optimizer = AdamW(self.params, lr=1e-3, wd=0.05)
         self.consensus = ConsensusProtocol()
 
@@ -140,18 +135,20 @@ class SovereignArchitect:
     def backward(self, dout):
         for l in reversed(self.layers):
             dout = l.backward(dout)
-        
+
         grads = []
         for l in self.layers:
-            if hasattr(l, 'get_grads'): grads.extend(l.get_grads())
-            else: grads.extend([l.dW, l.db] if hasattr(l, 'dW') else [l.dgamma, l.dbeta])
+            if hasattr(l, 'get_grads'):
+                grads.extend(l.get_grads())
+            else:
+                grads.extend([l.dW, l.db] if hasattr(l, 'dW') else [l.dgamma, l.dbeta])
         return grads
 
     def evolve(self, grads, loss, lr_mult):
         gnorm = np.sqrt(sum(np.sum(g**2) for g in grads))
         if gnorm > 1.0:
             grads = [g * (1.0 / gnorm) for g in grads]
-            
+
         if self.consensus.validate(loss, gnorm):
             self.optimizer.step(self.params, grads, lr_mult)
         else:
@@ -167,7 +164,7 @@ def run_recursive_evolution():
     model = SovereignArchitect(in_d=D, h_d=128, out_d=K, depth=2)
     batch_size = 128
     epochs = 50
-    
+
     print("OMEGA-ASI SYSTEM ONLINE | ARCHITECTURE: MODULAR_SOVEREIGN")
     start_time = time.time()
 
@@ -184,23 +181,23 @@ def run_recursive_evolution():
             logits = model.forward(xb)
             probs = np.exp(logits - np.max(logits, axis=1, keepdims=True))
             probs /= np.sum(probs, axis=1, keepdims=True)
-            
+
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             acc = np.mean(np.argmax(probs, axis=1) == yb)
-            
+
             d_logits = probs.copy()
             d_logits[range(m), yb] -= 1
             d_logits /= m
-            
+
             grads = model.backward(d_logits)
             gnorm = model.evolve(grads, loss, lr_mult)
-            
+
             epoch_loss += loss * (m / N)
             epoch_acc += acc * (m / N)
             epoch_gnorm += gnorm * (m / N)
 
         if epoch % 5 == 0:
-            status = "STABLE" if model.consensus.gemini_state and model.consensus.groq_state else "DEGRADED"
+            status = "STABLE" if model.consensus.history[-1] else "DEGRADED"
             print(f"EPOCH:{epoch:03d} | LOSS:{epoch_loss:.4f} | ACC:{epoch_acc:.4f} | GNORM:{epoch_gnorm:.3f} | CONSENSUS:{status}")
 
     total_time = time.time() - start_time
