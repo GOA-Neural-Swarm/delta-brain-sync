@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -105,10 +106,7 @@ class AdamW:
             params[i] -= curr_lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
 class ConsensusProtocol:
-    """Redundant Logic Integration for Gemini and Groq Verification"""
-    @staticmethod
-    def verify_evolution(loss, acc):
-        # Simulated Groq-speed verification and Gemini-reasoning consensus
+    def verify_evolution(self, loss, acc):
         groq_check = loss < 2.5
         gemini_check = acc > 0.1
         return groq_check and gemini_check
@@ -125,7 +123,7 @@ class SovereignEngine:
         for l in self.layers:
             if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
             else: self.flat_layers.append(l)
-        
+
         params = []
         for l in self.flat_layers: params.extend(l.get_params())
         self.params = params
@@ -140,64 +138,56 @@ class SovereignEngine:
         for l in reversed(self.layers): dout = l.backward(dout)
         grads = []
         for l in self.flat_layers: grads.extend(l.get_grads())
-        # Gradient Clipping
         gnorm = np.sqrt(sum(np.sum(g**2) for g in grads))
         if gnorm > 1.0:
             grads = [g / (gnorm + 1e-6) for g in grads]
         self.optimizer.step(self.params, grads, lr_mult)
 
 def train_evolution():
-    # High-Performance Synthetic Dataset
     N, D, K = 1000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     Y = np.random.randint(0, K, N)
-    
+
     model = SovereignEngine(D, 256, K)
     batch_size = 64
     epochs = 50
-    
+
     print("PHASE: RECURSIVE_EVOLUTION_INITIATED")
     start_time = time.time()
-    
+
     for epoch in range(epochs):
         indices = np.random.permutation(N)
         epoch_loss = 0
         epoch_acc = 0
-        
-        # Cosine Learning Rate Decay
+
         lr_mult = 0.5 * (1 + np.cos(np.pi * epoch / epochs))
-        
+
         for i in range(0, N, batch_size):
             idx = indices[i:i+batch_size]
             xb, yb = X[idx], Y[idx]
-            
-            # Forward
+
             logits = model.forward(xb)
-            
-            # Stable Softmax
+
             shift_logits = logits - np.max(logits, axis=1, keepdims=True)
             ex = np.exp(shift_logits)
             probs = ex / np.sum(ex, axis=1, keepdims=True)
-            
-            # Loss & Accuracy
+
             m = yb.shape[0]
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             acc = np.mean(np.argmax(probs, axis=1) == yb)
-            
+
             epoch_loss += loss * (m / N)
             epoch_acc += acc * (m / N)
-            
-            # Backward
+
             d_logits = probs.copy()
             d_logits[range(m), yb] -= 1
             d_logits /= m
-            
+
             model.backward(d_logits, lr_mult)
-            
-        # Redundant Consensus Logic
+
         if not model.consensus.verify_evolution(epoch_loss, epoch_acc):
             print(f"EPOCH:{epoch:03d} | CONSENSUS_FAILURE: RE-CALIBRATING...")
-            
+
         if epoch % 5 == 0:
             elapsed = time.time() - start_time
             print(f"EPOCH:{epoch:03d} | LOSS:{epoch_loss:.4f} | ACC:{epoch_acc:.4f} | TIME:{elapsed:.2f}s")
