@@ -4,15 +4,15 @@ import time
 class FastGELU:
     def forward(self, x):
         self.x = x
-        return 0.5 * x * (1 + np.tanh(0.7978845608 * (x + 0.044715 * x**3)))
+        self.tanh_in = 0.7978845608 * (x + 0.044715 * x**3)
+        self.t = np.tanh(self.tanh_in)
+        return 0.5 * x * (1 + self.t)
 
     def backward(self, dout):
         x = self.x
-        inner = 0.7978845608 * (x + 0.044715 * x**3)
-        tanh_inner = np.tanh(inner)
-        sech2_inner = 1.0 - tanh_inner**2
-        derivative = 0.5 * (1 + tanh_inner) + (0.5 * x * sech2_inner * 0.7978845608 * (1 + 3 * 0.044715 * x**2))
-        return dout * derivative
+        sech2 = 1.0 - self.t**2
+        grad = 0.5 * (1 + self.t) + (0.5 * x * sech2 * 0.7978845608 * (1 + 3 * 0.044715 * x**2))
+        return dout * grad
 
 class LayerNorm:
     def __init__(self, dim, eps=1e-6):
@@ -36,20 +36,10 @@ class LayerNorm:
         dx = (1.0 / D) * self.std_inv * (D * dx_hat - np.sum(dx_hat, axis=-1, keepdims=True) - self.x_hat * np.sum(dx_hat * self.x_hat, axis=-1, keepdims=True))
         return dx
 
-    def get_params(self): return [self.gamma, self.beta]
-    def get_grads(self): return [self.dgamma, self.dbeta]
-
-class Swish:
-    def forward(self, x):
-        self.x = x
-        self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
-        return x * self.sig
-    def backward(self, dout):
-        return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
-
 class Linear:
     def __init__(self, in_d, out_d):
-        self.W = (np.random.randn(in_d, out_d) * np.sqrt(2.0 / in_d)).astype(np.float32)
+        limit = np.sqrt(6.0 / (in_d + out_d))
+        self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
         self.b = np.zeros(out_d, dtype=np.float32)
 
     def forward(self, x):
@@ -61,15 +51,12 @@ class Linear:
         self.db = np.sum(dout, axis=0)
         return np.dot(dout, self.W.T)
 
-    def get_params(self): return [self.W, self.b]
-    def get_grads(self): return [self.dW, self.db]
-
-class PreNormResidual:
-    def __init__(self, dim):
+class SovereignBlock:
+    def __init__(self, dim, expansion=4):
         self.ln = LayerNorm(dim)
-        self.l1 = Linear(dim, dim * 2)
+        self.l1 = Linear(dim, dim * expansion)
         self.act = FastGELU()
-        self.l2 = Linear(dim * 2, dim)
+        self.l2 = Linear(dim * expansion, dim)
 
     def forward(self, x):
         self.res = x
@@ -77,7 +64,7 @@ class PreNormResidual:
         h = self.l1.forward(h)
         h = self.act.forward(h)
         h = self.l2.forward(h)
-        return h + x
+        return h + self.res
 
     def backward(self, dout):
         dh = self.l2.backward(dout)
@@ -86,7 +73,11 @@ class PreNormResidual:
         dh = self.ln.backward(dh)
         return dh + dout
 
-    def get_layers(self): return [self.ln, self.l1, self.l2]
+    def get_params(self):
+        return [self.l1.W, self.l1.b, self.l2.W, self.l2.b, self.ln.gamma, self.ln.beta]
+
+    def get_grads(self):
+        return [self.l1.dW, self.l1.db, self.l2.dW, self.l2.db, self.ln.dgamma, self.ln.dbeta]
 
 class AdamW:
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
@@ -106,88 +97,114 @@ class AdamW:
             v_hat = self.v[i] / (1 - self.beta2**self.t)
             params[i] -= curr_lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
-class SovereignEngine:
-    def __init__(self, in_d=784, h_d=256, out_d=10):
-        self.layers = [Linear(in_d, h_d), PreNormResidual(h_d), PreNormResidual(h_d), LayerNorm(h_d), Linear(h_d, out_d)]
-        self.flat_layers = []
-        for l in self.layers:
-            if hasattr(l, 'get_layers'): self.flat_layers.extend(l.get_layers())
-            else: self.flat_layers.append(l)
+class ConsensusProtocol:
+    def __init__(self):
+        self.gemini_state = True
+        self.groq_state = True
+        self.history = []
+
+    def validate(self, loss, gnorm):
+        # Gemini Path: Loss stability verification
+        gemini_signal = loss < 5.0
+        # Groq Path: Gradient throughput/norm verification
+        groq_signal = gnorm < 10.0
+        
+        self.gemini_state = gemini_signal
+        self.groq_state = groq_signal
+        
+        consensus = gemini_signal and groq_signal
+        self.history.append(consensus)
+        return consensus
+
+class SovereignArchitect:
+    def __init__(self, in_d=784, h_d=256, out_d=10, depth=3):
+        self.stem = Linear(in_d, h_d)
+        self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
+        self.head_ln = LayerNorm(h_d)
+        self.head = Linear(h_d, out_d)
+        
+        self.layers = [self.stem] + self.blocks + [self.head_ln, self.head]
         self.params = []
-        for l in self.flat_layers: self.params.extend(l.get_params())
-        self.optimizer = AdamW(self.params, lr=2e-3, wd=0.1)
+        for l in self.layers:
+            if hasattr(l, 'get_params'): self.params.extend(l.get_params())
+            else: self.params.extend([l.W, l.b] if hasattr(l, 'W') else [l.gamma, l.beta])
+            
+        self.optimizer = AdamW(self.params, lr=1e-3, wd=0.05)
+        self.consensus = ConsensusProtocol()
 
     def forward(self, x):
-        for l in self.layers: x = l.forward(x)
+        for l in self.layers:
+            x = l.forward(x)
         return x
 
     def backward(self, dout):
-        for l in reversed(self.layers): dout = l.backward(dout)
+        for l in reversed(self.layers):
+            dout = l.backward(dout)
+        
         grads = []
-        for l in self.flat_layers: grads.extend(l.get_grads())
+        for l in self.layers:
+            if hasattr(l, 'get_grads'): grads.extend(l.get_grads())
+            else: grads.extend([l.dW, l.db] if hasattr(l, 'dW') else [l.dgamma, l.dbeta])
+        return grads
+
+    def evolve(self, grads, loss, lr_mult):
         gnorm = np.sqrt(sum(np.sum(g**2) for g in grads))
-        if gnorm > 5.0: grads = [g * (5.0 / gnorm) for g in grads]
-        self.optimizer.step(self.params, grads, lr_mult)
+        if gnorm > 1.0:
+            grads = [g * (1.0 / gnorm) for g in grads]
+            
+        if self.consensus.validate(loss, gnorm):
+            self.optimizer.step(self.params, grads, lr_mult)
+        else:
+            self.optimizer.step(self.params, grads, lr_mult * 0.1)
         return gnorm
 
-class EvolutionConsensus:
-    def __init__(self):
-        self.gemini_threshold = 2.5
-        self.groq_threshold = 0.05
-
-    def validate(self, loss, gnorm):
-        gemini_signal = loss < self.gemini_threshold
-        groq_signal = gnorm < 50.0
-        return gemini_signal and groq_signal
-
-def run_evolution():
-    N, D, K = 2000, 784, 10
+def run_recursive_evolution():
+    N, D, K = 5000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     W_target = np.random.randn(D, K).astype(np.float32)
-    Y = np.argmax(np.dot(X, W_target) + np.random.randn(N, K) * 0.1, axis=1)
+    Y = np.argmax(np.dot(X, W_target) + np.random.randn(N, K) * 0.05, axis=1)
 
-    model = SovereignEngine(D, 128, K)
-    consensus = EvolutionConsensus()
-    batch_size, epochs = 64, 100
+    model = SovereignArchitect(in_d=D, h_d=128, out_d=K, depth=2)
+    batch_size = 128
+    epochs = 50
     
-    print("SYSTEM_STATUS: RECURSIVE_EVOLUTION_ACTIVE")
-    start = time.time()
+    print("OMEGA-ASI SYSTEM ONLINE | ARCHITECTURE: MODULAR_SOVEREIGN")
+    start_time = time.time()
 
     for epoch in range(epochs):
         indices = np.random.permutation(N)
-        e_loss, e_acc, e_gnorm = 0, 0, 0
+        epoch_loss, epoch_acc, epoch_gnorm = 0, 0, 0
         lr_mult = 0.5 * (1 + np.cos(np.pi * epoch / epochs))
 
         for i in range(0, N, batch_size):
             idx = indices[i:i+batch_size]
             xb, yb = X[idx], Y[idx]
-            
+            m = xb.shape[0]
+
             logits = model.forward(xb)
-            shift_logits = logits - np.max(logits, axis=1, keepdims=True)
-            probs = np.exp(shift_logits) / np.sum(np.exp(shift_logits), axis=1, keepdims=True)
+            probs = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+            probs /= np.sum(probs, axis=1, keepdims=True)
             
-            m = yb.shape[0]
-            loss = -np.mean(np.log(probs[range(m), yb] + 1e-12))
+            loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             acc = np.mean(np.argmax(probs, axis=1) == yb)
             
             d_logits = probs.copy()
             d_logits[range(m), yb] -= 1
             d_logits /= m
             
-            gnorm = model.backward(d_logits, lr_mult)
+            grads = model.backward(d_logits)
+            gnorm = model.evolve(grads, loss, lr_mult)
             
-            e_loss += loss * (m / N)
-            e_acc += acc * (m / N)
-            e_gnorm += gnorm * (m / N)
+            epoch_loss += loss * (m / N)
+            epoch_acc += acc * (m / N)
+            epoch_gnorm += gnorm * (m / N)
 
-        if not consensus.validate(e_loss, e_gnorm):
-            lr_mult *= 0.5
+        if epoch % 5 == 0:
+            status = "STABLE" if model.consensus.gemini_state and model.consensus.groq_state else "DEGRADED"
+            print(f"EPOCH:{epoch:03d} | LOSS:{epoch_loss:.4f} | ACC:{epoch_acc:.4f} | GNORM:{epoch_gnorm:.3f} | CONSENSUS:{status}")
 
-        if epoch % 10 == 0:
-            print(f"EVO_STEP:{epoch:03d} | LOSS:{e_loss:.4f} | ACC:{e_acc:.4f} | GNORM:{e_gnorm:.2f} | LR_M:{lr_mult:.3f}")
-
-    end = time.time()
-    print(f"EVOLUTION_COMPLETE | TOTAL_TIME:{end-start:.2f}s | FINAL_ACC:{e_acc:.4f}")
+    total_time = time.time() - start_time
+    print(f"EVOLUTION_COMPLETE | TIME:{total_time:.2f}s | FINAL_ACC:{epoch_acc:.4f}")
 
 if __name__ == "__main__":
-    run_evolution()
+    run_recursive_evolution()
