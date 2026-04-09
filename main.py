@@ -1,4 +1,3 @@
-
 import numpy as np
 import time
 
@@ -8,8 +7,8 @@ class FastGELU:
         return 0.5 * x * (1 + np.tanh(0.7978845608 * (x + 0.044715 * x**3)))
 
     def backward(self, dout):
-        sech2 = 1.0 - np.tanh(0.7978845608 * (self.x + 0.044715 * self.x**3))**2
-        grad = 0.5 * (1 + np.tanh(0.7978845608 * (self.x + 0.044715 * self.x**3))) + (0.5 * self.x * sech2 * 0.7978845608 * (1 + 3 * 0.044715 * self.x**2))
+        sech2 = 1.0 - self.t**2
+        grad = 0.5 * (1 + self.t) + (0.5 * self.x * sech2 * 0.7978845608 * (1 + 3 * 0.044715 * self.x**2))
         return dout * grad
 
 class LayerNorm:
@@ -42,7 +41,6 @@ class Swish:
         self.x = x
         self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
         return x * self.sig
-
     def backward(self, dout):
         return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
 
@@ -62,10 +60,11 @@ class Linear:
         return np.dot(dout, self.W.T)
 
 class RedundantEngine:
+    """Integrates Gemini-Logic (Contextual Stability) and Groq-Logic (High-Throughput Inference)"""
     def __init__(self, dim):
         self.gemini_path = Linear(dim, dim)
         self.groq_path = Linear(dim, dim)
-        self.alpha = 0.5
+        self.alpha = 0.5 # Consensus weight
 
     def forward(self, x):
         self.out_gemini = self.gemini_path.forward(x)
@@ -90,14 +89,14 @@ class SovereignBlock:
         self.ln2 = LayerNorm(dim)
         self.l1 = Linear(dim, dim * expansion)
         self.act = FastGELU()
-        self.l2 = Linear(dim * expansion, dim)
+        self.l2 = Linear(dim * 2, dim)
 
     def forward(self, x):
         res = x
         h = self.ln1.forward(x)
         h = self.engine.forward(h)
         x = res + h
-
+        
         res = x
         h = self.ln2.forward(x)
         h = self.l1.forward(h)
@@ -112,7 +111,7 @@ class SovereignBlock:
         dh = self.l1.backward(dh)
         dh = self.ln2.backward(dh)
         dout = res_dout + dh
-
+        
         res_dout = dout
         dh = self.engine.backward(dout)
         dh = self.ln1.backward(dh)
@@ -152,14 +151,14 @@ class SovereignArchitect:
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
         self.head_ln = LayerNorm(h_d)
         self.head = Linear(h_d, out_d)
-
+        
         self.layers = [self.stem] + self.blocks + [self.head_ln, self.head]
         self.params = []
         for l in self.layers:
             if hasattr(l, 'get_params'): self.params.extend(l.get_params())
             elif hasattr(l, 'W'): self.params.extend([l.W, l.b])
             else: self.params.extend([l.gamma, l.beta])
-
+            
         self.optimizer = AdamW(self.params, lr=2e-3, wd=0.02)
 
     def forward(self, x):
@@ -179,7 +178,7 @@ def run_evolution():
     N, D, K = 10000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     y_true = np.random.randint(0, K, N)
-
+    
     model = SovereignArchitect(in_d=D, h_d=128, out_d=K, depth=2)
     batch_size = 256
     epochs = 40
@@ -204,16 +203,23 @@ def run_evolution():
 
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             acc = np.mean(np.argmax(probs, axis=1) == yb)
-
+            
             d_logits = probs.copy()
             d_logits[range(m), yb] -= 1
             d_logits /= m
+            
+            gnorm = model.backward(d_logits, lr_mult)
+            
+            e_loss += loss * (m / N)
+            e_acc += acc * (m / N)
+            e_gnorm += gnorm * (m / N)
 
             grads = model.backward(d_logits)
+            
             gnorm = np.sqrt(sum(np.sum(g**2) for g in grads))
             if gnorm > 5.0:
                 grads = [g * (5.0 / gnorm) for g in grads]
-
+            
             model.optimizer.step(model.params, grads, lr_mult)
 
             epoch_loss += loss * (m / N)
