@@ -105,7 +105,7 @@ class AdamW:
             v_hat = self.v[i] / (1 - self.beta2**self.t)
             params[i] -= curr_lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
-class ConsensusProtocol:
+class GeminiGroqProtocol:
     def verify_evolution(self, loss, acc):
         groq_check = loss < 2.5
         gemini_check = acc > 0.1
@@ -128,7 +128,7 @@ class SovereignEngine:
         for l in self.flat_layers: params.extend(l.get_params())
         self.params = params
         self.optimizer = AdamW(self.params, lr=1e-3, wd=0.05)
-        self.consensus = ConsensusProtocol()
+        self.consensus = GeminiGroqProtocol()
 
     def forward(self, x):
         for l in self.layers: x = l.forward(x)
