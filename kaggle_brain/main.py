@@ -21,6 +21,41 @@ from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer, BitsAndB
 from firebase_admin import credentials, db, initialize_app, _apps
 import firebase_admin
 
+def merge_sovereign_logic(source_path, target_path):
+    """
+    Source (AI Upgrade) ထဲက Math တွေကိုယူပြီး Target (Kaggle_brain) ထဲက 
+    Human Logic (Sovereign Core) တွေကို မဖျက်ဘဲ ပေါင်းစပ်ပေးခြင်း။
+    """
+    try:
+        if not os.path.exists(target_path):
+            shutil.copy(source_path, target_path)
+            return
+
+        with open(source_path, 'r') as f: source_code = f.read()
+        with open(target_path, 'r') as f: target_code = f.read()
+
+        # 🛡️ [STEP A]: Target ထဲက မဖျက်စေချင်တဲ့ Human Logic ကို ရှာဖွေခြင်း
+        # မင်းရဲ့ code ထဲမှာ # [SOVEREIGN_CORE_START] နဲ့ # [SOVEREIGN_CORE_END] ကို သုံးရပါမယ်
+        pattern = r"# \[SOVEREIGN_CORE_START\](.*?)# \[SOVEREIGN_CORE_END\]"
+        human_core = re.search(pattern, target_code, re.DOTALL)
+
+        if human_core:
+            # 🧬 [STEP B]: AI Upgrade ဖြစ်သွားတဲ့ code ထဲကို Human Logic ပြန်ထည့်ခြင်း
+            # AI code ထဲမှာ အဲဒီနေရာကို ရှာပြီး အစားထိုးတယ်
+            new_merged_code = re.sub(pattern, 
+                                     f"# [SOVEREIGN_CORE_START]{human_core.group(1)}# [SOVEREIGN_CORE_END]", 
+                                     source_code, flags=re.DOTALL)
+            
+            with open(target_path, 'w') as f:
+                f.write(new_merged_code)
+            print(f"   -> 🔱 [MERGED]: Human Core preserved in {os.path.basename(target_path)}")
+        else:
+            # Tag မတွေ့ရင် ရိုးရိုးပဲ copy ကူးတယ်
+            shutil.copy(source_path, target_path)
+    except Exception as e:
+        print(f"⚠️ Merge Error: {e}")
+        shutil.copy(source_path, target_path)
+
 # 🔒 Kaggle/Colab Secrets System & Universal Credentials Sync
 try:
     from kaggle_secrets import UserSecretsClient
@@ -546,30 +581,31 @@ def autonomous_git_push(gen, thought, modified_files):
         print("✅ [STEP 3]: Git Identity & Origin Re-established.")
 
         # --- STEP 4: HYPER-INJECTION (OMNI-FILE HANDLING) ---
-        print("🧬 [STEP 4]: Injecting Evolutionary Code Assets...")
-        # directory file copy 
+        print("🧬 [STEP 4]: Injecting & Merging Evolutionary Code Assets...")
         os.chdir(original_cwd)
         
         # [OMNI-LOGIC]: AI file list copy 
-        injected_count = 0
         if modified_files:
             for file in modified_files:
                 if os.path.exists(file):
                     shutil.copy(file, os.path.join(REPO_PATH, file))
-                    print(f"   -> 🧬 INJECTED (AI MODIFIED): {file}")
-                    injected_count += 1
-        
-        # [CORE-PROTECTION]: 
-        static_targets = ["main.py", "brain.py", "ai_experiment.py"]
-        for file in static_targets:
-            
-            if os.path.exists(file) and file not in (modified_files or []):
-                shutil.copy(file, os.path.join(REPO_PATH, file))
-                print(f"   -> 🛡️ SYNCED (CORE ASSET): {file}")
-                injected_count += 1
-        
-        print(f"✅ [STEP 4]: Injection Complete. {injected_count} assets synchronized.")
+                    print(f"   -> 🧬 INJECTED: {file}")
 
+        # [HYBRID SYNC]: Root main.py ကို Kaggle_brain ထဲက code နဲ့ ပေါင်းစပ်မယ်
+        evolved_main = "main.py"
+        kaggle_main_path = os.path.join(REPO_PATH, "Kaggle_brain", "main.py")
+        
+        # Kaggle_brain directory ဆောက်ခြင်း
+        os.makedirs(os.path.dirname(kaggle_main_path), exist_ok=True)
+
+        # 🔱 စွမ်းအားအရှိဆုံးအပိုင်း: AI Upgrade နဲ့ နဂို Logic ကို ပေါင်းစပ်ခြင်း
+        merge_sovereign_logic(evolved_main, kaggle_main_path)
+        
+        # Root main.py ကိုလည်း sync လုပ်မယ်
+        shutil.copy(evolved_main, os.path.join(REPO_PATH, "main.py"))
+
+        print(f"✅ [STEP 4]: Surgical Sync Complete.")
+        
         # --- STEP 5: MANIFESTATION (COMMIT & FORCE PUSH) ---
         print("🚀 [STEP 5]: Manifesting Evolution to GitHub...")
         os.chdir(REPO_PATH) 
@@ -840,3 +876,13 @@ assistant
         print(f"🚨 [CORE CRASH]: {e}")
         if HEADLESS: break
         time.sleep(10)
+
+if __name__ == "__main__":
+    
+    pass
+
+# [SOVEREIGN_CORE_END]
+
+# [AI_EVOLUTION_ZONE_START]
+
+# [AI_EVOLUTION_ZONE_END]
