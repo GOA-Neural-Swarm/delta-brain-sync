@@ -1,7 +1,11 @@
+
 import numpy as np
 import time
 
 class GeGLU:
+    def __init__(self):
+        pass
+
     def forward(self, x):
         self.x = x
         self.gate = 0.5 * x * (1 + np.tanh(0.7978845608 * (x + 0.044715 * x**3)))
@@ -10,7 +14,7 @@ class GeGLU:
     def backward(self, dout):
         x = self.x
         tanh_out = np.tanh(0.7978845608 * (x + 0.044715 * x**3))
-        sech2 = 1.0 - tanh_out**2
+        sech2 = 1.0 - tanh2
         grad = 0.5 * (1 + tanh_out) + (0.5 * x * sech2 * 0.7978845608 * (1 + 3 * 0.044715 * x**2))
         return dout * grad
 
@@ -67,28 +71,28 @@ class RedundantEngine:
         self.x = x
         self.out_gemini = self.gemini_path.forward(x)
         self.out_groq = self.groq_path.forward(x)
-        
+
         gate_logits = np.dot(x, self.gate_w)
         exp_g = np.exp(gate_logits - np.max(gate_logits, axis=-1, keepdims=True))
         self.probs = exp_g / np.sum(exp_g, axis=-1, keepdims=True)
-        
+
         return self.probs[:, 0:1] * self.out_gemini + self.probs[:, 1:2] * self.out_groq
 
     def backward(self, dout):
         d_gemini_out = dout * self.probs[:, 0:1]
         d_groq_out = dout * self.probs[:, 1:2]
-        
+
         d_p0 = np.sum(dout * self.out_gemini, axis=-1, keepdims=True)
         d_p1 = np.sum(dout * self.out_groq, axis=-1, keepdims=True)
         d_probs = np.concatenate([d_p0, d_p1], axis=-1)
-        
+
         d_gate_logits = self.probs * (d_probs - np.sum(self.probs * d_probs, axis=-1, keepdims=True))
         self.d_gate_w = np.dot(self.x.T, d_gate_logits)
-        
+
         dx_gemini = self.gemini_path.backward(d_gemini_out)
         dx_groq = self.groq_path.backward(d_groq_out)
         dx_gate = np.dot(d_gate_logits, self.gate_w.T)
-        
+
         return dx_gemini + dx_groq + dx_gate
 
     def get_params(self):
@@ -122,9 +126,9 @@ class SovereignBlock:
         dh = self.l1.backward(dh)
         dh = self.ln2.backward(dh)
         dout = res_dout + dh
-        
+
         res_dout = dout.copy()
-        dh = self.engine.backward(self.ln1.forward(self.ln1.x)) # Re-forward not needed if cached
+        dh = self.engine.backward(self.ln1.forward(self.ln1.x))
         dh = self.ln1.backward(dh)
         return res_dout + dh
 
@@ -179,7 +183,7 @@ def run_evolution():
     N, D, K = 5000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     y_true = np.random.randint(0, K, N)
-    
+
     model = SovereignArchitect(in_d=D, h_d=128, out_d=K, depth=2)
     batch_size = 128
     epochs = 50
@@ -204,16 +208,16 @@ def run_evolution():
 
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             acc = np.mean(np.argmax(probs, axis=1) == yb)
-            
+
             d_logits = probs.copy()
             d_logits[range(m), yb] -= 1
             d_logits /= m
-            
+
             grads = model.backward(d_logits)
             gnorm = np.sqrt(sum(np.sum(g**2) for g in grads))
             if gnorm > 1.0:
                 grads = [g * (1.0 / gnorm) for g in grads]
-            
+
             model.optimizer.step(model.params, grads, lr_mult)
             epoch_loss += loss * (m / N)
             epoch_acc += acc * (m / N)
