@@ -8,8 +8,7 @@ class GeGLU:
 
     def forward(self, x):
         self.x = x
-        self.gate = 0.5 * x * (1 + np.tanh(0.7978845608 * (x + 0.044715 * x**3)))
-        return self.gate
+        return 0.5 * x * (1 + np.tanh(0.7978845608 * (x + 0.044715 * x**3)))
 
     def backward(self, dout):
         x = self.x
@@ -43,10 +42,18 @@ class LayerNorm:
     def get_params(self): return [self.gamma, self.beta]
     def get_grads(self): return [self.dgamma, self.dbeta]
 
+class Swish:
+    def forward(self, x):
+        self.x = x
+        self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
+        return x * self.sig
+    def backward(self, dout):
+        return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
+
 class Linear:
     def __init__(self, in_d, out_d):
-        limit = np.sqrt(6.0 / (in_d + out_d))
-        self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
+        scale = np.sqrt(2.0 / in_d)
+        self.W = (np.random.randn(in_d, out_d) * scale).astype(np.float32)
         self.b = np.zeros(out_d, dtype=np.float32)
 
     def forward(self, x):
@@ -58,17 +65,14 @@ class Linear:
         self.db = np.sum(dout, axis=0)
         return np.dot(dout, self.W.T)
 
-    def get_params(self): return [self.W, self.b]
-    def get_grads(self): return [self.dW, self.db]
-
 class RedundantEngine:
+    """Integrates Gemini-Logic (Contextual Stability) and Groq-Logic (High-Throughput Inference)"""
     def __init__(self, dim):
         self.gemini_path = Linear(dim, dim)
         self.groq_path = Linear(dim, dim)
-        self.gate_w = np.zeros((dim, 2), dtype=np.float32)
+        self.alpha = 0.5 # Consensus weight
 
     def forward(self, x):
-        self.x = x
         self.out_gemini = self.gemini_path.forward(x)
         self.out_groq = self.groq_path.forward(x)
 
@@ -96,10 +100,10 @@ class RedundantEngine:
         return dx_gemini + dx_groq + dx_gate
 
     def get_params(self):
-        return self.gemini_path.get_params() + self.groq_path.get_params() + [self.gate_w]
+        return [self.gemini_path.W, self.gemini_path.b, self.groq_path.W, self.groq_path.b]
 
     def get_grads(self):
-        return self.gemini_path.get_grads() + self.groq_path.get_grads() + [self.d_gate_w]
+        return [self.gemini_path.dW, self.gemini_path.db, self.groq_path.dW, self.groq_path.db]
 
 class SovereignBlock:
     def __init__(self, dim, expansion=4):
@@ -107,12 +111,16 @@ class SovereignBlock:
         self.engine = RedundantEngine(dim)
         self.ln2 = LayerNorm(dim)
         self.l1 = Linear(dim, dim * expansion)
-        self.act = GeGLU()
-        self.l2 = Linear(dim * expansion, dim)
+        self.act = FastGELU()
+        self.l2 = Linear(dim * 2, dim)
 
     def forward(self, x):
+        res = x
         h = self.ln1.forward(x)
-        x = x + self.engine.forward(h)
+        h = self.engine.forward(h)
+        x = res + h
+        
+        res = x
         h = self.ln2.forward(x)
         h = self.l1.forward(h)
         h = self.act.forward(h)
@@ -120,7 +128,7 @@ class SovereignBlock:
         return x + h
 
     def backward(self, dout):
-        res_dout = dout.copy()
+        res_dout = dout
         dh = self.l2.backward(dout)
         dh = self.act.backward(dh)
         dh = self.l1.backward(dh)
@@ -133,11 +141,13 @@ class SovereignBlock:
         return res_dout + dh
 
     def get_params(self):
-        p = self.ln1.get_params() + self.engine.get_params() + self.ln2.get_params() + self.l1.get_params() + self.l2.get_params()
+        p = self.engine.get_params()
+        p.extend([self.l1.W, self.l1.b, self.l2.W, self.l2.b, self.ln1.gamma, self.ln1.beta, self.ln2.gamma, self.ln2.beta])
         return p
 
     def get_grads(self):
-        g = self.ln1.get_grads() + self.engine.get_grads() + self.ln2.get_grads() + self.l1.get_grads() + self.l2.get_grads()
+        g = self.engine.get_grads()
+        g.extend([self.l1.dW, self.l1.db, self.l2.dW, self.l2.db, self.ln1.dgamma, self.ln1.dbeta, self.ln2.dgamma, self.ln2.dbeta])
         return g
 
 class AdamW:
@@ -164,10 +174,15 @@ class SovereignArchitect:
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
         self.head_ln = LayerNorm(h_d)
         self.head = Linear(h_d, out_d)
+        
         self.layers = [self.stem] + self.blocks + [self.head_ln, self.head]
         self.params = []
-        for l in self.layers: self.params.extend(l.get_params())
-        self.optimizer = AdamW(self.params, lr=1e-3, wd=0.05)
+        for l in self.layers:
+            if hasattr(l, 'get_params'): self.params.extend(l.get_params())
+            elif hasattr(l, 'W'): self.params.extend([l.W, l.b])
+            else: self.params.extend([l.gamma, l.beta])
+            
+        self.optimizer = AdamW(self.params, lr=2e-3, wd=0.02)
 
     def forward(self, x):
         for l in self.layers: x = l.forward(x)
@@ -176,17 +191,20 @@ class SovereignArchitect:
     def backward(self, dout):
         for l in reversed(self.layers): dout = l.backward(dout)
         grads = []
-        for l in self.layers: grads.extend(l.get_grads())
+        for l in self.layers:
+            if hasattr(l, 'get_grads'): grads.extend(l.get_grads())
+            elif hasattr(l, 'W'): grads.extend([l.dW, l.db])
+            else: grads.extend([l.dgamma, l.dbeta])
         return grads
 
 def run_evolution():
-    N, D, K = 5000, 784, 10
+    N, D, K = 10000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     y_true = np.random.randint(0, K, N)
 
     model = SovereignArchitect(in_d=D, h_d=128, out_d=K, depth=2)
-    batch_size = 128
-    epochs = 50
+    batch_size = 256
+    epochs = 40
 
     print("OMEGA-ASI | RECURSIVE SELF-EVOLUTION START")
     start_time = time.time()
@@ -214,11 +232,13 @@ def run_evolution():
             d_logits /= m
 
             grads = model.backward(d_logits)
+            
             gnorm = np.sqrt(sum(np.sum(g**2) for g in grads))
             if gnorm > 1.0:
                 grads = [g * (1.0 / gnorm) for g in grads]
 
             model.optimizer.step(model.params, grads, lr_mult)
+
             epoch_loss += loss * (m / N)
             epoch_acc += acc * (m / N)
 
