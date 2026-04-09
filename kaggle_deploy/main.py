@@ -354,38 +354,24 @@ def autonomous_git_push(gen, thought, modified_files):
         return
     try:
         import shutil
+
         if os.path.exists(REPO_PATH):
             shutil.rmtree(REPO_PATH)
         remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
         repo = git.Repo.clone_from(remote_url, REPO_PATH)
 
-        # 🔱 [MIRROR LOGIC]: အဓိက ဦးနှောက်နှစ်ခုလုံးကို တစ်ပြိုင်နက် Update လုပ်ခြင်း
-        evolved_main = "main.py"
-        if os.path.exists(evolved_main):
-            # 1. Root directory က main.py ကို copy ကူးမယ်
-            shutil.copy(evolved_main, os.path.join(REPO_PATH, "main.py"))
-            
-            # 2. Kaggle_brain directory ရှိမရှိစစ်ပြီး main.py ကို အထဲထိ လိုက်ပြောင်းမယ်
-            target_dir = os.path.join(REPO_PATH, "Kaggle_brain")
-            if not os.path.exists(target_dir):
-                os.makedirs(target_dir)
-            shutil.copy(evolved_main, os.path.join(target_dir, "main.py"))
-
-        # အခြား ပြောင်းလဲထားတဲ့ ဖိုင်တွေရှိရင်လည်း ထည့်မယ်
-        if modified_files:
-            for file in modified_files:
-                if file != "main.py" and os.path.exists(file):
-                    shutil.copy(file, os.path.join(REPO_PATH, file))
+        for file in modified_files or ["main.py", "brain.py"]:
+            if os.path.exists(file):
+                shutil.copy(file, os.path.join(REPO_PATH, file))
 
         os.chdir(REPO_PATH)
         os.system("git config user.name 'GOA-neurons'")
         os.system("git config user.email 'goa-neurons@neural-swarm.ai'")
         os.system("git add .")
         if os.popen("git status --porcelain").read().strip():
-            os.system(f'git commit -m "🧬 Gen {gen} Mirror-Evolution [main sync]"')
+            os.system(f'git commit -m "🧬 Gen {gen} Evolution [skip ci]"')
             os.system("git push origin main --force")
         os.chdir("..")
-        print(f"✅ [SYNC]: Root and Kaggle_brain are now perfectly mirrored.")
     except Exception as e:
         print(f"❌ [GIT ERROR]: {e}")
 

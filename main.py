@@ -39,6 +39,14 @@ class LayerNorm:
     def get_params(self): return [self.gamma, self.beta]
     def get_grads(self): return [self.dgamma, self.dbeta]
 
+class Swish:
+    def forward(self, x):
+        self.x = x
+        self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
+        return x * self.sig
+    def backward(self, dout):
+        return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
+
 class Linear:
     def __init__(self, in_d, out_d):
         self.W = (np.random.randn(in_d, out_d) * np.sqrt(2.0 / in_d)).astype(np.float32)
@@ -113,7 +121,7 @@ class SovereignEngine:
         for l in self.layers: x = l.forward(x)
         return x
 
-    def backward(self, dout, lr_mult=1.0):
+    def backward(self, dout):
         for l in reversed(self.layers): dout = l.backward(dout)
         grads = []
         for l in self.flat_layers: grads.extend(l.get_grads())
