@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -44,6 +45,7 @@ class Swish:
         self.x = x
         self.sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
         return x * self.sig
+
     def backward(self, dout):
         return dout * (self.sig + self.x * self.sig * (1.0 - self.sig))
 
@@ -106,6 +108,16 @@ class AdamW:
             v_hat = self.v[i] / (1 - self.beta2**self.t)
             params[i] -= curr_lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
+class EvolutionConsensus:
+    def __init__(self, gemini_threshold=2.5, groq_threshold=0.05):
+        self.gemini_threshold = gemini_threshold
+        self.groq_threshold = groq_threshold
+
+    def validate(self, loss, gnorm):
+        gemini_signal = loss < self.gemini_threshold
+        groq_signal = gnorm < 50.0
+        return gemini_signal and groq_signal
+
 class SovereignEngine:
     def __init__(self, in_d=784, h_d=256, out_d=10):
         self.layers = [Linear(in_d, h_d), PreNormResidual(h_d), PreNormResidual(h_d), LayerNorm(h_d), Linear(h_d, out_d)]
@@ -127,18 +139,7 @@ class SovereignEngine:
         for l in self.flat_layers: grads.extend(l.get_grads())
         gnorm = np.sqrt(sum(np.sum(g**2) for g in grads))
         if gnorm > 5.0: grads = [g * (5.0 / gnorm) for g in grads]
-        self.optimizer.step(self.params, grads, lr_mult)
-        return gnorm
-
-class EvolutionConsensus:
-    def __init__(self):
-        self.gemini_threshold = 2.5
-        self.groq_threshold = 0.05
-
-    def validate(self, loss, gnorm):
-        gemini_signal = loss < self.gemini_threshold
-        groq_signal = gnorm < 50.0
-        return gemini_signal and groq_signal
+        return grads, gnorm
 
 def run_evolution():
     N, D, K = 2000, 784, 10
@@ -149,7 +150,7 @@ def run_evolution():
     model = SovereignEngine(D, 128, K)
     consensus = EvolutionConsensus()
     batch_size, epochs = 64, 100
-    
+
     print("SYSTEM_STATUS: RECURSIVE_EVOLUTION_ACTIVE")
     start = time.time()
 
@@ -161,21 +162,21 @@ def run_evolution():
         for i in range(0, N, batch_size):
             idx = indices[i:i+batch_size]
             xb, yb = X[idx], Y[idx]
-            
+
             logits = model.forward(xb)
             shift_logits = logits - np.max(logits, axis=1, keepdims=True)
             probs = np.exp(shift_logits) / np.sum(np.exp(shift_logits), axis=1, keepdims=True)
-            
+
             m = yb.shape[0]
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-12))
             acc = np.mean(np.argmax(probs, axis=1) == yb)
-            
+
             d_logits = probs.copy()
             d_logits[range(m), yb] -= 1
             d_logits /= m
-            
-            gnorm = model.backward(d_logits, lr_mult)
-            
+
+            grads, gnorm = model.backward(d_logits)
+
             e_loss += loss * (m / N)
             e_acc += acc * (m / N)
             e_gnorm += gnorm * (m / N)
@@ -185,6 +186,8 @@ def run_evolution():
 
         if epoch % 10 == 0:
             print(f"EVO_STEP:{epoch:03d} | LOSS:{e_loss:.4f} | ACC:{e_acc:.4f} | GNORM:{e_gnorm:.2f} | LR_M:{lr_mult:.3f}")
+
+        model.optimizer.step(model.params, grads, lr_mult)
 
     end = time.time()
     print(f"EVOLUTION_COMPLETE | TOTAL_TIME:{end-start:.2f}s | FINAL_ACC:{e_acc:.4f}")
