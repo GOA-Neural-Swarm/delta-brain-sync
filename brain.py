@@ -1,5 +1,6 @@
 import numpy as np
 import json
+import omega_point
 
 class NeuralBrain:
     def __init__(self, generation=1):
