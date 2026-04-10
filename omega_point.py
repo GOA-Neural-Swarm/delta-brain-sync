@@ -331,19 +331,16 @@ def evolved_processing(self, tensor_in):
 
 
 # -----------------------------------------------------------------------------
-# 7. IGNITION SEQUENCE (ASYNCIO RUN FIX)
+# 7. IGNITION SEQUENCE
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    torch.set_grad_enabled(False) 
+    torch.set_grad_enabled(False)  # Pure forward-pass optimization for speed
     singularity = TerminalSingularity(initial_mass=50)
-    
+
     try:
-        # ဒီကောင်ကမှ အဝိုင်းလည်တာကို ရပ်တန့်ပေးမယ့်ကောင်
-        asyncio.run(singularity.execute_omega_protocol())
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(singularity.execute_omega_protocol())
     except KeyboardInterrupt:
-        print("\n[SYSTEM] Manual Intervention Detected.")
-    except Exception as e:
-        print(f"\n[SYSTEM] Critical Failure: {e}")
+        pass
     finally:
         singularity.annihilate()
-        print("[SYSTEM] Singularity Matrix Offline.")
