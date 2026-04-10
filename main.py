@@ -1,33 +1,29 @@
 import numpy as np
 import time
 
-
 class Linear:
     def __init__(self, in_d, out_d, use_bias=True):
-        limit = np.sqrt(6.0 / (in_d + out_d))
-        self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
+        limit = np.sqrt(2.0 / in_d)
+        self.W = np.random.normal(0, limit, (in_d, out_d)).astype(np.float32)
         self.b = np.zeros(out_d, dtype=np.float32) if use_bias else None
-        self.dW, self.db = np.zeros_like(self.W), (
-            np.zeros_like(self.b) if use_bias else None
-        )
+        self.dW, self.db = np.zeros_like(self.W), (np.zeros_like(self.b) if use_bias else None)
         self.x = None
 
     def forward(self, x):
         self.x = x
-        return np.dot(x, self.W) + (self.b if self.b is not None else 0)
+        return np.matmul(x, self.W) + (self.b if self.b is not None else 0)
 
     def backward(self, dout):
-        self.dW = np.dot(self.x.T, dout)
+        self.dW = np.matmul(self.x.T, dout)
         if self.b is not None:
             self.db = np.sum(dout, axis=0)
-        return np.dot(dout, self.W.T)
+        return np.matmul(dout, self.W.T)
 
     def params(self):
         p = [{"ref": self.W, "grad": self.dW}]
         if self.b is not None:
             p.append({"ref": self.b, "grad": self.db})
         return p
-
 
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
@@ -52,7 +48,6 @@ class RMSNorm:
     def params(self):
         return [{"ref": self.scale, "grad": self.dscale}]
 
-
 class SwiGLU:
     def __init__(self, dim, h_dim):
         self.w1 = Linear(dim, h_dim, use_bias=False)
@@ -63,7 +58,7 @@ class SwiGLU:
     def forward(self, x):
         self.x1 = self.w1.forward(x)
         self.x2 = self.w2.forward(x)
-        self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.x1, -20, 20)))
+        self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.x1, -10, 10)))
         self.swish = self.x1 * self.sig
         return self.w3.forward(self.swish * self.x2)
 
@@ -76,7 +71,6 @@ class SwiGLU:
 
     def params(self):
         return self.w1.params() + self.w2.params() + self.w3.params()
-
 
 class RedundantMoE:
     def __init__(self, dim):
@@ -101,15 +95,12 @@ class RedundantMoE:
         dp0 = np.sum(dout * self.out_gemini, axis=-1, keepdims=True)
         dp1 = np.sum(dout * self.out_groq, axis=-1, keepdims=True)
         d_logits_raw = np.concatenate([dp0, dp1], axis=-1)
-        d_gate_logits = self.probs * (
-            d_logits_raw - np.sum(self.probs * d_logits_raw, axis=-1, keepdims=True)
-        )
+        d_gate_logits = self.probs * (d_logits_raw - np.sum(self.probs * d_logits_raw, axis=-1, keepdims=True))
         dx_gate = self.gate.backward(d_gate_logits)
         return d_gemini + d_groq + dx_gate
 
     def params(self):
         return self.gemini.params() + self.groq.params() + self.gate.params()
-
 
 class SovereignBlock:
     def __init__(self, dim):
@@ -117,8 +108,8 @@ class SovereignBlock:
         self.moe = RedundantMoE(dim)
         self.norm2 = RMSNorm(dim)
         self.mlp = SwiGLU(dim, dim * 4)
-        self.alpha = np.array([0.01], dtype=np.float32)
-        self.beta = np.array([0.01], dtype=np.float32)
+        self.alpha = np.array([0.1], dtype=np.float32)
+        self.beta = np.array([0.1], dtype=np.float32)
         self.dalpha, self.dbeta = np.zeros_like(self.alpha), np.zeros_like(self.beta)
         self.moe_res, self.mlp_res = None, None
 
@@ -138,20 +129,9 @@ class SovereignBlock:
         return dx_mid + dmoe
 
     def params(self):
-        p = (
-            self.norm1.params()
-            + self.moe.params()
-            + self.norm2.params()
-            + self.mlp.params()
-        )
-        p.extend(
-            [
-                {"ref": self.alpha, "grad": self.dalpha},
-                {"ref": self.beta, "grad": self.dbeta},
-            ]
-        )
+        p = self.norm1.params() + self.moe.params() + self.norm2.params() + self.mlp.params()
+        p.extend([{"ref": self.alpha, "grad": self.dalpha}, {"ref": self.beta, "grad": self.dbeta}])
         return p
-
 
 class SovereignArchitect:
     def __init__(self, in_d, h_d, out_d, depth):
@@ -174,23 +154,15 @@ class SovereignArchitect:
 
     def params(self):
         p = self.stem.params()
-        for b in self.blocks:
-            p.extend(b.params())
+        for b in self.blocks: p.extend(b.params())
         p.extend(self.norm_f.params())
         p.extend(self.head.params())
         return p
 
-
 class AdamW:
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.995), eps=1e-8, wd=0.02):
         self.params = params
-        self.lr, self.beta1, self.beta2, self.eps, self.wd = (
-            lr,
-            betas[0],
-            betas[1],
-            eps,
-            wd,
-        )
+        self.lr, self.beta1, self.beta2, self.eps, self.wd = lr, betas[0], betas[1], eps, wd
         self.m = [np.zeros_like(p["ref"]) for p in params]
         self.v = [np.zeros_like(p["ref"]) for p in params]
         self.t = 0
@@ -208,58 +180,50 @@ class AdamW:
             v_hat = self.v[i] / (1 - self.beta2**self.t)
             param -= curr_lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
-
 def evolve():
-    N, D, K = 10000, 784, 10
+    N, D, K = 12000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     y = np.random.randint(0, K, N)
-
-    model = SovereignArchitect(D, 128, K, depth=3)
-    optimizer = AdamW(model.params(), lr=3e-3, wd=0.05)
-
-    batch_size, epochs = 64, 30
-    print("OMEGA-ASI | ARCH: SOVEREIGN-V4 | REDUNDANCY: GEMINI-GROQ-ACTIVE")
-
+    
+    model = SovereignArchitect(D, 256, K, depth=4)
+    optimizer = AdamW(model.params(), lr=2e-3, wd=0.01)
+    
+    batch_size, epochs = 128, 50
+    print("OMEGA-ASI | SOVEREIGN-V5 | REDUNDANCY: GEMINI-GROQ-OPTIMIZED")
+    
     for epoch in range(epochs):
         idx = np.random.permutation(N)
         total_loss, total_acc = 0, 0
         t0 = time.time()
-
+        
         lr_mult = 0.5 * (1 + np.cos(np.pi * epoch / epochs))
-        if epoch < 3:
-            lr_mult *= (epoch + 1) / 3
+        if epoch < 5: lr_mult *= (epoch + 1) / 5
 
         for i in range(0, N, batch_size):
             batch_idx = idx[i : i + batch_size]
             xb, yb = X[batch_idx], y[batch_idx]
             m = xb.shape[0]
-
+            
             logits = model.forward(xb)
             logits -= np.max(logits, axis=1, keepdims=True)
-            probs = np.exp(logits) / (
-                np.sum(np.exp(logits), axis=1, keepdims=True) + 1e-10
-            )
-
+            probs = np.exp(logits) / (np.sum(np.exp(logits), axis=1, keepdims=True) + 1e-10)
+            
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             total_loss += loss * (m / N)
             total_acc += np.mean(np.argmax(probs, axis=1) == yb) * (m / N)
-
+            
             dout = probs.copy()
             dout[range(m), yb] -= 1
             model.backward(dout / m)
-
+            
             gnorm = np.sqrt(sum(np.sum(p["grad"] ** 2) for p in model.params()))
-            if gnorm > 1.0:
-                for p in model.params():
-                    p["grad"] *= 1.0 / (gnorm + 1e-6)
-
+            if gnorm > 5.0:
+                for p in model.params(): p["grad"] *= 5.0 / (gnorm + 1e-6)
+            
             optimizer.step(lr_mult=lr_mult)
-
+            
         dt = time.time() - t0
-        print(
-            f"EPOCH:{epoch:02d} | LOSS:{total_loss:.4f} | ACC:{total_acc:.4f} | {N/dt:.0f} samples/s | LR:{optimizer.lr*lr_mult:.6f}"
-        )
-
+        print(f"EP:{epoch:02d} | LOSS:{total_loss:.4f} | ACC:{total_acc:.4f} | {N/dt:.0f} s/s | LR:{optimizer.lr*lr_mult:.6f}")
 
 if __name__ == "__main__":
     evolve()
