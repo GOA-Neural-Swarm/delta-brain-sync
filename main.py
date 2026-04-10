@@ -1,6 +1,6 @@
+
 import numpy as np
 import time
-
 
 class Linear:
     def __init__(self, in_d, out_d, use_bias=True):
@@ -105,7 +105,9 @@ class RedundantMoE:
 
     def params(self):
         return (
-            self.gemini_engine.params() + self.groq_engine.params() + self.gate.params()
+            self.gemini_engine.params()
+            + self.groq_engine.params()
+            + self.gate.params()
         )
 
 
