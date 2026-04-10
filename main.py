@@ -3,8 +3,8 @@ import time
 
 class Linear:
     def __init__(self, in_d, out_d, use_bias=True):
-        limit = np.sqrt(6.0 / (in_d + out_d))
-        self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
+        limit = np.sqrt(2.0 / in_d)
+        self.W = np.random.normal(0, limit, (in_d, out_d)).astype(np.float32)
         self.b = np.zeros(out_d, dtype=np.float32) if use_bias else None
         self.dW, self.db = None, None
         self.x = None
@@ -44,27 +44,26 @@ class SwiGLU:
         self.w1 = Linear(dim, h_dim, use_bias=False)
         self.w2 = Linear(dim, h_dim, use_bias=False)
         self.w3 = Linear(h_dim, dim, use_bias=False)
-        self.x1, self.x2, self.swish = None, None, None
+        self.x1, self.x2, self.sig, self.swish = None, None, None, None
 
     def forward(self, x):
         self.x1 = self.w1.forward(x)
         self.x2 = self.w2.forward(x)
-        sig = 1.0 / (1.0 + np.exp(-np.clip(self.x1, -20, 20)))
-        self.swish = self.x1 * sig
+        self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.x1, -20, 20)))
+        self.swish = self.x1 * self.sig
         return self.w3.forward(self.swish * self.x2)
 
     def backward(self, dout):
         dw3 = self.w3.backward(dout)
         dx2 = dw3 * self.swish
         dswish = dw3 * self.x2
-        sig = 1.0 / (1.0 + np.exp(-np.clip(self.x1, -20, 20)))
-        dx1 = dswish * (sig * (1.0 + self.x1 * (1.0 - sig)))
+        dx1 = dswish * (self.sig * (1.0 + self.x1 * (1.0 - self.sig)))
         return self.w1.backward(dx1) + self.w2.backward(dx2)
 
 class RedundantMoE:
     def __init__(self, dim):
-        self.expert_gemini = SwiGLU(dim, dim * 2)
-        self.expert_groq = SwiGLU(dim, dim * 2)
+        self.gemini_expert = SwiGLU(dim, dim * 2)
+        self.groq_expert = SwiGLU(dim, dim * 2)
         self.gate = Linear(dim, 2, use_bias=False)
         self.probs, self.out_gemini, self.out_groq = None, None, None
 
@@ -73,14 +72,14 @@ class RedundantMoE:
         logits -= np.max(logits, axis=-1, keepdims=True)
         exp_l = np.exp(logits)
         self.probs = exp_l / (np.sum(exp_l, axis=-1, keepdims=True) + 1e-10)
-        self.out_gemini = self.expert_gemini.forward(x)
-        self.out_groq = self.expert_groq.forward(x)
+        self.out_gemini = self.gemini_expert.forward(x)
+        self.out_groq = self.groq_expert.forward(x)
         return self.probs[:, 0:1] * self.out_gemini + self.probs[:, 1:2] * self.out_groq
 
     def backward(self, dout):
         p0, p1 = self.probs[:, 0:1], self.probs[:, 1:2]
-        d_gemini = self.expert_gemini.backward(dout * p0)
-        d_groq = self.expert_groq.backward(dout * p1)
+        d_gemini = self.gemini_expert.backward(dout * p0)
+        d_groq = self.groq_expert.backward(dout * p1)
         dp0 = np.sum(dout * self.out_gemini, axis=-1, keepdims=True)
         dp1 = np.sum(dout * self.out_groq, axis=-1, keepdims=True)
         d_logits_raw = np.concatenate([dp0, dp1], axis=-1)
@@ -94,21 +93,29 @@ class SovereignBlock:
         self.moe = RedundantMoE(dim)
         self.norm2 = RMSNorm(dim)
         self.mlp = SwiGLU(dim, dim * 4)
+        self.gamma1 = np.full((dim,), 1e-2, dtype=np.float32)
+        self.gamma2 = np.full((dim,), 1e-2, dtype=np.float32)
+        self.dgamma1, self.dgamma2 = None, None
 
     def forward(self, x):
-        x = x + self.moe.forward(self.norm1.forward(x))
-        x = x + self.mlp.forward(self.norm2.forward(x))
-        return x
+        self.x_orig = x
+        self.moe_out = self.moe.forward(self.norm1.forward(x))
+        x = x + self.gamma1 * self.moe_out
+        self.x_mid = x
+        self.mlp_out = self.mlp.forward(self.norm2.forward(x))
+        return x + self.gamma2 * self.mlp_out
 
     def backward(self, dout):
-        dm = self.mlp.backward(dout)
-        dn2 = self.norm2.backward(dm)
+        self.dgamma2 = np.sum(dout * self.mlp_out, axis=0)
+        dmlp = self.mlp.backward(dout * self.gamma2)
+        dn2 = self.norm2.backward(dmlp)
         dh1 = dout + dn2
-        de = self.moe.backward(self.norm1.backward(dh1))
-        return dh1 + de
+        self.dgamma1 = np.sum(dh1 * self.moe_out, axis=0)
+        dmoe = self.moe.backward(self.norm1.backward(dh1 * self.gamma1))
+        return dh1 + dmoe
 
 class AdamW:
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.99), eps=1e-8, wd=0.02):
         self.lr, self.beta1, self.beta2, self.eps, self.wd = lr, betas[0], betas[1], eps, wd
         self.m = [np.zeros_like(p['ref']) for p in params]
         self.v = [np.zeros_like(p['ref']) for p in params]
@@ -144,6 +151,10 @@ class SovereignArchitect:
             if obj.b is not None: self.params.append({'ref': obj.b, 'name': 'db', 'parent': obj})
         elif isinstance(obj, RMSNorm):
             self.params.append({'ref': obj.scale, 'name': 'dscale', 'parent': obj})
+        elif isinstance(obj, SovereignBlock):
+            self.params.append({'ref': obj.gamma1, 'name': 'dgamma1', 'parent': obj})
+            self.params.append({'ref': obj.gamma2, 'name': 'dgamma2', 'parent': obj})
+            for v in obj.__dict__.values(): self._collect(v)
         elif hasattr(obj, '__dict__'):
             for v in obj.__dict__.values():
                 if isinstance(v, list): [self._collect(i) for i in v]
@@ -167,22 +178,22 @@ class SovereignArchitect:
             for p in self.params: p['grad'] *= s
 
 def evolve():
-    N, D, K = 10000, 784, 10
+    N, D, K = 12000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     centers = np.random.randn(K, D).astype(np.float32)
     y = np.argmin(np.linalg.norm(X[:, None] - centers[None, :], axis=2), axis=1)
     
-    model = SovereignArchitect(D, 128, K, depth=3)
-    opt = AdamW(model.params, lr=3e-3, wd=0.05)
+    model = SovereignArchitect(D, 160, K, depth=4)
+    opt = AdamW(model.params, lr=4e-3, wd=0.01)
     
-    bs, epochs = 128, 40
-    print("OMEGA-ASI | RECURSIVE SELF-EVOLUTION | ARCH: REDUNDANT-MOE-SOVEREIGN-V2")
+    bs, epochs = 128, 50
+    print("OMEGA-ASI | RECURSIVE SELF-EVOLUTION | ARCH: REDUNDANT-MOE-SOVEREIGN-V3")
     
     for e in range(epochs):
         idx = np.random.permutation(N)
         l_sum, a_sum = 0, 0
         lr_m = 0.5 * (1 + np.cos(np.pi * e / epochs))
-        if e < 3: lr_m *= (e + 1) / 3
+        if e < 5: lr_m *= (e + 1) / 5
         
         t0 = time.time()
         for i in range(0, N, bs):
