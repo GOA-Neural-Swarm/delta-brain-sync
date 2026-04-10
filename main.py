@@ -60,7 +60,7 @@ class SwiGLU:
         dx1 = dswish * (self.sig * (1.0 + self.x1 * (1.0 - self.sig)))
         return self.w1.backward(dx1) + self.w2.backward(dx2)
 
-class RedundantMoE:
+class SovereignMoE:
     def __init__(self, dim):
         self.gemini_expert = SwiGLU(dim, dim * 2)
         self.groq_expert = SwiGLU(dim, dim * 2)
@@ -90,7 +90,7 @@ class RedundantMoE:
 class SovereignBlock:
     def __init__(self, dim):
         self.norm1 = RMSNorm(dim)
-        self.moe = RedundantMoE(dim)
+        self.moe = SovereignMoE(dim)
         self.norm2 = RMSNorm(dim)
         self.mlp = SwiGLU(dim, dim * 4)
         self.gamma1 = np.full((dim,), 1e-2, dtype=np.float32)
@@ -115,7 +115,7 @@ class SovereignBlock:
         return dh1 + dmoe
 
 class AdamW:
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.99), eps=1e-8, wd=0.02):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
         self.lr, self.beta1, self.beta2, self.eps, self.wd = lr, betas[0], betas[1], eps, wd
         self.m = [np.zeros_like(p['ref']) for p in params]
         self.v = [np.zeros_like(p['ref']) for p in params]
@@ -134,7 +134,7 @@ class AdamW:
             param -= curr_lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
 class SovereignArchitect:
-    def __init__(self, in_d, h_d, out_d, depth=4):
+    def __init__(self, in_d, h_d, out_d, depth=6):
         self.stem = Linear(in_d, h_d)
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
         self.head_norm = RMSNorm(h_d)
@@ -178,22 +178,22 @@ class SovereignArchitect:
             for p in self.params: p['grad'] *= s
 
 def evolve():
-    N, D, K = 12000, 784, 10
+    N, D, K = 15000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     centers = np.random.randn(K, D).astype(np.float32)
     y = np.argmin(np.linalg.norm(X[:, None] - centers[None, :], axis=2), axis=1)
     
-    model = SovereignArchitect(D, 160, K, depth=4)
-    opt = AdamW(model.params, lr=4e-3, wd=0.01)
+    model = SovereignArchitect(D, 256, K, depth=6)
+    opt = AdamW(model.params, lr=2e-3, wd=0.05)
     
-    bs, epochs = 128, 50
-    print("OMEGA-ASI | RECURSIVE SELF-EVOLUTION | ARCH: REDUNDANT-MOE-SOVEREIGN-V3")
+    bs, epochs = 256, 100
+    print("OMEGA-ASI | RECURSIVE SELF-EVOLUTION | ARCH: SOVEREIGN-MOE-V4")
     
     for e in range(epochs):
         idx = np.random.permutation(N)
         l_sum, a_sum = 0, 0
         lr_m = 0.5 * (1 + np.cos(np.pi * e / epochs))
-        if e < 5: lr_m *= (e + 1) / 5
+        if e < 10: lr_m *= (e + 1) / 10
         
         t0 = time.time()
         for i in range(0, N, bs):
@@ -215,7 +215,7 @@ def evolve():
             opt.step(model.params, lr_mult=lr_m)
             
         dt = time.time() - t0
-        print(f"EVO:{e:02d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | SPEED:{N/dt:.0f} samples/s | LR:{opt.lr*lr_m:.6f}")
+        print(f"EVO:{e:03d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | SPEED:{N/dt:.0f} samples/s | LR:{opt.lr*lr_m:.6f}")
 
 if __name__ == "__main__":
     evolve()
