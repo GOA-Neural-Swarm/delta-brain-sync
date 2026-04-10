@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -185,18 +186,18 @@ def evolve():
     N, D, K = 5000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     y = np.random.randint(0, K, N)
-    
+
     model = SovereignArchitect(D, 128, K, depth=4)
     optimizer = AdamW(model.params(), lr=2e-3, wd=0.05)
-    
+
     batch_size, epochs = 128, 30
     print("OMEGA-ASI | RECURSIVE EVOLUTION | ARCHITECTURE: SOVEREIGN-V7")
-    
+
     for epoch in range(epochs):
         idx = np.random.permutation(N)
         total_loss, total_acc = 0, 0
         t0 = time.time()
-        
+
         lr_mult = 0.5 * (1 + np.cos(np.pi * epoch / epochs))
         if epoch < 3: lr_mult *= (epoch + 1) / 3
 
@@ -204,27 +205,27 @@ def evolve():
             batch_idx = idx[i : i + batch_size]
             xb, yb = X[batch_idx], y[batch_idx]
             m = xb.shape[0]
-            
+
             logits = model.forward(xb)
             logits -= np.max(logits, axis=1, keepdims=True)
             exp_l = np.exp(logits)
             probs = exp_l / (np.sum(exp_l, axis=1, keepdims=True) + 1e-10)
-            
+
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             total_loss += loss * (m / N)
             total_acc += np.mean(np.argmax(probs, axis=1) == yb) * (m / N)
-            
+
             dout = probs.copy()
             dout[range(m), yb] -= 1
             model.backward(dout / m)
-            
+
             gnorm = np.sqrt(sum(np.sum(p["grad"] ** 2) for p in model.params() if p["grad"] is not None))
             if gnorm > 5.0:
                 for p in model.params():
                     if p["grad"] is not None: p["grad"] *= 5.0 / (gnorm + 1e-6)
-            
+
             optimizer.step(lr_mult=lr_mult)
-            
+
         dt = time.time() - t0
         print(f"EPOCH:{epoch:02d} | LOSS:{total_loss:.4f} | ACC:{total_acc:.4f} | SPEED:{N/dt:.0f} samples/s | LR:{optimizer.lr*lr_mult:.6f}")
 
