@@ -1,16 +1,13 @@
 import numpy as np
 import time
 
-
 def softmax(x, axis=-1):
     ex = np.exp(x - np.max(x, axis=axis, keepdims=True))
     return ex / (np.sum(ex, axis=axis, keepdims=True) + 1e-10)
 
-
 class Linear:
-    def __init__(self, in_d, out_d, std=None):
-        scale = std if std else np.sqrt(2.0 / in_d)
-        self.W = np.random.normal(0, scale, (in_d, out_d)).astype(np.float32)
+    def __init__(self, in_d, out_d, init_scale=0.02):
+        self.W = np.random.randn(in_d, out_d).astype(np.float32) * init_scale
         self.b = np.zeros(out_d, dtype=np.float32)
         self.x, self.dW, self.db = None, None, None
 
@@ -25,7 +22,6 @@ class Linear:
 
     def params(self):
         return [{"ref": self.W, "grad": self.dW}, {"ref": self.b, "grad": self.db}]
-
 
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
@@ -49,7 +45,6 @@ class RMSNorm:
     def params(self):
         return [{"ref": self.scale, "grad": self.dscale}]
 
-
 class SwiGLU:
     def __init__(self, dim, h_dim):
         self.w1 = Linear(dim, h_dim)
@@ -60,7 +55,7 @@ class SwiGLU:
     def forward(self, x):
         self.z1 = self.w1.forward(x)
         self.z2 = self.w2.forward(x)
-        self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.z1, -10, 10)))
+        self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.z1, -12, 12)))
         self.swish = self.z1 * self.sig
         return self.w3.forward(self.swish * self.z2)
 
@@ -74,8 +69,7 @@ class SwiGLU:
     def params(self):
         return self.w1.params() + self.w2.params() + self.w3.params()
 
-
-class MultiHeadAttention:
+class SovereignAttention:
     def __init__(self, dim, heads=8):
         self.dim, self.heads = dim, heads
         self.head_dim = dim // heads
@@ -87,117 +81,98 @@ class MultiHeadAttention:
 
     def forward(self, x):
         b, d = x.shape
-        q = self.wq.forward(x).reshape(b, self.heads, self.head_dim)
-        k = self.wk.forward(x).reshape(b, self.heads, self.head_dim)
-        v = self.wv.forward(x).reshape(b, self.heads, self.head_dim)
-        self.q, self.k, self.v = q, k, v
-
-        # Simplified self-attention for non-sequential data
-        scores = np.einsum("bhd,bhd->bh", q, k) / np.sqrt(self.head_dim)
+        self.q = self.wq.forward(x).reshape(b, self.heads, self.head_dim)
+        self.k = self.wk.forward(x).reshape(b, self.heads, self.head_dim)
+        self.v = self.wv.forward(x).reshape(b, self.heads, self.head_dim)
+        
+        scores = np.einsum("bhd,bhd->bh", self.q, self.k) / np.sqrt(self.head_dim)
         self.attn = softmax(scores, axis=-1)[:, :, np.newaxis]
-        self.ctx = (self.attn * v).reshape(b, d)
+        self.ctx = (self.attn * self.v).reshape(b, d)
         return self.wo.forward(self.ctx)
 
     def backward(self, dout):
         dctx = self.wo.backward(dout)
         b, d = dctx.shape
         dctx_reshaped = dctx.reshape(b, self.heads, self.head_dim)
-
+        
         dattn = np.sum(dctx_reshaped * self.v, axis=-1, keepdims=True)
-        dv = dctx_reshaped * self.attn
-
+        dv = (dctx_reshaped * self.attn).reshape(b, d)
+        
         dscores = self.attn * (dattn - np.sum(self.attn * dattn, axis=1, keepdims=True))
         dscores /= np.sqrt(self.head_dim)
-
-        dq = (dscores * self.k.mean(axis=-1, keepdims=True)).reshape(
-            b, d
-        )  # Approximation for flat input
-        dk = (dscores * self.q.mean(axis=-1, keepdims=True)).reshape(b, d)
-
-        return (
-            self.wq.backward(dq)
-            + self.wk.backward(dk)
-            + self.wv.backward(dv.reshape(b, d))
-        )
+        
+        dq = (dscores * self.k).reshape(b, d)
+        dk = (dscores * self.q).reshape(b, d)
+        
+        return self.wq.backward(dq) + self.wk.backward(dk) + self.wv.backward(dv)
 
     def params(self):
         return self.wq.params() + self.wk.params() + self.wv.params() + self.wo.params()
 
-
-class SovereignMoE:
+class RedundantMoE:
     def __init__(self, dim):
         self.gemini = SwiGLU(dim, dim * 4)
         self.groq = SwiGLU(dim, dim * 4)
         self.gate = Linear(dim, 2)
-        self.probs, self.o1, self.o2 = None, None, None
+        self.probs, self.o_gem, self.o_groq = None, None, None
 
     def forward(self, x):
         g = self.gate.forward(x)
         self.probs = softmax(g)
-        self.o1 = self.gemini.forward(x)
-        self.o2 = self.groq.forward(x)
-        return self.probs[:, 0:1] * self.o1 + self.probs[:, 1:2] * self.o2
+        self.o_gem = self.gemini.forward(x)
+        self.o_groq = self.groq.forward(x)
+        return self.probs[:, 0:1] * self.o_gem + self.probs[:, 1:2] * self.o_groq
 
     def backward(self, dout):
-        p0, p1 = self.probs[:, 0:1], self.probs[:, 1:2]
-        dg_in = self.gemini.backward(dout * p0)
-        dr_in = self.groq.backward(dout * p1)
-
-        dp0 = np.sum(dout * self.o1, axis=-1, keepdims=True)
-        dp1 = np.sum(dout * self.o2, axis=-1, keepdims=True)
-        dg_raw = np.concatenate([dp0, dp1], axis=-1)
-        d_gate = self.probs * (
-            dg_raw - np.sum(self.probs * dg_raw, axis=-1, keepdims=True)
-        )
-
-        return dg_in + dr_in + self.gate.backward(d_gate)
+        p_gem, p_groq = self.probs[:, 0:1], self.probs[:, 1:2]
+        d_gem_in = self.gemini.backward(dout * p_gem)
+        d_groq_in = self.groq.backward(dout * p_groq)
+        
+        dp_gem = np.sum(dout * self.o_gem, axis=-1, keepdims=True)
+        dp_groq = np.sum(dout * self.o_groq, axis=-1, keepdims=True)
+        
+        dg_raw = np.concatenate([dp_gem, dp_groq], axis=-1)
+        d_gate = self.probs * (dg_raw - np.sum(self.probs * dg_raw, axis=-1, keepdims=True))
+        
+        return d_gem_in + d_groq_in + self.gate.backward(d_gate)
 
     def params(self):
         return self.gemini.params() + self.groq.params() + self.gate.params()
 
-
 class SovereignBlock:
     def __init__(self, dim):
-        self.ln1 = RMSNorm(dim)
-        self.attn = MultiHeadAttention(dim)
-        self.ln2 = RMSNorm(dim)
-        self.moe = SovereignMoE(dim)
-        self.g1 = np.full(dim, 0.1, dtype=np.float32)
-        self.g2 = np.full(dim, 0.1, dtype=np.float32)
-        self.dg1, self.dg2 = None, None
-        self.res1, self.res2 = None, None
+        self.norm1 = RMSNorm(dim)
+        self.attn = SovereignAttention(dim)
+        self.norm2 = RMSNorm(dim)
+        self.moe = RedundantMoE(dim)
+        self.alpha = np.ones(dim, dtype=np.float32) * 0.1
+        self.beta = np.ones(dim, dtype=np.float32) * 0.1
+        self.dalpha, self.dbeta = None, None
+        self.res_a, self.res_m = None, None
 
     def forward(self, x):
-        self.res1 = self.attn.forward(self.ln1.forward(x))
-        x = x + self.g1 * self.res1
-        self.res2 = self.moe.forward(self.ln2.forward(x))
-        return x + self.g2 * self.res2
+        self.res_a = self.attn.forward(self.norm1.forward(x))
+        x = x + self.alpha * self.res_a
+        self.res_m = self.moe.forward(self.norm2.forward(x))
+        return x + self.beta * self.res_m
 
     def backward(self, dout):
-        self.dg2 = np.sum(dout * self.res2, axis=0)
-        dmoe = self.moe.backward(dout * self.g2)
-        dln2 = self.ln2.backward(dmoe)
-        dx_mid = dout + dln2
-        self.dg1 = np.sum(dx_mid * self.res1, axis=0)
-        dattn = self.attn.backward(dx_mid * self.g1)
-        dln1 = self.ln1.backward(dattn)
-        return dx_mid + dln1
+        self.dbeta = np.sum(dout * self.res_m, axis=0)
+        dmoe = self.moe.backward(dout * self.beta)
+        dnorm2 = self.norm2.backward(dmoe)
+        dx_mid = dout + dnorm2
+        self.dalpha = np.sum(dx_mid * self.res_a, axis=0)
+        dattn = self.attn.backward(dx_mid * self.alpha)
+        dnorm1 = self.norm1.backward(dattn)
+        return dx_mid + dnorm1
 
     def params(self):
-        p = (
-            self.ln1.params()
-            + self.attn.params()
-            + self.ln2.params()
-            + self.moe.params()
-        )
-        p.extend(
-            [{"ref": self.g1, "grad": self.dg1}, {"ref": self.g2, "grad": self.dg2}]
-        )
+        p = self.norm1.params() + self.attn.params() + self.norm2.params() + self.moe.params()
+        p.extend([{"ref": self.alpha, "grad": self.dalpha}, {"ref": self.beta, "grad": self.dbeta}])
         return p
 
-
 class SovereignArchitect:
-    def __init__(self, in_d, h_d, out_d, depth=3):
+    def __init__(self, in_d, h_d, out_d, depth=4):
         self.stem = Linear(in_d, h_d)
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
         self.norm = RMSNorm(h_d)
@@ -217,11 +192,9 @@ class SovereignArchitect:
 
     def params(self):
         p = self.stem.params()
-        for b in self.blocks:
-            p.extend(b.params())
+        for b in self.blocks: p.extend(b.params())
         p.extend(self.norm.params() + self.head.params())
         return p
-
 
 class Lion:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
@@ -232,72 +205,61 @@ class Lion:
     def step(self, scale=1.0):
         lr = self.lr * scale
         for i, p in enumerate(self.params):
-            if p["grad"] is None:
-                continue
+            if p["grad"] is None: continue
             param, grad = p["ref"], p["grad"]
-            if self.wd > 0:
-                param -= lr * self.wd * param
+            if self.wd > 0: param -= lr * self.wd * param
             update = np.sign(self.b1 * self.m[i] + (1.0 - self.b1) * grad)
             param -= lr * update
             self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * grad
 
-
 def evolve():
-    N, D, K = 10000, 784, 10
+    N, D, K = 12000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     y = np.random.randint(0, K, N)
-    centers = np.random.randn(K, D).astype(np.float32) * 4.0
+    centers = np.random.randn(K, D).astype(np.float32) * 5.0
     X += centers[y]
-
-    model = SovereignArchitect(D, 128, K, depth=3)
-    opt = Lion(model.params(), lr=1e-4, wd=0.01)
-
-    bs, epochs = 128, 40
-    print("OMEGA-ASI | RECURSIVE SELF-EVOLUTION | V10-ULTRA")
-
+    
+    model = SovereignArchitect(D, 128, K, depth=4)
+    opt = Lion(model.params(), lr=2e-4, wd=0.02)
+    
+    bs, epochs = 128, 50
+    print("OMEGA-ASI | RECURSIVE SELF-EVOLUTION | V11-PREMIUM")
+    
     for ep in range(epochs):
         idx = np.random.permutation(N)
         l_sum, a_sum = 0, 0
         t0 = time.time()
+        
+        # Cosine learning rate schedule
         sched = 0.5 * (1 + np.cos(np.pi * ep / epochs))
-        if ep < 5:
-            sched *= (ep + 1) / 5
-
+        if ep < 5: sched *= (ep + 1) / 5 # Warmup
+        
         for i in range(0, N, bs):
             bi = idx[i : i + bs]
             xb, yb = X[bi], y[bi]
             m = xb.shape[0]
-
+            
             logits = model.forward(xb)
             probs = softmax(logits)
-
+            
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             l_sum += loss * (m / N)
             a_sum += np.mean(np.argmax(probs, axis=1) == yb) * (m / N)
-
+            
             dout = probs.copy()
             dout[range(m), yb] -= 1
             model.backward(dout / m)
-
-            gn = np.sqrt(
-                sum(
-                    np.sum(p["grad"] ** 2)
-                    for p in model.params()
-                    if p["grad"] is not None
-                )
-            )
+            
+            # Global Gradient Clipping
+            gn = np.sqrt(sum(np.sum(p["grad"]**2) for p in model.params() if p["grad"] is not None))
             if gn > 1.0:
                 for p in model.params():
-                    if p["grad"] is not None:
-                        p["grad"] /= gn + 1e-6
-
+                    if p["grad"] is not None: p["grad"] /= (gn + 1e-6)
+            
             opt.step(scale=sched)
-
+            
         dt = time.time() - t0
-        print(
-            f"EP:{ep:02d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | {N/dt:.0f}s/s | LR:{opt.lr*sched:.6f}"
-        )
-
+        print(f"EP:{ep:02d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | {N/dt:.0f} samples/s | LR:{opt.lr*sched:.6f}")
 
 if __name__ == "__main__":
     evolve()
