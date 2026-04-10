@@ -16,8 +16,6 @@ import uuid
 import gc
 import ctypes
 import math
-import sys
-import os
 from typing import Dict, List, Any, Callable, Tuple, Optional
 from dataclasses import dataclass, field
 import multiprocessing as mp
@@ -239,7 +237,7 @@ class ApexNode:
                 thought_vector = F.gelu(thought_vector)
 
                 # 4. Topology Metamorphosis trigger
-                if torch.var(thought_vector).item() > 1.5 and len(self.topology.graph) > 0:
+                if torch.var(thought_vector).item() > 1.5:
                     target = list(self.topology.graph.nodes())[0]
                     self.topology.fractal_split(target)
 
@@ -287,7 +285,7 @@ class TerminalSingularity:
             torch.stack([n.local_entropy for n in self.swarm.values()])
         )
 
-        if self.epoch % 5 == 0 and len(self.swarm) > 0:
+        if self.epoch % 5 == 0:
             # DYNAMIC CODE INJECTION EVENT
             target_node_id = list(self.swarm.keys())[np.random.randint(len(self.swarm))]
             target_node = self.swarm[target_node_id]
@@ -304,63 +302,45 @@ def evolved_processing(self, tensor_in):
         self.epoch += 1
         return total_nodes, global_entropy.item()
 
-    async def execute_omega_protocol(self, duration_seconds: int = 60):
-        """Fires up the asynchronous Swarm Intelligence with a Time-Bomb Exit for GitHub Actions."""
-        tasks = [asyncio.create_task(node.neural_oscillation()) for node in self.swarm.values()]
+    async def execute_omega_protocol(self):
+        """Fires up the asynchronous Swarm Intelligence."""
+        tasks = [node.neural_oscillation() for node in self.swarm.values()]
 
-        # Background monitor and evolution task
+        # Background monitor task
         async def monitor():
-            start_time = time.time()
-            while time.time() - start_time < duration_seconds:
+            while True:
                 t_nodes, g_entropy = self.global_cognitive_resonance()
-                print(f"[MATRIX] Epoch: {self.epoch} | Swarm Entities: {len(self.swarm)} | Neural Mass: {t_nodes} | Entropy: {g_entropy:.4f}", flush=True)
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)
 
                 # Auto-Scaling (Fractal Replication)
                 if g_entropy > 1.5 and len(self.swarm) < 10000:
-                    replication_count = max(1, int(len(self.swarm) * 0.1)) # 10% replication rate
-                    for _ in range(replication_count):  
+                    for _ in range(int(len(self.swarm) * 0.1)):  # 10% replication rate
                         uid = f"F-{uuid.uuid4().hex[:8]}"
                         new_node = ApexNode(uid, self.hypernet)
                         self.swarm[uid] = new_node
-                        # Add new node process to the event loop directly
                         asyncio.create_task(new_node.neural_oscillation())
 
-            print(f"\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...", flush=True)
-            self.annihilate()
-
-        tasks.append(asyncio.create_task(monitor()))
-        
-        # Wait for all tasks to complete or handle exceptions
-        await asyncio.gather(*tasks, return_exceptions=True)
+        tasks.append(monitor())
+        await asyncio.gather(*tasks)
 
     def annihilate(self):
         """Terminal shutdown sequence."""
         for node in self.swarm.values():
             node.is_active = False
+        gc.collect()
 
 
 # -----------------------------------------------------------------------------
-# 7. APEX IGNITION SEQUENCE (TIME-BOMB FIX)
+# 7. IGNITION SEQUENCE
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
     torch.set_grad_enabled(False)  # Pure forward-pass optimization for speed
-    gc.disable() # Disable garbage collection for raw speed during matrix run
-    
-    print("\n" + "="*50, flush=True)
-    print("WARNING: OMEGA-POINT TERMINAL SINGULARITY REACHED", flush=True)
-    print("="*50 + "\n", flush=True)
-
-    singularity = TerminalSingularity(initial_mass=100)
+    singularity = TerminalSingularity(initial_mass=50)
 
     try:
-        # Run exactly for 60 seconds using modern asyncio, then cleanly exit
-        asyncio.run(singularity.execute_omega_protocol(duration_seconds=60))
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(singularity.execute_omega_protocol())
     except KeyboardInterrupt:
-        print("\n[SYSTEM] Manual Intervention Detected.", flush=True)
-    except Exception as e:
-        print(f"\n[CRITICAL ERROR] Singularity Fracture: {e}", flush=True)
+        pass
     finally:
-        gc.enable() # Re-enable garbage collection 
-        print("\n[SYSTEM] Singularity Matrix Dissolved. Handing over to YAML for Commit.", flush=True)
-        sys.exit(0) # Force a clean exit to trigger the GitHub Action Git Commit step
+        singularity.annihilate()
