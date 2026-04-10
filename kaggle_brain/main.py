@@ -9,10 +9,39 @@ import git
 import re
 import random
 import base64
+
+
+# 1. Immediate Environment Setup (Must happen before heavy imports)
+def install_requirements():
+    libs = [
+        "psycopg2-binary",
+        "firebase-admin",
+        "bitsandbytes",
+        "requests",
+        "accelerate",
+        "GitPython",
+        "sympy==1.12",
+        "numpy",
+        "scikit-learn",
+        "google-generativeai",
+        "huggingface-hub<1.0",  # Fixes the version conflict
+        "transformers>=4.44.0",  # Ensures compatibility
+    ]
+    try:
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
+        )
+        print("✅ [SYSTEM]: Requirements Ready.")
+    except Exception as e:
+        print(f"⚠️ Install Warning: {e}")
+
+
+install_requirements()
+
+# 2. Post-Installation Imports
 import google.generativeai as genai
 from datetime import datetime, UTC
 from functools import lru_cache
-
 import numpy as np
 import torch
 from sklearn.preprocessing import StandardScaler
@@ -39,30 +68,6 @@ try:
     user_secrets = UserSecretsClient()
 except ImportError:
     user_secrets = None
-
-
-def install_requirements():
-    libs = [
-        "psycopg2-binary",
-        "firebase-admin",
-        "bitsandbytes",
-        "requests",
-        "accelerate",
-        "GitPython",
-        "sympy==1.12",
-        "numpy",
-        "scikit-learn",
-    ]
-    try:
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
-        )
-        print("✅ [SYSTEM]: Requirements Ready.")
-    except Exception as e:
-        print(f"⚠️ Install Warning: {e}")
-
-
-install_requirements()
 
 raw_db_url = os.getenv("NEON_DB_URL") or os.getenv("DATABASE_URL")
 if user_secrets:
@@ -230,12 +235,12 @@ def query_groq_api(prompt):
     )
     if not api_key:
         return None
-    for model in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
+    for model_name in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
         try:
             response = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 json={
-                    "model": model,
+                    "model": model_name,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.5,
                 },
