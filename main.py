@@ -1,6 +1,6 @@
-
 import numpy as np
 import time
+
 
 class Linear:
     def __init__(self, in_d, out_d, use_bias=True):
@@ -25,6 +25,7 @@ class Linear:
             p.append({"ref": self.b, "grad": self.db})
         return p
 
+
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
         self.scale = np.ones(dim, dtype=np.float32)
@@ -46,6 +47,7 @@ class RMSNorm:
 
     def params(self):
         return [{"ref": self.scale, "grad": self.dscale}]
+
 
 class SwiGLU:
     def __init__(self, dim, h_dim):
@@ -71,6 +73,7 @@ class SwiGLU:
     def params(self):
         return self.w1.params() + self.w2.params() + self.w3.params()
 
+
 class RedundantMoE:
     def __init__(self, dim):
         self.gemini_engine = SwiGLU(dim, dim * 2)
@@ -94,12 +97,17 @@ class RedundantMoE:
         dp0 = np.sum(dout * self.out_gemini, axis=-1, keepdims=True)
         dp1 = np.sum(dout * self.out_groq, axis=-1, keepdims=True)
         d_logits_raw = np.concatenate([dp0, dp1], axis=-1)
-        d_gate_logits = self.probs * (d_logits_raw - np.sum(self.probs * d_logits_raw, axis=-1, keepdims=True))
+        d_gate_logits = self.probs * (
+            d_logits_raw - np.sum(self.probs * d_logits_raw, axis=-1, keepdims=True)
+        )
         dx_gate = self.gate.backward(d_gate_logits)
         return d_gemini + d_groq + dx_gate
 
     def params(self):
-        return self.gemini_engine.params() + self.groq_engine.params() + self.gate.params()
+        return (
+            self.gemini_engine.params() + self.groq_engine.params() + self.gate.params()
+        )
+
 
 class SovereignBlock:
     def __init__(self, dim):
@@ -128,9 +136,20 @@ class SovereignBlock:
         return dx_mid + dmoe
 
     def params(self):
-        p = self.norm1.params() + self.moe.params() + self.norm2.params() + self.mlp.params()
-        p.extend([{"ref": self.alpha, "grad": self.dalpha}, {"ref": self.beta, "grad": self.dbeta}])
+        p = (
+            self.norm1.params()
+            + self.moe.params()
+            + self.norm2.params()
+            + self.mlp.params()
+        )
+        p.extend(
+            [
+                {"ref": self.alpha, "grad": self.dalpha},
+                {"ref": self.beta, "grad": self.dbeta},
+            ]
+        )
         return p
+
 
 class SovereignArchitect:
     def __init__(self, in_d, h_d, out_d, depth):
@@ -159,6 +178,7 @@ class SovereignArchitect:
         p.extend(self.head.params())
         return p
 
+
 class Lion:
     def __init__(self, params, lr=1e-4, betas=(0.9, 0.99), wd=0.01):
         self.params = params
@@ -179,6 +199,7 @@ class Lion:
             param -= curr_lr * update
 
             self.m[i] = self.beta2 * self.m[i] + (1 - self.beta2) * grad
+
 
 def evolve():
     N, D, K = 10000, 784, 10
@@ -203,7 +224,7 @@ def evolve():
             lr_mult *= (epoch + 1) / 5
 
         for i in range(0, N, batch_size):
-            batch_idx = idx[i:i + batch_size]
+            batch_idx = idx[i : i + batch_size]
             xb, yb = X[batch_idx], y[batch_idx]
             m = xb.shape[0]
 
@@ -220,7 +241,13 @@ def evolve():
             dout[range(m), yb] -= 1
             model.backward(dout / m)
 
-            gnorm = np.sqrt(sum(np.sum(p["grad"] ** 2) for p in model.params() if p["grad"] is not None))
+            gnorm = np.sqrt(
+                sum(
+                    np.sum(p["grad"] ** 2)
+                    for p in model.params()
+                    if p["grad"] is not None
+                )
+            )
             if gnorm > 1.0:
                 for p in model.params():
                     if p["grad"] is not None:
@@ -229,7 +256,10 @@ def evolve():
             optimizer.step(lr_mult=lr_mult)
 
         dt = time.time() - t0
-        print(f"EP:{epoch:02d} | LOSS:{total_loss:.4f} | ACC:{total_acc:.4f} | SPEED:{N/dt:.0f}sps | LR:{optimizer.lr*lr_mult:.7f}")
+        print(
+            f"EP:{epoch:02d} | LOSS:{total_loss:.4f} | ACC:{total_acc:.4f} | SPEED:{N/dt:.0f}sps | LR:{optimizer.lr*lr_mult:.7f}"
+        )
+
 
 if __name__ == "__main__":
     evolve()
