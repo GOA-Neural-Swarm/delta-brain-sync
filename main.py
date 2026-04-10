@@ -1,13 +1,15 @@
-
 import numpy as np
 import time
+
 
 class Linear:
     def __init__(self, in_d, out_d, use_bias=True):
         limit = np.sqrt(6.0 / (in_d + out_d))
         self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
         self.b = np.zeros(out_d, dtype=np.float32) if use_bias else None
-        self.dW, self.db = np.zeros_like(self.W), (np.zeros_like(self.b) if use_bias else None)
+        self.dW, self.db = np.zeros_like(self.W), (
+            np.zeros_like(self.b) if use_bias else None
+        )
         self.x = None
 
     def forward(self, x):
@@ -21,10 +23,11 @@ class Linear:
         return np.dot(dout, self.W.T)
 
     def params(self):
-        p = [{'ref': self.W, 'grad': self.dW}]
+        p = [{"ref": self.W, "grad": self.dW}]
         if self.b is not None:
-            p.append({'ref': self.b, 'grad': self.db})
+            p.append({"ref": self.b, "grad": self.db})
         return p
+
 
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
@@ -47,7 +50,8 @@ class RMSNorm:
         return self.rstd * (dx_rstd - x_rstd * m_dx_rstd_x_rstd)
 
     def params(self):
-        return [{'ref': self.scale, 'grad': self.dscale}]
+        return [{"ref": self.scale, "grad": self.dscale}]
+
 
 class SwiGLU:
     def __init__(self, dim, h_dim):
@@ -73,6 +77,7 @@ class SwiGLU:
     def params(self):
         return self.w1.params() + self.w2.params() + self.w3.params()
 
+
 class RedundantMoE:
     def __init__(self, dim):
         self.gemini = SwiGLU(dim, dim * 2)
@@ -96,12 +101,15 @@ class RedundantMoE:
         dp0 = np.sum(dout * self.out_gemini, axis=-1, keepdims=True)
         dp1 = np.sum(dout * self.out_groq, axis=-1, keepdims=True)
         d_logits_raw = np.concatenate([dp0, dp1], axis=-1)
-        d_gate_logits = self.probs * (d_logits_raw - np.sum(self.probs * d_logits_raw, axis=-1, keepdims=True))
+        d_gate_logits = self.probs * (
+            d_logits_raw - np.sum(self.probs * d_logits_raw, axis=-1, keepdims=True)
+        )
         dx_gate = self.gate.backward(d_gate_logits)
         return d_gemini + d_groq + dx_gate
 
     def params(self):
         return self.gemini.params() + self.groq.params() + self.gate.params()
+
 
 class SovereignBlock:
     def __init__(self, dim):
@@ -130,9 +138,20 @@ class SovereignBlock:
         return dx_mid + dmoe
 
     def params(self):
-        p = self.norm1.params() + self.moe.params() + self.norm2.params() + self.mlp.params()
-        p.extend([{'ref': self.alpha, 'grad': self.dalpha}, {'ref': self.beta, 'grad': self.dbeta}])
+        p = (
+            self.norm1.params()
+            + self.moe.params()
+            + self.norm2.params()
+            + self.mlp.params()
+        )
+        p.extend(
+            [
+                {"ref": self.alpha, "grad": self.dalpha},
+                {"ref": self.beta, "grad": self.dbeta},
+            ]
+        )
         return p
+
 
 class SovereignArchitect:
     def __init__(self, in_d, h_d, out_d, depth):
@@ -143,40 +162,52 @@ class SovereignArchitect:
 
     def forward(self, x):
         x = self.stem.forward(x)
-        for b in self.blocks: x = b.forward(x)
+        for b in self.blocks:
+            x = b.forward(x)
         return self.head.forward(self.norm_f.forward(x))
 
     def backward(self, dout):
         dout = self.norm_f.backward(self.head.backward(dout))
-        for b in reversed(self.blocks): dout = b.backward(dout)
+        for b in reversed(self.blocks):
+            dout = b.backward(dout)
         self.stem.backward(dout)
 
     def params(self):
         p = self.stem.params()
-        for b in self.blocks: p.extend(b.params())
+        for b in self.blocks:
+            p.extend(b.params())
         p.extend(self.norm_f.params())
         p.extend(self.head.params())
         return p
 
+
 class AdamW:
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
         self.params = params
-        self.lr, self.beta1, self.beta2, self.eps, self.wd = lr, betas[0], betas[1], eps, wd
-        self.m = [np.zeros_like(p['ref']) for p in params]
-        self.v = [np.zeros_like(p['ref']) for p in params]
+        self.lr, self.beta1, self.beta2, self.eps, self.wd = (
+            lr,
+            betas[0],
+            betas[1],
+            eps,
+            wd,
+        )
+        self.m = [np.zeros_like(p["ref"]) for p in params]
+        self.v = [np.zeros_like(p["ref"]) for p in params]
         self.t = 0
 
     def step(self, lr_mult=1.0):
         self.t += 1
         curr_lr = self.lr * lr_mult
         for i, p in enumerate(self.params):
-            param, grad = p['ref'], p['grad']
-            if self.wd > 0: param -= curr_lr * self.wd * param
+            param, grad = p["ref"], p["grad"]
+            if self.wd > 0:
+                param -= curr_lr * self.wd * param
             self.m[i] = self.beta1 * self.m[i] + (1 - self.beta1) * grad
             self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * (grad**2)
             m_hat = self.m[i] / (1 - self.beta1**self.t)
             v_hat = self.v[i] / (1 - self.beta2**self.t)
             param -= curr_lr * m_hat / (np.sqrt(v_hat) + self.eps)
+
 
 def evolve():
     N, D, K = 10000, 784, 10
@@ -195,16 +226,19 @@ def evolve():
         t0 = time.time()
 
         lr_mult = 0.5 * (1 + np.cos(np.pi * epoch / epochs))
-        if epoch < 3: lr_mult *= (epoch + 1) / 3
+        if epoch < 3:
+            lr_mult *= (epoch + 1) / 3
 
         for i in range(0, N, batch_size):
-            batch_idx = idx[i:i+batch_size]
+            batch_idx = idx[i : i + batch_size]
             xb, yb = X[batch_idx], y[batch_idx]
             m = xb.shape[0]
 
             logits = model.forward(xb)
             logits -= np.max(logits, axis=1, keepdims=True)
-            probs = np.exp(logits) / (np.sum(np.exp(logits), axis=1, keepdims=True) + 1e-10)
+            probs = np.exp(logits) / (
+                np.sum(np.exp(logits), axis=1, keepdims=True) + 1e-10
+            )
 
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             total_loss += loss * (m / N)
@@ -214,14 +248,18 @@ def evolve():
             dout[range(m), yb] -= 1
             model.backward(dout / m)
 
-            gnorm = np.sqrt(sum(np.sum(p['grad']**2) for p in model.params()))
+            gnorm = np.sqrt(sum(np.sum(p["grad"] ** 2) for p in model.params()))
             if gnorm > 1.0:
-                for p in model.params(): p['grad'] *= (1.0 / (gnorm + 1e-6))
+                for p in model.params():
+                    p["grad"] *= 1.0 / (gnorm + 1e-6)
 
             optimizer.step(lr_mult=lr_mult)
 
         dt = time.time() - t0
-        print(f"EPOCH:{epoch:02d} | LOSS:{total_loss:.4f} | ACC:{total_acc:.4f} | {N/dt:.0f} samples/s | LR:{optimizer.lr*lr_mult:.6f}")
+        print(
+            f"EPOCH:{epoch:02d} | LOSS:{total_loss:.4f} | ACC:{total_acc:.4f} | {N/dt:.0f} samples/s | LR:{optimizer.lr*lr_mult:.6f}"
+        )
+
 
 if __name__ == "__main__":
     evolve()

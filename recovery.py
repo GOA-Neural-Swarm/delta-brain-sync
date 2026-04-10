@@ -2,6 +2,7 @@ import os
 import shutil
 import omega_point
 
+
 def emergency_recovery():
     print("Initiating Gen 1 Emergency Recovery...")
     if os.path.exists("sync_recovery.txt"):
