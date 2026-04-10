@@ -283,44 +283,39 @@ jobs:
           git config --global user.name 'Sovereign-AI-Bot'
           git config --global user.email 'bot@sovereign.ai'
           
-          # [UPGRADE-1]: Secure remote URL with Token to prevent Error 128
+          # [UPGRADE-1]: Secure remote URL
           git remote set-url origin "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git"
 
-          # 2. Lab Branch Integration
-          git fetch origin evolution-lab || true
-          if git show-ref --verify --quiet refs/remotes/origin/evolution-lab; then
-            git checkout origin/evolution-lab -- . || true
-          fi
-
-          # 3. Workflow Protection
-          # Revert workflows to match Remote state to prevent self-modification errors
+          # 2. Workflow Protection
+          # အရေးကြီးတဲ့ workflows တွေကို မပျက်စီးအောင် remote ကအတိုင်း ထိန်းထားမယ်
+          git fetch origin main
           git reset HEAD .github/workflows/
           git checkout -- .github/workflows/
 
-          # 4. Smart Staging
+          # 3. Smart Staging (Evolution ဖြစ်ထားတဲ့ code အသစ်တွေကို ယူမယ်)
           git add .
 
-          # 5. Manifestation & Intelligent Rebase
+          # 4. Manifestation & Intelligent Rebase
           if ! git diff-index --quiet HEAD; then
             git commit -m "🧬 [OMEGA-ULTIMA] Deep-Sync & Autonomous Evolution [skip ci]"
             
-            # [UPGRADE-2]: Use origin/main for explicit tracking
+            # [CRITICAL FIX]: -X theirs ကိုသုံးမှ Evolution ဖြစ်ထားတဲ့ code အသစ်တွေက အဟောင်းကို အနိုင်ယူမှာ
             git fetch origin main
-            git rebase -X ours origin/main || {
-              echo "⚠️ Rebase step paused. Forcing resolution..."
+            git rebase -X theirs origin/main || {
+              echo "⚠️ Conflict detected. Overwriting with new Evolution logic..."
               git add .
               git rebase --continue || git rebase --abort
             }
             
-            # 6. Force Manifestation
+            # 5. Force Manifestation
             git push origin HEAD:main --force
 
-            # 7. Evolution Lab Parity
+            # 6. Evolution Lab Parity (Sync lab with the latest evolution)
             git branch -D evolution-lab || true
             git checkout -b evolution-lab
             git push origin evolution-lab --force
             
-            echo "🚀 [SUCCESS]: System state manifested. Zero conflicts."
+            echo "🚀 [SUCCESS]: System state manifested. Evolution code is now primary."
           else
             echo "✨ [OPTIMAL]: No mutations detected. System remains in supreme state."
           fi
