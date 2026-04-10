@@ -9,6 +9,7 @@ import git
 import re
 import random
 import base64 
+import omega_point
 import google.generativeai as genai
 from datetime import datetime, UTC
 from functools import lru_cache
