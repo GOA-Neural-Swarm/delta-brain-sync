@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import omega_point
 
 class GELU:
     def forward(self, x):
