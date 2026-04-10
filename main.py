@@ -11,13 +11,13 @@ class Linear:
 
     def forward(self, x):
         self.x = x
-        return np.matmul(x, self.W) + (self.b if self.b is not None else 0)
+        return np.dot(x, self.W) + (self.b if self.b is not None else 0)
 
     def backward(self, dout):
-        self.dW = np.matmul(self.x.T, dout)
+        self.dW = np.dot(self.x.T, dout)
         if self.b is not None:
             self.db = np.sum(dout, axis=0)
-        return np.matmul(dout, self.W.T)
+        return np.dot(dout, self.W.T)
 
     def params(self):
         p = [{"ref": self.W, "grad": self.dW}]
@@ -181,15 +181,15 @@ class AdamW:
             param -= curr_lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
 def evolve():
-    N, D, K = 12000, 784, 10
+    N, D, K = 10000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     y = np.random.randint(0, K, N)
     
-    model = SovereignArchitect(D, 256, K, depth=4)
-    optimizer = AdamW(model.params(), lr=2e-3, wd=0.01)
+    model = SovereignArchitect(D, 128, K, depth=3)
+    optimizer = AdamW(model.params(), lr=1e-3, wd=0.01)
     
-    batch_size, epochs = 128, 50
-    print("OMEGA-ASI | SOVEREIGN-V5 | REDUNDANCY: GEMINI-GROQ-OPTIMIZED")
+    batch_size, epochs = 64, 20
+    print("OMEGA-ASI | SOVEREIGN-V6 | REDUNDANCY: GEMINI-GROQ-HYPER-OPTIMIZED")
     
     for epoch in range(epochs):
         idx = np.random.permutation(N)
@@ -197,7 +197,7 @@ def evolve():
         t0 = time.time()
         
         lr_mult = 0.5 * (1 + np.cos(np.pi * epoch / epochs))
-        if epoch < 5: lr_mult *= (epoch + 1) / 5
+        if epoch < 2: lr_mult *= (epoch + 1) / 2
 
         for i in range(0, N, batch_size):
             batch_idx = idx[i : i + batch_size]
@@ -217,8 +217,8 @@ def evolve():
             model.backward(dout / m)
             
             gnorm = np.sqrt(sum(np.sum(p["grad"] ** 2) for p in model.params()))
-            if gnorm > 5.0:
-                for p in model.params(): p["grad"] *= 5.0 / (gnorm + 1e-6)
+            if gnorm > 1.0:
+                for p in model.params(): p["grad"] *= 1.0 / (gnorm + 1e-6)
             
             optimizer.step(lr_mult=lr_mult)
             
