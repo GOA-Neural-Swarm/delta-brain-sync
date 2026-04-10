@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -56,27 +57,27 @@ class RedundantEngine:
         self.x = x
         self.out_gemini = self.gemini_path.forward(x)
         self.out_groq = self.groq_path.forward(x)
-        
+
         g = self.gate.forward(x)
         exp_g = np.exp(g - np.max(g, axis=-1, keepdims=True))
         self.probs = exp_g / np.sum(exp_g, axis=-1, keepdims=True)
-        
+
         return self.probs[:, 0:1] * self.out_gemini + self.probs[:, 1:2] * self.out_groq
 
     def backward(self, dout):
         d_gemini = dout * self.probs[:, 0:1]
         d_groq = dout * self.probs[:, 1:2]
-        
+
         d_p0 = np.sum(dout * self.out_gemini, axis=-1, keepdims=True)
         d_p1 = np.sum(dout * self.out_groq, axis=-1, keepdims=True)
         d_probs_raw = np.concatenate([d_p0, d_p1], axis=-1)
-        
+
         d_gate_logits = self.probs * (d_probs_raw - np.sum(self.probs * d_probs_raw, axis=-1, keepdims=True))
-        
+
         dx_gate = self.gate.backward(d_gate_logits)
         dx_gemini = self.gemini_path.backward(d_gemini)
         dx_groq = self.groq_path.backward(d_groq)
-        
+
         return dx_gemini + dx_groq + dx_gate
 
 class SovereignBlock:
@@ -94,15 +95,13 @@ class SovereignBlock:
         return h
 
     def backward(self, dout):
-        # MLP Path
         res_mlp = dout
         dm = self.mlp_out.backward(dout)
         dm = self.act.backward(dm)
         dm = self.mlp_in.backward(dm)
         dm = self.norm2.backward(dm)
         dout = res_mlp + dm
-        
-        # Engine Path
+
         res_eng = dout
         de = self.engine.backward(dout)
         de = self.norm1.backward(de)
@@ -132,7 +131,7 @@ class SovereignArchitect:
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
         self.head_norm = RMSNorm(h_d)
         self.head = Linear(h_d, out_d)
-        
+
         self.layers = [self.stem] + self.blocks + [self.head_norm, self.head]
         self.params, self.param_refs = [], []
         self._collect_params()
@@ -173,37 +172,37 @@ def run_evolution():
     N, D, K = 5000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     y = np.random.randint(0, K, N)
-    
-    model = SovereignArchitect(D, 128, K, depth=2)
+
+    model = SovereignArchitect(D, 128, K, depth=4)
     bs, epochs = 128, 50
-    
+
     print("OMEGA-ASI | ARCHITECTURE INITIALIZED")
     for epoch in range(epochs):
         idx = np.random.permutation(N)
         L, A = 0, 0
         lr_m = 0.5 * (1 + np.cos(np.pi * epoch / epochs))
-        
+
         for i in range(0, N, bs):
             xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
             m = xb.shape[0]
-            
+
             logits = model.forward(xb)
             probs = np.exp(logits - np.max(logits, axis=1, keepdims=True))
             probs /= np.sum(probs, axis=1, keepdims=True)
-            
+
             L += -np.sum(np.log(probs[range(m), yb] + 1e-10)) / N
             A += np.sum(np.argmax(probs, axis=1) == yb) / N
-            
+
             d_logits = probs.copy()
             d_logits[range(m), yb] -= 1
             d_logits /= m
-            
+
             grads = model.backward(d_logits)
             gnorm = np.sqrt(sum(np.sum(g**2) for g in grads))
             if gnorm > 1.0: grads = [g / gnorm for g in grads]
-            
+
             model.optimizer.step(model.params, grads, lr_m)
-            
+
         if epoch % 10 == 0:
             print(f"EPOCH:{epoch:03d} | LOSS:{L:.4f} | ACC:{A:.4f} | LR:{model.optimizer.lr*lr_m:.5f}")
 
