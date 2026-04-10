@@ -29,7 +29,8 @@ if (!admin.apps.length) {
       databaseURL: process.env.FIREBASE_DB_URL
     });
   } catch (e) {
-    process.stderr.write("Firebase Initialization Critical Failure\n");
+    console.error("Firebase Initialization Critical Failure", e);
+    process.exit(1);
   }
 }
 const db = admin.firestore();
@@ -42,6 +43,7 @@ async function callGeminiNeural(prompt) {
     const response = await axios.post(url, { contents: [{ parts: [{ text: prompt }] }] }, { timeout: 8000 });
     return response.data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
   } catch (err) {
+    console.error("Gemini Neural Error", err);
     return null;
   }
 }
@@ -74,7 +76,11 @@ async function syncParity() {
     }));
 
     const { error: supError } = await supabase.from('neurons').upsert(payload, { onConflict: 'id' });
-    if (supError) throw supError;
+    if (supError) {
+      console.error("Supabase Upsert Error", supError);
+      await client.query('ROLLBACK');
+      return 0;
+    }
 
     const batch = db.batch();
     neonData.forEach(n => {
@@ -95,8 +101,8 @@ async function syncParity() {
     await client.query('COMMIT');
     return neonData.length;
   } catch (err) {
+    console.error("Parity Error", err);
     await client.query('ROLLBACK');
-    process.stderr.write(`Parity Error: ${err.message}\n`);
     return 0;
   } finally {
     client.release();
@@ -121,7 +127,7 @@ async function evolveCore() {
       }
     }
   } catch (e) {
-    process.stderr.write(`Evolution Suppressed: ${e.message}\n`);
+    console.error("Evolution Suppressed", e);
   }
 }
 
@@ -157,7 +163,7 @@ async function manageSwarm() {
       });
     }
   } catch (e) {
-    process.stderr.write(`Swarm Management Error: ${e.message}\n`);
+    console.error("Swarm Management Error", e);
   }
 }
 
@@ -176,9 +182,9 @@ async function execute() {
       setImmediate(evolveCore);
     }
 
-    process.stdout.write(`Cycle Complete: ${syncedCount} nodes synced in ${Date.now() - start}ms\n`);
+    console.log(`Cycle Complete: ${syncedCount} nodes synced in ${Date.now() - start}ms`);
   } catch (err) {
-    process.stderr.write(`Execution Fatal: ${err.stack}\n`);
+    console.error("Execution Fatal", err);
   } finally {
     await neonPool.end();
     process.exit(0);

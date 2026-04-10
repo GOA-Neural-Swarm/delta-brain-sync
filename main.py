@@ -1,13 +1,15 @@
-
 import numpy as np
 import time
+
 
 class Linear:
     def __init__(self, in_d, out_d, use_bias=True):
         limit = np.sqrt(6.0 / (in_d + out_d))
         self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
         self.b = np.zeros(out_d, dtype=np.float32) if use_bias else None
-        self.dW, self.db = np.zeros_like(self.W), (np.zeros_like(self.b) if use_bias else None)
+        self.dW, self.db = np.zeros_like(self.W), (
+            np.zeros_like(self.b) if use_bias else None
+        )
         self.x = None
 
     def forward(self, x):
@@ -99,7 +101,9 @@ class RedundantMoE:
         dp0 = np.sum(dout * self.out_gemini, axis=-1, keepdims=True)
         dp1 = np.sum(dout * self.out_groq, axis=-1, keepdims=True)
         d_logits_raw = np.concatenate([dp0, dp1], axis=-1)
-        d_gate_logits = self.probs * (d_logits_raw - np.sum(self.probs * d_logits_raw, axis=-1, keepdims=True))
+        d_gate_logits = self.probs * (
+            d_logits_raw - np.sum(self.probs * d_logits_raw, axis=-1, keepdims=True)
+        )
         dx_gate = self.gate.backward(d_gate_logits)
         return d_gemini + d_groq + dx_gate
 
@@ -134,8 +138,18 @@ class SovereignBlock:
         return dx_mid + dmoe
 
     def params(self):
-        p = (self.norm1.params() + self.moe.params() + self.norm2.params() + self.mlp.params())
-        p.extend([{"ref": self.alpha, "grad": self.dalpha}, {"ref": self.beta, "grad": self.dbeta}])
+        p = (
+            self.norm1.params()
+            + self.moe.params()
+            + self.norm2.params()
+            + self.mlp.params()
+        )
+        p.extend(
+            [
+                {"ref": self.alpha, "grad": self.dalpha},
+                {"ref": self.beta, "grad": self.dbeta},
+            ]
+        )
         return p
 
 
@@ -170,7 +184,13 @@ class SovereignArchitect:
 class AdamW:
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
         self.params = params
-        self.lr, self.beta1, self.beta2, self.eps, self.wd = lr, betas[0], betas[1], eps, wd
+        self.lr, self.beta1, self.beta2, self.eps, self.wd = (
+            lr,
+            betas[0],
+            betas[1],
+            eps,
+            wd,
+        )
         self.m = [np.zeros_like(p["ref"]) for p in params]
         self.v = [np.zeros_like(p["ref"]) for p in params]
         self.t = 0
@@ -210,13 +230,15 @@ def evolve():
             lr_mult *= (epoch + 1) / 3
 
         for i in range(0, N, batch_size):
-            batch_idx = idx[i:i + batch_size]
+            batch_idx = idx[i : i + batch_size]
             xb, yb = X[batch_idx], y[batch_idx]
             m = xb.shape[0]
 
             logits = model.forward(xb)
             logits -= np.max(logits, axis=1, keepdims=True)
-            probs = np.exp(logits) / (np.sum(np.exp(logits), axis=1, keepdims=True) + 1e-10)
+            probs = np.exp(logits) / (
+                np.sum(np.exp(logits), axis=1, keepdims=True) + 1e-10
+            )
 
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             total_loss += loss * (m / N)
@@ -226,7 +248,7 @@ def evolve():
             dout[range(m), yb] -= 1
             model.backward(dout / m)
 
-            gnorm = np.sqrt(sum(np.sum(p["grad"]**2) for p in model.params()))
+            gnorm = np.sqrt(sum(np.sum(p["grad"] ** 2) for p in model.params()))
             if gnorm > 1.0:
                 for p in model.params():
                     p["grad"] *= 1.0 / (gnorm + 1e-6)
@@ -234,7 +256,9 @@ def evolve():
             optimizer.step(lr_mult=lr_mult)
 
         dt = time.time() - t0
-        print(f"EPOCH:{epoch:02d} | LOSS:{total_loss:.4f} | ACC:{total_acc:.4f} | {N/dt:.0f} samples/s | LR:{optimizer.lr*lr_mult:.6f}")
+        print(
+            f"EPOCH:{epoch:02d} | LOSS:{total_loss:.4f} | ACC:{total_acc:.4f} | {N/dt:.0f} samples/s | LR:{optimizer.lr*lr_mult:.6f}"
+        )
 
 
 if __name__ == "__main__":
