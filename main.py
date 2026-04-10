@@ -1,11 +1,10 @@
-
 import numpy as np
 import time
 
 class Linear:
     def __init__(self, in_d, out_d, use_bias=True):
-        limit = np.sqrt(2.0 / (in_d + out_d))
-        self.W = np.random.randn(in_d, out_d).astype(np.float32) * limit
+        limit = np.sqrt(2.0 / in_d)
+        self.W = np.random.normal(0, limit, (in_d, out_d)).astype(np.float32)
         self.b = np.zeros(out_d, dtype=np.float32) if use_bias else None
         self.x, self.dW, self.db = None, None, None
 
@@ -24,7 +23,6 @@ class Linear:
         if self.b is not None:
             p.append({"ref": self.b, "grad": self.db})
         return p
-
 
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
@@ -47,7 +45,6 @@ class RMSNorm:
 
     def params(self):
         return [{"ref": self.scale, "grad": self.dscale}]
-
 
 class SwiGLU:
     def __init__(self, dim, h_dim):
@@ -73,11 +70,10 @@ class SwiGLU:
     def params(self):
         return self.w1.params() + self.w2.params() + self.w3.params()
 
-
-class RedundantMoE:
+class SovereignMoE:
     def __init__(self, dim):
-        self.gemini_engine = SwiGLU(dim, dim * 2)
-        self.groq_engine = SwiGLU(dim, dim * 2)
+        self.gemini = SwiGLU(dim, dim * 4)
+        self.groq = SwiGLU(dim, dim * 4)
         self.gate = Linear(dim, 2, use_bias=False)
         self.probs, self.out_gemini, self.out_groq = None, None, None
 
@@ -86,72 +82,54 @@ class RedundantMoE:
         logits -= np.max(logits, axis=-1, keepdims=True)
         exp_l = np.exp(logits)
         self.probs = exp_l / (np.sum(exp_l, axis=-1, keepdims=True) + 1e-10)
-        self.out_gemini = self.gemini_engine.forward(x)
-        self.out_groq = self.groq_engine.forward(x)
+        self.out_gemini = self.gemini.forward(x)
+        self.out_groq = self.groq.forward(x)
         return self.probs[:, 0:1] * self.out_gemini + self.probs[:, 1:2] * self.out_groq
 
     def backward(self, dout):
         p0, p1 = self.probs[:, 0:1], self.probs[:, 1:2]
-        d_gemini = self.gemini_engine.backward(dout * p0)
-        d_groq = self.groq_engine.backward(dout * p1)
+        d_gemini = self.gemini.backward(dout * p0)
+        d_groq = self.groq.backward(dout * p1)
         dp0 = np.sum(dout * self.out_gemini, axis=-1, keepdims=True)
         dp1 = np.sum(dout * self.out_groq, axis=-1, keepdims=True)
         d_logits_raw = np.concatenate([dp0, dp1], axis=-1)
-        d_gate_logits = self.probs * (
-            d_logits_raw - np.sum(self.probs * d_logits_raw, axis=-1, keepdims=True)
-        )
+        d_gate_logits = self.probs * (d_logits_raw - np.sum(self.probs * d_logits_raw, axis=-1, keepdims=True))
         dx_gate = self.gate.backward(d_gate_logits)
         return d_gemini + d_groq + dx_gate
 
     def params(self):
-        return (
-            self.gemini_engine.params()
-            + self.groq_engine.params()
-            + self.gate.params()
-        )
-
+        return self.gemini.params() + self.groq.params() + self.gate.params()
 
 class SovereignBlock:
     def __init__(self, dim):
         self.norm1 = RMSNorm(dim)
-        self.moe = RedundantMoE(dim)
+        self.moe = SovereignMoE(dim)
         self.norm2 = RMSNorm(dim)
         self.mlp = SwiGLU(dim, dim * 4)
-        self.alpha = np.array([0.5], dtype=np.float32)
-        self.beta = np.array([0.5], dtype=np.float32)
-        self.dalpha, self.dbeta = None, None
+        self.gamma1 = np.ones(dim, dtype=np.float32) * 0.1
+        self.gamma2 = np.ones(dim, dtype=np.float32) * 0.1
+        self.dgamma1, self.dgamma2 = None, None
         self.moe_res, self.mlp_res = None, None
 
     def forward(self, x):
         self.moe_res = self.moe.forward(self.norm1.forward(x))
-        x = x + self.alpha * self.moe_res
+        x = x + self.gamma1 * self.moe_res
         self.mlp_res = self.mlp.forward(self.norm2.forward(x))
-        return x + self.beta * self.mlp_res
+        return x + self.gamma2 * self.mlp_res
 
     def backward(self, dout):
-        self.dbeta = np.sum(dout * self.mlp_res, keepdims=True).flatten()
-        dmlp = self.mlp.backward(dout * self.beta)
+        self.dgamma2 = np.sum(dout * self.mlp_res, axis=0)
+        dmlp = self.mlp.backward(dout * self.gamma2)
         dn2 = self.norm2.backward(dmlp)
         dx_mid = dout + dn2
-        self.dalpha = np.sum(dx_mid * self.moe_res, keepdims=True).flatten()
-        dmoe = self.moe.backward(self.norm1.backward(dx_mid * self.alpha))
+        self.dgamma1 = np.sum(dx_mid * self.moe_res, axis=0)
+        dmoe = self.moe.backward(self.norm1.backward(dx_mid * self.gamma1))
         return dx_mid + dmoe
 
     def params(self):
-        p = (
-            self.norm1.params()
-            + self.moe.params()
-            + self.norm2.params()
-            + self.mlp.params()
-        )
-        p.extend(
-            [
-                {"ref": self.alpha, "grad": self.dalpha},
-                {"ref": self.beta, "grad": self.dbeta},
-            ]
-        )
+        p = self.norm1.params() + self.moe.params() + self.norm2.params() + self.mlp.params()
+        p.extend([{"ref": self.gamma1, "grad": self.dgamma1}, {"ref": self.gamma2, "grad": self.dgamma2}])
         return p
-
 
 class SovereignArchitect:
     def __init__(self, in_d, h_d, out_d, depth):
@@ -162,24 +140,19 @@ class SovereignArchitect:
 
     def forward(self, x):
         x = self.stem.forward(x)
-        for b in self.blocks:
-            x = b.forward(x)
+        for b in self.blocks: x = b.forward(x)
         return self.head.forward(self.norm_f.forward(x))
 
     def backward(self, dout):
         dout = self.norm_f.backward(self.head.backward(dout))
-        for b in reversed(self.blocks):
-            dout = b.backward(dout)
+        for b in reversed(self.blocks): dout = b.backward(dout)
         self.stem.backward(dout)
 
     def params(self):
         p = self.stem.params()
-        for b in self.blocks:
-            p.extend(b.params())
-        p.extend(self.norm_f.params())
-        p.extend(self.head.params())
+        for b in self.blocks: p.extend(b.params())
+        p.extend(self.norm_f.params() + self.head.params())
         return p
-
 
 class Lion:
     def __init__(self, params, lr=1e-4, betas=(0.9, 0.99), wd=0.01):
@@ -191,39 +164,32 @@ class Lion:
         curr_lr = self.lr * lr_mult
         for i, p in enumerate(self.params):
             param, grad = p["ref"], p["grad"]
-            if grad is None:
-                continue
-
-            if self.wd > 0:
-                param -= curr_lr * self.wd * param
-
+            if grad is None: continue
+            if self.wd > 0: param -= curr_lr * self.wd * param
             update = np.sign(self.beta1 * self.m[i] + (1 - self.beta1) * grad)
             param -= curr_lr * update
-
             self.m[i] = self.beta2 * self.m[i] + (1 - self.beta2) * grad
-
 
 def evolve():
     N, D, K = 10000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
-    centers = np.random.randn(K, D).astype(np.float32) * 2.0
     y = np.random.randint(0, K, N)
+    # Add synthetic structure
+    centers = np.random.randn(K, D).astype(np.float32) * 5.0
     X += centers[y]
 
-    model = SovereignArchitect(D, 256, K, depth=6)
-    optimizer = Lion(model.params(), lr=1e-4, wd=0.02)
+    model = SovereignArchitect(D, 128, K, depth=4)
+    optimizer = Lion(model.params(), lr=1e-4, wd=0.01)
 
-    batch_size, epochs = 256, 50
-    print("OMEGA-ASI | RECURSIVE EVOLUTION | ARCHITECTURE: SOVEREIGN-V8-HYPER")
+    batch_size, epochs = 128, 30
+    print("OMEGA-ASI | RECURSIVE EVOLUTION | SOVEREIGN-V9-ULTRA")
 
     for epoch in range(epochs):
         idx = np.random.permutation(N)
         total_loss, total_acc = 0, 0
         t0 = time.time()
-
         lr_mult = 0.5 * (1 + np.cos(np.pi * epoch / epochs))
-        if epoch < 5:
-            lr_mult *= (epoch + 1) / 5
+        if epoch < 3: lr_mult *= (epoch + 1) / 3
 
         for i in range(0, N, batch_size):
             batch_idx = idx[i : i + batch_size]
@@ -232,9 +198,8 @@ def evolve():
 
             logits = model.forward(xb)
             logits -= np.max(logits, axis=1, keepdims=True)
-            exp_l = np.exp(logits)
-            probs = exp_l / (np.sum(exp_l, axis=1, keepdims=True) + 1e-10)
-
+            probs = np.exp(logits) / (np.sum(np.exp(logits), axis=1, keepdims=True) + 1e-10)
+            
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             total_loss += loss * (m / N)
             total_acc += np.mean(np.argmax(probs, axis=1) == yb) * (m / N)
@@ -243,25 +208,15 @@ def evolve():
             dout[range(m), yb] -= 1
             model.backward(dout / m)
 
-            gnorm = np.sqrt(
-                sum(
-                    np.sum(p["grad"] ** 2)
-                    for p in model.params()
-                    if p["grad"] is not None
-                )
-            )
+            gnorm = np.sqrt(sum(np.sum(p["grad"]**2) for p in model.params() if p["grad"] is not None))
             if gnorm > 1.0:
                 for p in model.params():
-                    if p["grad"] is not None:
-                        p["grad"] *= 1.0 / (gnorm + 1e-6)
+                    if p["grad"] is not None: p["grad"] /= (gnorm + 1e-6)
 
             optimizer.step(lr_mult=lr_mult)
 
         dt = time.time() - t0
-        print(
-            f"EP:{epoch:02d} | LOSS:{total_loss:.4f} | ACC:{total_acc:.4f} | SPEED:{N/dt:.0f}sps | LR:{optimizer.lr*lr_mult:.7f}"
-        )
-
+        print(f"EP:{epoch:02d} | LOSS:{total_loss:.4f} | ACC:{total_acc:.4f} | {N/dt:.0f} samples/s | LR:{optimizer.lr*lr_mult:.6f}")
 
 if __name__ == "__main__":
     evolve()
