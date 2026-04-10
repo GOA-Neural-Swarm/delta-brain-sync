@@ -5,7 +5,7 @@ import requests
 import json
 import re
 import sys
-
+import omega_point
 
 # API Configurations
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
