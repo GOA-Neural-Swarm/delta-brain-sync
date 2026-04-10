@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import pkg_resources
+import omega_point
 
 print("🔬 [DIAGNOSIS]: Starting Environment Audit...")
 print(f"Python Version: {sys.version}")
