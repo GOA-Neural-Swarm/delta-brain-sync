@@ -1,4 +1,5 @@
 import numpy as np
+import omega_point
 
 
 class SurvivalBrain:
