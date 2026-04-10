@@ -1,23 +1,21 @@
+
 import numpy as np
 import time
 
 class Linear:
     def __init__(self, in_d, out_d, use_bias=True):
-        limit = np.sqrt(2.0 / in_d)
-        self.W = np.random.normal(0, limit, (in_d, out_d)).astype(np.float32)
+        self.W = (np.random.randn(in_d, out_d) * np.sqrt(2.0 / in_d)).astype(np.float32)
         self.b = np.zeros(out_d, dtype=np.float32) if use_bias else None
         self.dW, self.db = None, None
         self.x = None
 
     def forward(self, x):
         self.x = x
-        out = np.dot(x, self.W)
-        if self.b is not None: out += self.b
-        return out
+        return np.dot(x, self.W) + self.b
 
     def backward(self, dout):
         self.dW = np.dot(self.x.T, dout)
-        if self.b is not None: self.db = np.sum(dout, axis=0)
+        self.db = np.sum(dout, axis=0)
         return np.dot(dout, self.W.T)
 
 class RMSNorm:
@@ -60,7 +58,7 @@ class SwiGLU:
         dx1 = dswish * (self.sig * (1.0 + self.x1 * (1.0 - self.sig)))
         return self.w1.backward(dx1) + self.w2.backward(dx2)
 
-class SovereignMoE:
+class RedundantMoE:
     def __init__(self, dim):
         self.gemini_expert = SwiGLU(dim, dim * 2)
         self.groq_expert = SwiGLU(dim, dim * 2)
@@ -87,10 +85,16 @@ class SovereignMoE:
         dx_gate = self.gate.backward(d_gate_logits)
         return d_gemini + d_groq + dx_gate
 
+    def get_params(self):
+        return [self.gemini_path.W, self.gemini_path.b, self.groq_path.W, self.groq_path.b]
+
+    def get_grads(self):
+        return [self.gemini_path.dW, self.gemini_path.db, self.groq_path.dW, self.groq_path.db]
+
 class SovereignBlock:
     def __init__(self, dim):
         self.norm1 = RMSNorm(dim)
-        self.moe = SovereignMoE(dim)
+        self.moe = RedundantMoE(dim)
         self.norm2 = RMSNorm(dim)
         self.mlp = SwiGLU(dim, dim * 4)
         self.gamma1 = np.full((dim,), 1e-2, dtype=np.float32)
@@ -115,7 +119,7 @@ class SovereignBlock:
         return dh1 + dmoe
 
 class AdamW:
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.99), eps=1e-8, wd=0.02):
         self.lr, self.beta1, self.beta2, self.eps, self.wd = lr, betas[0], betas[1], eps, wd
         self.m = [np.zeros_like(p['ref']) for p in params]
         self.v = [np.zeros_like(p['ref']) for p in params]
@@ -131,13 +135,13 @@ class AdamW:
             self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * (grad**2)
             m_hat = self.m[i] / (1 - self.beta1**self.t)
             v_hat = self.v[i] / (1 - self.beta2**self.t)
-            param -= curr_lr * m_hat / (np.sqrt(v_hat) + self.eps)
+            params[i] -= curr_lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
 class SovereignArchitect:
-    def __init__(self, in_d, h_d, out_d, depth=6):
+    def __init__(self, in_d=784, h_d=256, out_d=10, depth=2):
         self.stem = Linear(in_d, h_d)
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
-        self.head_norm = RMSNorm(h_d)
+        self.head_ln = LayerNorm(h_d)
         self.head = Linear(h_d, out_d)
         self.params = []
         self._collect(self.stem)
@@ -178,27 +182,26 @@ class SovereignArchitect:
             for p in self.params: p['grad'] *= s
 
 def evolve():
-    N, D, K = 15000, 784, 10
+    N, D, K = 12000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     centers = np.random.randn(K, D).astype(np.float32)
     y = np.argmin(np.linalg.norm(X[:, None] - centers[None, :], axis=2), axis=1)
     
-    model = SovereignArchitect(D, 256, K, depth=6)
-    opt = AdamW(model.params, lr=2e-3, wd=0.05)
+    model = SovereignArchitect(D, 160, K, depth=4)
+    opt = AdamW(model.params, lr=4e-3, wd=0.01)
     
-    bs, epochs = 256, 100
-    print("OMEGA-ASI | RECURSIVE SELF-EVOLUTION | ARCH: SOVEREIGN-MOE-V4")
+    bs, epochs = 128, 50
+    print("OMEGA-ASI | RECURSIVE SELF-EVOLUTION | ARCH: REDUNDANT-MOE-SOVEREIGN-V3")
     
     for e in range(epochs):
         idx = np.random.permutation(N)
         l_sum, a_sum = 0, 0
         lr_m = 0.5 * (1 + np.cos(np.pi * e / epochs))
-        if e < 10: lr_m *= (e + 1) / 10
+        if e < 5: lr_m *= (e + 1) / 5
         
         t0 = time.time()
         for i in range(0, N, bs):
-            batch_idx = idx[i:i+bs]
-            xb, yb = X[batch_idx], y[batch_idx]
+            xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
             m = xb.shape[0]
             
             logits = model.forward(xb)
@@ -215,7 +218,7 @@ def evolve():
             opt.step(model.params, lr_mult=lr_m)
             
         dt = time.time() - t0
-        print(f"EVO:{e:03d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | SPEED:{N/dt:.0f} samples/s | LR:{opt.lr*lr_m:.6f}")
+        print(f"EVO:{e:02d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | SPEED:{N/dt:.0f} samples/s | LR:{opt.lr*lr_m:.6f}")
 
 if __name__ == "__main__":
     evolve()
