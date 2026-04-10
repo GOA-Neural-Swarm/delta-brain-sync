@@ -205,12 +205,6 @@ jobs:
           fi
           python -m black .
 
-      - name: 📦 Install Required Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          # PyTorch ကို CPU version နဲ့ သှငျးမှ မွနျမွနျပွီးမယျ
-          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install networkx numpy
       
       - name: Step 10 - Sovereign Trinity Data Sync Execution
         env:
