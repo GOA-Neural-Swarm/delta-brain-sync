@@ -297,19 +297,12 @@ jobs:
           git reset HEAD .github/workflows/
           git checkout -- .github/workflows/
 
-          # 4. Purge Zombie Workflows (Hard Delete)
-          rm -f .github/workflows/Sovereign-sync.yml
-          
-          rm -f .github/workflows/manual_sync_debug.yml
-          
-          # evolution_lab.yml is NOT deleted as per user instruction
-
-          # 5. Smart Staging
+          # 4. Smart Staging
           git add .
 
-          # 6. Manifestation & Intelligent Rebase
+          # 5. Manifestation & Intelligent Rebase
           if ! git diff-index --quiet HEAD; then
-            git commit -m "🧬 [OMEGA-ULTIMA] Deep-Sync, Zombie Purge & Autonomous Evolution [skip ci]"
+            git commit -m "🧬 [OMEGA-ULTIMA] Deep-Sync & Autonomous Evolution [skip ci]"
             
             # [UPGRADE-2]: Use origin/main for explicit tracking
             git fetch origin main
@@ -319,15 +312,15 @@ jobs:
               git rebase --continue || git rebase --abort
             }
             
-            # 7. Force Manifestation
+            # 6. Force Manifestation
             git push origin HEAD:main --force
 
-            # 8. Evolution Lab Parity
+            # 7. Evolution Lab Parity
             git branch -D evolution-lab || true
             git checkout -b evolution-lab
             git push origin evolution-lab --force
             
-            echo "🚀 [SUCCESS]: System state manifested. Zero conflicts. Zombies purged."
+            echo "🚀 [SUCCESS]: System state manifested. Zero conflicts."
           else
             echo "✨ [OPTIMAL]: No mutations detected. System remains in supreme state."
           fi
