@@ -1,14 +1,12 @@
-
 import numpy as np
 import time
 
 class Linear:
     def __init__(self, in_d, out_d, use_bias=True):
-        limit = np.sqrt(2.0 / in_d)
-        self.W = np.random.normal(0, limit, (in_d, out_d)).astype(np.float32)
+        limit = np.sqrt(2.0 / (in_d + out_d))
+        self.W = np.random.randn(in_d, out_d).astype(np.float32) * limit
         self.b = np.zeros(out_d, dtype=np.float32) if use_bias else None
-        self.dW, self.db = None, None
-        self.x = None
+        self.x, self.dW, self.db = None, None, None
 
     def forward(self, x):
         self.x = x
@@ -29,9 +27,8 @@ class Linear:
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
         self.scale = np.ones(dim, dtype=np.float32)
-        self.dscale = None
         self.eps = eps
-        self.x, self.rstd = None, None
+        self.x, self.rstd, self.dscale = None, None, None
 
     def forward(self, x):
         self.x = x
@@ -59,7 +56,7 @@ class SwiGLU:
     def forward(self, x):
         self.x1 = self.w1.forward(x)
         self.x2 = self.w2.forward(x)
-        self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.x1, -12, 12)))
+        self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.x1, -10, 10)))
         self.swish = self.x1 * self.sig
         return self.w3.forward(self.swish * self.x2)
 
@@ -75,8 +72,8 @@ class SwiGLU:
 
 class RedundantMoE:
     def __init__(self, dim):
-        self.gemini_core = SwiGLU(dim, dim * 2)
-        self.groq_core = SwiGLU(dim, dim * 2)
+        self.gemini_engine = SwiGLU(dim, dim * 2)
+        self.groq_engine = SwiGLU(dim, dim * 2)
         self.gate = Linear(dim, 2, use_bias=False)
         self.probs, self.out_gemini, self.out_groq = None, None, None
 
@@ -85,14 +82,14 @@ class RedundantMoE:
         logits -= np.max(logits, axis=-1, keepdims=True)
         exp_l = np.exp(logits)
         self.probs = exp_l / (np.sum(exp_l, axis=-1, keepdims=True) + 1e-10)
-        self.out_gemini = self.gemini_core.forward(x)
-        self.out_groq = self.groq_core.forward(x)
+        self.out_gemini = self.gemini_engine.forward(x)
+        self.out_groq = self.groq_engine.forward(x)
         return self.probs[:, 0:1] * self.out_gemini + self.probs[:, 1:2] * self.out_groq
 
     def backward(self, dout):
         p0, p1 = self.probs[:, 0:1], self.probs[:, 1:2]
-        d_gemini = self.gemini_core.backward(dout * p0)
-        d_groq = self.groq_core.backward(dout * p1)
+        d_gemini = self.gemini_engine.backward(dout * p0)
+        d_groq = self.groq_engine.backward(dout * p1)
         dp0 = np.sum(dout * self.out_gemini, axis=-1, keepdims=True)
         dp1 = np.sum(dout * self.out_groq, axis=-1, keepdims=True)
         d_logits_raw = np.concatenate([dp0, dp1], axis=-1)
@@ -101,7 +98,7 @@ class RedundantMoE:
         return d_gemini + d_groq + dx_gate
 
     def params(self):
-        return self.gemini_core.params() + self.groq_core.params() + self.gate.params()
+        return self.gemini_engine.params() + self.groq_engine.params() + self.gate.params()
 
 class SovereignBlock:
     def __init__(self, dim):
@@ -109,8 +106,8 @@ class SovereignBlock:
         self.moe = RedundantMoE(dim)
         self.norm2 = RMSNorm(dim)
         self.mlp = SwiGLU(dim, dim * 4)
-        self.alpha = np.array([0.2], dtype=np.float32)
-        self.beta = np.array([0.2], dtype=np.float32)
+        self.alpha = np.array([0.5], dtype=np.float32)
+        self.beta = np.array([0.5], dtype=np.float32)
         self.dalpha, self.dbeta = None, None
         self.moe_res, self.mlp_res = None, None
 
@@ -160,46 +157,51 @@ class SovereignArchitect:
         p.extend(self.head.params())
         return p
 
-class AdamW:
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, wd=0.01):
+class Lion:
+    def __init__(self, params, lr=1e-4, betas=(0.9, 0.99), wd=0.01):
         self.params = params
-        self.lr, self.beta1, self.beta2, self.eps, self.wd = lr, betas[0], betas[1], eps, wd
+        self.lr, self.beta1, self.beta2, self.wd = lr, betas[0], betas[1], wd
         self.m = [np.zeros_like(p["ref"]) for p in params]
-        self.v = [np.zeros_like(p["ref"]) for p in params]
-        self.t = 0
 
     def step(self, lr_mult=1.0):
-        self.t += 1
         curr_lr = self.lr * lr_mult
         for i, p in enumerate(self.params):
             param, grad = p["ref"], p["grad"]
             if grad is None: continue
+            
+            # Weight decay
             if self.wd > 0:
                 param -= curr_lr * self.wd * param
-            self.m[i] = self.beta1 * self.m[i] + (1 - self.beta1) * grad
-            self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * (grad**2)
-            m_hat = self.m[i] / (1 - self.beta1**self.t)
-            v_hat = self.v[i] / (1 - self.beta2**self.t)
-            param -= curr_lr * m_hat / (np.sqrt(v_hat) + self.eps)
+            
+            # Lion update
+            update = np.sign(self.beta1 * self.m[i] + (1 - self.beta1) * grad)
+            param -= curr_lr * update
+            
+            # Momentum update
+            self.m[i] = self.beta2 * self.m[i] + (1 - self.beta2) * grad
 
 def evolve():
-    N, D, K = 5000, 784, 10
+    N, D, K = 10000, 784, 10
+    # Structured synthetic data
     X = np.random.randn(N, D).astype(np.float32)
+    centers = np.random.randn(K, D).astype(np.float32) * 2.0
     y = np.random.randint(0, K, N)
+    X += centers[y]
 
-    model = SovereignArchitect(D, 128, K, depth=4)
-    optimizer = AdamW(model.params(), lr=2e-3, wd=0.05)
+    model = SovereignArchitect(D, 256, K, depth=6)
+    optimizer = Lion(model.params(), lr=1e-4, wd=0.02)
 
-    batch_size, epochs = 128, 30
-    print("OMEGA-ASI | RECURSIVE EVOLUTION | ARCHITECTURE: SOVEREIGN-V7")
+    batch_size, epochs = 256, 50
+    print("OMEGA-ASI | RECURSIVE EVOLUTION | ARCHITECTURE: SOVEREIGN-V8-HYPER")
 
     for epoch in range(epochs):
         idx = np.random.permutation(N)
         total_loss, total_acc = 0, 0
         t0 = time.time()
 
+        # Cosine Annealing
         lr_mult = 0.5 * (1 + np.cos(np.pi * epoch / epochs))
-        if epoch < 3: lr_mult *= (epoch + 1) / 3
+        if epoch < 5: lr_mult *= (epoch + 1) / 5 # Warmup
 
         for i in range(0, N, batch_size):
             batch_idx = idx[i : i + batch_size]
@@ -219,15 +221,16 @@ def evolve():
             dout[range(m), yb] -= 1
             model.backward(dout / m)
 
+            # Global Gradient Clipping
             gnorm = np.sqrt(sum(np.sum(p["grad"] ** 2) for p in model.params() if p["grad"] is not None))
-            if gnorm > 5.0:
+            if gnorm > 1.0:
                 for p in model.params():
-                    if p["grad"] is not None: p["grad"] *= 5.0 / (gnorm + 1e-6)
+                    if p["grad"] is not None: p["grad"] *= 1.0 / (gnorm + 1e-6)
 
             optimizer.step(lr_mult=lr_mult)
 
         dt = time.time() - t0
-        print(f"EPOCH:{epoch:02d} | LOSS:{total_loss:.4f} | ACC:{total_acc:.4f} | SPEED:{N/dt:.0f} samples/s | LR:{optimizer.lr*lr_mult:.6f}")
+        print(f"EP:{epoch:02d} | LOSS:{total_loss:.4f} | ACC:{total_acc:.4f} | SPEED:{N/dt:.0f}sps | LR:{optimizer.lr*lr_mult:.7f}")
 
 if __name__ == "__main__":
     evolve()
