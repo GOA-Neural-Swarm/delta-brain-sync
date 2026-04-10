@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import logging
+import omega_point
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - 🌌 [CORTEX] - %(message)s"
