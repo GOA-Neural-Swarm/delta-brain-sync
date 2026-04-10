@@ -1,9 +1,11 @@
 import numpy as np
 import time
 
+
 def softmax(x, axis=-1):
     ex = np.exp(x - np.max(x, axis=axis, keepdims=True))
     return ex / (np.sum(ex, axis=axis, keepdims=True) + 1e-10)
+
 
 class Linear:
     def __init__(self, in_d, out_d, std=None):
@@ -23,6 +25,7 @@ class Linear:
 
     def params(self):
         return [{"ref": self.W, "grad": self.dW}, {"ref": self.b, "grad": self.db}]
+
 
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
@@ -45,6 +48,7 @@ class RMSNorm:
 
     def params(self):
         return [{"ref": self.scale, "grad": self.dscale}]
+
 
 class SwiGLU:
     def __init__(self, dim, h_dim):
@@ -70,6 +74,7 @@ class SwiGLU:
     def params(self):
         return self.w1.params() + self.w2.params() + self.w3.params()
 
+
 class MultiHeadAttention:
     def __init__(self, dim, heads=8):
         self.dim, self.heads = dim, heads
@@ -86,9 +91,9 @@ class MultiHeadAttention:
         k = self.wk.forward(x).reshape(b, self.heads, self.head_dim)
         v = self.wv.forward(x).reshape(b, self.heads, self.head_dim)
         self.q, self.k, self.v = q, k, v
-        
+
         # Simplified self-attention for non-sequential data
-        scores = np.einsum('bhd,bhd->bh', q, k) / np.sqrt(self.head_dim)
+        scores = np.einsum("bhd,bhd->bh", q, k) / np.sqrt(self.head_dim)
         self.attn = softmax(scores, axis=-1)[:, :, np.newaxis]
         self.ctx = (self.attn * v).reshape(b, d)
         return self.wo.forward(self.ctx)
@@ -97,20 +102,27 @@ class MultiHeadAttention:
         dctx = self.wo.backward(dout)
         b, d = dctx.shape
         dctx_reshaped = dctx.reshape(b, self.heads, self.head_dim)
-        
+
         dattn = np.sum(dctx_reshaped * self.v, axis=-1, keepdims=True)
         dv = dctx_reshaped * self.attn
-        
+
         dscores = self.attn * (dattn - np.sum(self.attn * dattn, axis=1, keepdims=True))
         dscores /= np.sqrt(self.head_dim)
-        
-        dq = (dscores * self.k.mean(axis=-1, keepdims=True)).reshape(b, d) # Approximation for flat input
+
+        dq = (dscores * self.k.mean(axis=-1, keepdims=True)).reshape(
+            b, d
+        )  # Approximation for flat input
         dk = (dscores * self.q.mean(axis=-1, keepdims=True)).reshape(b, d)
-        
-        return self.wq.backward(dq) + self.wk.backward(dk) + self.wv.backward(dv.reshape(b, d))
+
+        return (
+            self.wq.backward(dq)
+            + self.wk.backward(dk)
+            + self.wv.backward(dv.reshape(b, d))
+        )
 
     def params(self):
         return self.wq.params() + self.wk.params() + self.wv.params() + self.wo.params()
+
 
 class SovereignMoE:
     def __init__(self, dim):
@@ -130,16 +142,19 @@ class SovereignMoE:
         p0, p1 = self.probs[:, 0:1], self.probs[:, 1:2]
         dg_in = self.gemini.backward(dout * p0)
         dr_in = self.groq.backward(dout * p1)
-        
+
         dp0 = np.sum(dout * self.o1, axis=-1, keepdims=True)
         dp1 = np.sum(dout * self.o2, axis=-1, keepdims=True)
         dg_raw = np.concatenate([dp0, dp1], axis=-1)
-        d_gate = self.probs * (dg_raw - np.sum(self.probs * dg_raw, axis=-1, keepdims=True))
-        
+        d_gate = self.probs * (
+            dg_raw - np.sum(self.probs * dg_raw, axis=-1, keepdims=True)
+        )
+
         return dg_in + dr_in + self.gate.backward(d_gate)
 
     def params(self):
         return self.gemini.params() + self.groq.params() + self.gate.params()
+
 
 class SovereignBlock:
     def __init__(self, dim):
@@ -169,9 +184,17 @@ class SovereignBlock:
         return dx_mid + dln1
 
     def params(self):
-        p = self.ln1.params() + self.attn.params() + self.ln2.params() + self.moe.params()
-        p.extend([{"ref": self.g1, "grad": self.dg1}, {"ref": self.g2, "grad": self.dg2}])
+        p = (
+            self.ln1.params()
+            + self.attn.params()
+            + self.ln2.params()
+            + self.moe.params()
+        )
+        p.extend(
+            [{"ref": self.g1, "grad": self.dg1}, {"ref": self.g2, "grad": self.dg2}]
+        )
         return p
+
 
 class SovereignArchitect:
     def __init__(self, in_d, h_d, out_d, depth=3):
@@ -182,19 +205,23 @@ class SovereignArchitect:
 
     def forward(self, x):
         x = self.stem.forward(x)
-        for b in self.blocks: x = b.forward(x)
+        for b in self.blocks:
+            x = b.forward(x)
         return self.head.forward(self.norm.forward(x))
 
     def backward(self, dout):
         dout = self.norm.backward(self.head.backward(dout))
-        for b in reversed(self.blocks): dout = b.backward(dout)
+        for b in reversed(self.blocks):
+            dout = b.backward(dout)
         self.stem.backward(dout)
 
     def params(self):
         p = self.stem.params()
-        for b in self.blocks: p.extend(b.params())
+        for b in self.blocks:
+            p.extend(b.params())
         p.extend(self.norm.params() + self.head.params())
         return p
+
 
 class Lion:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
@@ -205,12 +232,15 @@ class Lion:
     def step(self, scale=1.0):
         lr = self.lr * scale
         for i, p in enumerate(self.params):
-            if p["grad"] is None: continue
+            if p["grad"] is None:
+                continue
             param, grad = p["ref"], p["grad"]
-            if self.wd > 0: param -= lr * self.wd * param
+            if self.wd > 0:
+                param -= lr * self.wd * param
             update = np.sign(self.b1 * self.m[i] + (1.0 - self.b1) * grad)
             param -= lr * update
             self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * grad
+
 
 def evolve():
     N, D, K = 10000, 784, 10
@@ -221,7 +251,7 @@ def evolve():
 
     model = SovereignArchitect(D, 128, K, depth=3)
     opt = Lion(model.params(), lr=1e-4, wd=0.01)
-    
+
     bs, epochs = 128, 40
     print("OMEGA-ASI | RECURSIVE SELF-EVOLUTION | V10-ULTRA")
 
@@ -230,7 +260,8 @@ def evolve():
         l_sum, a_sum = 0, 0
         t0 = time.time()
         sched = 0.5 * (1 + np.cos(np.pi * ep / epochs))
-        if ep < 5: sched *= (ep + 1) / 5
+        if ep < 5:
+            sched *= (ep + 1) / 5
 
         for i in range(0, N, bs):
             bi = idx[i : i + bs]
@@ -239,7 +270,7 @@ def evolve():
 
             logits = model.forward(xb)
             probs = softmax(logits)
-            
+
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             l_sum += loss * (m / N)
             a_sum += np.mean(np.argmax(probs, axis=1) == yb) * (m / N)
@@ -248,15 +279,25 @@ def evolve():
             dout[range(m), yb] -= 1
             model.backward(dout / m)
 
-            gn = np.sqrt(sum(np.sum(p["grad"]**2) for p in model.params() if p["grad"] is not None))
+            gn = np.sqrt(
+                sum(
+                    np.sum(p["grad"] ** 2)
+                    for p in model.params()
+                    if p["grad"] is not None
+                )
+            )
             if gn > 1.0:
                 for p in model.params():
-                    if p["grad"] is not None: p["grad"] /= (gn + 1e-6)
+                    if p["grad"] is not None:
+                        p["grad"] /= gn + 1e-6
 
             opt.step(scale=sched)
 
         dt = time.time() - t0
-        print(f"EP:{ep:02d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | {N/dt:.0f}s/s | LR:{opt.lr*sched:.6f}")
+        print(
+            f"EP:{ep:02d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | {N/dt:.0f}s/s | LR:{opt.lr*sched:.6f}"
+        )
+
 
 if __name__ == "__main__":
     evolve()
