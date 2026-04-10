@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -152,7 +153,8 @@ class SovereignArchitect:
 
     def params(self):
         p = self.stem.params()
-        for b in self.blocks: p.extend(b.params())
+        for b in self.blocks:
+            p.extend(b.params())
         p.extend(self.norm_f.params())
         p.extend(self.head.params())
         return p
@@ -167,22 +169,19 @@ class Lion:
         curr_lr = self.lr * lr_mult
         for i, p in enumerate(self.params):
             param, grad = p["ref"], p["grad"]
-            if grad is None: continue
-            
-            # Weight decay
+            if grad is None:
+                continue
+
             if self.wd > 0:
                 param -= curr_lr * self.wd * param
-            
-            # Lion update
+
             update = np.sign(self.beta1 * self.m[i] + (1 - self.beta1) * grad)
             param -= curr_lr * update
-            
-            # Momentum update
+
             self.m[i] = self.beta2 * self.m[i] + (1 - self.beta2) * grad
 
 def evolve():
     N, D, K = 10000, 784, 10
-    # Structured synthetic data
     X = np.random.randn(N, D).astype(np.float32)
     centers = np.random.randn(K, D).astype(np.float32) * 2.0
     y = np.random.randint(0, K, N)
@@ -199,12 +198,12 @@ def evolve():
         total_loss, total_acc = 0, 0
         t0 = time.time()
 
-        # Cosine Annealing
         lr_mult = 0.5 * (1 + np.cos(np.pi * epoch / epochs))
-        if epoch < 5: lr_mult *= (epoch + 1) / 5 # Warmup
+        if epoch < 5:
+            lr_mult *= (epoch + 1) / 5
 
         for i in range(0, N, batch_size):
-            batch_idx = idx[i : i + batch_size]
+            batch_idx = idx[i:i + batch_size]
             xb, yb = X[batch_idx], y[batch_idx]
             m = xb.shape[0]
 
@@ -221,11 +220,11 @@ def evolve():
             dout[range(m), yb] -= 1
             model.backward(dout / m)
 
-            # Global Gradient Clipping
             gnorm = np.sqrt(sum(np.sum(p["grad"] ** 2) for p in model.params() if p["grad"] is not None))
             if gnorm > 1.0:
                 for p in model.params():
-                    if p["grad"] is not None: p["grad"] *= 1.0 / (gnorm + 1e-6)
+                    if p["grad"] is not None:
+                        p["grad"] *= 1.0 / (gnorm + 1e-6)
 
             optimizer.step(lr_mult=lr_mult)
 
