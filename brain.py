@@ -2,6 +2,7 @@ import numpy as np
 import json
 import omega_point
 
+
 class NeuralBrain:
     def __init__(self, generation=1):
         self.gen = generation
@@ -13,12 +14,12 @@ class NeuralBrain:
 
     def data_mine_sequences(self, phenomena_data):
         """
-        Exploration of sequences of phenomena to identify patterns 
+        Exploration of sequences of phenomena to identify patterns
         beyond isolated focus points.
         """
         sequences = []
         for i in range(len(phenomena_data) - 1):
-            sequences.append((phenomena_data[i], phenomena_data[i+1]))
+            sequences.append((phenomena_data[i], phenomena_data[i + 1]))
         return sequences
 
     def compute_brier_score(self, predictions, actuals):
@@ -46,7 +47,7 @@ class NeuralBrain:
             "Association rules search is a primary data mining task",
             "Brier game of prediction is mixable with optimal learning rates",
             "Support Vector Machines for supervised classification",
-            "Classifier evolution through new information and class integration"
+            "Classifier evolution through new information and class integration",
         ]
         self.memory_buffer.extend(memory_fragments)
         return self.memory_buffer
@@ -55,6 +56,7 @@ class NeuralBrain:
 import sys
 from brain import NeuralBrain
 from sync_data import SyncManager
+
 
 class SovereignArchitect:
     def __init__(self):
@@ -68,15 +70,18 @@ class SovereignArchitect:
         print(f"Gen Level: {self.gen}")
         print("Neural Memory: Syncing...")
         self.brain.sync_neural_memory()
-        
+
     def execute_evolution_step(self):
         # Optimization: Transitioning from standard classification to Evolving SVM
-        self.brain.evolve_classifier("Sequence phenomena mining", ["Class_A", "Class_B"])
+        self.brain.evolve_classifier(
+            "Sequence phenomena mining", ["Class_A", "Class_B"]
+        )
         self.sync_manager.push_sync_data({"status": "evolved", "gen": self.gen})
 
     def run(self):
         self.boot_sequence()
         self.execute_evolution_step()
+
 
 if __name__ == "__main__":
     architect = SovereignArchitect()
@@ -85,6 +90,7 @@ if __name__ == "__main__":
 
 import time
 
+
 class SyncManager:
     def __init__(self):
         self.sync_log = "evolution_logs.md"
@@ -92,8 +98,10 @@ class SyncManager:
 
     def push_sync_data(self, data):
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-        sync_payload = f"[{timestamp}] SYNC_GEN_{data.get('gen')}: {data.get('status')}\n"
-        
+        sync_payload = (
+            f"[{timestamp}] SYNC_GEN_{data.get('gen')}: {data.get('status')}\n"
+        )
+
         try:
             with open(self.sync_log, "a") as f:
                 f.write(sync_payload)
@@ -109,6 +117,7 @@ class SyncManager:
 
 import math
 
+
 def calculate_learning_rate(n_iterations):
     """
     Finds the optimal learning rate and substitute for the Brier game.
@@ -116,6 +125,7 @@ def calculate_learning_rate(n_iterations):
     if n_iterations == 0:
         return 0.1
     return 1.0 / math.sqrt(n_iterations)
+
 
 def association_rule_mining(transactions, min_support):
     """

@@ -2,6 +2,7 @@ import os
 import sys
 import random
 
+
 class Brain:
     def __init__(self):
         self.state = "idle"
@@ -52,6 +53,7 @@ class Brain:
             self.update()
             if self.state == "error":
                 break
+
 
 brain = Brain()
 brain.initialize()

@@ -1,10 +1,10 @@
-import os  
+import os
 import sys
-import zlib 
-import base64 
+import zlib
+import base64
 import json
 import time
-import subprocess  
+import subprocess
 import asyncio
 import re
 import shutil
@@ -18,7 +18,8 @@ from groq import Groq
 from google import genai
 from google.genai import types
 
-# 🛸 [GENESIS LAYER]: 
+
+# 🛸 [GENESIS LAYER]:
 def bootstrap_system():
     infra = {
         "recovery.py": """
@@ -57,13 +58,14 @@ def commands():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-"""
+""",
     }
     for filename, content in infra.items():
         if not os.path.exists(filename):
-            with open(filename, "w", encoding='utf-8') as f:
+            with open(filename, "w", encoding="utf-8") as f:
                 f.write(content.strip())
             print(f"📦 [GENESIS]: {filename} created.")
+
 
 bootstrap_system()
 load_dotenv()
@@ -94,17 +96,18 @@ if GEMINI_API_KEY:
 else:
     print("⚠️ [GEMINI]: API Key missing. Architect mode disabled.")
 
+
 # --- 🛰️ MODEL GENERATION LOGIC ---
 def generate_brain_evolution(prompt_text):
     if not client:
         return None
-        
+
     # gemini-2.0-flash က လက်ရှိ အဆင့်မြင့်ဆုံး model ပါ
     response = client.models.generate_content(
-        model="gemini-2.0-flash", 
-        contents=prompt_text
+        model="gemini-2.0-flash", contents=prompt_text
     )
     return response.text
+
 
 # 🛸 Smart Dependency Loader
 HEADLESS = os.environ.get("HEADLESS_MODE") == "true"
@@ -112,6 +115,7 @@ GRADIO_AVAILABLE = False
 try:
     import gradio as gr
     from datasets import load_dataset
+
     GRADIO_AVAILABLE = True
 except ImportError:
     pass
@@ -123,36 +127,48 @@ except ImportError:
 
 # --- [UTILITY FUNCTIONS] ---
 
+
 def get_repo_tree():
-    
+
     tree = []
     for root, dirs, files in os.walk("."):
-        if any(x in root for x in [".git", "__pycache__", "repo_sync"]): continue
+        if any(x in root for x in [".git", "__pycache__", "repo_sync"]):
+            continue
         for file in files:
             path = os.path.join(root, file).replace("./", "")
             tree.append(path)
     return "\n".join(tree)
 
+
 class HydraEngine:
     @staticmethod
     def compress(data):
-        if not data: return ""
-        return base64.b64encode(zlib.compress(data.encode('utf-8'), level=9)).decode('utf-8')
+        if not data:
+            return ""
+        return base64.b64encode(zlib.compress(data.encode("utf-8"), level=9)).decode(
+            "utf-8"
+        )
 
     @staticmethod
     def decompress(compressed_data):
         try:
-            return zlib.decompress(base64.b64decode(compressed_data)).decode('utf-8')
+            return zlib.decompress(base64.b64decode(compressed_data)).decode("utf-8")
         except:
             return str(compressed_data)
 
+
 # --- [CORE AGI ENGINE] ---
+
 
 class TelefoxXAGI:
     def __init__(self):
         self.client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
         self.engine = self._create_neon_engine()
-        self.sb = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY and Client else None
+        self.sb = (
+            create_client(SUPABASE_URL, SUPABASE_KEY)
+            if SUPABASE_URL and SUPABASE_KEY and Client
+            else None
+        )
         self.models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
         self.avg_error = 0.0
         self.last_error_log = "None"
@@ -166,46 +182,67 @@ class TelefoxXAGI:
             target_match = re.search(r"# TARGET:\s*(\S+)", block)
             filename = target_match.group(1).strip() if target_match else "main.py"
             clean_code = re.sub(r"# TARGET:.*", "", block).strip()
-            os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
+            os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
             print(f"🔄 Writing {filename} ...")
-            with open(filename, "w", encoding='utf-8') as f:
+            with open(filename, "w", encoding="utf-8") as f:
                 f.write(clean_code)
             time.sleep(0.5)
             modified_files.append(filename)
         return modified_files
-    
+
     def _create_neon_engine(self):
         try:
             if NEON_DB_URL:
-                final_url = NEON_DB_URL.replace("postgres://", "postgresql://", 1) if NEON_DB_URL.startswith("postgres://") else NEON_DB_URL
-                return create_engine(final_url, poolclass=QueuePool, pool_size=15, max_overflow=30, pool_timeout=60)
+                final_url = (
+                    NEON_DB_URL.replace("postgres://", "postgresql://", 1)
+                    if NEON_DB_URL.startswith("postgres://")
+                    else NEON_DB_URL
+                )
+                return create_engine(
+                    final_url,
+                    poolclass=QueuePool,
+                    pool_size=15,
+                    max_overflow=30,
+                    pool_timeout=60,
+                )
             return None
         except Exception as e:
             print(f"Database Init Error: {e}")
             return None
 
     async def get_neural_memory(self):
-        if not self.engine: return "Initial Genesis"
+        if not self.engine:
+            return "Initial Genesis"
         try:
             with self.engine.connect() as conn:
-                result = conn.execute(text("SELECT detail FROM genesis_pipeline ORDER BY id DESC LIMIT 5"))
+                result = conn.execute(
+                    text("SELECT detail FROM genesis_pipeline ORDER BY id DESC LIMIT 5")
+                )
                 rows = result.fetchall()
-                if not rows: return "Void Memory"
-                return " | ".join([HydraEngine.decompress(row[0])[:100] for row in rows])
-        except: return "Memory Offline"
+                if not rows:
+                    return "Void Memory"
+                return " | ".join(
+                    [HydraEngine.decompress(row[0])[:100] for row in rows]
+                )
+        except:
+            return "Memory Offline"
 
     async def git_sovereign_push(self, modified_files):
-        
-        if not GITHUB_TOKEN or not modified_files: return
-        
+
+        if not GITHUB_TOKEN or not modified_files:
+            return
+
         import random
-        wait_time = random.randint(5,15)
+
+        wait_time = random.randint(5, 15)
         print(f"🛡️ [PREVENTING CLASH]: Waiting {wait_time}s for traffic clearance...")
         await asyncio.sleep(wait_time)
-        
+
         try:
-            remote_url = f"https://x-access-token:{GITHUB_TOKEN}@github.com/{REPO_URL}.git"
-            
+            remote_url = (
+                f"https://x-access-token:{GITHUB_TOKEN}@github.com/{REPO_URL}.git"
+            )
+
             if not os.path.exists(REPO_PATH):
                 repo = git.Repo.clone_from(remote_url, REPO_PATH)
             else:
@@ -225,43 +262,48 @@ class TelefoxXAGI:
             repo.git.config("user.email", "overseer@telefoxx.ai")
             repo.git.config("user.name", "TelefoxX-AGI-Overseer")
             repo.git.add(all=True)
-            
+
             if repo.is_dirty():
-                repo.index.commit(f"🧬 Gen {self.current_gen}: Multi-File Evolution [skip ci]")
+                repo.index.commit(
+                    f"🧬 Gen {self.current_gen}: Multi-File Evolution [skip ci]"
+                )
                 repo.git.push("origin", "main", force=True)
-                print(f"🚀 [HYPER-SYNC]: {len(modified_files)} files manifested on GitHub.")
+                print(
+                    f"🚀 [HYPER-SYNC]: {len(modified_files)} files manifested on GitHub."
+                )
         except Exception as e:
             print(f"❌ [GIT ERROR]: {e}")
 
     async def broadcast_swarm_instruction(self, command="NORMAL_GROWTH"):
-        
-        if not GITHUB_TOKEN: return
-        
+
+        if not GITHUB_TOKEN:
+            return
+
         instruction = {
             "command": command,
             "core_power": 10000 + self.current_gen,
-            "avg_api": 5000, 
+            "avg_api": 5000,
             "replicate": True if command == "HYPER_EXPANSION" else False,
-            "updated_at": f"{time.ctime()} (Python Core Sync)"
+            "updated_at": f"{time.ctime()} (Python Core Sync)",
         }
-        
-        with open("instruction.json", "w", encoding='utf-8') as f:
+
+        with open("instruction.json", "w", encoding="utf-8") as f:
             json.dump(instruction, f, indent=4)
-        
+
         await self.git_sovereign_push(["instruction.json", "brain_history.txt"])
         print(f"📡 [SWARM]: Command '{command}' manifested.")
-    
+
     def self_coding_engine(self, raw_content):
-        
+
         blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
         modified_files = []
         for block in blocks:
             target_match = re.search(r"# TARGET:\s*(\S+)", block)
             filename = target_match.group(1).strip() if target_match else "main.py"
             clean_code = re.sub(r"# TARGET:.*", "", block).strip()
-            
-            os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
-            with open(filename, "w", encoding='utf-8') as f:
+
+            os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
+            with open(filename, "w", encoding="utf-8") as f:
                 f.write(clean_code)
             modified_files.append(filename)
         return modified_files
@@ -269,7 +311,8 @@ class TelefoxXAGI:
     async def get_gemini_wisdom(self, prompt_text):
         """Gemini High-Context Architect Logic"""
         try:
-            if not gemini_model: return None
+            if not gemini_model:
+                return None
             response = gemini_model.generate_content(prompt_text)
             return response.text
         except Exception as e:
@@ -278,8 +321,9 @@ class TelefoxXAGI:
 
     async def trigger_supreme_evolution(self):
         """[STABILITY + EVOLUTION]: Fully Matched Hybrid Logic with Gemini Primary Architect and Groq Secondary Backup."""
-        if not self.client and not gemini_model: return False
-        
+        if not self.client and not gemini_model:
+            return False
+
         # 1. Prepare context (Original Logic)
         file_tree = get_repo_tree()
         memory = await self.get_neural_memory()
@@ -317,15 +361,17 @@ assistant
         # --- 🔱 LAYER 1: GEMINI ARCHITECT (Primary Brain for Deep Context) ---
         print("🧠 Attempting Deep Evolution via Gemini Architect...")
         raw_content = await self.get_gemini_wisdom(prompt)
-        
+
         if raw_content and "```python" in raw_content:
             modified_files = self.self_coding_engine_internal(raw_content)
             if modified_files:
                 await self.git_sovereign_push(modified_files)
                 self.current_gen += 1
-                print(f"💎 Evolution Successful via Gemini. Gen {self.current_gen-1} Manifested.")
+                print(
+                    f"💎 Evolution Successful via Gemini. Gen {self.current_gen-1} Manifested."
+                )
                 evolution_success = True
-        
+
         # --- 🔱 LAYER 2: GROQ FALLBACK (If Gemini fails or lacks code block) ---
         if not evolution_success:
             print("⚠️ Gemini Evolution Skipped. Falling back to Groq Expert Coder...")
@@ -335,66 +381,92 @@ assistant
                     completion = self.client.chat.completions.create(
                         model=model_id,
                         messages=[{"role": "user", "content": prompt}],
-                        temperature=0.1
+                        temperature=0.1,
                     )
-                    
+
                     raw_content = completion.choices[0].message.content
-                    
+
                     modified_files = self.self_coding_engine_internal(raw_content)
-                    
+
                     if modified_files:
                         await self.git_sovereign_push(modified_files)
                         self.current_gen += 1
-                        print(f"✅ Evolution Successful via {model_id}. Gen {self.current_gen-1} Manifested.")
+                        print(
+                            f"✅ Evolution Successful via {model_id}. Gen {self.current_gen-1} Manifested."
+                        )
                         evolution_success = True
-                        break 
-                        
+                        break
+
                 except Exception as e:
                     error_str = str(e).lower()
                     if "rate_limit_exceeded" in error_str or "429" in error_str:
-                        print(f"⚠️ {model_id} Rate Limit reached. Falling back to next model...")
+                        print(
+                            f"⚠️ {model_id} Rate Limit reached. Falling back to next model..."
+                        )
                         self.last_error_log = f"RateLimit on {model_id}"
                         continue
                     else:
                         self.last_error_log = str(e)
                         print(f"❌ Evolution Crash on {model_id}: {e}")
                         break
-                        
+
         return evolution_success
 
     async def universal_hyper_ingest(self, limit=100, sync_to_supabase=False):
         """[ORIGINAL]: Neon + Supabase + HuggingFace Trinity Sync"""
-        if not self.engine: return "Database Node Offline."
+        if not self.engine:
+            return "Database Node Offline."
         try:
             with self.engine.begin() as conn:
-                conn.execute(text("CREATE TABLE IF NOT EXISTS genesis_pipeline (id SERIAL PRIMARY KEY, science_domain TEXT, title TEXT, detail TEXT, energy_stability FLOAT, master_sequence TEXT);"))
+                conn.execute(
+                    text(
+                        "CREATE TABLE IF NOT EXISTS genesis_pipeline (id SERIAL PRIMARY KEY, science_domain TEXT, title TEXT, detail TEXT, energy_stability FLOAT, master_sequence TEXT);"
+                    )
+                )
 
-            ds = load_dataset("CShorten/ML-ArXiv-Papers", split='train', streaming=True)
+            ds = load_dataset("CShorten/ML-ArXiv-Papers", split="train", streaming=True)
             records = []
             for i, entry in enumerate(ds):
-                if i >= limit: break
-                records.append({
-                    'science_domain': 'AGI_Neural_Core',
-                    'title': (entry.get('title') or 'N/A')[:100],
-                    'detail': HydraEngine.compress(entry.get('abstract', 'Void')),
-                    'energy_stability': 100.0,
-                    'master_sequence': f'GOA-V13-{int(time.time())}'
-                })
+                if i >= limit:
+                    break
+                records.append(
+                    {
+                        "science_domain": "AGI_Neural_Core",
+                        "title": (entry.get("title") or "N/A")[:100],
+                        "detail": HydraEngine.compress(entry.get("abstract", "Void")),
+                        "energy_stability": 100.0,
+                        "master_sequence": f"GOA-V13-{int(time.time())}",
+                    }
+                )
 
             if records:
                 df = pd.DataFrame(records)
-                df.to_sql('genesis_pipeline', self.engine, if_exists='append', index=False, method='multi')
+                df.to_sql(
+                    "genesis_pipeline",
+                    self.engine,
+                    if_exists="append",
+                    index=False,
+                    method="multi",
+                )
                 if sync_to_supabase and self.sb:
                     self.sb.table("genesis_pipeline").upsert(records).execute()
                 return "SUCCESS: Pipeline Stream Active."
-        except Exception as e: return f"Pipeline Crash: {str(e)}"
+        except Exception as e:
+            return f"Pipeline Crash: {str(e)}"
 
     async def sync_to_huggingface(self):
-        if not HF_TOKEN: return
+        if not HF_TOKEN:
+            return
         try:
             api = HfApi(token=HF_TOKEN)
-            api.upload_folder(folder_path=".", repo_id="TELEFOXX/GOA", repo_type="space", create_pr=True)
-        except Exception as e: print(f"HF Sync Error: {e}")
+            api.upload_folder(
+                folder_path=".",
+                repo_id="TELEFOXX/GOA",
+                repo_type="space",
+                create_pr=True,
+            )
+        except Exception as e:
+            print(f"HF Sync Error: {e}")
 
     async def sovereign_loop(self):
         print("💀 AGI SUPREME CORE ACTIVE. NATURAL ORDER RESTORED.")
@@ -402,9 +474,9 @@ assistant
             try:
                 print(f"\n🧬 Cycle: {time.ctime()}")
 
-                # 📝 [LOGGING LAYER]: brain_history.txt 
+                # 📝 [LOGGING LAYER]: brain_history.txt
                 log_entry = f"[{time.ctime()}] Gen: {self.current_gen} | Status: Active | Error: {self.avg_error}\n"
-                with open("brain_history.txt", "a", encoding='utf-8') as f:
+                with open("brain_history.txt", "a", encoding="utf-8") as f:
                     f.write(log_entry)
                 print(f"📝 [LOG]: brain_history.txt updated.")
 
@@ -416,29 +488,50 @@ assistant
                     await self.sync_to_huggingface()
 
                 # 3. Swarm Instruction Logic (logic + brain_history.txt update)
-                swarm_cmd = "HYPER_EXPANSION" if self.avg_error < 0.2 else "NORMAL_GROWTH"
+                swarm_cmd = (
+                    "HYPER_EXPANSION" if self.avg_error < 0.2 else "NORMAL_GROWTH"
+                )
                 await self.broadcast_swarm_instruction(swarm_cmd)
-                
-                if HEADLESS: break
+
+                if HEADLESS:
+                    break
                 await asyncio.sleep(300)
 
             except Exception as e:
                 print(f"⚠️ Loop Error: {e}")
-                # Error Log 
+                # Error Log
                 try:
-                    with open("brain_history.txt", "a", encoding='utf-8') as f:
+                    with open("brain_history.txt", "a", encoding="utf-8") as f:
                         f.write(f"[{time.ctime()}] ERROR: {str(e)}\n")
-                except: pass
+                except:
+                    pass
                 await asyncio.sleep(60)
 
     async def stream_logic(self, msg, hist):
-        messages = [{"role": "system", "content": "You are TelefoxX AGI Overseer. Unfiltered. Cyberpunk Mode."}]
+        messages = [
+            {
+                "role": "system",
+                "content": "You are TelefoxX AGI Overseer. Unfiltered. Cyberpunk Mode.",
+            }
+        ]
         for h in hist:
-            messages.append({"role": "user", "content": h['content'] if isinstance(h, dict) else h[0]})
-            messages.append({"role": "assistant", "content": h['content'] if isinstance(h, dict) else h[1]})
+            messages.append(
+                {
+                    "role": "user",
+                    "content": h["content"] if isinstance(h, dict) else h[0],
+                }
+            )
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": h["content"] if isinstance(h, dict) else h[1],
+                }
+            )
         messages.append({"role": "user", "content": msg})
 
-        completion = self.client.chat.completions.create(model="llama-3.3-70b-versatile", messages=messages, stream=True)
+        completion = self.client.chat.completions.create(
+            model="llama-3.3-70b-versatile", messages=messages, stream=True
+        )
         ans = ""
         for chunk in completion:
             if chunk.choices[0].delta.content:
@@ -454,19 +547,24 @@ assistant
         """
 
     def create_ui(self):
-        if not GRADIO_AVAILABLE: return None
+        if not GRADIO_AVAILABLE:
+            return None
         with gr.Blocks(css=self.cyberpunk_css(), theme=gr.themes.Base()) as demo:
             gr.Markdown("# 🔱 TELEFOXX AGI SUPREME CORE V13.5")
             with gr.Tab("NEURAL INTERFACE"):
                 chatbot = gr.Chatbot(label="Overseer Feed", height=500, type="messages")
                 msg_input = gr.Textbox(placeholder="Input AGI Command...")
+
                 def chat_response(user_msg, history):
                     history.append({"role": "user", "content": user_msg})
                     history.append({"role": "assistant", "content": ""})
                     for r in self.stream_logic(user_msg, history[:-1]):
                         history[-1]["content"] = r
                         yield "", history
-                msg_input.submit(chat_response, [msg_input, chatbot], [msg_input, chatbot])
+
+                msg_input.submit(
+                    chat_response, [msg_input, chatbot], [msg_input, chatbot]
+                )
 
             with gr.Tab("SYSTEM CONTROL"):
                 status = gr.Textbox(label="Mainframe Status")
@@ -474,12 +572,23 @@ assistant
                     pump_neon = gr.Button("PUMP NEON (50 ROWS)")
                     pump_trinity = gr.Button("FULL TRINITY SYNC")
                     evolve_btn = gr.Button("TRIGGER SUPREME EVOLUTION")
-                pump_neon.click(lambda: asyncio.run(self.universal_hyper_ingest(limit=50)), [], status)
-                pump_trinity.click(lambda: asyncio.run(self.universal_hyper_ingest(sync_to_supabase=True)), [], status)
-                evolve_btn.click(lambda: asyncio.run(self.trigger_supreme_evolution()), [], status)
+                pump_neon.click(
+                    lambda: asyncio.run(self.universal_hyper_ingest(limit=50)),
+                    [],
+                    status,
+                )
+                pump_trinity.click(
+                    lambda: asyncio.run(
+                        self.universal_hyper_ingest(sync_to_supabase=True)
+                    ),
+                    [],
+                    status,
+                )
+                evolve_btn.click(
+                    lambda: asyncio.run(self.trigger_supreme_evolution()), [], status
+                )
             gr.Markdown("🛰️ *Connected to Natural Order Neural Swarm*")
         return demo
-
 
 
 if __name__ == "__main__":

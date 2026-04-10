@@ -1,4 +1,7 @@
+node_modules/
+repo_sync/
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
+.env
+*.log
+kaggle_deploy/

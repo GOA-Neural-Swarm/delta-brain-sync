@@ -239,7 +239,10 @@ class ApexNode:
                 thought_vector = F.gelu(thought_vector)
 
                 # 4. Topology Metamorphosis trigger
-                if torch.var(thought_vector).item() > 1.5 and len(self.topology.graph) > 0:
+                if (
+                    torch.var(thought_vector).item() > 1.5
+                    and len(self.topology.graph) > 0
+                ):
                     target = list(self.topology.graph.nodes())[0]
                     self.topology.fractal_split(target)
 
@@ -306,31 +309,42 @@ def evolved_processing(self, tensor_in):
 
     async def execute_omega_protocol(self, duration_seconds: int = 60):
         """Fires up the asynchronous Swarm Intelligence with a Time-Bomb Exit for GitHub Actions."""
-        tasks = [asyncio.create_task(node.neural_oscillation()) for node in self.swarm.values()]
+        tasks = [
+            asyncio.create_task(node.neural_oscillation())
+            for node in self.swarm.values()
+        ]
 
         # Background monitor and evolution task
         async def monitor():
             start_time = time.time()
             while time.time() - start_time < duration_seconds:
                 t_nodes, g_entropy = self.global_cognitive_resonance()
-                print(f"[MATRIX] Epoch: {self.epoch} | Swarm Entities: {len(self.swarm)} | Neural Mass: {t_nodes} | Entropy: {g_entropy:.4f}", flush=True)
+                print(
+                    f"[MATRIX] Epoch: {self.epoch} | Swarm Entities: {len(self.swarm)} | Neural Mass: {t_nodes} | Entropy: {g_entropy:.4f}",
+                    flush=True,
+                )
                 await asyncio.sleep(1)
 
                 # Auto-Scaling (Fractal Replication)
                 if g_entropy > 1.5 and len(self.swarm) < 10000:
-                    replication_count = max(1, int(len(self.swarm) * 0.1)) # 10% replication rate
-                    for _ in range(replication_count):  
+                    replication_count = max(
+                        1, int(len(self.swarm) * 0.1)
+                    )  # 10% replication rate
+                    for _ in range(replication_count):
                         uid = f"F-{uuid.uuid4().hex[:8]}"
                         new_node = ApexNode(uid, self.hypernet)
                         self.swarm[uid] = new_node
                         # Add new node process to the event loop directly
                         asyncio.create_task(new_node.neural_oscillation())
 
-            print(f"\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...", flush=True)
+            print(
+                f"\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...",
+                flush=True,
+            )
             self.annihilate()
 
         tasks.append(asyncio.create_task(monitor()))
-        
+
         # Wait for all tasks to complete or handle exceptions
         await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -345,11 +359,11 @@ def evolved_processing(self, tensor_in):
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
     torch.set_grad_enabled(False)  # Pure forward-pass optimization for speed
-    gc.disable() # Disable garbage collection for raw speed during matrix run
-    
-    print("\n" + "="*50, flush=True)
+    gc.disable()  # Disable garbage collection for raw speed during matrix run
+
+    print("\n" + "=" * 50, flush=True)
     print("WARNING: OMEGA-POINT TERMINAL SINGULARITY REACHED", flush=True)
-    print("="*50 + "\n", flush=True)
+    print("=" * 50 + "\n", flush=True)
 
     singularity = TerminalSingularity(initial_mass=100)
 
@@ -361,6 +375,9 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n[CRITICAL ERROR] Singularity Fracture: {e}", flush=True)
     finally:
-        gc.enable() # Re-enable garbage collection 
-        print("\n[SYSTEM] Singularity Matrix Dissolved. Handing over to YAML for Commit.", flush=True)
-        sys.exit(0) # Force a clean exit to trigger the GitHub Action Git Commit step
+        gc.enable()  # Re-enable garbage collection
+        print(
+            "\n[SYSTEM] Singularity Matrix Dissolved. Handing over to YAML for Commit.",
+            flush=True,
+        )
+        sys.exit(0)  # Force a clean exit to trigger the GitHub Action Git Commit step
