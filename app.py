@@ -9,6 +9,7 @@ import asyncio
 import re
 import shutil
 import git
+import omega_point
 import pandas as pd
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import QueuePool
