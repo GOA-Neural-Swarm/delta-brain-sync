@@ -1,21 +1,50 @@
 import numpy as np
 import time
 
-class FastGELU:
+class Linear:
+    def __init__(self, in_d, out_d, use_bias=True):
+        limit = np.sqrt(6.0 / (in_d + out_d))
+        self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
+        self.b = np.zeros(out_d, dtype=np.float32) if use_bias else None
+        self.dW, self.db = None, None
+        self.x = None
+
     def forward(self, x):
         self.x = x
-        self.sig = 1.0 / (1.0 + np.exp(-1.702 * x))
-        return x * self.sig
+        out = np.dot(x, self.W)
+        if self.b is not None: out += self.b
+        return out
 
     def backward(self, dout):
-        s = self.sig
-        return dout * (s + self.x * 1.702 * s * (1.0 - s))
+        self.dW = np.dot(self.x.T, dout)
+        if self.b is not None: self.db = np.sum(dout, axis=0)
+        return np.dot(dout, self.W.T)
+
+class RMSNorm:
+    def __init__(self, dim, eps=1e-6):
+        self.scale = np.ones(dim, dtype=np.float32)
+        self.eps = eps
+        self.x, self.rstd = None, None
+
+    def forward(self, x):
+        self.x = x
+        var = np.mean(x**2, axis=-1, keepdims=True)
+        self.rstd = 1.0 / np.sqrt(var + self.eps)
+        return self.scale * (x * self.rstd)
+
+    def backward(self, dout):
+        x_rstd = self.x * self.rstd
+        self.dscale = np.sum(dout * x_rstd, axis=0)
+        dx_rstd = dout * self.scale
+        m_dx_rstd_x_rstd = np.mean(dx_rstd * x_rstd, axis=-1, keepdims=True)
+        return self.rstd * (dx_rstd - x_rstd * m_dx_rstd_x_rstd)
 
 class SwiGLU:
     def __init__(self, dim, h_dim):
         self.w1 = Linear(dim, h_dim, use_bias=False)
         self.w2 = Linear(dim, h_dim, use_bias=False)
         self.w3 = Linear(h_dim, dim, use_bias=False)
+        self.x1, self.x2, self.swish = None, None, None
 
     def forward(self, x):
         self.x1 = self.w1.forward(x)
@@ -31,70 +60,32 @@ class SwiGLU:
         dx1 = dswish * (sig * (1.0 + self.x1 * (1.0 - sig)))
         return self.w1.backward(dx1) + self.w2.backward(dx2)
 
-class RMSNorm:
-    def __init__(self, dim, eps=1e-6):
-        self.scale = np.ones(dim, dtype=np.float32)
-        self.eps = eps
-
-    def forward(self, x):
-        self.x = x
-        self.var = np.mean(x**2, axis=-1, keepdims=True)
-        self.rstd = 1.0 / np.sqrt(self.var + self.eps)
-        return self.scale * (x * self.rstd)
-
-    def backward(self, dout):
-        x_rstd = self.x * self.rstd
-        self.dscale = np.sum(dout * x_rstd, axis=0)
-        dx_rstd = dout * self.scale
-        return self.rstd * (dx_rstd - x_rstd * np.mean(dx_rstd * x_rstd, axis=-1, keepdims=True))
-
-class Linear:
-    def __init__(self, in_d, out_d, use_bias=True):
-        self.W = (np.random.randn(in_d, out_d) * np.sqrt(2.0 / in_d)).astype(np.float32)
-        self.b = np.zeros(out_d, dtype=np.float32) if use_bias else None
-        self.dW, self.db = None, None
-
-    def forward(self, x):
-        self.x = x
-        out = np.dot(x, self.W)
-        if self.b is not None: out += self.b
-        return out
-
-    def backward(self, dout):
-        self.dW = np.dot(self.x.T, dout)
-        if self.b is not None: self.db = np.sum(dout, axis=0)
-        return np.dot(dout, self.W.T)
-
 class RedundantMoE:
     def __init__(self, dim):
         self.gemini_expert = SwiGLU(dim, dim * 2)
         self.groq_expert = SwiGLU(dim, dim * 2)
         self.gate = Linear(dim, 2, use_bias=False)
+        self.probs, self.out_gemini, self.out_groq = None, None, None
 
     def forward(self, x):
-        self.x = x
-        self.logits = self.gate.forward(x)
-        exp_l = np.exp(self.logits - np.max(self.logits, axis=-1, keepdims=True))
+        logits = self.gate.forward(x)
+        logits -= np.max(logits, axis=-1, keepdims=True)
+        exp_l = np.exp(logits)
         self.probs = exp_l / np.sum(exp_l, axis=-1, keepdims=True)
-        
         self.out_gemini = self.gemini_expert.forward(x)
         self.out_groq = self.groq_expert.forward(x)
         return self.probs[:, 0:1] * self.out_gemini + self.probs[:, 1:2] * self.out_groq
 
     def backward(self, dout):
         p0, p1 = self.probs[:, 0:1], self.probs[:, 1:2]
-        d_gemini = dout * p0
-        d_groq = dout * p1
-        
+        d_gemini = self.gemini_expert.backward(dout * p0)
+        d_groq = self.groq_expert.backward(dout * p1)
         dp0 = np.sum(dout * self.out_gemini, axis=-1, keepdims=True)
         dp1 = np.sum(dout * self.out_groq, axis=-1, keepdims=True)
         d_logits_raw = np.concatenate([dp0, dp1], axis=-1)
         d_gate_logits = self.probs * (d_logits_raw - np.sum(self.probs * d_logits_raw, axis=-1, keepdims=True))
-        
         dx_gate = self.gate.backward(d_gate_logits)
-        dx_gemini = self.gemini_expert.backward(d_gemini)
-        dx_groq = self.groq_expert.backward(d_groq)
-        return dx_gemini + dx_groq + dx_gate
+        return d_gemini + d_groq + dx_gate
 
 class SovereignBlock:
     def __init__(self, dim):
@@ -104,10 +95,9 @@ class SovereignBlock:
         self.mlp = SwiGLU(dim, dim * 4)
 
     def forward(self, x):
-        self.res1 = x
-        x = self.res1 + self.moe.forward(self.norm1.forward(x))
-        self.res2 = x
-        return self.res2 + self.mlp.forward(self.norm2.forward(x))
+        x = x + self.moe.forward(self.norm1.forward(x))
+        x = x + self.mlp.forward(self.norm2.forward(x))
+        return x
 
     def backward(self, dout):
         dm = self.mlp.backward(dout)
@@ -176,21 +166,21 @@ class SovereignArchitect:
             for p in self.params: p['grad'] *= s
 
 def evolve():
-    N, D, K = 5000, 784, 10
+    N, D, K = 10000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
     y = np.random.randint(0, K, N)
     
-    model = SovereignArchitect(D, 128, K, depth=3)
-    opt = AdamW(model.params, lr=1e-3, wd=0.05)
+    model = SovereignArchitect(D, 256, K, depth=4)
+    opt = AdamW(model.params, lr=2e-3, wd=0.1)
     
-    bs, epochs = 64, 30
-    print("OMEGA-ASI | RECURSIVE EVOLUTION INITIATED")
+    bs, epochs = 128, 50
+    print("OMEGA-ASI | RECURSIVE EVOLUTION INITIATED | ARCH: REDUNDANT-MOE-SOVEREIGN")
     
     for e in range(epochs):
         idx = np.random.permutation(N)
         l_sum, a_sum = 0, 0
         lr_m = 0.5 * (1 + np.cos(np.pi * e / epochs))
-        if e < 2: lr_m *= (e + 1) / 2 # Warmup
+        if e < 5: lr_m *= (e + 1) / 5
         
         t0 = time.time()
         for i in range(0, N, bs):
@@ -198,8 +188,8 @@ def evolve():
             m = xb.shape[0]
             
             logits = model.forward(xb)
-            probs = np.exp(logits - np.max(logits, axis=1, keepdims=True))
-            probs /= np.sum(probs, axis=1, keepdims=True)
+            logits -= np.max(logits, axis=1, keepdims=True)
+            probs = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
             
             l_sum += -np.mean(np.log(probs[range(m), yb] + 1e-10)) * (m/N)
             a_sum += np.mean(np.argmax(probs, axis=1) == yb) * (m/N)
@@ -210,7 +200,8 @@ def evolve():
             model.clip(1.0)
             opt.step(model.params, lr_mult=lr_m)
             
-        print(f"EPOCH:{e:02d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | T:{time.time()-t0:.2f}s | LR:{opt.lr*lr_m:.6f}")
+        dt = time.time() - t0
+        print(f"E:{e:02d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | T:{dt:.2f}s | LR:{opt.lr*lr_m:.6f}")
 
 if __name__ == "__main__":
     evolve()
