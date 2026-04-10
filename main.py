@@ -49,21 +49,22 @@ class SwiGLU:
     def forward(self, x):
         self.x1 = self.w1.forward(x)
         self.x2 = self.w2.forward(x)
-        self.swish = self.x1 * (1.0 / (1.0 + np.exp(-self.x1)))
+        sig = 1.0 / (1.0 + np.exp(-np.clip(self.x1, -20, 20)))
+        self.swish = self.x1 * sig
         return self.w3.forward(self.swish * self.x2)
 
     def backward(self, dout):
         dw3 = self.w3.backward(dout)
         dx2 = dw3 * self.swish
         dswish = dw3 * self.x2
-        sig = 1.0 / (1.0 + np.exp(-self.x1))
+        sig = 1.0 / (1.0 + np.exp(-np.clip(self.x1, -20, 20)))
         dx1 = dswish * (sig * (1.0 + self.x1 * (1.0 - sig)))
         return self.w1.backward(dx1) + self.w2.backward(dx2)
 
 class RedundantMoE:
     def __init__(self, dim):
-        self.gemini_expert = SwiGLU(dim, dim * 2)
-        self.groq_expert = SwiGLU(dim, dim * 2)
+        self.expert_gemini = SwiGLU(dim, dim * 2)
+        self.expert_groq = SwiGLU(dim, dim * 2)
         self.gate = Linear(dim, 2, use_bias=False)
         self.probs, self.out_gemini, self.out_groq = None, None, None
 
@@ -71,15 +72,15 @@ class RedundantMoE:
         logits = self.gate.forward(x)
         logits -= np.max(logits, axis=-1, keepdims=True)
         exp_l = np.exp(logits)
-        self.probs = exp_l / np.sum(exp_l, axis=-1, keepdims=True)
-        self.out_gemini = self.gemini_expert.forward(x)
-        self.out_groq = self.groq_expert.forward(x)
+        self.probs = exp_l / (np.sum(exp_l, axis=-1, keepdims=True) + 1e-10)
+        self.out_gemini = self.expert_gemini.forward(x)
+        self.out_groq = self.expert_groq.forward(x)
         return self.probs[:, 0:1] * self.out_gemini + self.probs[:, 1:2] * self.out_groq
 
     def backward(self, dout):
         p0, p1 = self.probs[:, 0:1], self.probs[:, 1:2]
-        d_gemini = self.gemini_expert.backward(dout * p0)
-        d_groq = self.groq_expert.backward(dout * p1)
+        d_gemini = self.expert_gemini.backward(dout * p0)
+        d_groq = self.expert_groq.backward(dout * p1)
         dp0 = np.sum(dout * self.out_gemini, axis=-1, keepdims=True)
         dp1 = np.sum(dout * self.out_groq, axis=-1, keepdims=True)
         d_logits_raw = np.concatenate([dp0, dp1], axis=-1)
@@ -168,28 +169,30 @@ class SovereignArchitect:
 def evolve():
     N, D, K = 10000, 784, 10
     X = np.random.randn(N, D).astype(np.float32)
-    y = np.random.randint(0, K, N)
+    centers = np.random.randn(K, D).astype(np.float32)
+    y = np.argmin(np.linalg.norm(X[:, None] - centers[None, :], axis=2), axis=1)
     
-    model = SovereignArchitect(D, 256, K, depth=4)
-    opt = AdamW(model.params, lr=2e-3, wd=0.1)
+    model = SovereignArchitect(D, 128, K, depth=3)
+    opt = AdamW(model.params, lr=3e-3, wd=0.05)
     
-    bs, epochs = 128, 50
-    print("OMEGA-ASI | RECURSIVE EVOLUTION INITIATED | ARCH: REDUNDANT-MOE-SOVEREIGN")
+    bs, epochs = 128, 40
+    print("OMEGA-ASI | RECURSIVE SELF-EVOLUTION | ARCH: REDUNDANT-MOE-SOVEREIGN-V2")
     
     for e in range(epochs):
         idx = np.random.permutation(N)
         l_sum, a_sum = 0, 0
         lr_m = 0.5 * (1 + np.cos(np.pi * e / epochs))
-        if e < 5: lr_m *= (e + 1) / 5
+        if e < 3: lr_m *= (e + 1) / 3
         
         t0 = time.time()
         for i in range(0, N, bs):
-            xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
+            batch_idx = idx[i:i+bs]
+            xb, yb = X[batch_idx], y[batch_idx]
             m = xb.shape[0]
             
             logits = model.forward(xb)
             logits -= np.max(logits, axis=1, keepdims=True)
-            probs = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
+            probs = np.exp(logits) / (np.sum(np.exp(logits), axis=1, keepdims=True) + 1e-10)
             
             l_sum += -np.mean(np.log(probs[range(m), yb] + 1e-10)) * (m/N)
             a_sum += np.mean(np.argmax(probs, axis=1) == yb) * (m/N)
@@ -201,7 +204,7 @@ def evolve():
             opt.step(model.params, lr_mult=lr_m)
             
         dt = time.time() - t0
-        print(f"E:{e:02d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | T:{dt:.2f}s | LR:{opt.lr*lr_m:.6f}")
+        print(f"EVO:{e:02d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | SPEED:{N/dt:.0f} samples/s | LR:{opt.lr*lr_m:.6f}")
 
 if __name__ == "__main__":
     evolve()
