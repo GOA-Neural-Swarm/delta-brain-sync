@@ -2,14 +2,14 @@ import numpy as np
 import time
 
 def softmax(x, axis=-1):
-    ex = np.exp(x - np.max(x, axis=axis, keepdims=True))
-    return ex / (np.sum(ex, axis=axis, keepdims=True) + 1e-12)
+    e_x = np.exp(x - np.max(x, axis=axis, keepdims=True))
+    return e_x / (np.sum(e_x, axis=axis, keepdims=True) + 1e-12)
 
 class Linear:
-    def __init__(self, in_d, out_d, name=""):
-        limit = np.sqrt(6 / (in_d + out_d))
-        self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
-        self.b = np.zeros(out_d, dtype=np.float32)
+    def __init__(self, in_features, out_features):
+        limit = np.sqrt(2.0 / in_features)
+        self.W = np.random.randn(in_features, out_features).astype(np.float32) * limit
+        self.b = np.zeros(out_features, dtype=np.float32)
         self.x, self.dW, self.db = None, None, None
 
     def forward(self, x):
@@ -70,7 +70,7 @@ class SwiGLU:
     def params(self):
         return self.w1.params() + self.w2.params() + self.w3.params()
 
-class SovereignAttention:
+class MultiHeadAttention:
     def __init__(self, dim, heads=8):
         self.dim, self.heads = dim, heads
         self.head_dim = dim // heads
@@ -86,10 +86,9 @@ class SovereignAttention:
         self.k = self.wk.forward(x).reshape(b, self.heads, self.head_dim)
         self.v = self.wv.forward(x).reshape(b, self.heads, self.head_dim)
         
-        # Self-interaction across heads
-        scores = np.matmul(self.q, self.k.transpose(0, 2, 1)) / np.sqrt(self.head_dim)
+        scores = np.einsum('bhd,bmd->bhm', self.q, self.k) / np.sqrt(self.head_dim)
         self.attn = softmax(scores, axis=-1)
-        self.ctx = np.matmul(self.attn, self.v).reshape(b, d)
+        self.ctx = np.einsum('bhm,bmd->bhd', self.attn, self.v).reshape(b, d)
         return self.wo.forward(self.ctx)
 
     def backward(self, dout):
@@ -97,20 +96,16 @@ class SovereignAttention:
         b, d = dctx.shape
         dctx_reshaped = dctx.reshape(b, self.heads, self.head_dim)
         
-        dattn = np.matmul(dctx_reshaped, self.v.transpose(0, 2, 1))
-        dv = np.matmul(self.attn.transpose(0, 2, 1), dctx_reshaped)
+        dattn = np.einsum('bhd,bmd->bhm', dctx_reshaped, self.v)
+        dv = np.einsum('bhm,bhd->bmd', self.attn, dctx_reshaped)
         
         dscores = self.attn * (dattn - np.sum(self.attn * dattn, axis=-1, keepdims=True))
         dscores /= np.sqrt(self.head_dim)
         
-        dq = np.matmul(dscores, self.k)
-        dk = np.matmul(dscores.transpose(0, 2, 1), self.q)
+        dq = np.einsum('bhm,bmd->bhd', dscores, self.k)
+        dk = np.einsum('bhm,bhd->bmd', dscores, self.q)
         
-        dq = dq.reshape(b, d)
-        dk = dk.reshape(b, d)
-        dv = dv.reshape(b, d)
-        
-        return self.wq.backward(dq) + self.wk.backward(dk) + self.wv.backward(dv)
+        return self.wq.backward(dq.reshape(b, d)) + self.wk.backward(dk.reshape(b, d)) + self.wv.backward(dv.reshape(b, d))
 
     def params(self):
         return self.wq.params() + self.wk.params() + self.wv.params() + self.wo.params()
@@ -133,13 +128,10 @@ class RedundantMoE:
         p_gem, p_groq = self.probs[:, 0:1], self.probs[:, 1:2]
         d_gem_in = self.gemini.backward(dout * p_gem)
         d_groq_in = self.groq.backward(dout * p_groq)
-        
         dp_gem = np.sum(dout * self.o_gem, axis=-1, keepdims=True)
         dp_groq = np.sum(dout * self.o_groq, axis=-1, keepdims=True)
-        
         dg_raw = np.concatenate([dp_gem, dp_groq], axis=-1)
         d_gate = self.probs * (dg_raw - np.sum(self.probs * dg_raw, axis=-1, keepdims=True))
-        
         return d_gem_in + d_groq_in + self.gate.backward(d_gate)
 
     def params(self):
@@ -148,37 +140,28 @@ class RedundantMoE:
 class SovereignBlock:
     def __init__(self, dim):
         self.norm1 = RMSNorm(dim)
-        self.attn = SovereignAttention(dim)
+        self.attn = MultiHeadAttention(dim)
         self.norm2 = RMSNorm(dim)
         self.moe = RedundantMoE(dim)
-        self.alpha = np.array([0.1], dtype=np.float32)
-        self.beta = np.array([0.1], dtype=np.float32)
-        self.dalpha, self.dbeta = None, None
-        self.res_a, self.res_m = None, None
 
     def forward(self, x):
-        self.res_a = self.attn.forward(self.norm1.forward(x))
-        x = x + self.alpha * self.res_a
-        self.res_m = self.moe.forward(self.norm2.forward(x))
-        return x + self.beta * self.res_m
+        x = x + self.attn.forward(self.norm1.forward(x))
+        x = x + self.moe.forward(self.norm2.forward(x))
+        return x
 
     def backward(self, dout):
-        self.dbeta = np.sum(dout * self.res_m)
-        dmoe = self.moe.backward(dout * self.beta)
+        dmoe = self.moe.backward(dout)
         dnorm2 = self.norm2.backward(dmoe)
         dx_mid = dout + dnorm2
-        self.dalpha = np.sum(dx_mid * self.res_a)
-        dattn = self.attn.backward(dx_mid * self.alpha)
+        dattn = self.attn.backward(dx_mid)
         dnorm1 = self.norm1.backward(dattn)
         return dx_mid + dnorm1
 
     def params(self):
-        p = self.norm1.params() + self.attn.params() + self.norm2.params() + self.moe.params()
-        p.extend([{"ref": self.alpha, "grad": self.dalpha}, {"ref": self.beta, "grad": self.dbeta}])
-        return p
+        return self.norm1.params() + self.attn.params() + self.norm2.params() + self.moe.params()
 
 class SovereignArchitect:
-    def __init__(self, in_d, h_d, out_d, depth=3):
+    def __init__(self, in_d, h_d, out_d, depth=4):
         self.stem = Linear(in_d, h_d)
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
         self.norm = RMSNorm(h_d)
@@ -186,14 +169,12 @@ class SovereignArchitect:
 
     def forward(self, x):
         x = self.stem.forward(x)
-        for b in self.blocks:
-            x = b.forward(x)
+        for b in self.blocks: x = b.forward(x)
         return self.head.forward(self.norm.forward(x))
 
     def backward(self, dout):
         dout = self.norm.backward(self.head.backward(dout))
-        for b in reversed(self.blocks):
-            dout = b.backward(dout)
+        for b in reversed(self.blocks): dout = b.backward(dout)
         self.stem.backward(dout)
 
     def params(self):
@@ -218,19 +199,22 @@ class Lion:
             param -= lr * update
             self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * grad
 
-def evolve():
-    N, D, K = 10000, 784, 10
-    X = np.random.randn(N, D).astype(np.float32)
-    y = np.random.randint(0, K, N)
-    centers = np.random.randn(K, D).astype(np.float32) * 4.0
+def get_data(n, d, k):
+    X = np.random.randn(n, d).astype(np.float32)
+    y = np.random.randint(0, k, n)
+    centers = np.random.randn(k, d).astype(np.float32) * 5.0
     X += centers[y]
     X = (X - np.mean(X)) / (np.std(X) + 1e-6)
+    return X, y
 
-    model = SovereignArchitect(D, 128, K, depth=3)
-    opt = Lion(model.params(), lr=1e-4, wd=0.01)
-
-    bs, epochs = 64, 30
-    print("OMEGA-ASI | RECURSIVE SELF-EVOLUTION | V12-ULTRA")
+def train():
+    N, D, K = 15000, 784, 10
+    X, y = get_data(N, D, K)
+    model = SovereignArchitect(D, 128, K, depth=4)
+    optimizer = Lion(model.params(), lr=1e-4, wd=0.01)
+    
+    bs, epochs = 128, 40
+    print(f"OMEGA-ASI | ARCHITECTURE: SOVEREIGN-V13 | PARAMS: {sum(p['ref'].size for p in model.params())}")
 
     for ep in range(epochs):
         idx = np.random.permutation(N)
@@ -250,7 +234,7 @@ def evolve():
             l_sum += loss * (m / N)
             a_sum += np.mean(np.argmax(probs, axis=1) == yb) * (m / N)
 
-            dout = probs.copy()
+            dout = (probs.copy())
             dout[range(m), yb] -= 1
             model.backward(dout / m)
 
@@ -259,10 +243,10 @@ def evolve():
                 for p in model.params():
                     if p["grad"] is not None: p["grad"] /= (gn + 1e-6)
 
-            opt.step(scale=sched)
+            optimizer.step(scale=sched)
 
         dt = time.time() - t0
-        print(f"EP:{ep:02d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | {N/dt:.0f} s/s | LR:{opt.lr*sched:.6f}")
+        print(f"EP:{ep:02d} | LOSS:{l_sum:.4f} | ACC:{a_sum:.4f} | SPEED:{N/dt:.0f} samples/s | LR:{optimizer.lr*sched:.6f}")
 
 if __name__ == "__main__":
-    evolve()
+    train()
