@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -43,7 +44,6 @@ class RMSNorm:
         return self.rstd * (v - nx * np.mean(v * nx, axis=-1, keepdims=True))
 
 class BimodalEngine:
-    """Redundant logic integrating Gemini-style MoE and Groq-style Deterministic Throughput"""
     def __init__(self, dim):
         self.gemini_w1 = Linear(dim, dim * 2)
         self.gemini_w2 = Linear(dim * 2, dim)
@@ -56,36 +56,32 @@ class BimodalEngine:
         self.x = x
         self.g_logits = self.gate.forward(x)
         self.probs = fast_softmax(self.g_logits)
-        
-        # Gemini Stream (High Capacity SwiGLU)
+
         self.z_gem = self.gemini_w1.forward(x)
         self.act_gem = swiglu(self.z_gem)
         self.out_gem = self.gemini_w2.forward(self.act_gem)
-        
-        # Groq Stream (Low Latency Linear)
+
         self.z_groq = self.groq_w1.forward(x)
         self.out_groq = self.groq_w2.forward(self.z_groq)
-        
+
         return self.probs[..., 0:1] * self.out_gem + self.probs[..., 1:2] * self.out_groq
 
     def backward(self, dout):
         p1, p2 = self.probs[..., 0:1], self.probs[..., 1:2]
-        
-        # Backprop through streams
+
         d_gem = self.gemini_w2.backward(dout * p1)
         d_swi = d_gem * (swiglu(self.z_gem) / (self.z_gem + 1e-12) + (1.0 / (1.0 + np.exp(-self.z_gem))) * (1 - swiglu(self.z_gem)))
         dx_gem = self.gemini_w1.backward(d_swi)
-        
+
         d_groq = self.groq_w2.backward(dout * p2)
         dx_groq = self.groq_w1.backward(d_groq)
-        
-        # Backprop through gate
+
         dp1 = np.sum(dout * self.out_gem, axis=-1, keepdims=True)
         dp2 = np.sum(dout * self.out_groq, axis=-1, keepdims=True)
         dp = np.concatenate([dp1, dp2], axis=-1)
         dg = self.probs * (dp - np.sum(self.probs * dp, axis=-1, keepdims=True))
         dx_gate = self.gate.backward(dg)
-        
+
         return dx_gem + dx_groq + dx_gate
 
 class MultiHeadAttention:
@@ -100,7 +96,7 @@ class MultiHeadAttention:
         self.q = self.wq.forward(x).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
         self.k = self.wk.forward(x).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
         self.v = self.wv.forward(x).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
-        
+
         self.dots = np.matmul(self.q, self.k.transpose(0, 1, 3, 2)) * self.scale
         self.att = fast_softmax(self.dots)
         out = np.matmul(self.att, self.v).transpose(0, 2, 1, 3).reshape(b, s, d)
@@ -114,7 +110,7 @@ class MultiHeadAttention:
         d_dots = self.att * (d_att - np.sum(self.att * d_att, axis=-1, keepdims=True)) * self.scale
         d_q = np.matmul(d_dots, self.k)
         d_k = np.matmul(d_dots.transpose(0, 1, 3, 2), self.q)
-        
+
         dq = self.wq.backward(d_q.transpose(0, 2, 1, 3).reshape(b, s, d))
         dk = self.wk.backward(d_k.transpose(0, 2, 1, 3).reshape(b, s, d))
         dv = self.wv.backward(d_v.transpose(0, 2, 1, 3).reshape(b, s, d))
@@ -236,7 +232,7 @@ def train():
 
             logits = model.forward(xb)
             probs = fast_softmax(logits)
-            
+
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             l_acc += loss * (m / N)
             a_acc += np.mean(np.argmax(probs, axis=1) == yb) * (m / N)
