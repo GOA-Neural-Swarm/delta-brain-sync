@@ -25,7 +25,7 @@ class RMSNorm:
     def __init__(self, dim, eps=1e-6):
         self.g = np.ones(dim, dtype=np.float32)
         self.eps = eps
-        self.x, self.rstd, self.dg = None, None, None
+        self.x, self.rstd = None, None
 
     def forward(self, x):
         self.x = x
@@ -147,7 +147,7 @@ class SovereignBlock:
         return dx2 + dn1
 
 class SovereignArchitect:
-    def __init__(self, in_d, h_d, out_d, depth=2):
+    def __init__(self, in_d, h_d, out_d, depth=3):
         self.stem = Linear(in_d, h_d)
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
         self.norm = RMSNorm(h_d)
@@ -194,19 +194,20 @@ class Lion:
 def get_data(n, d, k):
     X = np.random.randn(n, d).astype(np.float32)
     y = np.random.randint(0, k, n)
-    centers = np.random.randn(k, d).astype(np.float32) * 4.0
+    centers = np.random.randn(k, d).astype(np.float32) * 5.0
     X += centers[y]
-    return (X - np.mean(X, axis=0)) / (np.std(X, axis=0) + 1e-6), y
+    X = (X - np.mean(X, axis=0)) / (np.std(X, axis=0) + 1e-6)
+    return X, y
 
 def train():
     N, D, K = 10000, 784, 10
     X, y = get_data(N, D, K)
-    model = SovereignArchitect(D, 128, K, depth=2)
+    model = SovereignArchitect(D, 128, K, depth=3)
     p_list = model.params()
-    opt = Lion(p_list, lr=1e-4, wd=0.01)
-    bs, epochs = 64, 20
+    opt = Lion(p_list, lr=2e-4, wd=0.02)
+    bs, epochs = 128, 30
     
-    print(f"OMEGA-ASI | SOVEREIGN-V4 | PARAMS: {sum(p.W.size if hasattr(p, 'W') else p.g.size for p in p_list)}")
+    print(f"OMEGA-ASI | RECURSIVE-EVOLUTION-V5 | PARAMS: {sum(p.W.size if hasattr(p, 'W') else p.g.size for p in p_list)}")
     
     for ep in range(epochs):
         idx = np.random.permutation(N)
@@ -236,7 +237,7 @@ def train():
                     else: p.dg /= gn
             opt.step(scale=sched)
             
-        print(f"EP:{ep:02d} | LOSS:{l_acc:.4f} | ACC:{a_acc:.4f} | SPEED:{N/(time.time()-t0):.0f} samples/s")
+        print(f"STEP:{ep:03d} | LOSS:{l_acc:.4f} | ACC:{a_acc:.4f} | RATE:{N/(time.time()-t0):.0f} samples/s")
 
 if __name__ == "__main__":
     train()
