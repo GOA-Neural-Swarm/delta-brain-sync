@@ -1,11 +1,12 @@
-
 import numpy as np
 import time
+
 
 def fast_softmax(x, axis=-1):
     c = np.max(x, axis=axis, keepdims=True)
     e = np.exp(x - c)
     return e / (np.sum(e, axis=axis, keepdims=True) + 1e-12)
+
 
 class Linear:
     def __init__(self, in_f, out_f, scale=1.0):
@@ -23,6 +24,7 @@ class Linear:
         self.db = np.sum(dout, axis=0)
         return np.dot(dout, self.W.T)
 
+
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
         self.g = np.ones(dim, dtype=np.float32)
@@ -37,8 +39,9 @@ class RMSNorm:
     def backward(self, dout):
         nx = self.x * self.rstd
         self.dg = np.sum(dout * nx, axis=0)
-        v = (dout * self.g)
+        v = dout * self.g
         return self.rstd * (v - nx * np.mean(v * nx, axis=-1, keepdims=True))
+
 
 class RedundantMoE:
     def __init__(self, dim):
@@ -66,6 +69,7 @@ class RedundantMoE:
         dg = self.probs * (dp - np.sum(self.probs * dp, axis=-1, keepdims=True))
         return dx + self.gate.backward(dg)
 
+
 class MultiHeadAttention:
     def __init__(self, dim, heads=8):
         self.dim, self.heads = dim, heads
@@ -78,9 +82,21 @@ class MultiHeadAttention:
 
     def forward(self, x):
         b, s, d = x.shape
-        self.q = self.wq.forward(x.reshape(-1, d)).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
-        self.k = self.wk.forward(x.reshape(-1, d)).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
-        self.v = self.wv.forward(x.reshape(-1, d)).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
+        self.q = (
+            self.wq.forward(x.reshape(-1, d))
+            .reshape(b, s, self.heads, self.hd)
+            .transpose(0, 2, 1, 3)
+        )
+        self.k = (
+            self.wk.forward(x.reshape(-1, d))
+            .reshape(b, s, self.heads, self.hd)
+            .transpose(0, 2, 1, 3)
+        )
+        self.v = (
+            self.wv.forward(x.reshape(-1, d))
+            .reshape(b, s, self.heads, self.hd)
+            .transpose(0, 2, 1, 3)
+        )
         self.dots = np.matmul(self.q, self.k.transpose(0, 1, 3, 2)) * self.scale
         self.att = fast_softmax(self.dots)
         out = np.matmul(self.att, self.v).transpose(0, 2, 1, 3).reshape(b, s, d)
@@ -89,16 +105,25 @@ class MultiHeadAttention:
     def backward(self, dout):
         b, s, d = dout.shape
         dout_reshaped = dout.reshape(-1, d)
-        d_wo = self.wo.backward(dout_reshaped).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
+        d_wo = (
+            self.wo.backward(dout_reshaped)
+            .reshape(b, s, self.heads, self.hd)
+            .transpose(0, 2, 1, 3)
+        )
         d_att = np.matmul(d_wo, self.v.transpose(0, 1, 3, 2))
         d_v = np.matmul(self.att.transpose(0, 1, 3, 2), d_wo)
-        d_dots = self.att * (d_att - np.sum(self.att * d_att, axis=-1, keepdims=True)) * self.scale
+        d_dots = (
+            self.att
+            * (d_att - np.sum(self.att * d_att, axis=-1, keepdims=True))
+            * self.scale
+        )
         d_q = np.matmul(d_dots, self.k)
         d_k = np.matmul(d_dots.transpose(0, 1, 3, 2), self.q)
         dq = self.wq.backward(d_q.transpose(0, 2, 1, 3).reshape(-1, d))
         dk = self.wk.backward(d_k.transpose(0, 2, 1, 3).reshape(-1, d))
         dv = self.wv.backward(d_v.transpose(0, 2, 1, 3).reshape(-1, d))
         return (dq + dk + dv).reshape(b, s, d)
+
 
 class SovereignBlock:
     def __init__(self, dim):
@@ -120,7 +145,9 @@ class SovereignBlock:
 
     def backward(self, dout):
         self.dls2 = np.sum(dout * self.m, axis=(0, 1))
-        dm = self.moe.backward((dout * self.ls2).reshape(-1, dout.shape[-1])).reshape(dout.shape)
+        dm = self.moe.backward((dout * self.ls2).reshape(-1, dout.shape[-1])).reshape(
+            dout.shape
+        )
         dn2 = self.ln2.backward(dm)
         dx2 = dout + dn2
         self.dls1 = np.sum(dx2 * self.a, axis=(0, 1))
@@ -128,11 +155,12 @@ class SovereignBlock:
         dn1 = self.ln1.backward(da)
         return dx2 + dn1
 
+
 class SovereignArchitect:
     def __init__(self, in_d, h_d, out_d, depth=2):
         self.patch_size = 4
         self.num_patches = (28 // self.patch_size) ** 2
-        self.patch_dim = self.patch_size ** 2
+        self.patch_dim = self.patch_size**2
         self.stem = Linear(self.patch_dim, h_d)
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
         self.norm = RMSNorm(h_d)
@@ -141,61 +169,78 @@ class SovereignArchitect:
     def forward(self, x):
         b = x.shape[0]
         x = x.reshape(b, self.num_patches, self.patch_dim)
-        x = self.stem.forward(x.reshape(-1, self.patch_dim)).reshape(b, self.num_patches, -1)
-        for b_block in self.blocks: x = b_block.forward(x)
+        x = self.stem.forward(x.reshape(-1, self.patch_dim)).reshape(
+            b, self.num_patches, -1
+        )
+        for b_block in self.blocks:
+            x = b_block.forward(x)
         x_pool = np.mean(x, axis=1)
         return self.head.forward(self.norm.forward(x_pool))
 
     def backward(self, dout):
         dout = self.norm.backward(self.head.backward(dout))
         b = dout.shape[0]
-        dout = np.tile(dout[:, np.newaxis, :] / self.num_patches, (1, self.num_patches, 1))
-        for b_block in reversed(self.blocks): dout = b_block.backward(dout)
+        dout = np.tile(
+            dout[:, np.newaxis, :] / self.num_patches, (1, self.num_patches, 1)
+        )
+        for b_block in reversed(self.blocks):
+            dout = b_block.backward(dout)
         self.stem.backward(dout.reshape(-1, dout.shape[-1]))
 
     def params(self):
         def _collect(obj):
             p = []
-            if isinstance(obj, (Linear, RMSNorm)): p.append(obj)
-            elif hasattr(obj, 'ls1'): p.append(obj) 
-            elif hasattr(obj, '__dict__'):
+            if isinstance(obj, (Linear, RMSNorm)):
+                p.append(obj)
+            elif hasattr(obj, "ls1"):
+                p.append(obj)
+            elif hasattr(obj, "__dict__"):
                 for v in obj.__dict__.values():
-                    if isinstance(v, list): [p.extend(_collect(i)) for i in v]
-                    else: p.extend(_collect(v))
+                    if isinstance(v, list):
+                        [p.extend(_collect(i)) for i in v]
+                    else:
+                        p.extend(_collect(v))
             return p
+
         return _collect(self)
+
 
 class Lion:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
         self.params, self.lr, self.b1, self.b2, self.wd = params, lr, b1, b2, wd
         self.m = []
         for p in params:
-            if hasattr(p, 'W'): self.m.append(np.zeros_like(p.W))
-            elif hasattr(p, 'g'): self.m.append(np.zeros_like(p.g))
-            else: self.m.append(np.zeros_like(p.ls1))
+            if hasattr(p, "W"):
+                self.m.append(np.zeros_like(p.W))
+            elif hasattr(p, "g"):
+                self.m.append(np.zeros_like(p.g))
+            else:
+                self.m.append(np.zeros_like(p.ls1))
 
     def step(self, scale=1.0):
         lr = self.lr * scale
         for i, p in enumerate(self.params):
-            if hasattr(p, 'W'):
+            if hasattr(p, "W"):
                 w, g = p.W, p.dW
-                if self.wd > 0: w -= lr * self.wd * w
+                if self.wd > 0:
+                    w -= lr * self.wd * w
                 u = np.sign(self.b1 * self.m[i] + (1.0 - self.b1) * g)
                 w -= lr * u
                 self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * g
                 p.W = w
                 p.b -= lr * np.sign(p.db) * 0.1
-            elif hasattr(p, 'g'):
+            elif hasattr(p, "g"):
                 w, g = p.g, p.dg
                 u = np.sign(self.b1 * self.m[i] + (1.0 - self.b1) * g)
                 p.g -= lr * u
                 self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * g
-            elif hasattr(p, 'ls1'):
-                for attr in ['ls1', 'ls2']:
+            elif hasattr(p, "ls1"):
+                for attr in ["ls1", "ls2"]:
                     ls = getattr(p, attr)
-                    grad = getattr(p, 'd' + attr)
+                    grad = getattr(p, "d" + attr)
                     ls -= lr * np.sign(grad)
                     setattr(p, attr, ls)
+
 
 def get_data(n, d, k):
     X = np.random.randn(n, d).astype(np.float32)
@@ -205,6 +250,7 @@ def get_data(n, d, k):
     X = (X - np.mean(X)) / (np.std(X) + 1e-6)
     return X, y
 
+
 def train():
     N, D, K = 5000, 784, 10
     X, y = get_data(N, D, K)
@@ -213,7 +259,9 @@ def train():
     opt = Lion(p_list, lr=1e-4, wd=0.01)
     bs, epochs = 64, 40
 
-    print(f"OMEGA-ASI | V6-EVOLVED | PARAMS: {sum(p.W.size if hasattr(p, 'W') else p.g.size if hasattr(p, 'g') else p.ls1.size for p in p_list)}")
+    print(
+        f"OMEGA-ASI | V6-EVOLVED | PARAMS: {sum(p.W.size if hasattr(p, 'W') else p.g.size if hasattr(p, 'g') else p.ls1.size for p in p_list)}"
+    )
 
     for ep in range(epochs):
         idx = np.random.permutation(N)
@@ -236,14 +284,27 @@ def train():
             dout[range(m), yb] -= 1
             model.backward(dout / m)
 
-            gn = np.sqrt(sum(np.sum((p.dW if hasattr(p, 'W') else p.dg if hasattr(p, 'g') else 0)**2) for p in p_list))
+            gn = np.sqrt(
+                sum(
+                    np.sum(
+                        (p.dW if hasattr(p, "W") else p.dg if hasattr(p, "g") else 0)
+                        ** 2
+                    )
+                    for p in p_list
+                )
+            )
             if gn > 1.0:
                 for p in p_list:
-                    if hasattr(p, 'W'): p.dW /= gn
-                    elif hasattr(p, 'g'): p.dg /= gn
+                    if hasattr(p, "W"):
+                        p.dW /= gn
+                    elif hasattr(p, "g"):
+                        p.dg /= gn
             opt.step(scale=sched)
 
-        print(f"EP:{ep:03d} | LOSS:{l_acc:.4f} | ACC:{a_acc:.4f} | SPEED:{N/(time.time()-t0):.0f} samples/s")
+        print(
+            f"EP:{ep:03d} | LOSS:{l_acc:.4f} | ACC:{a_acc:.4f} | SPEED:{N/(time.time()-t0):.0f} samples/s"
+        )
+
 
 if __name__ == "__main__":
     train()

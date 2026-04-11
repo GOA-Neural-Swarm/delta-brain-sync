@@ -9,12 +9,11 @@ import git
 import re
 import random
 import base64
+import importlib
 
 
-# 1. Immediate Environment Setup (Must happen before heavy imports)
+# 1. Immediate Environment Setup
 def install_requirements():
-    # Explicitly upgrading torch and torchvision fixes the "operator torchvision::nms does not exist" error
-    # which is caused by a version mismatch in the environment.
     libs = [
         "torch --upgrade",
         "torchvision --upgrade",
@@ -27,15 +26,17 @@ def install_requirements():
         "sympy==1.12",
         "numpy",
         "scikit-learn",
-        "google-generativeai",  # Keeping for compatibility with existing code logic
-        "huggingface-hub<1.0",
+        "google-genai",  # Updated from google-generativeai
+        "huggingface-hub==0.24.0",  # Force specific version to fix ImportError
         "transformers>=4.44.0",
+        "pygithub",
     ]
     try:
-        # We use --upgrade to ensure torch and torchvision are synchronized
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
         )
+        # Force refresh of metadata for transformers/huggingface-hub
+        importlib.invalidate_caches()
         print("✅ [SYSTEM]: Requirements Ready and Synchronized.")
     except Exception as e:
         print(f"⚠️ Install Warning: {e}")
@@ -44,8 +45,8 @@ def install_requirements():
 install_requirements()
 
 # 2. Post-Installation Imports
-import torch  # Import torch first
-import google.generativeai as genai
+import torch
+from google import genai  # New SDK
 from datetime import datetime, UTC
 from functools import lru_cache
 import numpy as np
@@ -60,13 +61,11 @@ from transformers import (
 from firebase_admin import credentials, db, initialize_app, _apps
 import firebase_admin
 
-# Try importing omega_point if it exists, otherwise ignore
 try:
     import omega_point
 except ImportError:
     omega_point = None
 
-# 🔒 Kaggle/Colab Secrets System
 try:
     from kaggle_secrets import UserSecretsClient
 
@@ -110,11 +109,14 @@ REPO_PATH = (
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or (
     user_secrets.get_secret("GEMINI_API_KEY") if user_secrets else None
 )
+
+# Initialize New Gemini Client
+gemini_client = None
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel("gemini-flash-latest")
-else:
-    gemini_model = None
+    try:
+        gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+    except Exception as e:
+        print(f"⚠️ [GEMINI INIT ERROR]: {e}")
 
 if not firebase_admin._apps:
     try:
@@ -211,9 +213,11 @@ def recursive_self_upgrade(current_state, gen_id):
     save_evolution_state_to_neon(current_state, gen_id)
     if current_state["type"] == "finish":
         return current_state
-    return recursive_self_upgrade(
-        json.loads(predator_logic(json.dumps(current_state))), gen_id
-    )
+    try:
+        next_state = json.loads(predator_logic(json.dumps(current_state)))
+        return recursive_self_upgrade(next_state, gen_id)
+    except:
+        return current_state
 
 
 def save_evolution_state_to_neon(state, gen_id):
@@ -264,9 +268,13 @@ def query_groq_api(prompt):
 
 def get_gemini_wisdom(prompt_text):
     try:
-        if not gemini_model:
+        if not gemini_client:
             return None
-        return gemini_model.generate_content(prompt_text).text
+        # Updated for google-genai SDK
+        response = gemini_client.models.generate_content(
+            model="gemini-1.5-flash", contents=prompt_text
+        )
+        return response.text
     except Exception as e:
         print(f"⚠️ [GEMINI ERROR]: {e}")
         return None
