@@ -13,7 +13,11 @@ import base64
 
 # 1. Immediate Environment Setup (Must happen before heavy imports)
 def install_requirements():
+    # Explicitly upgrading torch and torchvision fixes the "operator torchvision::nms does not exist" error
+    # which is caused by a version mismatch in the environment.
     libs = [
+        "torch --upgrade",
+        "torchvision --upgrade",
         "psycopg2-binary",
         "firebase-admin",
         "bitsandbytes",
@@ -23,15 +27,16 @@ def install_requirements():
         "sympy==1.12",
         "numpy",
         "scikit-learn",
-        "google-generativeai",
-        "huggingface-hub<1.0",  # Fixes the version conflict
-        "transformers>=4.44.0",  # Ensures compatibility
+        "google-generativeai",  # Keeping for compatibility with existing code logic
+        "huggingface-hub<1.0",
+        "transformers>=4.44.0",
     ]
     try:
+        # We use --upgrade to ensure torch and torchvision are synchronized
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
         )
-        print("✅ [SYSTEM]: Requirements Ready.")
+        print("✅ [SYSTEM]: Requirements Ready and Synchronized.")
     except Exception as e:
         print(f"⚠️ Install Warning: {e}")
 
@@ -39,11 +44,11 @@ def install_requirements():
 install_requirements()
 
 # 2. Post-Installation Imports
+import torch  # Import torch first
 import google.generativeai as genai
 from datetime import datetime, UTC
 from functools import lru_cache
 import numpy as np
-import torch
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from transformers import (

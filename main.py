@@ -1,15 +1,18 @@
-
 import numpy as np
 import time
+
 
 def softmax(x, axis=-1):
     max_x = np.max(x, axis=axis, keepdims=True)
     e_x = np.exp(x - max_x)
     return e_x / (np.sum(e_x, axis=axis, keepdims=True) + 1e-12)
 
+
 class Linear:
     def __init__(self, in_f, out_f, scale=1.0):
-        self.W = np.random.randn(in_f, out_f).astype(np.float32) * (np.sqrt(2.0 / in_f) * scale)
+        self.W = np.random.randn(in_f, out_f).astype(np.float32) * (
+            np.sqrt(2.0 / in_f) * scale
+        )
         self.b = np.zeros(out_f, dtype=np.float32)
         self.x, self.dW, self.db = None, None, None
 
@@ -24,6 +27,7 @@ class Linear:
 
     def params(self):
         return [{"ref": self.W, "grad": self.dW}, {"ref": self.b, "grad": self.db}]
+
 
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
@@ -45,6 +49,7 @@ class RMSNorm:
 
     def params(self):
         return [{"ref": self.g, "grad": self.dg}]
+
 
 class SwiGLU:
     def __init__(self, dim, h_dim):
@@ -69,6 +74,7 @@ class SwiGLU:
 
     def params(self):
         return self.w1.params() + self.w2.params() + self.w3.params()
+
 
 class MultiHeadAttention:
     def __init__(self, dim, heads=8):
@@ -100,12 +106,15 @@ class MultiHeadAttention:
         ds /= np.sqrt(self.hd)
         dq = np.einsum("bhm,bmd->bhd", ds, self.k)
         dk = np.einsum("bhm,bhd->bmd", ds, self.q)
-        return (self.wq.backward(dq.reshape(b, d)) + 
-                self.wk.backward(dk.reshape(b, d)) + 
-                self.wv.backward(dv.reshape(b, d)))
+        return (
+            self.wq.backward(dq.reshape(b, d))
+            + self.wk.backward(dk.reshape(b, d))
+            + self.wv.backward(dv.reshape(b, d))
+        )
 
     def params(self):
         return self.wq.params() + self.wk.params() + self.wv.params() + self.wo.params()
+
 
 class RedundantMoE:
     def __init__(self, dim):
@@ -127,11 +136,15 @@ class RedundantMoE:
         dx2 = self.groq.backward(dout * p2)
         dp1 = np.sum(dout * self.o1, axis=-1, keepdims=True)
         dp2 = np.sum(dout * self.o2, axis=-1, keepdims=True)
-        dg = self.p * (np.hstack([dp1, dp2]) - np.sum(self.p * np.hstack([dp1, dp2]), axis=-1, keepdims=True))
+        dg = self.p * (
+            np.hstack([dp1, dp2])
+            - np.sum(self.p * np.hstack([dp1, dp2]), axis=-1, keepdims=True)
+        )
         return dx1 + dx2 + self.gate.backward(dg)
 
     def params(self):
         return self.gemini.params() + self.groq.params() + self.gate.params()
+
 
 class SovereignBlock:
     def __init__(self, dim):
@@ -154,7 +167,10 @@ class SovereignBlock:
         return dx_m + dn1
 
     def params(self):
-        return self.n1.params() + self.at.params() + self.n2.params() + self.moe.params()
+        return (
+            self.n1.params() + self.at.params() + self.n2.params() + self.moe.params()
+        )
+
 
 class SovereignArchitect:
     def __init__(self, in_d, h_d, out_d, depth=4):
@@ -182,6 +198,7 @@ class SovereignArchitect:
         p.extend(self.norm.params() + self.head.params())
         return p
 
+
 class Lion:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
         self.params = params
@@ -191,12 +208,15 @@ class Lion:
     def step(self, scale=1.0):
         lr = self.lr * scale
         for i, p in enumerate(self.params):
-            if p["grad"] is None: continue
+            if p["grad"] is None:
+                continue
             w, g = p["ref"], p["grad"]
-            if self.wd > 0: w -= lr * self.wd * w
+            if self.wd > 0:
+                w -= lr * self.wd * w
             u = np.sign(self.b1 * self.m[i] + (1.0 - self.b1) * g)
             w -= lr * u
             self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * g
+
 
 def get_data(n, d, k):
     X = np.random.randn(n, d).astype(np.float32)
@@ -206,13 +226,16 @@ def get_data(n, d, k):
     X = (X - X.mean()) / (X.std() + 1e-6)
     return X, y
 
+
 def train():
     N, D, K = 20000, 784, 10
     X, y = get_data(N, D, K)
     model = SovereignArchitect(D, 256, K, depth=4)
     opt = Lion(model.params(), lr=1e-4, wd=0.01)
     bs, epochs = 128, 50
-    print(f"OMEGA-ASI | ARCHITECTURE: SOVEREIGN-V16 | PARAMS: {sum(p['ref'].size for p in model.params())}")
+    print(
+        f"OMEGA-ASI | ARCHITECTURE: SOVEREIGN-V16 | PARAMS: {sum(p['ref'].size for p in model.params())}"
+    )
     for ep in range(epochs):
         idx = np.random.permutation(N)
         l_acc, a_acc, t0 = 0, 0, time.time()
@@ -229,13 +252,23 @@ def train():
             dout = probs.copy()
             dout[range(m), yb] -= 1
             model.backward(dout / m)
-            gn = np.sqrt(sum(np.sum(p["grad"]**2) for p in model.params() if p["grad"] is not None))
+            gn = np.sqrt(
+                sum(
+                    np.sum(p["grad"] ** 2)
+                    for p in model.params()
+                    if p["grad"] is not None
+                )
+            )
             if gn > 1.0:
                 for p in model.params():
-                    if p["grad"] is not None: p["grad"] /= (gn + 1e-6)
+                    if p["grad"] is not None:
+                        p["grad"] /= gn + 1e-6
             opt.step(scale=sched)
         dt = time.time() - t0
-        print(f"EP:{ep:02d} | LOSS:{l_acc:.4f} | ACC:{a_acc:.4f} | SPEED:{N/dt:.0f} samples/s | LR:{opt.lr*sched:.7f}")
+        print(
+            f"EP:{ep:02d} | LOSS:{l_acc:.4f} | ACC:{a_acc:.4f} | SPEED:{N/dt:.0f} samples/s | LR:{opt.lr*sched:.7f}"
+        )
+
 
 if __name__ == "__main__":
     train()
