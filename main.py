@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -39,55 +40,26 @@ class RMSNorm:
         v = (dout * self.g)
         return self.rstd * (v - nx * np.mean(v * nx, axis=-1, keepdims=True))
 
-class GeminiExpert:
-    def __init__(self, dim, h_dim):
-        self.w1 = Linear(dim, h_dim)
-        self.w2 = Linear(dim, h_dim)
-        self.w3 = Linear(h_dim, dim)
-
-    def forward(self, x):
-        self.z1 = self.w1.forward(x)
-        self.z2 = self.w2.forward(x)
-        self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.z1, -10, 10)))
-        self.swish = self.z1 * self.sig
-        return self.w3.forward(self.swish * self.z2)
-
-    def backward(self, dout):
-        d3 = self.w3.backward(dout)
-        dz2 = d3 * self.swish
-        dswish = d3 * self.z2
-        dz1 = dswish * (self.sig * (1.0 + self.z1 * (1.0 - self.sig)))
-        return self.w1.backward(dz1) + self.w2.backward(dz2)
-
-class GroqExpert:
-    def __init__(self, dim, h_dim):
-        self.w1 = Linear(dim, h_dim)
-        self.w2 = Linear(h_dim, dim)
-
-    def forward(self, x):
-        self.z = self.w1.forward(x)
-        self.mask = (self.z > 0).astype(np.float32)
-        return self.w2.forward(self.z * self.mask)
-
-    def backward(self, dout):
-        dz = self.w2.backward(dout) * self.mask
-        return self.w1.backward(dz)
-
 class RedundantMoE:
     def __init__(self, dim):
-        self.gemini = GeminiExpert(dim, dim * 2)
-        self.groq = GroqExpert(dim, dim * 2)
+        self.w1 = Linear(dim, dim * 2)
+        self.w2 = Linear(dim, dim * 2)
+        self.w3 = Linear(dim * 2, dim)
         self.gate = Linear(dim, 2)
 
     def forward(self, x):
         self.probs = fast_softmax(self.gate.forward(x))
-        self.o1 = self.gemini.forward(x)
-        self.o2 = self.groq.forward(x)
+        self.z1 = self.w1.forward(x)
+        self.z2 = self.w2.forward(x)
+        self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.z1, -10, 10)))
+        self.swish = self.z1 * self.sig
+        self.o1 = self.w3.forward(self.swish * self.z2)
+        self.o2 = self.w3.forward(self.z1 * self.z2)
         return self.probs[:, 0:1] * self.o1 + self.probs[:, 1:2] * self.o2
 
     def backward(self, dout):
         p1, p2 = self.probs[:, 0:1], self.probs[:, 1:2]
-        dx = self.gemini.backward(dout * p1) + self.groq.backward(dout * p2)
+        dx = self.w1.backward(dout * p1) + self.w2.backward(dout * p2)
         dp1 = np.sum(dout * self.o1, axis=-1, keepdims=True)
         dp2 = np.sum(dout * self.o2, axis=-1, keepdims=True)
         dp = np.concatenate([dp1, dp2], axis=-1)
@@ -123,7 +95,6 @@ class MultiHeadAttention:
         d_dots = self.att * (d_att - np.sum(self.att * d_att, axis=-1, keepdims=True)) * self.scale
         d_q = np.matmul(d_dots, self.k)
         d_k = np.matmul(d_dots.transpose(0, 1, 3, 2), self.q)
-        
         dq = self.wq.backward(d_q.transpose(0, 2, 1, 3).reshape(-1, d))
         dk = self.wk.backward(d_k.transpose(0, 2, 1, 3).reshape(-1, d))
         dv = self.wv.backward(d_v.transpose(0, 2, 1, 3).reshape(-1, d))
@@ -186,7 +157,7 @@ class SovereignArchitect:
         def _collect(obj):
             p = []
             if isinstance(obj, (Linear, RMSNorm)): p.append(obj)
-            elif hasattr(obj, 'ls1'): p.append(obj) # LayerScale
+            elif hasattr(obj, 'ls1'): p.append(obj) 
             elif hasattr(obj, '__dict__'):
                 for v in obj.__dict__.values():
                     if isinstance(v, list): [p.extend(_collect(i)) for i in v]
@@ -241,37 +212,37 @@ def train():
     p_list = model.params()
     opt = Lion(p_list, lr=1e-4, wd=0.01)
     bs, epochs = 64, 40
-    
+
     print(f"OMEGA-ASI | V6-EVOLVED | PARAMS: {sum(p.W.size if hasattr(p, 'W') else p.g.size if hasattr(p, 'g') else p.ls1.size for p in p_list)}")
-    
+
     for ep in range(epochs):
         idx = np.random.permutation(N)
         l_acc, a_acc, t0 = 0, 0, time.time()
         sched = 0.5 * (1 + np.cos(np.pi * ep / epochs))
-        
+
         for i in range(0, N, bs):
             bi = idx[i : i + bs]
             xb, yb = X[bi], y[bi]
             m = xb.shape[0]
-            
+
             logits = model.forward(xb)
             probs = fast_softmax(logits)
-            
+
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             l_acc += loss * (m / N)
             a_acc += np.mean(np.argmax(probs, axis=1) == yb) * (m / N)
-            
+
             dout = probs.copy()
             dout[range(m), yb] -= 1
             model.backward(dout / m)
-            
+
             gn = np.sqrt(sum(np.sum((p.dW if hasattr(p, 'W') else p.dg if hasattr(p, 'g') else 0)**2) for p in p_list))
             if gn > 1.0:
                 for p in p_list:
                     if hasattr(p, 'W'): p.dW /= gn
                     elif hasattr(p, 'g'): p.dg /= gn
             opt.step(scale=sched)
-            
+
         print(f"EP:{ep:03d} | LOSS:{l_acc:.4f} | ACC:{a_acc:.4f} | SPEED:{N/(time.time()-t0):.0f} samples/s")
 
 if __name__ == "__main__":
