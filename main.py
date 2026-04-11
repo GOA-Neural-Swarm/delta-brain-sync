@@ -1,14 +1,16 @@
-
 import numpy as np
 import time
+
 
 def fast_softmax(x, axis=-1):
     c = np.max(x, axis=axis, keepdims=True)
     e = np.exp(x - c)
     return e / (np.sum(e, axis=axis, keepdims=True) + 1e-12)
 
+
 def swiglu(x):
     return x * (1.0 / (1.0 + np.exp(-np.clip(x, -10, 10))))
+
 
 class Linear:
     def __init__(self, in_f, out_f, scale=1.0):
@@ -22,9 +24,12 @@ class Linear:
         return np.dot(x, self.W) + self.b
 
     def backward(self, dout):
-        self.dW = np.dot(self.x.reshape(-1, self.x.shape[-1]).T, dout.reshape(-1, dout.shape[-1]))
+        self.dW = np.dot(
+            self.x.reshape(-1, self.x.shape[-1]).T, dout.reshape(-1, dout.shape[-1])
+        )
         self.db = np.sum(dout, axis=tuple(range(len(dout.shape) - 1)))
         return np.dot(dout, self.W.T)
+
 
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
@@ -42,6 +47,7 @@ class RMSNorm:
         self.dg = np.sum(dout * nx, axis=tuple(range(len(dout.shape) - 1)))
         v = dout * self.g
         return self.rstd * (v - nx * np.mean(v * nx, axis=-1, keepdims=True))
+
 
 class BimodalEngine:
     def __init__(self, dim):
@@ -64,13 +70,18 @@ class BimodalEngine:
         self.z_groq = self.groq_w1.forward(x)
         self.out_groq = self.groq_w2.forward(self.z_groq)
 
-        return self.probs[..., 0:1] * self.out_gem + self.probs[..., 1:2] * self.out_groq
+        return (
+            self.probs[..., 0:1] * self.out_gem + self.probs[..., 1:2] * self.out_groq
+        )
 
     def backward(self, dout):
         p1, p2 = self.probs[..., 0:1], self.probs[..., 1:2]
 
         d_gem = self.gemini_w2.backward(dout * p1)
-        d_swi = d_gem * (swiglu(self.z_gem) / (self.z_gem + 1e-12) + (1.0 / (1.0 + np.exp(-self.z_gem))) * (1 - swiglu(self.z_gem)))
+        d_swi = d_gem * (
+            swiglu(self.z_gem) / (self.z_gem + 1e-12)
+            + (1.0 / (1.0 + np.exp(-self.z_gem))) * (1 - swiglu(self.z_gem))
+        )
         dx_gem = self.gemini_w1.backward(d_swi)
 
         d_groq = self.groq_w2.backward(dout * p2)
@@ -84,6 +95,7 @@ class BimodalEngine:
 
         return dx_gem + dx_groq + dx_gate
 
+
 class MultiHeadAttention:
     def __init__(self, dim, heads=8):
         self.dim, self.heads = dim, heads
@@ -93,9 +105,15 @@ class MultiHeadAttention:
 
     def forward(self, x):
         b, s, d = x.shape
-        self.q = self.wq.forward(x).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
-        self.k = self.wk.forward(x).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
-        self.v = self.wv.forward(x).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
+        self.q = (
+            self.wq.forward(x).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
+        )
+        self.k = (
+            self.wk.forward(x).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
+        )
+        self.v = (
+            self.wv.forward(x).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
+        )
 
         self.dots = np.matmul(self.q, self.k.transpose(0, 1, 3, 2)) * self.scale
         self.att = fast_softmax(self.dots)
@@ -104,10 +122,18 @@ class MultiHeadAttention:
 
     def backward(self, dout):
         b, s, d = dout.shape
-        d_wo = self.wo.backward(dout).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
+        d_wo = (
+            self.wo.backward(dout)
+            .reshape(b, s, self.heads, self.hd)
+            .transpose(0, 2, 1, 3)
+        )
         d_att = np.matmul(d_wo, self.v.transpose(0, 1, 3, 2))
         d_v = np.matmul(self.att.transpose(0, 1, 3, 2), d_wo)
-        d_dots = self.att * (d_att - np.sum(self.att * d_att, axis=-1, keepdims=True)) * self.scale
+        d_dots = (
+            self.att
+            * (d_att - np.sum(self.att * d_att, axis=-1, keepdims=True))
+            * self.scale
+        )
         d_q = np.matmul(d_dots, self.k)
         d_k = np.matmul(d_dots.transpose(0, 1, 3, 2), self.q)
 
@@ -115,6 +141,7 @@ class MultiHeadAttention:
         dk = self.wk.backward(d_k.transpose(0, 2, 1, 3).reshape(b, s, d))
         dv = self.wv.backward(d_v.transpose(0, 2, 1, 3).reshape(b, s, d))
         return dq + dk + dv
+
 
 class SovereignBlock:
     def __init__(self, dim):
@@ -142,6 +169,7 @@ class SovereignBlock:
         dn1 = self.ln1.backward(da)
         return dx2 + dn1
 
+
 class SovereignArchitect:
     def __init__(self, in_d, h_d, out_d, depth=3):
         self.patch_size = 4
@@ -162,46 +190,65 @@ class SovereignArchitect:
 
     def backward(self, dout):
         dout = self.norm.backward(self.head.backward(dout))
-        dout = np.tile(dout[:, np.newaxis, :] / self.num_patches, (1, self.num_patches, 1))
+        dout = np.tile(
+            dout[:, np.newaxis, :] / self.num_patches, (1, self.num_patches, 1)
+        )
         for block in reversed(self.blocks):
             dout = block.backward(dout)
         self.stem.backward(dout)
 
     def params(self):
         res = []
+
         def _walk(obj):
-            if isinstance(obj, (Linear, RMSNorm)): res.append(obj)
-            elif hasattr(obj, "ls1"): res.append(obj)
+            if isinstance(obj, (Linear, RMSNorm)):
+                res.append(obj)
+            elif hasattr(obj, "ls1"):
+                res.append(obj)
             elif hasattr(obj, "__dict__"):
                 for v in obj.__dict__.values():
-                    if isinstance(v, list): [_walk(i) for i in v]
-                    else: _walk(v)
+                    if isinstance(v, list):
+                        [_walk(i) for i in v]
+                    else:
+                        _walk(v)
+
         _walk(self)
         return res
+
 
 class Lion:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
         self.params, self.lr, self.b1, self.b2, self.wd = params, lr, b1, b2, wd
-        self.m = [np.zeros_like(getattr(p, 'W', getattr(p, 'g', getattr(p, 'ls1', None)))) for p in params]
+        self.m = [
+            np.zeros_like(getattr(p, "W", getattr(p, "g", getattr(p, "ls1", None))))
+            for p in params
+        ]
 
     def step(self, scale=1.0):
         lr = self.lr * scale
         for i, p in enumerate(self.params):
-            if hasattr(p, 'W'):
-                for attr in ['W', 'b']:
-                    w, g = getattr(p, attr), getattr(p, 'd'+attr)
-                    if attr == 'W' and self.wd > 0: w -= lr * self.wd * w
-                    u = np.sign(self.b1 * self.m[i] + (1.0 - self.b1) * g) if attr == 'W' else np.sign(g)
+            if hasattr(p, "W"):
+                for attr in ["W", "b"]:
+                    w, g = getattr(p, attr), getattr(p, "d" + attr)
+                    if attr == "W" and self.wd > 0:
+                        w -= lr * self.wd * w
+                    u = (
+                        np.sign(self.b1 * self.m[i] + (1.0 - self.b1) * g)
+                        if attr == "W"
+                        else np.sign(g)
+                    )
                     w -= lr * u
-                    if attr == 'W': self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * g
+                    if attr == "W":
+                        self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * g
                     setattr(p, attr, w)
-            elif hasattr(p, 'g'):
+            elif hasattr(p, "g"):
                 u = np.sign(self.b1 * self.m[i] + (1.0 - self.b1) * p.dg)
                 p.g -= lr * u
                 self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * p.dg
-            elif hasattr(p, 'ls1'):
-                for a in ['ls1', 'ls2']:
-                    setattr(p, a, getattr(p, a) - lr * np.sign(getattr(p, 'd'+a)))
+            elif hasattr(p, "ls1"):
+                for a in ["ls1", "ls2"]:
+                    setattr(p, a, getattr(p, a) - lr * np.sign(getattr(p, "d" + a)))
+
 
 def get_data(n, d, k):
     X = np.random.randn(n, d).astype(np.float32)
@@ -209,6 +256,7 @@ def get_data(n, d, k):
     centers = np.random.randn(k, d).astype(np.float32) * 5.0
     X += centers[y]
     return (X - np.mean(X)) / (np.std(X) + 1e-6), y
+
 
 def train():
     N, D, K = 5000, 784, 10
@@ -218,7 +266,9 @@ def train():
     opt = Lion(p_list, lr=2e-4, wd=0.02)
     bs, epochs = 64, 50
 
-    print(f"OMEGA-ASI | V7-HYBRID-CORE | PARAMS: {sum(x.W.size if hasattr(x, 'W') else x.g.size if hasattr(x, 'g') else x.ls1.size for x in p_list)}")
+    print(
+        f"OMEGA-ASI | V7-HYBRID-CORE | PARAMS: {sum(x.W.size if hasattr(x, 'W') else x.g.size if hasattr(x, 'g') else x.ls1.size for x in p_list)}"
+    )
 
     for ep in range(epochs):
         idx = np.random.permutation(N)
@@ -241,15 +291,22 @@ def train():
             dout[range(m), yb] -= 1
             model.backward(dout / m)
 
-            gn = np.sqrt(sum(np.sum(getattr(p, 'dW', getattr(p, 'dg', 0))**2) for p in p_list))
+            gn = np.sqrt(
+                sum(np.sum(getattr(p, "dW", getattr(p, "dg", 0)) ** 2) for p in p_list)
+            )
             if gn > 1.0:
                 for p in p_list:
-                    if hasattr(p, 'dW'): p.dW /= gn
-                    if hasattr(p, 'dg'): p.dg /= gn
+                    if hasattr(p, "dW"):
+                        p.dW /= gn
+                    if hasattr(p, "dg"):
+                        p.dg /= gn
 
             opt.step(scale=sched)
 
-        print(f"EP:{ep:03d} | LOSS:{l_acc:.4f} | ACC:{a_acc:.4f} | {N/(time.time()-t0):.0f} s/s")
+        print(
+            f"EP:{ep:03d} | LOSS:{l_acc:.4f} | ACC:{a_acc:.4f} | {N/(time.time()-t0):.0f} s/s"
+        )
+
 
 if __name__ == "__main__":
     train()
