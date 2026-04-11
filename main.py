@@ -1,15 +1,13 @@
 import numpy as np
 import time
 
-def stable_softmax(x, axis=-1):
-    z = x - np.max(x, axis=axis, keepdims=True)
-    n = np.exp(z)
-    return n / (np.sum(n, axis=axis, keepdims=True) + 1e-12)
+def fast_softmax(x, axis=-1):
+    exps = np.exp(x - np.max(x, axis=axis, keepdims=True))
+    return exps / (np.sum(exps, axis=axis, keepdims=True) + 1e-12)
 
 class Linear:
     def __init__(self, in_f, out_f, init_scale=1.0):
-        std = np.sqrt(2.0 / in_f) * init_scale
-        self.W = np.random.normal(0, std, (in_f, out_f)).astype(np.float32)
+        self.W = np.random.randn(in_f, out_f).astype(np.float32) * (np.sqrt(2.0 / in_f) * init_scale)
         self.b = np.zeros(out_f, dtype=np.float32)
         self.x, self.dW, self.db = None, None, None
 
@@ -40,7 +38,7 @@ class RMSNorm:
     def backward(self, dout):
         nx = self.x * self.rstd
         self.dg = np.sum(dout * nx, axis=0)
-        v = dout * self.g
+        v = (dout * self.g)
         return self.rstd * (v - nx * np.mean(v * nx, axis=-1, keepdims=True))
 
     def params(self):
@@ -64,7 +62,7 @@ class SwiGLU:
         ds = dc * self.act
         da = dc * self.swish
         dg = ds * (self.sig * (1.0 + self.gate * (1.0 - self.sig)))
-        return self.w12.backward(np.hstack([dg, da]))
+        return self.w12.backward(np.concatenate([dg, da], axis=-1))
 
     def params(self):
         return self.w12.params() + self.w3.params()
@@ -82,7 +80,7 @@ class MultiHeadAttention:
         qkv = self.wqkv.forward(x).reshape(b, 3, self.heads, self.hd)
         self.q, self.k, self.v = qkv[:, 0], qkv[:, 1], qkv[:, 2]
         dots = np.einsum('bhd,bmd->bhm', self.q, self.k) * self.scale
-        self.att = stable_softmax(dots)
+        self.att = fast_softmax(dots)
         out = np.einsum('bhm,bmd->bhd', self.att, self.v)
         return self.wo.forward(out.reshape(b, d))
 
@@ -101,13 +99,12 @@ class MultiHeadAttention:
 
 class RedundantMoE:
     def __init__(self, dim):
-        self.gemini = SwiGLU(dim, dim * 4) # High Capacity
-        self.groq = Linear(dim, dim)      # High Speed
+        self.gemini = SwiGLU(dim, dim * 4)
+        self.groq = Linear(dim, dim)
         self.gate = Linear(dim, 2)
 
     def forward(self, x):
-        self.g_logits = self.gate.forward(x)
-        self.p = stable_softmax(self.g_logits)
+        self.p = fast_softmax(self.gate.forward(x))
         self.o1 = self.gemini.forward(x)
         self.o2 = self.groq.forward(x)
         return self.p[:, 0:1] * self.o1 + self.p[:, 1:2] * self.o2
@@ -118,7 +115,7 @@ class RedundantMoE:
         dx2 = self.groq.backward(dout * p2)
         dp1 = np.sum(dout * self.o1, axis=-1, keepdims=True)
         dp2 = np.sum(dout * self.o2, axis=-1, keepdims=True)
-        dg = self.p * (np.hstack([dp1, dp2]) - np.sum(self.p * np.hstack([dp1, dp2]), axis=-1, keepdims=True))
+        dg = self.p * (np.concatenate([dp1, dp2], axis=-1) - np.sum(self.p * np.concatenate([dp1, dp2], axis=-1), axis=-1, keepdims=True))
         return dx1 + dx2 + self.gate.backward(dg)
 
     def params(self):
@@ -132,26 +129,25 @@ class SovereignBlock:
         self.moe = RedundantMoE(dim)
 
     def forward(self, x):
-        self.x1 = x
+        self.x_orig = x
         self.norm1 = self.ln1.forward(x)
-        self.x2 = self.x1 + self.attn.forward(self.norm1)
-        self.norm2 = self.ln2.forward(self.x2)
-        self.x3 = self.x2 + self.moe.forward(self.norm2)
-        return self.x3
+        self.x_attn = self.x_orig + self.attn.forward(self.norm1)
+        self.norm2 = self.ln2.forward(self.x_attn)
+        return self.x_attn + self.moe.forward(self.norm2)
 
     def backward(self, dout):
         d_moe = self.moe.backward(dout)
         d_norm2 = self.ln2.backward(d_moe)
-        dx2 = dout + d_norm2
-        d_attn = self.attn.backward(self.ln1.forward(dx2)) # Approx norm for speed
+        dx_attn = dout + d_norm2
+        d_attn = self.attn.backward(self.ln1.forward(dx_attn))
         d_norm1 = self.ln1.backward(d_attn)
-        return dx2 + d_norm1
+        return dx_attn + d_norm1
 
     def params(self):
         return self.ln1.params() + self.attn.params() + self.ln2.params() + self.moe.params()
 
 class SovereignArchitect:
-    def __init__(self, in_d, h_d, out_d, depth=3):
+    def __init__(self, in_d, h_d, out_d, depth=2):
         self.stem = Linear(in_d, h_d)
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
         self.norm = RMSNorm(h_d)
@@ -190,9 +186,10 @@ class Lion:
 def get_data(n, d, k):
     X = np.random.randn(n, d).astype(np.float32)
     y = np.random.randint(0, k, n)
-    c = np.random.randn(k, d).astype(np.float32) * 4.0
-    X += c[y]
-    return (X - np.mean(X)) / (np.std(X) + 1e-6), y
+    centers = np.random.randn(k, d).astype(np.float32) * 5.0
+    X += centers[y]
+    X = (X - np.mean(X, axis=0)) / (np.std(X, axis=0) + 1e-6)
+    return X, y
 
 def train():
     N, D, K = 10000, 784, 10
@@ -201,7 +198,7 @@ def train():
     opt = Lion(model.params(), lr=1e-4, wd=0.01)
     bs, epochs = 64, 20
     
-    print(f"OMEGA-ASI | SOVEREIGN-V2 | PARAMS: {sum(p['ref'].size for p in model.params())}")
+    print(f"OMEGA-ASI | SOVEREIGN-V3 | PARAMS: {sum(p['ref'].size for p in model.params())}")
     
     for ep in range(epochs):
         idx = np.random.permutation(N)
@@ -213,7 +210,9 @@ def train():
             xb, yb = X[bi], y[bi]
             m = xb.shape[0]
             
-            probs = stable_softmax(model.forward(xb))
+            logits = model.forward(xb)
+            probs = fast_softmax(logits)
+            
             loss = -np.mean(np.log(probs[range(m), yb] + 1e-10))
             l_acc += loss * (m / N)
             a_acc += np.mean(np.argmax(probs, axis=1) == yb) * (m / N)
@@ -226,9 +225,10 @@ def train():
             if gn > 1.0:
                 for p in model.params():
                     if p["grad"] is not None: p["grad"] /= (gn + 1e-6)
+            
             opt.step(scale=sched)
             
-        print(f"EP:{ep:02d} | LOSS:{l_acc:.4f} | ACC:{a_acc:.4f} | SPEED:{N/(time.time()-t0):.0f}s/s")
+        print(f"EP:{ep:02d} | LOSS:{l_acc:.4f} | ACC:{a_acc:.4f} | SPEED:{N/(time.time()-t0):.0f} samples/s")
 
 if __name__ == "__main__":
     train()
