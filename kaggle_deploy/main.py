@@ -15,8 +15,8 @@ import importlib
 # 1. Immediate Environment Setup
 def install_requirements():
     libs = [
-        "torch --upgrade",
-        "torchvision --upgrade",
+        "torch",
+        "torchvision",
         "psycopg2-binary",
         "firebase-admin",
         "bitsandbytes",
@@ -33,7 +33,16 @@ def install_requirements():
     ]
     try:
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                *libs,
+                "--quiet",
+                "--no-cache-dir",
+            ]
         )
         # Force refresh of metadata for transformers/huggingface-hub
         importlib.invalidate_caches()
