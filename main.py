@@ -111,8 +111,8 @@ class MultiHeadAttention:
 
 class RedundantMoE:
     def __init__(self, dim):
-        self.gemini = SwiGLU(dim, dim * 4) # High Capacity
-        self.groq = SwiGLU(dim, dim * 2)   # High Throughput
+        self.gemini = SwiGLU(dim, dim * 4)
+        self.groq = SwiGLU(dim, dim * 2)
         self.gate = Linear(dim, 2)
         self.p, self.o1, self.o2 = None, None, None
 
@@ -212,7 +212,7 @@ def train():
     opt = Lion(model.params(), lr=1e-4, wd=0.01)
     
     bs, epochs = 128, 50
-    print(f"OMEGA-ASI | ARCHITECTURE: SOVEREIGN-V14 | PARAMS: {sum(p['ref'].size for p in model.params())}")
+    print(f"OMEGA-ASI | ARCHITECTURE: SOVEREIGN-V15 | PARAMS: {sum(p['ref'].size for p in model.params())}")
 
     for ep in range(epochs):
         idx = np.random.permutation(N)
