@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -142,19 +143,15 @@ class SovereignMoE:
         x_flat = x.reshape(-1, self.dim)
         logits = self.gate.forward(x_flat)
         probs = fast_softmax(logits)
-        
         top_k_indices = np.argsort(probs, axis=-1)[:, -self.k:]
         self.top_k_indices = top_k_indices
-        
         rows = np.arange(x_flat.shape[0])[:, None]
         top_k_probs = probs[rows, top_k_indices]
         top_k_probs /= (np.sum(top_k_probs, axis=-1, keepdims=True) + 1e-12)
         self.top_k_probs = top_k_probs
-        
         out_flat = np.zeros_like(x_flat)
         self.expert_masks = []
         self.expert_outs = [None] * self.num_experts
-        
         for i in range(self.num_experts):
             mask = np.any(top_k_indices == i, axis=1)
             self.expert_masks.append(mask)
@@ -164,7 +161,6 @@ class SovereignMoE:
                 e_out = self.experts[i].forward(x_flat[mask])
                 self.expert_outs[i] = e_out
                 out_flat[mask] += e_out * p
-                
         self.probs = probs
         return out_flat.reshape(self.orig_shape)
 
@@ -173,7 +169,6 @@ class SovereignMoE:
         x_flat = self.gate.x
         dx_flat = np.zeros_like(dout_flat)
         dg_logits = np.zeros_like(self.probs)
-        
         for i in range(self.num_experts):
             mask = self.expert_masks[i]
             if np.any(mask):
@@ -181,7 +176,6 @@ class SovereignMoE:
                 p = self.top_k_probs[mask, slot_idx][:, None]
                 dx_flat[mask] += self.experts[i].backward(dout_flat[mask] * p)
                 dg_logits[mask, i] = np.sum(dout_flat[mask] * self.expert_outs[i], axis=-1)
-        
         dg = self.probs * (dg_logits - np.sum(self.probs * dg_logits, axis=-1, keepdims=True))
         dx_flat += self.gate.backward(dg)
         return dx_flat.reshape(self.orig_shape)
@@ -281,35 +275,28 @@ def train():
     lr_init = 1e-3
     opt = LionOptimizer(params, lr=lr_init, wd=0.01)
     bs, epochs = 64, 40
-    
     print("OMEGA-ASI | V18-RECURSIVE-EVOLUTION | ONLINE")
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
         l_sum, a_sum, t0 = 0, 0, time.time()
         opt.lr = lr_init * 0.5 * (1 + np.cos(np.pi * ep / epochs))
-        
         for i in range(0, len(X), bs):
             xb, yb = X[idx[i : i + bs]], y[idx[i : i + bs]]
             if len(xb) < bs: continue
-            
             logits = model.forward(xb)
             probs = fast_softmax(logits)
-            
             loss = -np.mean(np.log(probs[range(len(yb)), yb] + 1e-10))
             l_sum += loss * len(yb)
             a_sum += np.sum(np.argmax(probs, axis=1) == yb)
-            
             dout = (probs.copy())
             dout[range(len(yb)), yb] -= 1
             model.backward(dout / len(yb))
-            
             gn = np.sqrt(sum(np.sum(p.dW**2) + np.sum(p.db**2) for p in params if hasattr(p, "dW")))
             if gn > 1.0:
                 for p in params:
                     if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
                     if hasattr(p, "dg"): p.dg /= gn
             opt.step()
-            
         dt = time.time() - t0
         print(f"STEP:{ep:03d} | LOSS:{l_sum/len(X):.4f} | ACC:{a_sum/len(X):.4f} | SPEED:{len(X)/dt:.1f} samples/s")
 
