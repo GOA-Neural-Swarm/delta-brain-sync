@@ -56,23 +56,23 @@ class RMSNorm:
         return self.rstd * (v - nx * np.mean(v * nx, axis=-1, keepdims=True))
 
 class RotaryEmbedding:
-    def __init__(self, dim):
+    def __init__(self, dim, max_seq_len=64):
         self.dim = dim
         inv_freq = 1.0 / (10000 ** (np.arange(0, dim, 2).astype(np.float32) / dim))
-        self.inv_freq = inv_freq
+        t = np.arange(max_seq_len, dtype=np.float32)
+        freqs = np.outer(t, inv_freq)
+        emb = np.concatenate((freqs, freqs), axis=-1)
+        self.cos_cache = np.cos(emb)[None, :, None, :]
+        self.sin_cache = np.sin(emb)[None, :, None, :]
 
     def forward(self, q, k):
-        b, s, h, d = q.shape
-        t = np.arange(s, dtype=np.float32)
-        freqs = np.outer(t, self.inv_freq)
-        emb = np.concatenate((freqs, freqs), axis=-1)
-        self.cos = np.cos(emb)[None, :, None, :]
-        self.sin = np.sin(emb)[None, :, None, :]
-        
+        s = q.shape[1]
+        cos, sin = self.cos_cache[:, :s, :, :], self.sin_cache[:, :s, :, :]
+        self.cos, self.sin = cos, sin
+        d = self.dim
         def rotate(x):
             x_rot = np.concatenate((-x[..., d//2:], x[..., :d//2]), axis=-1)
-            return x * self.cos + x_rot * self.sin
-            
+            return x * cos + x_rot * sin
         return rotate(q), rotate(k)
 
     def backward(self, dq, dk):
@@ -117,10 +117,10 @@ class GeminiAttention:
         dv = d_v_t.transpose(0, 2, 1, 3)
         return self.wq.backward(dq.reshape(b, s, d)) + self.wk.backward(dk.reshape(b, s, d)) + self.wv.backward(dv.reshape(b, s, d))
 
-class GroqMLP:
+class GroqExpert:
     def __init__(self, dim):
-        self.w1 = Linear(dim, dim * 2)
-        self.w2 = Linear(dim, dim)
+        self.w1 = Linear(dim, dim * 4)
+        self.w2 = Linear(dim * 2, dim)
 
     def forward(self, x):
         self.h = self.w1.forward(x)
@@ -131,26 +131,40 @@ class GroqMLP:
         return self.w1.backward(dh)
 
 class SovereignMoE:
-    def __init__(self, dim, num_experts=4, k=1):
+    def __init__(self, dim, num_experts=4, k=2):
         self.dim, self.num_experts, self.k = dim, num_experts, k
-        self.experts = [GroqMLP(dim) for _ in range(num_experts)]
+        self.experts = [GroqExpert(dim) for _ in range(num_experts)]
         self.gate = Linear(dim, num_experts)
 
     def forward(self, x):
         self.orig_shape = x.shape
         x_flat = x.reshape(-1, self.dim)
         logits = self.gate.forward(x_flat)
-        self.probs = fast_softmax(logits)
-        self.top_k_indices = np.argmax(self.probs, axis=-1)
+        probs = fast_softmax(logits)
+        
+        top_k_indices = np.argsort(probs, axis=-1)[:, -self.k:]
+        self.top_k_indices = top_k_indices
+        
+        # Gather top-k probabilities and normalize
+        rows = np.arange(x_flat.shape[0])[:, None]
+        top_k_probs = probs[rows, top_k_indices]
+        top_k_probs /= (np.sum(top_k_probs, axis=-1, keepdims=True) + 1e-12)
+        self.top_k_probs = top_k_probs
         
         out_flat = np.zeros_like(x_flat)
         self.expert_masks = []
+        
         for i in range(self.num_experts):
-            mask = (self.top_k_indices == i)
+            mask = np.any(top_k_indices == i, axis=1)
             self.expert_masks.append(mask)
             if np.any(mask):
+                # Find which of the k slots this expert occupies for each sample
+                slot_idx = np.where(top_k_indices[mask] == i)[1]
+                p = top_k_probs[mask, slot_idx][:, None]
                 e_out = self.experts[i].forward(x_flat[mask])
-                out_flat[mask] = e_out * self.probs[mask, i:i+1]
+                out_flat[mask] += e_out * p
+                
+        self.probs = probs
         return out_flat.reshape(self.orig_shape)
 
     def backward(self, dout):
@@ -162,11 +176,13 @@ class SovereignMoE:
         for i in range(self.num_experts):
             mask = self.expert_masks[i]
             if np.any(mask):
-                p = self.probs[mask, i:i+1]
-                # Approximation of gradient through expert and gate
+                slot_idx = np.where(self.top_k_indices[mask] == i)[1]
+                p = self.top_k_probs[mask, slot_idx][:, None]
+                
                 de_out = dout_flat[mask] * p
                 dx_flat[mask] += self.experts[i].backward(de_out)
-                # Expert output for gate gradient
+                
+                # Gradient for gate
                 e_val = self.experts[i].w2.forward(swiglu(self.experts[i].h))
                 dg_logits[mask, i] = np.sum(dout_flat[mask] * e_val, axis=-1)
         
@@ -180,10 +196,8 @@ class SovereignBlock:
         self.attn = GeminiAttention(dim)
         self.norm2 = RMSNorm(dim)
         self.moe = SovereignMoE(dim)
-        self.gate_redundancy = np.array([0.5], dtype=np.float32)
 
     def forward(self, x):
-        self.x = x
         self.n1 = self.norm1.forward(x)
         self.a1 = self.attn.forward(self.n1)
         self.mid = x + self.a1
@@ -197,7 +211,7 @@ class SovereignBlock:
         da1 = self.attn.backward(dmid)
         return dmid + self.norm1.backward(da1)
 
-class OMEGA_ASI_V16:
+class OMEGA_ASI_V17:
     def __init__(self, in_dim=784, h_dim=128, out_dim=10, depth=4):
         self.patch_size = 16
         self.num_patches = in_dim // self.patch_size
@@ -234,7 +248,7 @@ class OMEGA_ASI_V16:
         walk(self)
         return params
 
-class LionV3:
+class LionOptimizer:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
         self.params, self.lr, self.b1, self.b2, self.wd = params, lr, b1, b2, wd
         self.m = []
@@ -254,25 +268,25 @@ class LionV3:
                     setattr(p, a, w)
             else:
                 u = np.sign(self.b1 * self.m[i] + (1.0 - self.b1) * p.dg)
-                p.g -= self.lr * u
+                p.g -= self.lr * (u + self.wd * p.g)
                 self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * p.dg
 
-def get_data(n=2000):
+def get_data(n=4000):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    centers = np.random.randn(10, 784).astype(np.float32) * 5.0
+    centers = np.random.randn(10, 784).astype(np.float32) * 8.0
     X += centers[y]
     return (X - X.mean()) / (X.std() + 1e-6), y
 
 def train():
-    X, y = get_data(3000)
-    model = OMEGA_ASI_V16(h_dim=64, depth=2)
+    X, y = get_data(4000)
+    model = OMEGA_ASI_V17(h_dim=64, depth=3)
     params = model.get_params()
-    lr_init = 5e-4
-    opt = LionV3(params, lr=lr_init, wd=0.01)
-    bs, epochs = 32, 20
+    lr_init = 1e-3
+    opt = LionOptimizer(params, lr=lr_init, wd=0.01)
+    bs, epochs = 64, 30
     
-    print("OMEGA-ASI | V16-SOVEREIGN-EVOLUTION | START")
+    print("OMEGA-ASI | V17-EVOLVED-ARCH | START")
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
         l_sum, a_sum, t0 = 0, 0, time.time()
@@ -280,6 +294,8 @@ def train():
         
         for i in range(0, len(X), bs):
             xb, yb = X[idx[i : i + bs]], y[idx[i : i + bs]]
+            if len(xb) < bs: continue
+            
             logits = model.forward(xb)
             probs = fast_softmax(logits)
             
@@ -291,15 +307,16 @@ def train():
             dout[range(len(yb)), yb] -= 1
             model.backward(dout / len(yb))
             
+            # Global Gradient Clipping
             gn = np.sqrt(sum(np.sum(p.dW**2) + np.sum(p.db**2) for p in params if hasattr(p, "dW")))
-            if gn > 1.0:
+            if gn > 5.0:
                 for p in params:
-                    if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
-                    if hasattr(p, "dg"): p.dg /= gn
+                    if hasattr(p, "dW"): p.dW *= 5.0 / gn; p.db *= 5.0 / gn
+                    if hasattr(p, "dg"): p.dg *= 5.0 / gn
             opt.step()
             
         dt = time.time() - t0
-        print(f"EP:{ep:02d} | LOSS:{l_sum/len(X):.4f} | ACC:{a_sum/len(X):.4f} | {len(X)/dt:.1f} samples/s")
+        print(f"EP:{ep:02d} | LOSS:{l_sum/len(X):.4f} | ACC:{a_sum/len(X):.4f} | {len(X)/dt:.1f} s/s")
 
 if __name__ == "__main__":
     train()
