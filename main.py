@@ -56,7 +56,7 @@ class RMSNorm:
         return self.rstd * (v - nx * np.mean(v * nx, axis=-1, keepdims=True))
 
 class RotaryEmbedding:
-    def __init__(self, dim, max_seq_len=64):
+    def __init__(self, dim, max_seq_len=128):
         self.dim = dim
         inv_freq = 1.0 / (10000 ** (np.arange(0, dim, 2).astype(np.float32) / dim))
         t = np.arange(max_seq_len, dtype=np.float32)
@@ -69,9 +69,8 @@ class RotaryEmbedding:
         s = q.shape[1]
         cos, sin = self.cos_cache[:, :s, :, :], self.sin_cache[:, :s, :, :]
         self.cos, self.sin = cos, sin
-        d = self.dim
         def rotate(x):
-            x_rot = np.concatenate((-x[..., d//2:], x[..., :d//2]), axis=-1)
+            x_rot = np.concatenate((-x[..., self.dim//2:], x[..., :self.dim//2]), axis=-1)
             return x * cos + x_rot * sin
         return rotate(q), rotate(k)
 
@@ -124,10 +123,12 @@ class GroqExpert:
 
     def forward(self, x):
         self.h = self.w1.forward(x)
-        return self.w2.forward(swiglu(self.h))
+        self.act = swiglu(self.h)
+        return self.w2.forward(self.act)
 
     def backward(self, dout):
-        dh = d_swiglu(self.h, self.w2.backward(dout))
+        d_act = self.w2.backward(dout)
+        dh = d_swiglu(self.h, d_act)
         return self.w1.backward(dh)
 
 class SovereignMoE:
@@ -145,7 +146,6 @@ class SovereignMoE:
         top_k_indices = np.argsort(probs, axis=-1)[:, -self.k:]
         self.top_k_indices = top_k_indices
         
-        # Gather top-k probabilities and normalize
         rows = np.arange(x_flat.shape[0])[:, None]
         top_k_probs = probs[rows, top_k_indices]
         top_k_probs /= (np.sum(top_k_probs, axis=-1, keepdims=True) + 1e-12)
@@ -153,15 +153,16 @@ class SovereignMoE:
         
         out_flat = np.zeros_like(x_flat)
         self.expert_masks = []
+        self.expert_outs = [None] * self.num_experts
         
         for i in range(self.num_experts):
             mask = np.any(top_k_indices == i, axis=1)
             self.expert_masks.append(mask)
             if np.any(mask):
-                # Find which of the k slots this expert occupies for each sample
                 slot_idx = np.where(top_k_indices[mask] == i)[1]
                 p = top_k_probs[mask, slot_idx][:, None]
                 e_out = self.experts[i].forward(x_flat[mask])
+                self.expert_outs[i] = e_out
                 out_flat[mask] += e_out * p
                 
         self.probs = probs
@@ -178,13 +179,8 @@ class SovereignMoE:
             if np.any(mask):
                 slot_idx = np.where(self.top_k_indices[mask] == i)[1]
                 p = self.top_k_probs[mask, slot_idx][:, None]
-                
-                de_out = dout_flat[mask] * p
-                dx_flat[mask] += self.experts[i].backward(de_out)
-                
-                # Gradient for gate
-                e_val = self.experts[i].w2.forward(swiglu(self.experts[i].h))
-                dg_logits[mask, i] = np.sum(dout_flat[mask] * e_val, axis=-1)
+                dx_flat[mask] += self.experts[i].backward(dout_flat[mask] * p)
+                dg_logits[mask, i] = np.sum(dout_flat[mask] * self.expert_outs[i], axis=-1)
         
         dg = self.probs * (dg_logits - np.sum(self.probs * dg_logits, axis=-1, keepdims=True))
         dx_flat += self.gate.backward(dg)
@@ -211,7 +207,7 @@ class SovereignBlock:
         da1 = self.attn.backward(dmid)
         return dmid + self.norm1.backward(da1)
 
-class OMEGA_ASI_V17:
+class OMEGA_ASI_V18:
     def __init__(self, in_dim=784, h_dim=128, out_dim=10, depth=4):
         self.patch_size = 16
         self.num_patches = in_dim // self.patch_size
@@ -271,22 +267,22 @@ class LionOptimizer:
                 p.g -= self.lr * (u + self.wd * p.g)
                 self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * p.dg
 
-def get_data(n=4000):
+def get_data(n=5000):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    centers = np.random.randn(10, 784).astype(np.float32) * 8.0
+    centers = np.random.randn(10, 784).astype(np.float32) * 10.0
     X += centers[y]
     return (X - X.mean()) / (X.std() + 1e-6), y
 
 def train():
-    X, y = get_data(4000)
-    model = OMEGA_ASI_V17(h_dim=64, depth=3)
+    X, y = get_data(5000)
+    model = OMEGA_ASI_V18(h_dim=64, depth=4)
     params = model.get_params()
     lr_init = 1e-3
     opt = LionOptimizer(params, lr=lr_init, wd=0.01)
-    bs, epochs = 64, 30
+    bs, epochs = 64, 40
     
-    print("OMEGA-ASI | V17-EVOLVED-ARCH | START")
+    print("OMEGA-ASI | V18-RECURSIVE-EVOLUTION | ONLINE")
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
         l_sum, a_sum, t0 = 0, 0, time.time()
@@ -303,20 +299,19 @@ def train():
             l_sum += loss * len(yb)
             a_sum += np.sum(np.argmax(probs, axis=1) == yb)
             
-            dout = probs.copy()
+            dout = (probs.copy())
             dout[range(len(yb)), yb] -= 1
             model.backward(dout / len(yb))
             
-            # Global Gradient Clipping
             gn = np.sqrt(sum(np.sum(p.dW**2) + np.sum(p.db**2) for p in params if hasattr(p, "dW")))
-            if gn > 5.0:
+            if gn > 1.0:
                 for p in params:
-                    if hasattr(p, "dW"): p.dW *= 5.0 / gn; p.db *= 5.0 / gn
-                    if hasattr(p, "dg"): p.dg *= 5.0 / gn
+                    if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
+                    if hasattr(p, "dg"): p.dg /= gn
             opt.step()
             
         dt = time.time() - t0
-        print(f"EP:{ep:02d} | LOSS:{l_sum/len(X):.4f} | ACC:{a_sum/len(X):.4f} | {len(X)/dt:.1f} s/s")
+        print(f"STEP:{ep:03d} | LOSS:{l_sum/len(X):.4f} | ACC:{a_sum/len(X):.4f} | SPEED:{len(X)/dt:.1f} samples/s")
 
 if __name__ == "__main__":
     train()
