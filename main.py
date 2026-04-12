@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -69,7 +70,7 @@ class RotaryEmbedding:
         s = q.shape[1]
         self.cos, self.sin = self.cos_cache[:, :s, :, :], self.sin_cache[:, :s, :, :]
         def rotate(x):
-            x_rot = np.concatenate((-x[..., self.dim // 2 :], x[..., : self.dim // 2]), axis=-1)
+            x_rot = np.concatenate((-x[..., self.dim // 2:], x[..., : self.dim // 2]), axis=-1)
             return x * self.cos + x_rot * self.sin
         return rotate(q), rotate(k)
 
@@ -141,7 +142,7 @@ class SovereignMoE:
         x_flat = x.reshape(-1, self.dim)
         logits = self.gate.forward(x_flat)
         probs = fast_softmax(logits)
-        top_k_indices = np.argsort(probs, axis=-1)[:, -self.k :]
+        top_k_indices = np.argsort(probs, axis=-1)[:, -self.k:]
         self.top_k_indices = top_k_indices
         rows = np.arange(x_flat.shape[0])[:, None]
         top_k_probs = probs[rows, top_k_indices]
@@ -198,7 +199,7 @@ class SovereignBlock:
         da1 = self.attn.backward(dmid)
         return dmid + self.norm1.backward(da1)
 
-class OMEGA_ASI_V19:
+class OMEGA_ASI_V20:
     def __init__(self, in_dim=784, h_dim=128, out_dim=10, depth=4):
         self.patch_size = 16
         self.num_patches = in_dim // self.patch_size
@@ -268,18 +269,18 @@ def get_data(n=5000):
 
 def train():
     X, y = get_data(5000)
-    model = OMEGA_ASI_V19(h_dim=64, depth=4)
+    model = OMEGA_ASI_V20(h_dim=64, depth=4)
     params = model.get_params()
     lr_init = 1e-3
     opt = LionOptimizer(params, lr=lr_init, wd=0.01)
     bs, epochs = 64, 40
-    print("OMEGA-ASI | V19-RECURSIVE-EVOLUTION | ONLINE")
+    print("OMEGA-ASI | V20-RECURSIVE-EVOLUTION | ONLINE")
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
         l_sum, a_sum, t0 = 0, 0, time.time()
         opt.lr = lr_init * 0.5 * (1 + np.cos(np.pi * ep / epochs))
         for i in range(0, len(X), bs):
-            xb, yb = X[idx[i : i + bs]], y[idx[i : i + bs]]
+            xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
             if len(xb) < bs: continue
             logits = model.forward(xb)
             probs = fast_softmax(logits)
