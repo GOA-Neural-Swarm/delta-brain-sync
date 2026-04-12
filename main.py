@@ -53,13 +53,23 @@ class RotaryEmbedding:
         self.dim = dim
         self.inv_freq = 1.0 / (10000 ** (np.arange(0, dim, 2).astype(np.float32) / dim))
 
-    def forward(self, x, seq_len):
-        t = np.arange(seq_len, dtype=np.float32)
+    def forward(self, x):
+        b, s, h, d = x.shape
+        t = np.arange(s, dtype=np.float32)
         freqs = np.outer(t, self.inv_freq)
         emb = np.concatenate((freqs, freqs), axis=-1)
-        cos, sin = np.cos(emb), np.sin(emb)
-        x_rot = np.concatenate((-x[..., self.dim//2:], x[..., :self.dim//2]), axis=-1)
-        return x * cos + x_rot * sin
+        self.cos = np.cos(emb)[None, :, None, :]
+        self.sin = np.sin(emb)[None, :, None, :]
+        x_rot = np.concatenate((-x[..., d//2:], x[..., :d//2]), axis=-1)
+        return x * self.cos + x_rot * self.sin
+
+    def backward(self, dout):
+        d, half = self.dim, self.dim // 2
+        d_x_rot = dout * self.sin
+        dx = dout * self.cos
+        dx[..., :half] += d_x_rot[..., half:]
+        dx[..., half:] -= d_x_rot[..., :half]
+        return dx
 
 class GeminiAttention:
     def __init__(self, dim, heads=8):
@@ -74,28 +84,41 @@ class GeminiAttention:
         k = self.wk.forward(x).reshape(b, s, self.heads, self.hd)
         v = self.wv.forward(x).reshape(b, s, self.heads, self.hd)
         
-        self.q = np.array([self.rope.forward(q[i], s) for i in range(b)]).transpose(0, 2, 1, 3)
-        self.k = np.array([self.rope.forward(k[i], s) for i in range(b)]).transpose(0, 2, 1, 3)
-        self.v = v.transpose(0, 2, 1, 3)
+        self.q_rot = self.rope.forward(q)
+        self.k_rot = self.rope.forward(k)
+        self.v_reshaped = v.transpose(0, 2, 1, 3)
 
-        self.dots = np.matmul(self.q, self.k.transpose(0, 1, 3, 2)) * self.scale
+        q_t = self.q_rot.transpose(0, 2, 1, 3)
+        k_t = self.k_rot.transpose(0, 2, 1, 3)
+        
+        self.dots = np.matmul(q_t, k_t.transpose(0, 1, 3, 2)) * self.scale
         self.att = fast_softmax(self.dots)
-        out = np.matmul(self.att, self.v).transpose(0, 2, 1, 3).reshape(b, s, d)
+        out = np.matmul(self.att, self.v_reshaped).transpose(0, 2, 1, 3).reshape(b, s, d)
         return self.wo.forward(out)
 
     def backward(self, dout):
         b, s, d = dout.shape
         d_wo = self.wo.backward(dout).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
-        d_att = np.matmul(d_wo, self.v.transpose(0, 1, 3, 2))
-        d_v = np.matmul(self.att.transpose(0, 1, 3, 2), d_wo)
+        
+        d_att = np.matmul(d_wo, self.v_reshaped.transpose(0, 1, 3, 2))
+        d_v_t = np.matmul(self.att.transpose(0, 1, 3, 2), d_wo)
+        
         d_dots = self.att * (d_att - np.sum(self.att * d_att, axis=-1, keepdims=True)) * self.scale
-        d_q = np.matmul(d_dots, self.k).transpose(0, 2, 1, 3).reshape(b, s, d)
-        d_k = np.matmul(d_dots.transpose(0, 1, 3, 2), self.q).transpose(0, 2, 1, 3).reshape(b, s, d)
-        d_v = d_v.transpose(0, 2, 1, 3).reshape(b, s, d)
-        return self.wq.backward(d_q) + self.wk.backward(d_k) + self.wv.backward(d_v)
+        
+        q_t = self.q_rot.transpose(0, 2, 1, 3)
+        k_t = self.k_rot.transpose(0, 2, 1, 3)
+        
+        d_q_t = np.matmul(d_dots, k_t)
+        d_k_t = np.matmul(d_dots.transpose(0, 1, 3, 2), q_t)
+        
+        d_q = self.rope.backward(d_q_t.transpose(0, 2, 1, 3))
+        d_k = self.rope.backward(d_k_t.transpose(0, 2, 1, 3))
+        d_v = d_v_t.transpose(0, 2, 1, 3).reshape(b, s, d)
+        
+        return self.wq.backward(d_q.reshape(b, s, d)) + self.wk.backward(d_k.reshape(b, s, d)) + self.wv.backward(d_v)
 
 class GroqMoE:
-    def __init__(self, dim, num_experts=8, k=2):
+    def __init__(self, dim, num_experts=4, k=1):
         self.num_experts, self.k = num_experts, k
         self.experts = [Expert(dim) for _ in range(num_experts)]
         self.gate = Linear(dim, num_experts)
@@ -104,29 +127,27 @@ class GroqMoE:
         self.x_shape = x.shape
         x_flat = x.reshape(-1, x.shape[-1])
         logits = self.gate.forward(x_flat)
-        probs = fast_softmax(logits)
+        self.probs = fast_softmax(logits)
         
-        self.top_k_indices = np.argsort(probs, axis=-1)[:, -self.k:]
-        self.top_k_probs = np.take_along_axis(probs, self.top_k_indices, axis=-1)
+        self.top_k_indices = np.argsort(self.probs, axis=-1)[:, -self.k:]
+        self.top_k_probs = np.take_along_axis(self.probs, self.top_k_indices, axis=-1)
         self.top_k_probs /= (np.sum(self.top_k_probs, axis=-1, keepdims=True) + 1e-12)
         
         out_flat = np.zeros_like(x_flat)
         self.expert_masks = []
-        self.expert_outs = []
+        self.expert_outs = [None] * self.num_experts
         
         for i in range(self.num_experts):
             mask = np.any(self.top_k_indices == i, axis=-1)
             self.expert_masks.append(mask)
             if np.any(mask):
                 e_out = self.experts[i].forward(x_flat[mask])
-                self.expert_outs.append(e_out)
-                idx = np.where(self.top_k_indices == i)
-                w = self.top_k_probs[idx[0], idx[1]]
+                self.expert_outs[i] = e_out
+                # Find positions in top_k_indices for weighting
+                pos = np.where(self.top_k_indices == i)
+                w = self.top_k_probs[pos[0], pos[1]]
                 out_flat[mask] += e_out * w[:, np.newaxis]
-            else:
-                self.expert_outs.append(None)
         
-        self.probs = probs
         return out_flat.reshape(self.x_shape)
 
     def backward(self, dout):
@@ -137,8 +158,8 @@ class GroqMoE:
         for i in range(self.num_experts):
             mask = self.expert_masks[i]
             if np.any(mask):
-                idx = np.where(self.top_k_indices == i)
-                w = self.top_k_probs[idx[0], idx[1]]
+                pos = np.where(self.top_k_indices == i)
+                w = self.top_k_probs[pos[0], pos[1]]
                 de_out = dout_flat[mask] * w[:, np.newaxis]
                 dx_flat[mask] += self.experts[i].backward(de_out)
                 dg_logits[mask, i] = np.sum(dout_flat[mask] * self.expert_outs[i], axis=-1)
@@ -161,33 +182,34 @@ class Expert:
         dx1 = self.w2.backward(dout) * d_swiglu(self.x1)
         return self.w1.backward(dx1)
 
-class SovereignBlockV13:
+class SovereignBlockV14:
     def __init__(self, dim):
         self.ln1 = RMSNorm(dim)
         self.attn = GeminiAttention(dim)
         self.ln2 = RMSNorm(dim)
         self.moe = GroqMoE(dim)
-        self.alpha = np.ones(1, dtype=np.float32) * 0.5
+        self.gamma1 = np.ones(1, dtype=np.float32) * 0.1
+        self.gamma2 = np.ones(1, dtype=np.float32) * 0.1
 
     def forward(self, x):
         self.x = x
-        self.attn_res = self.attn.forward(self.ln1.forward(x))
-        self.mid = x + self.attn_res
-        self.moe_res = self.moe.forward(self.ln2.forward(self.mid))
-        return self.mid + self.moe_res
+        self.attn_out = self.attn.forward(self.ln1.forward(x))
+        self.mid = x + self.gamma1 * self.attn_out
+        self.moe_out = self.moe.forward(self.ln2.forward(self.mid))
+        return self.mid + self.gamma2 * self.moe_out
 
     def backward(self, dout):
-        d_moe = self.moe.backward(dout)
+        d_moe = self.moe.backward(dout * self.gamma2)
         d_mid = dout + self.ln2.backward(d_moe)
-        d_attn = self.attn.backward(d_mid)
+        d_attn = self.attn.backward(d_mid * self.gamma1)
         return d_mid + self.ln1.backward(d_attn)
 
-class SovereignArchitectV13:
-    def __init__(self, h_d=128, out_d=10, depth=4):
+class SovereignArchitectV14:
+    def __init__(self, h_d=128, out_d=10, depth=2):
         self.patch_dim, self.num_patches = 16, 49
         self.stem = Linear(self.patch_dim, h_d)
         self.pos_emb = np.random.randn(1, self.num_patches, h_d).astype(np.float32) * 0.02
-        self.blocks = [SovereignBlockV13(h_d) for _ in range(depth)]
+        self.blocks = [SovereignBlockV14(h_d) for _ in range(depth)]
         self.norm = RMSNorm(h_d)
         self.head = Linear(h_d, out_d, init_scale=0.1)
 
@@ -245,18 +267,19 @@ class Lion:
 def generate_data(n=2000):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    centers = np.random.randn(10, 784).astype(np.float32) * 5.0
+    centers = np.random.randn(10, 784).astype(np.float32) * 4.0
     X += centers[y]
-    return (X - np.mean(X)) / (np.std(X) + 1e-6), y
+    X = (X - np.mean(X)) / (np.std(X) + 1e-6)
+    return X, y
 
 def train():
-    X, y = generate_data(5000)
-    model = SovereignArchitectV13(h_d=64, out_d=10, depth=2)
+    X, y = generate_data(4000)
+    model = SovereignArchitectV14(h_d=64, out_d=10, depth=2)
     params = model.get_params()
-    opt = Lion(params, lr=2e-4, wd=0.01)
-    bs, epochs = 32, 20
+    opt = Lion(params, lr=1e-4, wd=0.01)
+    bs, epochs = 32, 15
 
-    print("OMEGA-ASI | V13-SOVEREIGN-CORE | BIMODAL REDUNDANCY ACTIVE")
+    print("OMEGA-ASI | V14-SOVEREIGN-CORE | BIMODAL REDUNDANCY OPTIMIZED")
 
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
@@ -264,11 +287,14 @@ def train():
         for i in range(0, len(X), bs):
             bi = idx[i : i + bs]
             xb, yb = X[bi], y[bi]
+            
             logits = model.forward(xb)
             probs = fast_softmax(logits)
+            
             loss = -np.mean(np.log(probs[range(len(yb)), yb] + 1e-10))
             l_acc += loss * (len(yb) / len(X))
             a_acc += np.mean(np.argmax(probs, axis=1) == yb) * (len(yb) / len(X))
+            
             dout = probs.copy()
             dout[range(len(yb)), yb] -= 1
             model.backward(dout / len(yb))
@@ -280,7 +306,8 @@ def train():
                     if hasattr(p, "dg"): p.dg /= gn
             opt.step()
         
-        print(f"EP:{ep:02d} | LOSS:{l_acc:.4f} | ACC:{a_acc:.4f} | {len(X)/(time.time()-t0):.0f} s/s")
+        dt = time.time() - t0
+        print(f"EP:{ep:02d} | LOSS:{l_acc:.4f} | ACC:{a_acc:.4f} | SPEED:{len(X)/dt:.0f} samples/s")
 
 if __name__ == "__main__":
     train()
