@@ -1,16 +1,18 @@
-
 import numpy as np
 import time
+
 
 def fast_softmax(x, axis=-1):
     max_x = np.max(x, axis=axis, keepdims=True)
     e = np.exp(x - max_x)
     return e / (np.sum(e, axis=axis, keepdims=True) + 1e-12)
 
+
 def swiglu(x):
     half = x.shape[-1] // 2
     gate, val = x[..., :half], x[..., half:]
     return (gate * (1.0 / (1.0 + np.exp(-gate)))) * val
+
 
 def d_swiglu(x, dout):
     half = x.shape[-1] // 2
@@ -20,6 +22,7 @@ def d_swiglu(x, dout):
     d_gate = (sig * (1.0 + gate * (1.0 - sig))) * val * dout
     d_val = swish * dout
     return np.concatenate([d_gate, d_val], axis=-1)
+
 
 class Linear:
     def __init__(self, in_f, out_f, init_scale=1.0):
@@ -39,6 +42,7 @@ class Linear:
         self.db = np.sum(dout_flat, axis=0)
         return np.dot(dout, self.W.T)
 
+
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
         self.g = np.ones(dim, dtype=np.float32)
@@ -56,6 +60,7 @@ class RMSNorm:
         v = dout * self.g
         return self.rstd * (v - nx * np.mean(v * nx, axis=-1, keepdims=True))
 
+
 class RotaryEmbedding:
     def __init__(self, dim, max_seq_len=128):
         self.dim = dim
@@ -70,20 +75,27 @@ class RotaryEmbedding:
         s = q.shape[1]
         cos, sin = self.cos_cache[:, :s, :, :], self.sin_cache[:, :s, :, :]
         self.cos, self.sin = cos, sin
+
         def rotate(x):
-            x_rot = np.concatenate((-x[..., self.dim//2:], x[..., :self.dim//2]), axis=-1)
+            x_rot = np.concatenate(
+                (-x[..., self.dim // 2 :], x[..., : self.dim // 2]), axis=-1
+            )
             return x * cos + x_rot * sin
+
         return rotate(q), rotate(k)
 
     def backward(self, dq, dk):
         half = self.dim // 2
+
         def d_rotate(dout):
             d_x_rot = dout * self.sin
             dx = dout * self.cos
             dx[..., :half] += d_x_rot[..., half:]
             dx[..., half:] -= d_x_rot[..., :half]
             return dx
+
         return d_rotate(dq), d_rotate(dk)
+
 
 class GeminiAttention:
     def __init__(self, dim, heads=8):
@@ -99,23 +111,43 @@ class GeminiAttention:
         v = self.wv.forward(x).reshape(b, s, self.heads, self.hd)
         self.q_rot, self.k_rot = self.rope.forward(q, k)
         self.v_t = v.transpose(0, 2, 1, 3)
-        self.dots = np.matmul(self.q_rot.transpose(0, 2, 1, 3), self.k_rot.transpose(0, 2, 3, 1)) * self.scale
+        self.dots = (
+            np.matmul(
+                self.q_rot.transpose(0, 2, 1, 3), self.k_rot.transpose(0, 2, 3, 1)
+            )
+            * self.scale
+        )
         self.att = fast_softmax(self.dots)
         out = np.matmul(self.att, self.v_t).transpose(0, 2, 1, 3).reshape(b, s, d)
         return self.wo.forward(out)
 
     def backward(self, dout):
         b, s, d = dout.shape
-        d_wo_in = self.wo.backward(dout).reshape(b, s, self.heads, self.hd).transpose(0, 2, 1, 3)
+        d_wo_in = (
+            self.wo.backward(dout)
+            .reshape(b, s, self.heads, self.hd)
+            .transpose(0, 2, 1, 3)
+        )
         d_att = np.matmul(d_wo_in, self.v_t.transpose(0, 1, 3, 2))
         d_v_t = np.matmul(self.att.transpose(0, 1, 3, 2), d_wo_in)
-        d_dots = self.att * (d_att - np.sum(self.att * d_att, axis=-1, keepdims=True)) * self.scale
+        d_dots = (
+            self.att
+            * (d_att - np.sum(self.att * d_att, axis=-1, keepdims=True))
+            * self.scale
+        )
         dq_rot_t = np.matmul(d_dots, self.k_rot.transpose(0, 2, 1, 3))
-        dk_rot_t = np.matmul(d_dots.transpose(0, 1, 3, 2), self.q_rot.transpose(0, 2, 1, 3))
+        dk_rot_t = np.matmul(
+            d_dots.transpose(0, 1, 3, 2), self.q_rot.transpose(0, 2, 1, 3)
+        )
         dq_rot, dk_rot = dq_rot_t.transpose(0, 2, 1, 3), dk_rot_t.transpose(0, 2, 1, 3)
         dq, dk = self.rope.backward(dq_rot, dk_rot)
         dv = d_v_t.transpose(0, 2, 1, 3)
-        return self.wq.backward(dq.reshape(b, s, d)) + self.wk.backward(dk.reshape(b, s, d)) + self.wv.backward(dv.reshape(b, s, d))
+        return (
+            self.wq.backward(dq.reshape(b, s, d))
+            + self.wk.backward(dk.reshape(b, s, d))
+            + self.wv.backward(dv.reshape(b, s, d))
+        )
+
 
 class GroqExpert:
     def __init__(self, dim):
@@ -132,6 +164,7 @@ class GroqExpert:
         dh = d_swiglu(self.h, d_act)
         return self.w1.backward(dh)
 
+
 class SovereignMoE:
     def __init__(self, dim, num_experts=4, k=2):
         self.dim, self.num_experts, self.k = dim, num_experts, k
@@ -143,11 +176,11 @@ class SovereignMoE:
         x_flat = x.reshape(-1, self.dim)
         logits = self.gate.forward(x_flat)
         probs = fast_softmax(logits)
-        top_k_indices = np.argsort(probs, axis=-1)[:, -self.k:]
+        top_k_indices = np.argsort(probs, axis=-1)[:, -self.k :]
         self.top_k_indices = top_k_indices
         rows = np.arange(x_flat.shape[0])[:, None]
         top_k_probs = probs[rows, top_k_indices]
-        top_k_probs /= (np.sum(top_k_probs, axis=-1, keepdims=True) + 1e-12)
+        top_k_probs /= np.sum(top_k_probs, axis=-1, keepdims=True) + 1e-12
         self.top_k_probs = top_k_probs
         out_flat = np.zeros_like(x_flat)
         self.expert_masks = []
@@ -175,10 +208,15 @@ class SovereignMoE:
                 slot_idx = np.where(self.top_k_indices[mask] == i)[1]
                 p = self.top_k_probs[mask, slot_idx][:, None]
                 dx_flat[mask] += self.experts[i].backward(dout_flat[mask] * p)
-                dg_logits[mask, i] = np.sum(dout_flat[mask] * self.expert_outs[i], axis=-1)
-        dg = self.probs * (dg_logits - np.sum(self.probs * dg_logits, axis=-1, keepdims=True))
+                dg_logits[mask, i] = np.sum(
+                    dout_flat[mask] * self.expert_outs[i], axis=-1
+                )
+        dg = self.probs * (
+            dg_logits - np.sum(self.probs * dg_logits, axis=-1, keepdims=True)
+        )
         dx_flat += self.gate.backward(dg)
         return dx_flat.reshape(self.orig_shape)
+
 
 class SovereignBlock:
     def __init__(self, dim):
@@ -201,12 +239,15 @@ class SovereignBlock:
         da1 = self.attn.backward(dmid)
         return dmid + self.norm1.backward(da1)
 
+
 class OMEGA_ASI_V18:
     def __init__(self, in_dim=784, h_dim=128, out_dim=10, depth=4):
         self.patch_size = 16
         self.num_patches = in_dim // self.patch_size
         self.stem = Linear(self.patch_size, h_dim)
-        self.pos_emb = np.random.normal(0, 0.02, (1, self.num_patches, h_dim)).astype(np.float32)
+        self.pos_emb = np.random.normal(0, 0.02, (1, self.num_patches, h_dim)).astype(
+            np.float32
+        )
         self.blocks = [SovereignBlock(h_dim) for _ in range(depth)]
         self.norm = RMSNorm(h_dim)
         self.head = Linear(h_dim, out_dim, init_scale=0.1)
@@ -229,22 +270,30 @@ class OMEGA_ASI_V18:
 
     def get_params(self):
         params = []
+
         def walk(o):
-            if isinstance(o, (Linear, RMSNorm)): params.append(o)
+            if isinstance(o, (Linear, RMSNorm)):
+                params.append(o)
             elif hasattr(o, "__dict__"):
                 for v in o.__dict__.values():
-                    if isinstance(v, list): [walk(i) for i in v]
-                    else: walk(v)
+                    if isinstance(v, list):
+                        [walk(i) for i in v]
+                    else:
+                        walk(v)
+
         walk(self)
         return params
+
 
 class LionOptimizer:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
         self.params, self.lr, self.b1, self.b2, self.wd = params, lr, b1, b2, wd
         self.m = []
         for p in params:
-            if hasattr(p, "W"): self.m.append({"W": np.zeros_like(p.W), "b": np.zeros_like(p.b)})
-            else: self.m.append(np.zeros_like(p.g))
+            if hasattr(p, "W"):
+                self.m.append({"W": np.zeros_like(p.W), "b": np.zeros_like(p.b)})
+            else:
+                self.m.append(np.zeros_like(p.g))
 
     def step(self):
         for i, p in enumerate(self.params):
@@ -261,12 +310,14 @@ class LionOptimizer:
                 p.g -= self.lr * (u + self.wd * p.g)
                 self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * p.dg
 
+
 def get_data(n=5000):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
     centers = np.random.randn(10, 784).astype(np.float32) * 10.0
     X += centers[y]
     return (X - X.mean()) / (X.std() + 1e-6), y
+
 
 def train():
     X, y = get_data(5000)
@@ -282,23 +333,36 @@ def train():
         opt.lr = lr_init * 0.5 * (1 + np.cos(np.pi * ep / epochs))
         for i in range(0, len(X), bs):
             xb, yb = X[idx[i : i + bs]], y[idx[i : i + bs]]
-            if len(xb) < bs: continue
+            if len(xb) < bs:
+                continue
             logits = model.forward(xb)
             probs = fast_softmax(logits)
             loss = -np.mean(np.log(probs[range(len(yb)), yb] + 1e-10))
             l_sum += loss * len(yb)
             a_sum += np.sum(np.argmax(probs, axis=1) == yb)
-            dout = (probs.copy())
+            dout = probs.copy()
             dout[range(len(yb)), yb] -= 1
             model.backward(dout / len(yb))
-            gn = np.sqrt(sum(np.sum(p.dW**2) + np.sum(p.db**2) for p in params if hasattr(p, "dW")))
+            gn = np.sqrt(
+                sum(
+                    np.sum(p.dW**2) + np.sum(p.db**2)
+                    for p in params
+                    if hasattr(p, "dW")
+                )
+            )
             if gn > 1.0:
                 for p in params:
-                    if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
-                    if hasattr(p, "dg"): p.dg /= gn
+                    if hasattr(p, "dW"):
+                        p.dW /= gn
+                        p.db /= gn
+                    if hasattr(p, "dg"):
+                        p.dg /= gn
             opt.step()
         dt = time.time() - t0
-        print(f"STEP:{ep:03d} | LOSS:{l_sum/len(X):.4f} | ACC:{a_sum/len(X):.4f} | SPEED:{len(X)/dt:.1f} samples/s")
+        print(
+            f"STEP:{ep:03d} | LOSS:{l_sum/len(X):.4f} | ACC:{a_sum/len(X):.4f} | SPEED:{len(X)/dt:.1f} samples/s"
+        )
+
 
 if __name__ == "__main__":
     train()
