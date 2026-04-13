@@ -12,6 +12,7 @@ from datetime import datetime
 LOG_FILE = "env_audit.log"
 REQUIRED_CORE = ["numpy", "websockets", "omega_point", "psutil"]
 
+
 class SovereignAuditor:
     def __init__(self):
         self.report = {
@@ -19,10 +20,13 @@ class SovereignAuditor:
             "system": {},
             "packages": {},
             "conflicts": [],
-            "hardware": {}
+            "hardware": {},
         }
-        logging.basicConfig(filename=LOG_FILE, level=logging.INFO, 
-                            format='%(asctime)s - %(levelname)s - %(message)s')
+        logging.basicConfig(
+            filename=LOG_FILE,
+            level=logging.INFO,
+            format="%(asctime)s - %(levelname)s - %(message)s",
+        )
 
     def check_system_integrity(self):
         """အဆင့် ၁: Operating System နှင့် Python Version စစ်ဆေးခြင်း"""
@@ -32,7 +36,7 @@ class SovereignAuditor:
             "os_release": platform.release(),
             "python_version": sys.version,
             "architecture": platform.machine(),
-            "processor": platform.processor()
+            "processor": platform.processor(),
         }
 
     def check_hardware_resources(self):
@@ -40,11 +44,16 @@ class SovereignAuditor:
         print("🚀 [2/4] Analyzing Hardware Capabilities...")
         try:
             import psutil
+
             ram = psutil.virtual_memory()
             self.report["hardware"]["ram_total_gb"] = round(ram.total / (1024**3), 2)
-            self.report["hardware"]["ram_available_gb"] = round(ram.available / (1024**3), 2)
+            self.report["hardware"]["ram_available_gb"] = round(
+                ram.available / (1024**3), 2
+            )
         except ImportError:
-            self.report["hardware"]["ram"] = "psutil not installed (Hardware audit limited)"
+            self.report["hardware"][
+                "ram"
+            ] = "psutil not installed (Hardware audit limited)"
 
         # GPU Check (NVIDIA)
         try:
@@ -58,30 +67,43 @@ class SovereignAuditor:
         print("📦 [3/4] Scanning Installed Neural Pathways (Packages)...")
         dists = importlib.metadata.distributions()
         for d in dists:
-            self.report["packages"][d.metadata['Name']] = d.version
+            self.report["packages"][d.metadata["Name"]] = d.version
 
     def resolve_conflicts(self, target_lib="websockets", version="12.0"):
         """အဆင့် ၄: Conflict များကို အလိုအလျောက် ဖြေရှင်းခြင်း (Auto-Repair)"""
         print(f"🛠️ [4/4] Verifying Dependency Integrity for '{target_lib}'...")
-        
+
         try:
             # Dry-run simulate
             result = subprocess.run(
-                [sys.executable, "-m", "pip", "install", f"{target_lib}=={version}", "--dry-run"],
-                capture_output=True, text=True
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    f"{target_lib}=={version}",
+                    "--dry-run",
+                ],
+                capture_output=True,
+                text=True,
             )
-            
-            if "Successfully uninstalled" in result.stdout or "Conflict" in result.stderr:
-                print(f"⚠️ Conflict Detected for {target_lib}. Initiating Auto-Repair...")
+
+            if (
+                "Successfully uninstalled" in result.stdout
+                or "Conflict" in result.stderr
+            ):
+                print(
+                    f"⚠️ Conflict Detected for {target_lib}. Initiating Auto-Repair..."
+                )
                 self.report["conflicts"].append(f"Conflict found in {target_lib}")
-                
+
                 # တကယ့် Repair လုပ်မည့်အဆင့်
                 # subprocess.run([sys.executable, "-m", "pip", "install", f"{target_lib}=={version}", "--quiet"])
                 return "REPAIRED"
             else:
                 print(f"✅ {target_lib} environment is stable.")
                 return "STABLE"
-                
+
         except Exception as e:
             logging.error(f"Audit Error: {e}")
             return "ERROR"
@@ -92,13 +114,16 @@ class SovereignAuditor:
         with open(report_file, "w") as f:
             json.dump(self.report, f, indent=4)
         print(f"\n✅ Audit Complete. Intelligence Report saved to: {report_file}")
-        
+
         # Summary Table
         print("\n--- HEALTH SUMMARY ---")
         print(f"OS: {self.report['system']['os']}")
         print(f"RAM: {self.report['hardware'].get('ram_total_gb', 'N/A')} GB")
-        print(f"GPU: {'Detected' if self.report['hardware'].get('gpu_available') else 'Not Found'}")
+        print(
+            f"GPU: {'Detected' if self.report['hardware'].get('gpu_available') else 'Not Found'}"
+        )
         print(f"Status: { 'CRITICAL' if self.report['conflicts'] else 'OPTIMIZED' }")
+
 
 if __name__ == "__main__":
     auditor = SovereignAuditor()
