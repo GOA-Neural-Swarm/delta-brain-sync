@@ -33,8 +33,10 @@ class Linear:
         return np.dot(x, self.W) + self.b
 
     def backward(self, dout):
-        self.dW = np.dot(self.x.reshape(-1, self.x.shape[-1]).T, dout.reshape(-1, dout.shape[-1]))
-        self.db = np.sum(dout, axis=tuple(range(len(dout.shape)-1)))
+        x_flat = self.x.reshape(-1, self.x.shape[-1])
+        dout_flat = dout.reshape(-1, dout.shape[-1])
+        self.dW = np.dot(x_flat.T, dout_flat)
+        self.db = np.sum(dout_flat, axis=0)
         return np.dot(dout, self.W.T)
 
 class RMSNorm:
@@ -95,22 +97,20 @@ class GeminiGQA:
         k = self.k_proj.forward(x).reshape(b, s, self.kv_heads, self.head_dim)
         v = self.v_proj.forward(x).reshape(b, s, self.kv_heads, self.head_dim)
         self.qr, self.kr, self.v_raw = self.rope.apply(q), self.rope.apply(k), v
-        k_rep = np.repeat(self.kr, self.group, axis=2)
-        v_rep = np.repeat(v, self.group, axis=2)
-        attn = np.einsum("bshd,bthd->bsht", self.qr, k_rep) * self.scale
+        self.k_rep = np.repeat(self.kr, self.group, axis=2)
+        self.v_rep = np.repeat(v, self.group, axis=2)
+        attn = np.einsum("bshd,bthd->bsht", self.qr, self.k_rep) * self.scale
         self.probs = softmax(attn)
-        out = np.einsum("bsht,bthd->bshd", self.probs, v_rep)
+        out = np.einsum("bsht,bthd->bshd", self.probs, self.v_rep)
         return self.o_proj.forward(out.reshape(b, s, d))
 
     def backward(self, dout):
         b, s, d = dout.shape
         dout_o = self.o_proj.backward(dout).reshape(b, s, self.heads, self.head_dim)
-        k_rep = np.repeat(self.kr, self.group, axis=2)
-        v_rep = np.repeat(self.v_raw, self.group, axis=2)
-        d_probs = np.einsum("bshd,bthd->bsht", dout_o, v_rep)
+        d_probs = np.einsum("bshd,bthd->bsht", dout_o, self.v_rep)
         d_v_rep = np.einsum("bsht,bshd->bthd", self.probs, dout_o)
         d_attn = (self.probs * (d_probs - np.sum(self.probs * d_probs, axis=-1, keepdims=True))) * self.scale
-        d_qr = np.einsum("bsht,bthd->bshd", d_attn, k_rep)
+        d_qr = np.einsum("bsht,bthd->bshd", d_attn, self.k_rep)
         d_kr_rep = np.einsum("bsht,bshd->bthd", d_attn, self.qr)
         dq = self.rope.backward(d_qr).reshape(b, s, d)
         dk_sum = np.sum(d_kr_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3)
@@ -119,8 +119,8 @@ class GeminiGQA:
         return self.q_proj.backward(dq) + self.k_proj.backward(dk) + self.v_proj.backward(dv)
 
 class GroqMoE:
-    def __init__(self, dim, n_exp=4, top_k=1):
-        self.dim, self.n_exp, self.top_k = dim, n_exp, top_k
+    def __init__(self, dim, n_exp=4):
+        self.dim, self.n_exp = dim, n_exp
         self.gate = Linear(dim, n_exp)
         self.experts = [[Linear(dim, dim*2), Linear(dim*2, dim)] for _ in range(n_exp)]
 
@@ -134,7 +134,7 @@ class GroqMoE:
         self.ctx = []
         for i in range(self.n_exp):
             m = (self.idx == i)
-            if not np.any(m): 
+            if not np.any(m):
                 self.ctx.append(None)
                 continue
             h = self.experts[i][0].forward(xf[m])
@@ -166,17 +166,19 @@ class SovereignBlock:
         self.n2, self.moe = RMSNorm(dim), GroqMoE(dim)
 
     def forward(self, x):
-        x = x + self.attn.forward(self.n1.forward(x))
-        x = x + self.moe.forward(self.n2.forward(x))
-        return x
+        self.x1 = x
+        self.nx1 = self.n1.forward(x)
+        self.x2 = self.x1 + self.attn.forward(self.nx1)
+        self.nx2 = self.n2.forward(self.x2)
+        self.x3 = self.x2 + self.moe.forward(self.nx2)
+        return self.x3
 
     def backward(self, dout):
-        dm = self.moe.backward(dout)
-        dn2 = self.n2.backward(dm)
-        res1 = dout + dn2
-        da = self.attn.backward(self.n1.forward(res1)) # Approximation for speed
-        dn1 = self.n1.backward(da)
-        return res1 + dn1
+        d_moe = self.moe.backward(dout)
+        d_x2 = dout + self.n2.backward(d_moe)
+        d_attn = self.attn.backward(d_x2)
+        d_x1 = d_x2 + self.n1.backward(d_attn)
+        return d_x1
 
 class OMEGA_ASI_X8:
     def __init__(self, in_d=784, h_d=128, out_d=10, depth=2):
@@ -231,24 +233,24 @@ class Lion:
                 p.g -= self.lr * (u + self.wd * p.g)
                 self.m[i] = self.b2 * m + (1.0 - self.b2) * p.dg
 
-def get_data(n=1024):
+def get_data(n=2048):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 4.0
-    return (X - np.mean(X)) / (np.std(X) + 1e-6), y
+    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 5.0
+    X = (X - np.mean(X)) / (np.std(X) + 1e-6)
+    return X, y
 
 def train():
     X, y = get_data(2048)
     model = OMEGA_ASI_X8(h_d=128, depth=2)
     params = model.get_params()
     opt = Lion(params, lr=1e-4)
-    bs, epochs = 64, 30
+    bs, epochs = 64, 40
     print("OMEGA-ASI X8 | Sovereign Architecture Engaged")
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
         ls, acc, t0 = 0, 0, time.time()
-        lr_scale = 0.5 * (1 + np.cos(np.pi * ep / epochs))
-        opt.lr = 1e-4 * lr_scale
+        opt.lr = 1e-4 * (0.5 * (1 + np.cos(np.pi * ep / epochs)))
         for i in range(0, len(X), bs):
             xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
             if len(xb) < bs: continue
@@ -256,7 +258,7 @@ def train():
             probs = softmax(logits)
             ls += -np.mean(np.log(probs[range(bs), yb] + 1e-10)) * bs
             acc += np.sum(np.argmax(probs, axis=1) == yb)
-            dout = probs.copy()
+            dout = (probs.copy())
             dout[range(bs), yb] -= 1
             model.backward(dout / bs)
             gn = np.sqrt(sum(np.sum(p.dW**2) + np.sum(p.db**2) for p in params if hasattr(p, 'dW')))
