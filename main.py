@@ -1,4 +1,3 @@
-
 import numpy as np
 import time
 
@@ -24,7 +23,7 @@ def softmax(x, axis=-1):
 
 class Linear:
     def __init__(self, in_d, out_d, std=None):
-        scale = std or np.sqrt(2.0 / in_d)
+        scale = std or np.sqrt(2.0 / (in_d + out_d))
         self.W = np.random.randn(in_d, out_d).astype(np.float32) * scale
         self.b = np.zeros(out_d, dtype=np.float32)
         self.x, self.dW, self.db = None, None, None
@@ -68,7 +67,8 @@ class RoPE:
     def apply(self, x):
         s = x.shape[1]
         c, sn = self.cos[:, :s, :, :], self.sin[:, :s, :, :]
-        x_rot = np.concatenate([-x[..., x.shape[-1]//2:], x[..., :x.shape[-1]//2]], axis=-1)
+        half = x.shape[-1] // 2
+        x_rot = np.concatenate([-x[..., half:], x[..., :half]], axis=-1)
         return x * c + x_rot * sn
 
     def backward(self, dout):
@@ -130,15 +130,14 @@ class GroqMoE:
         xf = x.reshape(-1, self.dim)
         logits = self.gate.forward(xf)
         self.probs = softmax(logits)
-        self.indices = np.argsort(self.probs, axis=-1)[:, -self.top_k:]
+        self.indices = np.argmax(self.probs, axis=-1)
         out = np.zeros_like(xf)
         self.exp_cache = []
         for i in range(self.n_exp):
-            mask = np.any(self.indices == i, axis=-1)
+            mask = (self.indices == i)
             if not np.any(mask):
                 self.exp_cache.append(None)
                 continue
-            idx_in_topk = np.where(self.indices[mask] == i)[1]
             p = self.probs[mask, i][:, None]
             h = self.experts[i][0].forward(xf[mask])
             act = swiglu(h)
@@ -233,19 +232,20 @@ class Lion:
 def get_data(n=2048):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 4.0
+    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 5.0
     return (X - np.mean(X)) / (np.std(X) + 1e-6), y
 
 def train():
     X, y = get_data(2048)
     model = OMEGA_ASI_X10(h_d=64, depth=1)
     params = model.get_params()
-    opt = Lion(params, lr=1e-4)
-    bs, epochs = 32, 15
+    opt = Lion(params, lr=2e-4)
+    bs, epochs = 64, 20
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
         ls, acc, t0 = 0, 0, time.time()
-        opt.lr = 1e-4 * 0.5 * (1 + np.cos(np.pi * ep / epochs))
+        lr_scale = 0.5 * (1 + np.cos(np.pi * ep / epochs))
+        opt.lr = 2e-4 * lr_scale
         for i in range(0, len(X), bs):
             xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
             if len(xb) < bs: continue
@@ -262,7 +262,7 @@ def train():
                     if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
                     if hasattr(p, "dg"): p.dg /= gn
             opt.step()
-        print(f"STEP:{ep:02d} | LOSS:{ls/len(X):.4f} | ACC:{acc/len(X):.4f} | {len(X)/(time.time()-t0):.1f} samples/s")
+        print(f"EPOCH:{ep:02d} | LOSS:{ls/len(X):.4f} | ACC:{acc/len(X):.4f} | {len(X)/(time.time()-t0):.1f} samples/s")
 
 if __name__ == "__main__":
     train()
