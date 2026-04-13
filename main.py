@@ -21,8 +21,9 @@ def softmax(x, axis=-1):
     return exps / (np.sum(exps, axis=axis, keepdims=True) + 1e-10)
 
 class Linear:
-    def __init__(self, in_d, out_d):
-        self.W = np.random.randn(in_d, out_d).astype(np.float32) * np.sqrt(2.0 / in_d)
+    def __init__(self, in_d, out_d, std=None):
+        std = std or np.sqrt(2.0 / in_d)
+        self.W = np.random.randn(in_d, out_d).astype(np.float32) * std
         self.b = np.zeros(out_d, dtype=np.float32)
         self.x, self.dW, self.db = None, None, None
 
@@ -31,15 +32,16 @@ class Linear:
         return np.dot(x, self.W) + self.b
 
     def backward(self, dout):
-        self.dW = np.dot(self.x.reshape(-1, self.x.shape[-1]).T, dout.reshape(-1, dout.shape[-1]))
-        self.db = np.sum(dout, axis=tuple(range(len(dout.shape)-1)))
+        x_flat = self.x.reshape(-1, self.x.shape[-1])
+        dout_flat = dout.reshape(-1, dout.shape[-1])
+        self.dW = np.dot(x_flat.T, dout_flat)
+        self.db = np.sum(dout_flat, axis=0)
         return np.dot(dout, self.W.T)
 
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
         self.g = np.ones(dim, dtype=np.float32)
-        self.eps, self.x, self.inv_rms = eps, None, None
-        self.dg = None
+        self.eps, self.x, self.inv_rms, self.dg = eps, None, None, None
 
     def forward(self, x):
         self.x = x
@@ -232,7 +234,7 @@ class Lion:
 def get_data(n=4096):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 4.0
+    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 5.0
     return (X - np.mean(X)) / (np.std(X) + 1e-6), y
 
 def train():
