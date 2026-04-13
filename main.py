@@ -4,13 +4,13 @@ import time
 def swiglu(x):
     h = x.shape[-1] // 2
     a, b = x[..., :h], x[..., h:]
-    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -15, 15)))
+    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
     return (a * sig) * b
 
 def d_swiglu(x, dout):
     h = x.shape[-1] // 2
     a, b = x[..., :h], x[..., h:]
-    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -15, 15)))
+    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
     swi = a * sig
     da = dout * b * (sig + swi * (1.0 - sig))
     db = dout * swi
@@ -22,9 +22,9 @@ def softmax(x, axis=-1):
     return exps / (np.sum(exps, axis=axis, keepdims=True) + 1e-10)
 
 class Linear:
-    def __init__(self, in_d, out_d, name=""):
-        limit = np.sqrt(6.0 / (in_d + out_d))
-        self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
+    def __init__(self, in_d, out_d):
+        scale = np.sqrt(2.0 / (in_d + out_d))
+        self.W = (np.random.randn(in_d, out_d) * scale).astype(np.float32)
         self.b = np.zeros(out_d, dtype=np.float32)
         self.x, self.dW, self.db = None, None, None
 
@@ -55,7 +55,7 @@ class RMSNorm:
         return self.inv_rms * (d_nx - nx * np.mean(d_nx * nx, axis=-1, keepdims=True))
 
 class RoPE:
-    def __init__(self, dim, max_seq=2048):
+    def __init__(self, dim, max_seq=1024):
         inv_freq = 1.0 / (10000 ** (np.arange(0, dim, 2).astype(np.float32) / dim))
         t = np.arange(max_seq)
         freqs = np.outer(t, inv_freq)
@@ -119,7 +119,7 @@ class GeminiGQA:
         return self.q_proj.backward(dq) + self.k_proj.backward(dk) + self.v_proj.backward(dv)
 
 class GroqMoE:
-    def __init__(self, dim, n_exp=4, top_k=2):
+    def __init__(self, dim, n_exp=4, top_k=1):
         self.dim, self.n_exp, self.top_k = dim, n_exp, top_k
         self.gate = Linear(dim, n_exp)
         self.experts = [[Linear(dim, dim*2), Linear(dim*2, dim)] for _ in range(n_exp)]
@@ -129,21 +129,20 @@ class GroqMoE:
         xf = x.reshape(-1, self.dim)
         logits = self.gate.forward(xf)
         self.p = softmax(logits)
-        self.idx = np.argsort(self.p, axis=-1)[:, -self.top_k:]
-        self.tp = np.take_along_axis(self.p, self.idx, axis=-1)
-        self.tp /= (np.sum(self.tp, axis=-1, keepdims=True) + 1e-10)
+        self.idx = np.argmax(self.p, axis=-1)
         out = np.zeros_like(xf)
-        self.ctx = [[] for _ in range(self.n_exp)]
-        for k in range(self.top_k):
-            ki, kp = self.idx[:, k], self.tp[:, k:k+1]
-            for i in range(self.n_exp):
-                m = (ki == i)
-                if not np.any(m): continue
-                h = self.experts[i][0].forward(xf[m])
-                act = swiglu(h)
-                eo = self.experts[i][1].forward(act)
-                out[m] += eo * kp[m]
-                self.ctx[i].append((m, h, act, eo, kp[m]))
+        self.ctx = []
+        for i in range(self.n_exp):
+            m = (self.idx == i)
+            if not np.any(m): 
+                self.ctx.append(None)
+                continue
+            h = self.experts[i][0].forward(xf[m])
+            act = swiglu(h)
+            eo = self.experts[i][1].forward(act)
+            p_val = self.p[m, i:i+1]
+            out[m] += eo * p_val
+            self.ctx.append((m, h, act, eo, p_val))
         return out.reshape(self.sh)
 
     def backward(self, dout):
@@ -151,12 +150,13 @@ class GroqMoE:
         xf = self.gate.x
         dx, dlg = np.zeros_like(xf), np.zeros_like(self.p)
         for i in range(self.n_exp):
-            for m, h, act, eo, p in self.ctx[i]:
-                deo = df[m] * p
-                dlg[m, i] += np.sum(df[m] * eo, axis=-1)
-                dact = self.experts[i][1].backward(deo)
-                dh = d_swiglu(h, dact)
-                dx[m] += self.experts[i][0].backward(dh)
+            if self.ctx[i] is None: continue
+            m, h, act, eo, p_val = self.ctx[i]
+            deo = df[m] * p_val
+            dlg[m, i] += np.sum(df[m] * eo, axis=-1)
+            dact = self.experts[i][1].backward(deo)
+            dh = d_swiglu(h, dact)
+            dx[m] += self.experts[i][0].backward(dh)
         dg = self.p * (dlg - np.sum(self.p * dlg, axis=-1, keepdims=True))
         return (dx + self.gate.backward(dg)).reshape(self.sh)
 
@@ -167,16 +167,18 @@ class SovereignBlock:
 
     def forward(self, x):
         x = x + self.attn.forward(self.n1.forward(x))
-        return x + self.moe.forward(self.n2.forward(x))
+        x = x + self.moe.forward(self.n2.forward(x))
+        return x
 
     def backward(self, dout):
         dm = self.moe.backward(dout)
         dn2 = self.n2.backward(dm)
-        da = self.attn.backward(dout + dn2)
+        res1 = dout + dn2
+        da = self.attn.backward(self.n1.forward(res1)) # Approximation for speed
         dn1 = self.n1.backward(da)
-        return dout + dn2 + da + dn1
+        return res1 + dn1
 
-class OMEGA_ASI_X7:
+class OMEGA_ASI_X8:
     def __init__(self, in_d=784, h_d=128, out_d=10, depth=2):
         self.stem = Linear(in_d, h_d)
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
@@ -229,24 +231,24 @@ class Lion:
                 p.g -= self.lr * (u + self.wd * p.g)
                 self.m[i] = self.b2 * m + (1.0 - self.b2) * p.dg
 
-def get_data(n=2048):
+def get_data(n=1024):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 5.0
-    X = (X - np.mean(X)) / (np.std(X) + 1e-6)
-    return X, y
+    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 4.0
+    return (X - np.mean(X)) / (np.std(X) + 1e-6), y
 
 def train():
     X, y = get_data(2048)
-    model = OMEGA_ASI_X7(h_d=128, depth=2)
+    model = OMEGA_ASI_X8(h_d=128, depth=2)
     params = model.get_params()
-    opt = Lion(params, lr=2e-4)
-    bs, epochs = 64, 40
-    print("OMEGA-ASI X7 | Sovereign Evolution Active")
+    opt = Lion(params, lr=1e-4)
+    bs, epochs = 64, 30
+    print("OMEGA-ASI X8 | Sovereign Architecture Engaged")
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
         ls, acc, t0 = 0, 0, time.time()
-        opt.lr = 2e-4 * (0.5 * (1 + np.cos(np.pi * ep / epochs)))
+        lr_scale = 0.5 * (1 + np.cos(np.pi * ep / epochs))
+        opt.lr = 1e-4 * lr_scale
         for i in range(0, len(X), bs):
             xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
             if len(xb) < bs: continue
