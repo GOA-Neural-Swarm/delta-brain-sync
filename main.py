@@ -1,25 +1,22 @@
 import numpy as np
 import time
 
-
 def stable_sigmoid(x):
     return 1.0 / (1.0 + np.exp(-np.clip(x, -15, 15)))
 
-
 def swiglu(x):
-    return x * stable_sigmoid(x)
-
+    half = x.shape[-1] // 2
+    gate, val = x[..., :half], x[..., half:]
+    return val * stable_sigmoid(gate)
 
 def fast_softmax(x, axis=-1):
     x_max = np.max(x, axis=axis, keepdims=True)
     exps = np.exp(x - x_max)
     return exps / (np.sum(exps, axis=axis, keepdims=True) + 1e-10)
 
-
 class Linear:
-    def __init__(self, in_d, out_d):
-        limit = np.sqrt(6 / (in_d + out_d))
-        self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
+    def __init__(self, in_d, out_d, std=0.02):
+        self.W = np.random.randn(in_d, out_d).astype(np.float32) * std
         self.b = np.zeros(out_d, dtype=np.float32)
         self.dW, self.db = None, None
         self.x = None
@@ -34,7 +31,6 @@ class Linear:
         self.dW = np.dot(x_flat.T, dout_flat)
         self.db = np.sum(dout_flat, axis=0)
         return np.dot(dout, self.W.T)
-
 
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
@@ -52,7 +48,6 @@ class RMSNorm:
         self.d_scale = np.sum(dout * norm_x, axis=tuple(range(len(dout.shape) - 1)))
         v = dout * self.scale
         return self.rstd * (v - norm_x * np.mean(v * norm_x, axis=-1, keepdims=True))
-
 
 class RotaryEmbedding:
     def __init__(self, dim, max_len=2048):
@@ -77,7 +72,6 @@ class RotaryEmbedding:
         dx[..., :half] += dout[..., half:] * s_[..., :half]
         dx[..., half:] -= dout[..., :half] * s_[..., half:]
         return dx
-
 
 class GeminiGQA:
     def __init__(self, dim, heads=8, kv_heads=2):
@@ -112,41 +106,27 @@ class GeminiGQA:
         v_rep = np.repeat(self.v_val, self.group, axis=2)
         d_probs = np.einsum("bshd,bthd->bsht", dout_o, v_rep)
         d_v_rep = np.einsum("bsht,bshd->bthd", self.probs, dout_o)
-        d_attn = (
-            self.probs
-            * (d_probs - np.sum(self.probs * d_probs, axis=-1, keepdims=True))
-        ) * self.scale
+        d_attn = (self.probs * (d_probs - np.sum(self.probs * d_probs, axis=-1, keepdims=True))) * self.scale
         dq_rope = np.einsum("bsht,bthd->bshd", d_attn, k_rep)
         dk_rep = np.einsum("bsht,bshd->bthd", d_attn, self.q_rope)
         dq = self.rope.backward(dq_rope).reshape(b, s, d)
-        dk_rope = np.sum(
-            dk_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3
-        )
+        dk_rope = np.sum(dk_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3)
         dk = self.rope.backward(dk_rope).reshape(b, s, -1)
-        dv = np.sum(
-            d_v_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3
-        ).reshape(b, s, -1)
-        return (
-            self.q_proj.backward(dq)
-            + self.k_proj.backward(dk)
-            + self.v_proj.backward(dv)
-        )
-
+        dv = np.sum(d_v_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3).reshape(b, s, -1)
+        return self.q_proj.backward(dq) + self.k_proj.backward(dk) + self.v_proj.backward(dv)
 
 class GroqMoE:
     def __init__(self, dim, num_experts=4, top_k=2):
         self.dim, self.num_experts, self.top_k = dim, num_experts, top_k
         self.gate = Linear(dim, num_experts)
-        self.experts = [
-            [Linear(dim, dim * 2), Linear(dim * 2, dim)] for _ in range(num_experts)
-        ]
+        self.experts = [[Linear(dim, dim * 2), Linear(dim * 2, dim)] for _ in range(num_experts)]
 
     def forward(self, x):
         self.orig_shape = x.shape
         x_flat = x.reshape(-1, self.dim)
         logits = self.gate.forward(x_flat)
         probs = fast_softmax(logits)
-        indices = np.argsort(probs, axis=-1)[:, -self.top_k :]
+        indices = np.argsort(probs, axis=-1)[:, -self.top_k:]
         top_probs = np.take_along_axis(probs, indices, axis=-1)
         top_probs /= np.sum(top_probs, axis=-1, keepdims=True) + 1e-10
         self.indices, self.top_probs, self.gate_probs = indices, top_probs, probs
@@ -154,11 +134,10 @@ class GroqMoE:
         self.expert_ctx = [[] for _ in range(self.num_experts)]
         for k in range(self.top_k):
             idx = indices[:, k]
-            p = top_probs[:, k : k + 1]
+            p = top_probs[:, k:k+1]
             for i in range(self.num_experts):
-                mask = idx == i
-                if not np.any(mask):
-                    continue
+                mask = (idx == i)
+                if not np.any(mask): continue
                 e_in = x_flat[mask]
                 h = self.experts[i][0].forward(e_in)
                 act = swiglu(h)
@@ -176,15 +155,16 @@ class GroqMoE:
                 de_out = dout_flat[mask] * p
                 d_logits[mask, i] += np.sum(dout_flat[mask] * e_out, axis=-1)
                 d_act = self.experts[i][1].backward(de_out)
-                sig = stable_sigmoid(h)
-                dh = d_act * (sig * (1.0 + h * (1.0 - sig)))
+                half = h.shape[-1] // 2
+                gh, vh = h[:, :half], h[:, half:]
+                sig = stable_sigmoid(gh)
+                d_gh = d_act * vh * (sig * (1.0 - sig))
+                d_vh = d_act * sig
+                dh = np.concatenate([d_gh, d_vh], axis=-1)
                 dx[mask] += self.experts[i][0].backward(dh)
-        dg = self.gate_probs * (
-            d_logits - np.sum(self.gate_probs * d_logits, axis=-1, keepdims=True)
-        )
+        dg = self.gate_probs * (d_logits - np.sum(self.gate_probs * d_logits, axis=-1, keepdims=True))
         dx += self.gate.backward(dg)
         return dx.reshape(self.orig_shape)
-
 
 class SovereignBlock:
     def __init__(self, dim):
@@ -194,21 +174,24 @@ class SovereignBlock:
         self.moe = GroqMoE(dim)
 
     def forward(self, x):
-        x = x + self.attn.forward(self.norm1.forward(x))
-        x = x + self.moe.forward(self.norm2.forward(x))
+        self.x_orig = x
+        self.x_norm1 = self.norm1.forward(x)
+        x = x + self.attn.forward(self.x_norm1)
+        self.x_mid = x
+        self.x_norm2 = self.norm2.forward(x)
+        x = x + self.moe.forward(self.x_norm2)
         return x
 
     def backward(self, dout):
         d_moe = self.moe.backward(dout)
         d_norm2 = self.norm2.backward(d_moe)
-        dx1 = dout + d_norm2
-        d_attn = self.attn.backward(self.norm1.forward(dx1))  # Simplified approximation
+        dout_mid = dout + d_norm2
+        d_attn = self.attn.backward(dout_mid)
         d_norm1 = self.norm1.backward(d_attn)
-        return dx1 + d_norm1
+        return dout_mid + d_norm1
 
-
-class OMEGA_ASI_X2:
-    def __init__(self, in_dim=784, h_dim=256, out_dim=10, depth=2):
+class OMEGA_ASI_X3:
+    def __init__(self, in_dim=784, h_dim=256, out_dim=10, depth=3):
         self.stem = Linear(in_dim, h_dim)
         self.blocks = [SovereignBlock(h_dim) for _ in range(depth)]
         self.norm = RMSNorm(h_dim)
@@ -230,20 +213,15 @@ class OMEGA_ASI_X2:
 
     def get_params(self):
         params = []
-
         def collect(obj):
             if isinstance(obj, (Linear, RMSNorm)):
                 params.append(obj)
             elif hasattr(obj, "__dict__"):
                 for v in obj.__dict__.values():
-                    if isinstance(v, list):
-                        [collect(i) for i in v]
-                    else:
-                        collect(v)
-
+                    if isinstance(v, list): [collect(i) for i in v]
+                    else: collect(v)
         collect(self)
         return params
-
 
 class Lion:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
@@ -255,8 +233,7 @@ class Lion:
         for i, p in enumerate(self.params):
             if hasattr(p, "W"):
                 for attr, m_list in [("W", self.m), ("b", self.mb)]:
-                    if attr == "b" and m_list[i] is None:
-                        continue
+                    if attr == "b" and m_list[i] is None: continue
                     g = getattr(p, "d" + attr)
                     m = m_list[i]
                     u = np.sign(self.b1 * m + (1.0 - self.b1) * g)
@@ -270,55 +247,41 @@ class Lion:
                 p.scale -= self.lr * (u + self.wd * p.scale)
                 self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * g
 
-
-def get_data(n=2048):
+def get_data(n=4096):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
     for i in range(n):
-        X[i, y[i] * 78 : (y[i] + 1) * 78] += 3.0
+        X[i, y[i]*78:(y[i]+1)*78] += 5.0
     return (X - np.mean(X)) / (np.std(X) + 1e-6), y
-
 
 def train():
     X, y = get_data(4096)
-    model = OMEGA_ASI_X2(h_dim=128, depth=2)
+    model = OMEGA_ASI_X3(h_dim=128, depth=2)
     params = model.get_params()
-    opt = Lion(params, lr=2e-4)
+    opt = Lion(params, lr=1e-4)
     bs = 64
-    print("OMEGA-ASI X2 | GQA-MOE HYBRID | LION OPTIMIZER")
-    for ep in range(20):
+    print("OMEGA-ASI X3 | GQA-MOE RECURSIVE ARCHITECTURE")
+    for ep in range(30):
         idx = np.random.permutation(len(X))
         l_sum, a_sum, t0 = 0, 0, time.time()
-        opt.lr = 2e-4 * 0.5 * (1 + np.cos(np.pi * ep / 20))
+        opt.lr = 1e-4 * 0.5 * (1 + np.cos(np.pi * ep / 30))
         for i in range(0, len(X), bs):
-            xb, yb = X[idx[i : i + bs]], y[idx[i : i + bs]]
-            if len(xb) < bs:
-                continue
-            probs = fast_softmax(model.forward(xb))
+            xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
+            if len(xb) < bs: continue
+            logits = model.forward(xb)
+            probs = fast_softmax(logits)
             l_sum += -np.mean(np.log(probs[range(bs), yb] + 1e-10)) * bs
             a_sum += np.sum(np.argmax(probs, axis=1) == yb)
             dout = probs.copy()
             dout[range(bs), yb] -= 1
             model.backward(dout / bs)
-            gn = np.sqrt(
-                sum(
-                    np.sum(p.dW**2) + np.sum(p.db**2)
-                    for p in params
-                    if hasattr(p, "dW")
-                )
-            )
+            gn = np.sqrt(sum(np.sum(p.dW**2) + np.sum(p.db**2) for p in params if hasattr(p, "dW")))
             if gn > 1.0:
                 for p in params:
-                    if hasattr(p, "dW"):
-                        p.dW /= gn
-                        p.db /= gn
-                    if hasattr(p, "d_scale"):
-                        p.d_scale /= gn
+                    if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
+                    if hasattr(p, "d_scale"): p.d_scale /= gn
             opt.step()
-        print(
-            f"EP:{ep:02d} | LOSS:{l_sum/len(X):.4f} | ACC:{a_sum/len(X):.4f} | {len(X)/(time.time()-t0):.1f} spl/s"
-        )
-
+        print(f"EP:{ep:02d} | LOSS:{l_sum/len(X):.4f} | ACC:{a_sum/len(X):.4f} | {len(X)/(time.time()-t0):.1f} spl/s")
 
 if __name__ == "__main__":
     train()
