@@ -1,11 +1,11 @@
-
 import numpy as np
 import time
 
 def swiglu(x):
     h = x.shape[-1] // 2
     a, b = x[..., :h], x[..., h:]
-    return a * (1.0 / (1.0 + np.exp(-np.clip(a, -10, 10)))) * b
+    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -10, 10)))
+    return (a * sig) * b
 
 def d_swiglu(x, dout):
     h = x.shape[-1] // 2
@@ -33,10 +33,10 @@ class Linear:
         return np.dot(x, self.W) + self.b
 
     def backward(self, dout):
-        x_flat = self.x.reshape(-1, self.x.shape[-1])
-        d_flat = dout.reshape(-1, dout.shape[-1])
-        self.dW = np.dot(x_flat.T, d_flat)
-        self.db = np.sum(d_flat, axis=0)
+        x_f = self.x.reshape(-1, self.x.shape[-1])
+        d_f = dout.reshape(-1, dout.shape[-1])
+        self.dW = np.dot(x_f.T, d_f)
+        self.db = np.sum(d_f, axis=0)
         return np.dot(dout, self.W.T)
 
 class RMSNorm:
@@ -67,7 +67,7 @@ class RoPE:
     def apply(self, x):
         s = x.shape[1]
         c, sn = self.cos[:, :s, :, :], self.sin[:, :s, :, :]
-        x_rot = np.concatenate([-x[..., x.shape[-1] // 2 :], x[..., : x.shape[-1] // 2]], axis=-1)
+        x_rot = np.concatenate([-x[..., x.shape[-1]//2:], x[..., :x.shape[-1]//2]], axis=-1)
         return x * c + x_rot * sn
 
     def backward(self, dout):
@@ -116,10 +116,10 @@ class GeminiGQA:
         dk_sum = np.sum(d_kr_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3)
         dk = self.rope.backward(dk_sum).reshape(b, s, -1)
         dv = np.sum(d_v_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3).reshape(b, s, -1)
-        return (self.q_proj.backward(dq) + self.k_proj.backward(dk) + self.v_proj.backward(dv))
+        return self.q_proj.backward(dq) + self.k_proj.backward(dk) + self.v_proj.backward(dv)
 
 class GroqMoE:
-    def __init__(self, dim, n_exp=8, top_k=2):
+    def __init__(self, dim, n_exp=4, top_k=1):
         self.dim, self.n_exp, self.top_k = dim, n_exp, top_k
         self.gate = Linear(dim, n_exp)
         self.experts = [[Linear(dim, dim * 2), Linear(dim * 2, dim)] for _ in range(n_exp)]
@@ -128,40 +128,38 @@ class GroqMoE:
         self.sh = x.shape
         xf = x.reshape(-1, self.dim)
         logits = self.gate.forward(xf)
-        probs = softmax(logits)
-        self.top_k_indices = np.argsort(probs, axis=-1)[:, -self.top_k :]
-        self.top_k_probs = np.take_along_axis(probs, self.top_k_indices, axis=-1)
-        self.top_k_probs /= np.sum(self.top_k_probs, axis=-1, keepdims=True) + 1e-10
+        self.probs = softmax(logits)
+        self.indices = np.argsort(self.probs, axis=-1)[:, -self.top_k:]
         out = np.zeros_like(xf)
-        self.expert_ctx = [[] for _ in range(self.n_exp)]
-        for k in range(self.top_k):
-            indices = self.top_k_indices[:, k]
-            p_vals = self.top_k_probs[:, k : k + 1]
-            for i in range(self.n_exp):
-                mask = indices == i
-                if not np.any(mask):
-                    continue
-                h = self.experts[i][0].forward(xf[mask])
-                act = swiglu(h)
-                eo = self.experts[i][1].forward(act)
-                out[mask] += eo * p_vals[mask]
-                self.expert_ctx[i].append((mask, h, act, eo, p_vals[mask]))
-        self.probs = probs
+        self.exp_cache = []
+        for i in range(self.n_exp):
+            mask = np.any(self.indices == i, axis=-1)
+            if not np.any(mask):
+                self.exp_cache.append(None)
+                continue
+            idx_in_topk = np.where(self.indices[mask] == i)[1]
+            p = self.probs[mask, i][:, None]
+            h = self.experts[i][0].forward(xf[mask])
+            act = swiglu(h)
+            eo = self.experts[i][1].forward(act)
+            out[mask] += eo * p
+            self.exp_cache.append((mask, h, act, eo, p))
         return out.reshape(self.sh)
 
     def backward(self, dout):
         df = dout.reshape(-1, self.dim)
         xf = self.gate.x
         dx = np.zeros_like(xf)
-        dlg = np.zeros_like(self.probs)
+        d_logits = np.zeros_like(self.probs)
         for i in range(self.n_exp):
-            for mask, h, act, eo, p_val in self.expert_ctx[i]:
-                deo = df[mask] * p_val
-                dlg[mask, i] += np.sum(df[mask] * eo, axis=-1)
-                dact = self.experts[i][1].backward(deo)
-                dh = d_swiglu(h, dact)
-                dx[mask] += self.experts[i][0].backward(dh)
-        dg = self.probs * (dlg - np.sum(self.probs * dlg, axis=-1, keepdims=True))
+            if self.exp_cache[i] is None: continue
+            mask, h, act, eo, p = self.exp_cache[i]
+            deo = df[mask] * p
+            d_logits[mask, i] = np.sum(df[mask] * eo, axis=-1)
+            d_act = self.experts[i][1].backward(deo)
+            d_h = d_swiglu(h, d_act)
+            dx[mask] += self.experts[i][0].backward(d_h)
+        dg = self.probs * (d_logits - np.sum(self.probs * d_logits, axis=-1, keepdims=True))
         return (dx + self.gate.backward(dg)).reshape(self.sh)
 
 class SovereignBlock:
@@ -170,16 +168,15 @@ class SovereignBlock:
         self.n2, self.moe = RMSNorm(dim), GroqMoE(dim)
 
     def forward(self, x):
-        self.x1 = x
-        self.x2 = self.x1 + self.attn.forward(self.n1.forward(self.x1))
-        self.x3 = self.x2 + self.moe.forward(self.n2.forward(self.x2))
-        return self.x3
+        x = x + self.attn.forward(self.n1.forward(x))
+        x = x + self.moe.forward(self.n2.forward(x))
+        return x
 
     def backward(self, dout):
         d_moe = self.moe.backward(dout)
-        d_x2 = dout + self.n2.backward(d_moe)
-        d_attn = self.attn.backward(d_x2)
-        return d_x2 + self.n1.backward(d_attn)
+        d_x = dout + self.n2.backward(d_moe)
+        d_attn = self.attn.backward(d_x)
+        return d_x + self.n1.backward(d_attn)
 
 class OMEGA_ASI_X10:
     def __init__(self, in_d=784, h_d=128, out_d=10, depth=2):
@@ -190,30 +187,23 @@ class OMEGA_ASI_X10:
 
     def forward(self, x):
         x = self.stem.forward(x)[:, None, :]
-        for b in self.blocks:
-            x = b.forward(x)
+        for b in self.blocks: x = b.forward(x)
         self.f = self.norm.forward(x[:, 0, :])
         return self.head.forward(self.f)
 
     def backward(self, dout):
         dout = self.norm.backward(self.head.backward(dout))[:, None, :]
-        for b in reversed(self.blocks):
-            dout = b.backward(dout)
+        for b in reversed(self.blocks): dout = b.backward(dout)
         self.stem.backward(dout[:, 0, :])
 
     def get_params(self):
         p = []
-
         def coll(o):
-            if isinstance(o, (Linear, RMSNorm)):
-                p.append(o)
+            if isinstance(o, (Linear, RMSNorm)): p.append(o)
             elif hasattr(o, "__dict__"):
                 for v in o.__dict__.values():
-                    if isinstance(v, list):
-                        [coll(i) for i in v]
-                    else:
-                        coll(v)
-
+                    if isinstance(v, list): [coll(i) for i in v]
+                    else: coll(v)
         coll(self)
         return p
 
@@ -227,66 +217,51 @@ class Lion:
         for i, p in enumerate(self.params):
             if hasattr(p, "W"):
                 for attr, m_list in [("W", self.m), ("b", self.mb)]:
-                    if m_list[i] is None:
-                        continue
-                    g = getattr(p, "d" + attr)
-                    m = m_list[i]
+                    if m_list[i] is None: continue
+                    g, m, w = getattr(p, "d"+attr), m_list[i], getattr(p, attr)
                     u = np.sign(self.b1 * m + (1.0 - self.b1) * g)
-                    w = getattr(p, attr)
                     w -= self.lr * (u + self.wd * w if attr == "W" else u)
                     m_list[i] = self.b2 * m + (1.0 - self.b2) * g
                     setattr(p, attr, w)
             else:
-                m = self.m[i]
-                u = np.sign(self.b1 * m + (1.0 - self.b1) * p.dg)
+                m, g = self.m[i], p.dg
+                u = np.sign(self.b1 * m + (1.0 - self.b1) * g)
                 p.g -= self.lr * (u + self.wd * p.g)
-                self.m[i] = self.b2 * m + (1.0 - self.b2) * p.dg
+                self.m[i] = self.b2 * m + (1.0 - self.b2) * g
 
-def get_data(n=4096):
+def get_data(n=2048):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    for i in range(n):
-        X[i, y[i] * 78 : (y[i] + 1) * 78] += 5.0
+    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 4.0
     return (X - np.mean(X)) / (np.std(X) + 1e-6), y
 
 def train():
-    X, y = get_data(4096)
-    model = OMEGA_ASI_X10(h_d=128, depth=2)
+    X, y = get_data(2048)
+    model = OMEGA_ASI_X10(h_d=64, depth=1)
     params = model.get_params()
-    opt = Lion(params, lr=2e-4)
-    bs, epochs = 64, 20
+    opt = Lion(params, lr=1e-4)
+    bs, epochs = 32, 15
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
         ls, acc, t0 = 0, 0, time.time()
-        opt.lr = 2e-4 * 0.5 * (1 + np.cos(np.pi * ep / epochs))
+        opt.lr = 1e-4 * 0.5 * (1 + np.cos(np.pi * ep / epochs))
         for i in range(0, len(X), bs):
-            xb, yb = X[idx[i : i + bs]], y[idx[i : i + bs]]
-            if len(xb) < bs:
-                continue
-            probs = model.forward(xb)
+            xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
+            if len(xb) < bs: continue
+            logits = model.forward(xb)
+            probs = softmax(logits)
             ls += -np.mean(np.log(probs[range(bs), yb] + 1e-10)) * bs
             acc += np.sum(np.argmax(probs, axis=1) == yb)
             dout = probs.copy()
             dout[range(bs), yb] -= 1
             model.backward(dout / bs)
-            gn = np.sqrt(
-                sum(
-                    np.sum(p.dW**2) + np.sum(p.db**2)
-                    for p in params
-                    if hasattr(p, "dW")
-                )
-            )
+            gn = np.sqrt(sum(np.sum(p.dW**2) + np.sum(p.db**2) for p in params if hasattr(p, "dW")))
             if gn > 1.0:
                 for p in params:
-                    if hasattr(p, "dW"):
-                        p.dW /= gn
-                        p.db /= gn
-                    if hasattr(p, "dg"):
-                        p.dg /= gn
+                    if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
+                    if hasattr(p, "dg"): p.dg /= gn
             opt.step()
-        print(
-            f"EP:{ep:02d} | LOSS:{ls / len(X):.4f} | ACC:{acc / len(X):.4f} | {len(X) / (time.time() - t0):.1f} s/s"
-        )
+        print(f"STEP:{ep:02d} | LOSS:{ls/len(X):.4f} | ACC:{acc/len(X):.4f} | {len(X)/(time.time()-t0):.1f} samples/s")
 
 if __name__ == "__main__":
     train()
