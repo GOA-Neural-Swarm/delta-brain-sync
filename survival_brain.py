@@ -7,13 +7,18 @@ import sys
 try:
     import omega_point
 except ImportError:
-    print("[WARNING] 'omega_point' module not found. Proceeding in strictly isolated mode.")
+    print(
+        "[WARNING] 'omega_point' module not found. Proceeding in strictly isolated mode."
+    )
+
 
 class SurvivalBrain:
     def __init__(self, in_d=784, out_d=10):
         # ၂။ Proper Initialization (အရေးပေါ်အခြေအနေမှာ အလုပ်လုပ်နိုင်အောင်)
         # ရိုးရိုး randn အစား ပိုတည်ငြိမ်တဲ့ Xavier/Glorot Initialization ကို သုံးထားတယ်
-        self.w = np.random.randn(in_d, out_d).astype(np.float32) * np.sqrt(2.0 / (in_d + out_d))
+        self.w = np.random.randn(in_d, out_d).astype(np.float32) * np.sqrt(
+            2.0 / (in_d + out_d)
+        )
         self.b = np.zeros(out_d, dtype=np.float32)
         self.is_active = False
 
@@ -23,19 +28,21 @@ class SurvivalBrain:
 
     def run(self):
         self.is_active = True
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print("🚨 OMEGA-ASI CRITICAL FAULT DETECTED 🚨")
         print("--- SURVIVAL BRAIN ENGAGED ---")
         print("[SYSTEM] System Breathing. Baseline neural pathways initialized.")
         print("[STATUS] Awaiting main core reboot or remote instructions...")
-        print("="*50 + "\n")
+        print("=" * 50 + "\n")
         return True
+
 
 class SystemWatchdog:
     """
     ၃။ The Integrator (Sovereign Architect နဲ့ ချိတ်ဆက်ပေးမယ့် အစောင့်)
     Main AI ကြီး ပျက်ကျသွားရင် SurvivalBrain ကို အလိုအလျောက် နှိုးပေးမယ့် စနစ်
     """
+
     def __init__(self):
         self.survival_core = SurvivalBrain()
         self.log_file = "recovery_logs.md"
@@ -62,9 +69,12 @@ class SystemWatchdog:
         try:
             with open(self.log_file, "a") as f:
                 f.write(payload)
-            print(f"[LOG] Recovery state saved to {self.log_file}. Ready for GitHub push.")
+            print(
+                f"[LOG] Recovery state saved to {self.log_file}. Ready for GitHub push."
+            )
         except Exception as e:
             print(f"[LOG ERROR] Could not save recovery state: {e}")
+
 
 if __name__ == "__main__":
     # စနစ်စတင်ခြင်း
