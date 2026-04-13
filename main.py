@@ -1,12 +1,11 @@
+
 import numpy as np
 import time
-
 
 def swiglu(x):
     h = x.shape[-1] // 2
     a, b = x[..., :h], x[..., h:]
     return a * (1.0 / (1.0 + np.exp(-np.clip(a, -10, 10)))) * b
-
 
 def d_swiglu(x, dout):
     h = x.shape[-1] // 2
@@ -17,12 +16,10 @@ def d_swiglu(x, dout):
     db = dout * swi
     return np.concatenate([da, db], axis=-1)
 
-
 def softmax(x, axis=-1):
     x_max = np.max(x, axis=axis, keepdims=True)
     exps = np.exp(x - x_max)
     return exps / (np.sum(exps, axis=axis, keepdims=True) + 1e-10)
-
 
 class Linear:
     def __init__(self, in_d, out_d, std=None):
@@ -42,7 +39,6 @@ class Linear:
         self.db = np.sum(d_flat, axis=0)
         return np.dot(dout, self.W.T)
 
-
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
         self.g = np.ones(dim, dtype=np.float32)
@@ -59,7 +55,6 @@ class RMSNorm:
         d_nx = dout * self.g
         return self.inv_rms * (d_nx - nx * np.mean(d_nx * nx, axis=-1, keepdims=True))
 
-
 class RoPE:
     def __init__(self, dim, max_seq=2048):
         inv_freq = 1.0 / (10000 ** (np.arange(0, dim, 2).astype(np.float32) / dim))
@@ -72,9 +67,7 @@ class RoPE:
     def apply(self, x):
         s = x.shape[1]
         c, sn = self.cos[:, :s, :, :], self.sin[:, :s, :, :]
-        x_rot = np.concatenate(
-            [-x[..., x.shape[-1] // 2 :], x[..., : x.shape[-1] // 2]], axis=-1
-        )
+        x_rot = np.concatenate([-x[..., x.shape[-1] // 2 :], x[..., : x.shape[-1] // 2]], axis=-1)
         return x * c + x_rot * sn
 
     def backward(self, dout):
@@ -85,7 +78,6 @@ class RoPE:
         dx[..., :half] += dout[..., half:] * sn[..., :half]
         dx[..., half:] -= dout[..., :half] * sn[..., half:]
         return dx
-
 
 class GeminiGQA:
     def __init__(self, dim, heads=8, kv_heads=2):
@@ -117,34 +109,20 @@ class GeminiGQA:
         dout_o = self.o_proj.backward(dout).reshape(b, s, self.heads, self.head_dim)
         d_probs = np.einsum("bshd,bthd->bsht", dout_o, self.v_rep)
         d_v_rep = np.einsum("bsht,bshd->bthd", self.probs, dout_o)
-        d_attn = (
-            self.probs
-            * (d_probs - np.sum(self.probs * d_probs, axis=-1, keepdims=True))
-        ) * self.scale
+        d_attn = (self.probs * (d_probs - np.sum(self.probs * d_probs, axis=-1, keepdims=True))) * self.scale
         d_qr = np.einsum("bsht,bthd->bshd", d_attn, self.k_rep)
         d_kr_rep = np.einsum("bsht,bshd->bthd", d_attn, self.qr)
         dq = self.rope.backward(d_qr).reshape(b, s, d)
-        dk_sum = np.sum(
-            d_kr_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3
-        )
+        dk_sum = np.sum(d_kr_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3)
         dk = self.rope.backward(dk_sum).reshape(b, s, -1)
-        dv = np.sum(
-            d_v_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3
-        ).reshape(b, s, -1)
-        return (
-            self.q_proj.backward(dq)
-            + self.k_proj.backward(dk)
-            + self.v_proj.backward(dv)
-        )
-
+        dv = np.sum(d_v_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3).reshape(b, s, -1)
+        return (self.q_proj.backward(dq) + self.k_proj.backward(dk) + self.v_proj.backward(dv))
 
 class GroqMoE:
     def __init__(self, dim, n_exp=8, top_k=2):
         self.dim, self.n_exp, self.top_k = dim, n_exp, top_k
         self.gate = Linear(dim, n_exp)
-        self.experts = [
-            [Linear(dim, dim * 2), Linear(dim * 2, dim)] for _ in range(n_exp)
-        ]
+        self.experts = [[Linear(dim, dim * 2), Linear(dim * 2, dim)] for _ in range(n_exp)]
 
     def forward(self, x):
         self.sh = x.shape
@@ -186,7 +164,6 @@ class GroqMoE:
         dg = self.probs * (dlg - np.sum(self.probs * dlg, axis=-1, keepdims=True))
         return (dx + self.gate.backward(dg)).reshape(self.sh)
 
-
 class SovereignBlock:
     def __init__(self, dim):
         self.n1, self.attn = RMSNorm(dim), GeminiGQA(dim)
@@ -203,7 +180,6 @@ class SovereignBlock:
         d_x2 = dout + self.n2.backward(d_moe)
         d_attn = self.attn.backward(d_x2)
         return d_x2 + self.n1.backward(d_attn)
-
 
 class OMEGA_ASI_X10:
     def __init__(self, in_d=784, h_d=128, out_d=10, depth=2):
@@ -241,7 +217,6 @@ class OMEGA_ASI_X10:
         coll(self)
         return p
 
-
 class Lion:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
         self.params, self.lr, self.b1, self.b2, self.wd = params, lr, b1, b2, wd
@@ -267,14 +242,12 @@ class Lion:
                 p.g -= self.lr * (u + self.wd * p.g)
                 self.m[i] = self.b2 * m + (1.0 - self.b2) * p.dg
 
-
 def get_data(n=4096):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
     for i in range(n):
         X[i, y[i] * 78 : (y[i] + 1) * 78] += 5.0
     return (X - np.mean(X)) / (np.std(X) + 1e-6), y
-
 
 def train():
     X, y = get_data(4096)
@@ -314,7 +287,6 @@ def train():
         print(
             f"EP:{ep:02d} | LOSS:{ls / len(X):.4f} | ACC:{acc / len(X):.4f} | {len(X) / (time.time() - t0):.1f} s/s"
         )
-
 
 if __name__ == "__main__":
     train()
