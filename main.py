@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -218,7 +219,7 @@ class Lion:
             if hasattr(p, "W"):
                 for attr, m_list in [("W", self.m), ("b", self.mb)]:
                     if m_list[i] is None: continue
-                    g, m, w = getattr(p, "d"+attr), m_list[i], getattr(p, attr)
+                    g, m, w = getattr(p, "d" + attr), m_list[i], getattr(p, attr)
                     u = np.sign(self.b1 * m + (1.0 - self.b1) * g)
                     w -= self.lr * (u + self.wd * w if attr == "W" else u)
                     m_list[i] = self.b2 * m + (1.0 - self.b2) * g
