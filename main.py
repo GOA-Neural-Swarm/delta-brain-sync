@@ -4,13 +4,13 @@ import time
 def swiglu(x):
     h = x.shape[-1] // 2
     a, b = x[..., :h], x[..., h:]
-    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
+    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -10, 10)))
     return (a * sig) * b
 
 def d_swiglu(x, dout):
     h = x.shape[-1] // 2
     a, b = x[..., :h], x[..., h:]
-    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
+    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -10, 10)))
     swi = a * sig
     da = dout * b * (sig + swi * (1.0 - sig))
     db = dout * swi
@@ -22,9 +22,8 @@ def softmax(x, axis=-1):
     return exps / (np.sum(exps, axis=axis, keepdims=True) + 1e-10)
 
 class Linear:
-    def __init__(self, in_d, out_d):
-        scale = np.sqrt(2.0 / (in_d + out_d))
-        self.W = (np.random.randn(in_d, out_d) * scale).astype(np.float32)
+    def __init__(self, in_d, out_d, std=0.02):
+        self.W = np.random.randn(in_d, out_d).astype(np.float32) * std
         self.b = np.zeros(out_d, dtype=np.float32)
         self.x, self.dW, self.db = None, None, None
 
@@ -119,8 +118,8 @@ class GeminiGQA:
         return self.q_proj.backward(dq) + self.k_proj.backward(dk) + self.v_proj.backward(dv)
 
 class GroqMoE:
-    def __init__(self, dim, n_exp=4):
-        self.dim, self.n_exp = dim, n_exp
+    def __init__(self, dim, n_exp=4, top_k=1):
+        self.dim, self.n_exp, self.top_k = dim, n_exp, top_k
         self.gate = Linear(dim, n_exp)
         self.experts = [[Linear(dim, dim*2), Linear(dim*2, dim)] for _ in range(n_exp)]
 
@@ -236,7 +235,7 @@ class Lion:
 def get_data(n=2048):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 5.0
+    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 4.0
     X = (X - np.mean(X)) / (np.std(X) + 1e-6)
     return X, y
 
@@ -245,7 +244,7 @@ def train():
     model = OMEGA_ASI_X8(h_d=128, depth=2)
     params = model.get_params()
     opt = Lion(params, lr=1e-4)
-    bs, epochs = 64, 40
+    bs, epochs = 64, 50
     print("OMEGA-ASI X8 | Sovereign Architecture Engaged")
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
@@ -258,7 +257,7 @@ def train():
             probs = softmax(logits)
             ls += -np.mean(np.log(probs[range(bs), yb] + 1e-10)) * bs
             acc += np.sum(np.argmax(probs, axis=1) == yb)
-            dout = (probs.copy())
+            dout = probs.copy()
             dout[range(bs), yb] -= 1
             model.backward(dout / bs)
             gn = np.sqrt(sum(np.sum(p.dW**2) + np.sum(p.db**2) for p in params if hasattr(p, 'dW')))
