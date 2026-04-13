@@ -22,7 +22,7 @@ def softmax(x, axis=-1):
     return exps / (np.sum(exps, axis=axis, keepdims=True) + 1e-10)
 
 class Linear:
-    def __init__(self, in_d, out_d):
+    def __init__(self, in_d, out_d, name=""):
         limit = np.sqrt(6.0 / (in_d + out_d))
         self.W = np.random.uniform(-limit, limit, (in_d, out_d)).astype(np.float32)
         self.b = np.zeros(out_d, dtype=np.float32)
@@ -41,6 +41,7 @@ class RMSNorm:
     def __init__(self, dim, eps=1e-6):
         self.g = np.ones(dim, dtype=np.float32)
         self.eps, self.x, self.inv_rms = eps, None, None
+        self.dg = None
 
     def forward(self, x):
         self.x = x
@@ -81,7 +82,9 @@ class GeminiGQA:
         self.dim, self.heads, self.kv_heads = dim, heads, kv_heads
         self.head_dim = dim // heads
         self.group = heads // kv_heads
-        self.q_proj, self.k_proj, self.v_proj = Linear(dim, dim), Linear(dim, kv_heads * self.head_dim), Linear(dim, kv_heads * self.head_dim)
+        self.q_proj = Linear(dim, dim)
+        self.k_proj = Linear(dim, kv_heads * self.head_dim)
+        self.v_proj = Linear(dim, kv_heads * self.head_dim)
         self.o_proj = Linear(dim, dim)
         self.rope = RoPE(self.head_dim)
         self.scale = 1.0 / np.sqrt(self.head_dim)
@@ -110,7 +113,8 @@ class GeminiGQA:
         d_qr = np.einsum("bsht,bthd->bshd", d_attn, k_rep)
         d_kr_rep = np.einsum("bsht,bshd->bthd", d_attn, self.qr)
         dq = self.rope.backward(d_qr).reshape(b, s, d)
-        dk = self.rope.backward(np.sum(d_kr_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3)).reshape(b, s, -1)
+        dk_sum = np.sum(d_kr_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3)
+        dk = self.rope.backward(dk_sum).reshape(b, s, -1)
         dv = np.sum(d_v_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3).reshape(b, s, -1)
         return self.q_proj.backward(dq) + self.k_proj.backward(dk) + self.v_proj.backward(dv)
 
@@ -229,7 +233,8 @@ def get_data(n=2048):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
     for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 5.0
-    return (X - np.mean(X)) / (np.std(X) + 1e-6), y
+    X = (X - np.mean(X)) / (np.std(X) + 1e-6)
+    return X, y
 
 def train():
     X, y = get_data(2048)
@@ -245,10 +250,12 @@ def train():
         for i in range(0, len(X), bs):
             xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
             if len(xb) < bs: continue
-            probs = softmax(model.forward(xb))
+            logits = model.forward(xb)
+            probs = softmax(logits)
             ls += -np.mean(np.log(probs[range(bs), yb] + 1e-10)) * bs
             acc += np.sum(np.argmax(probs, axis=1) == yb)
-            dout = probs.copy(); dout[range(bs), yb] -= 1
+            dout = probs.copy()
+            dout[range(bs), yb] -= 1
             model.backward(dout / bs)
             gn = np.sqrt(sum(np.sum(p.dW**2) + np.sum(p.db**2) for p in params if hasattr(p, 'dW')))
             if gn > 1.0:
