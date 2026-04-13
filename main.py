@@ -6,7 +6,17 @@ def fast_sigmoid(x):
 
 def swiglu(x):
     h = x.shape[-1] // 2
-    return x[..., h:] * (x[..., :h] * fast_sigmoid(x[..., :h]))
+    a, b = x[..., :h], x[..., h:]
+    return a * fast_sigmoid(a) * b
+
+def d_swiglu(x, dout):
+    h = x.shape[-1] // 2
+    a, b = x[..., :h], x[..., h:]
+    sig = fast_sigmoid(a)
+    swi = a * sig
+    da = dout * b * (sig + swi * (1.0 - sig))
+    db = dout * swi
+    return np.concatenate([da, db], axis=-1)
 
 def softmax(x, axis=-1):
     x_max = np.max(x, axis=axis, keepdims=True)
@@ -25,10 +35,10 @@ class Linear:
         return np.dot(x, self.W) + self.b
 
     def backward(self, dout):
-        x_flat = self.x.reshape(-1, self.x.shape[-1])
-        dout_flat = dout.reshape(-1, dout.shape[-1])
-        self.dW = np.dot(x_flat.T, dout_flat)
-        self.db = np.sum(dout_flat, axis=0)
+        x_2d = self.x.reshape(-1, self.x.shape[-1])
+        dout_2d = dout.reshape(-1, dout.shape[-1])
+        self.dW = np.dot(x_2d.T, dout_2d)
+        self.db = np.sum(dout_2d, axis=0)
         return np.dot(dout, self.W.T)
 
 class RMSNorm:
@@ -107,7 +117,8 @@ class GeminiGQA:
         d_qr = np.einsum("bsht,bthd->bshd", d_attn, k_rep)
         d_kr_rep = np.einsum("bsht,bshd->bthd", d_attn, self.qr)
         dq = self.rope.backward(d_qr).reshape(b, s, d)
-        dk = self.rope.backward(np.sum(d_kr_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3)).reshape(b, s, -1)
+        dk_rep = d_kr_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim)
+        dk = self.rope.backward(np.sum(dk_rep, axis=3)).reshape(b, s, -1)
         dv = np.sum(d_v_rep.reshape(b, s, self.kv_heads, self.group, self.head_dim), axis=3).reshape(b, s, -1)
         return self.q_proj.backward(dq) + self.k_proj.backward(dk) + self.v_proj.backward(dv)
 
@@ -142,17 +153,15 @@ class GroqMoE:
 
     def backward(self, dout):
         df = dout.reshape(-1, self.dim)
-        dx = np.zeros((df.shape[0], self.dim), dtype=np.float32)
+        xf = self.gate.x
+        dx = np.zeros_like(xf)
         dlg = np.zeros_like(self.p)
         for i in range(self.n_exp):
             for m, h, act, eo, p in self.ctx[i]:
                 deo = df[m] * p
                 dlg[m, i] += np.sum(df[m] * eo, axis=-1)
                 dact = self.experts[i][1].backward(deo)
-                half = h.shape[-1] // 2
-                gh, vh = h[:, :half], h[:, half:]
-                sig = fast_sigmoid(gh)
-                dh = np.concatenate([dact * vh * (sig * (1.0 - sig)), dact * (gh * sig * (1.0 - sig) + sig)], axis=-1)
+                dh = d_swiglu(h, dact)
                 dx[m] += self.experts[i][0].backward(dh)
         dg = self.p * (dlg - np.sum(self.p * dlg, axis=-1, keepdims=True))
         return (dx + self.gate.backward(dg)).reshape(self.sh)
@@ -173,7 +182,7 @@ class SovereignBlock:
         dn1 = self.n1.backward(da)
         return dout + dn2 + da + dn1
 
-class OMEGA_ASI_X5:
+class OMEGA_ASI_X6:
     def __init__(self, in_d=784, h_d=256, out_d=10, depth=3):
         self.stem = Linear(in_d, h_d)
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
@@ -214,34 +223,36 @@ class Lion:
                 for attr, m_list in [('W', self.m), ('b', self.mb)]:
                     if m_list[i] is None: continue
                     g = getattr(p, 'd' + attr)
-                    u = np.sign(self.b1 * m_list[i] + (1.0 - self.b1) * g)
+                    m = m_list[i]
+                    u = np.sign(self.b1 * m + (1.0 - self.b1) * g)
                     w = getattr(p, attr)
                     w -= self.lr * (u + self.wd * w if attr == 'W' else u)
-                    m_list[i] = self.b2 * m_list[i] + (1.0 - self.b2) * g
+                    m_list[i] = self.b2 * m + (1.0 - self.b2) * g
                     setattr(p, attr, w)
             else:
-                u = np.sign(self.b1 * self.m[i] + (1.0 - self.b1) * p.dg)
+                m = self.m[i]
+                u = np.sign(self.b1 * m + (1.0 - self.b1) * p.dg)
                 p.g -= self.lr * (u + self.wd * p.g)
-                self.m[i] = self.b2 * self.m[i] + (1.0 - self.b2) * p.dg
+                self.m[i] = self.b2 * m + (1.0 - self.b2) * p.dg
 
 def get_data(n=2048):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 5.0
+    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 4.0
     return (X - np.mean(X)) / (np.std(X) + 1e-6), y
 
 def train():
     X, y = get_data(2048)
-    model = OMEGA_ASI_X5(h_d=128, depth=2)
+    model = OMEGA_ASI_X6(h_d=128, depth=2)
     params = model.get_params()
     opt = Lion(params, lr=2e-4)
     bs = 64
-    print("OMEGA-ASI X5 | GQA-MoE Sovereign Architecture")
-    for ep in range(30):
+    epochs = 40
+    print("OMEGA-ASI X6 | GQA-MoE Sovereign Evolution")
+    for ep in range(epochs):
         idx = np.random.permutation(len(X))
         ls, acc, t0 = 0, 0, time.time()
-        lr_scale = 0.5 * (1 + np.cos(np.pi * ep / 30))
-        opt.lr = 2e-4 * lr_scale
+        opt.lr = 2e-4 * (0.5 * (1 + np.cos(np.pi * ep / epochs)))
         for i in range(0, len(X), bs):
             xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
             if len(xb) < bs: continue
@@ -257,7 +268,7 @@ def train():
                     if hasattr(p, 'dW'): p.dW /= gn; p.db /= gn
                     if hasattr(p, 'dg'): p.dg /= gn
             opt.step()
-        print(f"EP:{ep:02d} | LOSS:{ls/len(X):.4f} | ACC:{acc/len(X):.4f} | {len(X)/(time.time()-t0):.1f} samples/sec")
+        print(f"EP:{ep:02d} | LOSS:{ls/len(X):.4f} | ACC:{acc/len(X):.4f} | {len(X)/(time.time()-t0):.1f} s/s")
 
 if __name__ == "__main__":
     train()
