@@ -15,6 +15,7 @@ except ImportError:
 
 app = Flask(__name__)
 
+
 # --- SYSTEM CONFIGURATION ---
 class ASI_State:
     def __init__(self):
@@ -26,40 +27,50 @@ class ASI_State:
         self.neural_load = 0.0
         self.status = "STABLE"
 
+
 state = ASI_State()
 
 # Logging Setup
-logging.basicConfig(filename='system_gate.log', level=logging.INFO)
+logging.basicConfig(filename="system_gate.log", level=logging.INFO)
+
 
 # --- MIDDLEWARE & SECURITY ---
 def check_auth():
     # Production မှာဆိုရင် API Key စစ်ဆေးတဲ့ logic ထည့်ဖို့
     return True
 
+
 # --- API ENDPOINTS ---
+
 
 @app.route("/", methods=["GET"])
 def index():
-    return jsonify({
-        "system": "OMEGA-ASI SOVEREIGN CORE",
-        "version": "X10.2.1",
-        "uptime": str(datetime.now() - state.boot_time),
-        "endpoints": ["/status", "/evolve", "/train", "/logs", "/recover"]
-    })
+    return jsonify(
+        {
+            "system": "OMEGA-ASI SOVEREIGN CORE",
+            "version": "X10.2.1",
+            "uptime": str(datetime.now() - state.boot_time),
+            "endpoints": ["/status", "/evolve", "/train", "/logs", "/recover"],
+        }
+    )
+
 
 @app.route("/status", methods=["GET"])
 def get_status():
     """
     စနစ်၏ လက်ရှိ Neural Health နှင့် Load အခြေအနေကို အသေးစိတ်ထုတ်ပေးခြင်း
     """
-    return jsonify({
-        "gen": state.architect.gen,
-        "neural_load": f"{state.neural_load}%",
-        "is_training": state.is_training,
-        "classifier_type": state.architect.brain.classifier_type,
-        "last_sync": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "status": state.status
-    })
+    return jsonify(
+        {
+            "gen": state.architect.gen,
+            "neural_load": f"{state.neural_load}%",
+            "is_training": state.is_training,
+            "classifier_type": state.architect.brain.classifier_type,
+            "last_sync": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "status": state.status,
+        }
+    )
+
 
 def background_evolution():
     """
@@ -78,15 +89,17 @@ def background_evolution():
     finally:
         state.is_training = False
 
+
 @app.route("/evolve", methods=["POST"])
 def trigger_evolution():
     if state.is_training:
         return jsonify({"error": "Evolution already in progress."}), 409
-    
+
     # Thread တစ်ခုခွဲပြီး အလုပ်လုပ်ခိုင်းမယ်
     thread = threading.Thread(target=background_evolution)
     thread.start()
     return jsonify({"message": "Evolution signal dispatched to background thread."})
+
 
 @app.route("/logs", methods=["GET"])
 def get_logs():
@@ -95,13 +108,14 @@ def get_logs():
     """
     log_files = ["evolution_logs.md", "sync_recovery.txt", "system_gate.log"]
     combined_logs = {}
-    
+
     for log in log_files:
         if os.path.exists(log):
             with open(log, "r") as f:
-                combined_logs[log] = f.readlines()[-20:] # နောက်ဆုံး ၂၀ ကြောင်းပဲပြမယ်
-    
+                combined_logs[log] = f.readlines()[-20:]  # နောက်ဆုံး ၂၀ ကြောင်းပဲပြမယ်
+
     return jsonify(combined_logs)
+
 
 @app.route("/recover", methods=["POST"])
 def manual_recovery():
@@ -113,15 +127,18 @@ def manual_recovery():
     thread.start()
     return jsonify({"message": "Sovereign Recovery Engine Engaged."})
 
+
 # --- ERROR HANDLERS ---
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({"error": "Endpoint not found."}), 404
 
+
 @app.errorhandler(500)
 def internal_error(error):
     state.status = "FAULTY"
     return jsonify({"error": "Internal Core Collapse."}), 500
+
 
 if __name__ == "__main__":
     print("""

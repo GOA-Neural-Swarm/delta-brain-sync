@@ -7,13 +7,14 @@ import traceback
 import importlib
 import numpy as np
 
+
 class SovereignRecovery:
     def __init__(self):
         self.critical_files = ["main.py", "brain.py"]
         self.backup_dir = ".omega_vault"
         self.lock_file = "trigger.lock"
         self.recovery_log = "sync_recovery.txt"
-        
+
         if not os.path.exists(self.backup_dir):
             os.makedirs(self.backup_dir)
 
@@ -26,18 +27,20 @@ class SovereignRecovery:
                 importlib.import_module(lib)
             except ImportError:
                 print(f"⚠️ Critical Module '{lib}' missing. Re-installing...")
-                subprocess.check_call([sys.executable, "-m", "pip", "install", lib, "--quiet"])
+                subprocess.check_call(
+                    [sys.executable, "-m", "pip", "install", lib, "--quiet"]
+                )
         return True
 
     def hotfix_logic(self, last_error):
         """အဆင့် ၂: နောက်ဆုံး Error အပေါ်မူတည်ပြီး Code ကို အလိုအလျောက် ပြုပြင်ခြင်း"""
         print(f"[2/4] Analyzing Critical Failure: {last_error[:50]}...")
-        
+
         # Memory Error ဖြစ်ရင် Data Size ကို လျှော့ချမယ်
         if "MemoryError" in last_error or "Out of Memory" in last_error:
             print("🔧 Applying Hotfix: Reducing Batch Size & Hidden Dimensions...")
             # ဤနေရာတွင် main.py ထဲက parameter များကို regex ဖြင့် အလိုအလျောက် ပြင်သည့် code ထည့်နိုင်သည်
-            
+
         # File missing ဖြစ်နေရင် Backup ကနေ ပြန်ယူမယ်
         for file in self.critical_files:
             if not os.path.exists(file):
@@ -46,7 +49,9 @@ class SovereignRecovery:
                 if os.path.exists(backup_path):
                     shutil.copy(backup_path, file)
                 else:
-                    print(f"❌ No backup found for {file}. Creating emergency baseline...")
+                    print(
+                        f"❌ No backup found for {file}. Creating emergency baseline..."
+                    )
                     # Baseline code တစ်ခုကို auto-generate လုပ်ခိုင်းလို့ရသည်
 
     def purge_locks(self):
@@ -65,29 +70,32 @@ class SovereignRecovery:
         print("--- REBOOTING OMEGA-ASI MAIN CORE ---")
         time.sleep(2)
         # os.system အစား os.execv ကိုသုံးတာက process အဟောင်းကို လုံးဝပိတ်ပြီး အသစ်ပြန်စတာမို့ ပိုစိတ်ချရတယ်
-        os.execv(sys.executable, ['python'] + [sys.argv[0].replace("recovery.py", "main.py")])
+        os.execv(
+            sys.executable, ["python"] + [sys.argv[0].replace("recovery.py", "main.py")]
+        )
 
     def run(self):
-        print("\n" + "!"*50)
+        print("\n" + "!" * 50)
         print("🚀 OMEGA-ASI EMERGENCY RECOVERY PROTOCOL 🚀")
-        print("!"*50 + "\n")
-        
+        print("!" * 50 + "\n")
+
         try:
             self.check_environment()
-            
+
             if os.path.exists(self.recovery_log):
                 with open(self.recovery_log, "r") as f:
                     logs = f.readlines()
                     last_err = logs[-1] if logs else "Unknown Error"
                     self.hotfix_logic(last_err)
-            
+
             self.purge_locks()
             self.execute_reboot()
-            
+
         except Exception as e:
             print(f"💀 FATAL RECOVERY FAILURE: {e}")
             traceback.print_exc()
             sys.exit(1)
+
 
 if __name__ == "__main__":
     recovery = SovereignRecovery()
