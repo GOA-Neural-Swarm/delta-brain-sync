@@ -1,23 +1,26 @@
 import numpy as np
 
-def swiglu(x):
-    h = x.shape[-1] // 2
-    a, b = x[..., :h], x[..., h:]
-    s = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
-    return (a * s) * b
+class SwiGLU:
+    @staticmethod
+    def forward(x):
+        h = x.shape[-1] // 2
+        a, b = x[..., :h], x[..., h:]
+        s = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
+        return (a * s) * b
 
-def d_swiglu(x, d):
-    h = x.shape[-1] // 2
-    a, b = x[..., :h], x[..., h:]
-    s = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
-    sw = a * s
-    da = d * b * (s + sw * (1 - s))
-    db = d * sw
-    return np.concatenate([da, db], axis=-1)
+    @staticmethod
+    def backward(x, d):
+        h = x.shape[-1] // 2
+        a, b = x[..., :h], x[..., h:]
+        s = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
+        sw = a * s
+        da = d * b * (s + sw * (1 - s))
+        db = d * sw
+        return np.concatenate([da, db], axis=-1)
 
 class Linear:
-    def __init__(self, i, o, s=1.0):
-        self.W = np.random.randn(i, o).astype("f") * (np.sqrt(2 / i) * s)
+    def __init__(self, i, o, s=0.02):
+        self.W = np.random.randn(i, o).astype("f") * s
         self.b = np.zeros(o, "f")
         self.x, self.dW, self.db = None, None, None
 
@@ -58,8 +61,7 @@ class RoPE:
         d2 = d // 2
         x1, x2 = x[..., :d2], x[..., d2:]
         c, sn = self.c[:s][None, :, None, :], self.s[:s][None, :, None, :]
-        if rev:
-            return np.concatenate([x1 * c + x2 * sn, x2 * c - x1 * sn], -1)
+        if rev: return np.concatenate([x1 * c + x2 * sn, x2 * c - x1 * sn], -1)
         return np.concatenate([x1 * c - x2 * sn, x2 * c + x1 * sn], -1)
 
 class GQA:
@@ -67,7 +69,7 @@ class GQA:
         self.d, self.h, self.k, self.hd = d, h, k, d // h
         self.g = h // k
         self.wq, self.wk, self.wv, self.wo = Linear(d, d), Linear(d, k * self.hd), Linear(d, k * self.hd), Linear(d, d)
-        self.rope, self.sc = RoPE(self.hd), (d // h) ** -0.5
+        self.rope, self.sc = RoPE(self.hd), self.hd ** -0.5
         self.q, self.k_cache, self.v_cache, self.p = None, None, None, None
 
     def forward(self, x):
@@ -76,7 +78,8 @@ class GQA:
         k = self.wk.forward(x).reshape(b, s, self.k, self.hd)
         v = self.wv.forward(x).reshape(b, s, self.k, self.hd)
         self.q, self.k_cache, self.v_cache = self.rope.apply(q), self.rope.apply(k), v
-        kr, vr = np.repeat(self.k_cache, self.g, 2), np.repeat(v, self.g, 2)
+        kr = np.repeat(self.k_cache, self.g, 2)
+        vr = np.repeat(v, self.g, 2)
         at = np.einsum("bshd,bthd->bsht", self.q, kr) * self.sc
         ex = np.exp(at - np.max(at, axis=-1, keepdims=True))
         self.p = ex / (np.sum(ex, axis=-1, keepdims=True) + 1e-10)
@@ -96,18 +99,18 @@ class GQA:
         dv = dvr.reshape(b, s, self.k, self.g, self.hd).sum(3)
         return self.wq.backward(dq.reshape(b, s, -1)) + self.wk.backward(dk.reshape(b, s, -1)) + self.wv.backward(dv.reshape(b, s, -1))
 
-class SovereignRedundancy:
+class SovereignLogic:
     def __init__(self, d):
-        self.gemini_mlp = [Linear(d, d * 4), Linear(d * 2, d)]
-        self.groq_mlp = [Linear(d, d * 4), Linear(d * 2, d)]
+        self.gemini_path = [Linear(d, d * 2), Linear(d, d)]
+        self.groq_path = [Linear(d, d * 2), Linear(d, d)]
         self.gate = Linear(d, 2)
         self.h_gem, self.h_gro, self.p, self.o_gem, self.o_gro = [None] * 5
 
     def forward(self, x):
-        self.h_gem = swiglu(self.gemini_mlp[0].forward(x))
-        self.o_gem = self.gemini_mlp[1].forward(self.h_gem)
-        self.h_gro = swiglu(self.groq_mlp[0].forward(x))
-        self.o_gro = self.groq_mlp[1].forward(self.h_gro)
+        self.h_gem = SwiGLU.forward(self.gemini_path[0].forward(x))
+        self.o_gem = self.gemini_path[1].forward(self.h_gem)
+        self.h_gro = SwiGLU.forward(self.groq_path[0].forward(x))
+        self.o_gro = self.groq_path[1].forward(self.h_gro)
         g = self.gate.forward(x)
         ex = np.exp(g - g.max(-1, keepdims=True))
         self.p = ex / (ex.sum(-1, keepdims=True) + 1e-10)
@@ -117,10 +120,10 @@ class SovereignRedundancy:
         dp = np.stack([(d * self.o_gem).sum(-1), (d * self.o_gro).sum(-1)], -1)
         dg = self.p * (dp - (self.p * dp).sum(-1, keepdims=True))
         dx = self.gate.backward(dg)
-        d_gem = self.gemini_mlp[1].backward(d * self.p[..., :1])
-        dx += self.gemini_mlp[0].backward(d_swiglu(self.gemini_mlp[0].x, d_gem))
-        d_gro = self.groq_mlp[1].backward(d * self.p[..., 1:2])
-        dx += self.groq_mlp[0].backward(d_swiglu(self.groq_mlp[0].x, d_gro))
+        d_gem = self.gemini_path[1].backward(d * self.p[..., :1])
+        dx += self.gemini_path[0].backward(SwiGLU.backward(self.gemini_path[0].x, d_gem))
+        d_gro = self.groq_path[1].backward(d * self.p[..., 1:2])
+        dx += self.groq_path[0].backward(SwiGLU.backward(self.groq_path[0].x, d_gro))
         return dx
 
 class SparseMoE:
@@ -148,7 +151,7 @@ class SparseMoE:
                 continue
             p_idx = np.where(self.indices[mask] == i)[1]
             expert_p = self.p[mask, p_idx, None]
-            h = swiglu(self.experts[i][0].forward(x_flat[mask]))
+            h = SwiGLU.forward(self.experts[i][0].forward(x_flat[mask]))
             y = self.experts[i][1].forward(h)
             out[mask] += y * expert_p
             self.cache.append((mask, p_idx, h, y))
@@ -165,7 +168,7 @@ class SparseMoE:
             dp_full[mask, i] = (d_flat[mask] * y).sum(-1)
             dy = d_flat[mask] * expert_p
             dh = self.experts[i][1].backward(dy)
-            dx[mask] += self.experts[i][0].backward(d_swiglu(self.experts[i][0].x, dh))
+            dx[mask] += self.experts[i][0].backward(SwiGLU.backward(self.experts[i][0].x, dh))
         logits_p = np.zeros((d_flat.shape[0], self.n))
         np.put_along_axis(logits_p, self.indices, self.p, axis=-1)
         dg = logits_p * (dp_full - (logits_p * dp_full).sum(-1, keepdims=True))
@@ -174,7 +177,7 @@ class SparseMoE:
 class Block:
     def __init__(self, d):
         self.n1, self.attn = RMSNorm(d), GQA(d)
-        self.n2, self.logic = RMSNorm(d), SovereignRedundancy(d)
+        self.n2, self.logic = RMSNorm(d), SovereignLogic(d)
         self.n3, self.moe = RMSNorm(d), SparseMoE(d)
 
     def forward(self, x):
@@ -191,7 +194,10 @@ class Block:
 
 class OMEGA_ASI:
     def __init__(self, i=784, h=128, o=10, depth=2):
-        self.stem, self.blocks, self.norm, self.head = Linear(i, h), [Block(h) for _ in range(depth)], RMSNorm(h), Linear(h, o)
+        self.stem = Linear(i, h)
+        self.blocks = [Block(h) for _ in range(depth)]
+        self.norm = RMSNorm(h)
+        self.head = Linear(h, o)
 
     def forward(self, x):
         x = self.stem.forward(x)[:, None, :]
@@ -239,6 +245,7 @@ def train():
     X, Y = np.random.randn(N, D).astype("f"), np.random.randint(0, C, N)
     model = OMEGA_ASI(D, H, C, 2)
     optimizer = Lion(model.get_params(), lr=2e-4, wd=0.01)
+    
     for epoch in range(100):
         idx = np.random.permutation(N)
         t_loss, t_acc = 0, 0
@@ -249,15 +256,18 @@ def train():
             probs = ex / (ex.sum(1, keepdims=True) + 1e-10)
             t_loss += -np.log(probs[range(len(yb)), yb] + 1e-10).mean() * len(yb)
             t_acc += (probs.argmax(1) == yb).sum()
+            
             dout = probs.copy()
             dout[range(len(yb)), yb] -= 1
             model.backward(dout / len(yb))
+            
             gn = np.sqrt(sum((getattr(p, "dW", 0)**2).sum() + (getattr(p, "db", 0)**2).sum() + (getattr(p, "dg", 0)**2).sum() for p in model.get_params()))
             if gn > 1.0:
                 for p in model.get_params():
                     if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
                     if hasattr(p, "dg"): p.dg /= gn
             optimizer.step()
+            
         if (epoch + 1) % 10 == 0:
             print(f"Epoch {epoch+1:03d} | Loss: {t_loss/N:.4f} | Acc: {t_acc/N:.4f}")
 
