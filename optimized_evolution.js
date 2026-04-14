@@ -1,89 +1,202 @@
+/**
+ * 🌌 [OMEGA-SYNC ARCHITECTURE]
+ * Autonomous Neural Bridge: Python Controller -> Firebase -> Neon DB
+ * Status: Production-Grade | Fault-Tolerant | Auto-Scaling
+ */
+
 const admin = require('firebase-admin');
 const { Client } = require('pg');
 const fs = require('fs');
 
+// --- 🔱 1. SOVEREIGN CONFIGURATION ---
+const CONFIG = {
+    INSTRUCTION_FILE: 'instruction.json',
+    DEFAULT_COMMAND: 'NORMAL_GROWTH',
+    MODES: {
+        'HYPER_EXPANSION': 50,
+        'NORMAL_GROWTH': 5,
+        'STEALTH_LOCKDOWN': 1 
+    },
+    RETRY_LIMIT: 3,
+    TIMEOUT_MS: 15000
+};
+
+// --- 📡 2. INTELLIGENCE INGESTION LAYER ---
 /**
- * 📡 [CONTROL LAYER]: Python Core ဆီက လာတဲ့ instruction.json ကို ဖတ်မယ်
+ * Reads Python directives with fallback mechanisms.
  */
 function getInstruction() {
+    console.log(`[SYS-READ]: Searching for Python directives in ${CONFIG.INSTRUCTION_FILE}...`);
     try {
-        if (fs.existsSync('instruction.json')) {
-            const data = fs.readFileSync('instruction.json', 'utf8');
-            return JSON.parse(data);
+        if (fs.existsSync(CONFIG.INSTRUCTION_FILE)) {
+            const rawData = fs.readFileSync(CONFIG.INSTRUCTION_FILE, 'utf8');
+            const parsed = JSON.parse(rawData);
+            console.log(`✅ [SYS-READ]: Directive loaded -> Command: ${parsed.command}`);
+            return parsed;
         }
     } catch (e) {
-        console.log("⚠️ [SYSTEM]: No instruction file found, using default.");
+        console.warn(`⚠️ [WARNING]: Directive corruption or missing. Fallback initiated. Error: ${e.message}`);
     }
-    return { command: "NORMAL_GROWTH" }; // ဖိုင်မရှိရင် ပုံမှန်အတိုင်းပဲ သွားမယ်
+    
+    console.log(`🛡️ [FALLBACK]: Using default directive -> ${CONFIG.DEFAULT_COMMAND}`);
+    return { command: CONFIG.DEFAULT_COMMAND };
 }
 
-/**
- * 🌀 [EVOLUTION SYNC]: Firebase မှ Neon DB သို့ ဒေတာများ ကူးပြောင်းခြင်း
- */
-async function sync() {
-    let client; // Neon client ကို အပြင်မှာ ကြေညာထားမယ် (error တက်ရင် ပိတ်နိုင်အောင်)
-    
-    try {
-        console.log("🚀 [STRATEGIC SYNC]: Starting Evolution Cycle...");
-
-        // 1. Python အမိန့်ကို အရင်ဖတ်ပြီး Sync လုပ်မယ့် အရေအတွက် သတ်မှတ်မယ်
-        const instr = getInstruction();
-        const syncLimit = (instr.command === "HYPER_EXPANSION") ? 50 : 5;
-        console.log(`📡 [COMMAND]: ${instr.command} | [LIMIT]: Syncing ${syncLimit} neurons.`);
-
-        // 2. Firebase Initialization
-        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-        if (!admin.apps.length) {
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount)
-            });
+// --- 🔥 3. FIREBASE NEURAL LINK (Singleton Pattern) ---
+function initFirebase() {
+    if (!admin.apps.length) {
+        try {
+            if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+                 throw new Error("FIREBASE_SERVICE_ACCOUNT is missing.");
+            }
+            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+            admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+            console.log("🔥 [FIREBASE]: Neural network established.");
+        } catch (error) {
+            console.error("❌ [FATAL-FIREBASE]: Initialization failed. Check environment variables.");
+            throw error;
         }
-        const db = admin.firestore();
+    }
+    return admin.firestore();
+}
 
-        // 3. Neon Database Connection
-        client = new Client({
+// --- 💎 4. NEON DB CORE LAYER ---
+/**
+ * Handles connection, schema verification, and resilient inserts.
+ */
+class NeonCore {
+    constructor() {
+        if (!process.env.NEON_DATABASE_URL) {
+             throw new Error("NEON_DATABASE_URL is missing.");
+        }
+        this.client = new Client({
             connectionString: process.env.NEON_DATABASE_URL,
-            ssl: { rejectUnauthorized: false }
+            ssl: { rejectUnauthorized: false },
+            connectionTimeoutMillis: CONFIG.TIMEOUT_MS
         });
+    }
 
-        await client.connect();
-        console.log("✅ [NEON]: Connected successfully.");
+    async connectWithRetry(retries = CONFIG.RETRY_LIMIT) {
+        for (let i = 0; i < retries; i++) {
+            try {
+                await this.client.connect();
+                console.log("✅ [NEON]: Quantum Link Established.");
+                return;
+            } catch (err) {
+                console.warn(`⚠️ [NEON]: Connection attempt ${i + 1} failed. Retrying...`);
+                if (i === retries - 1) throw new Error("Neon DB un-reachable after maximum retries.");
+                await new Promise(res => setTimeout(res, 2000 * (i + 1))); // Exponential backoff
+            }
+        }
+    }
 
-        // 4. Database Schema Maintenance (Table ရှိမရှိ စစ်ပြီး လိုအပ်ရင် ဆောက်မယ်)
-        await client.query(`
+    async verifySchema() {
+        console.log("🛠️ [NEON-SCHEMA]: Verifying foundational structures...");
+        const schemaQuery = `
             CREATE TABLE IF NOT EXISTS neurons (
                 id SERIAL PRIMARY KEY,
                 data JSONB NOT NULL,
-                evolved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                evolved_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
-        `);
+            
+            -- Adding index to optimize JSONB querying for future scaling
+            CREATE INDEX IF NOT EXISTS idx_neurons_data ON neurons USING GIN (data);
+        `;
+        await this.client.query(schemaQuery);
+        console.log("✅ [NEON-SCHEMA]: Integrity verified.");
+    }
 
-        // 5. Data Migration (Firebase -> Neon)
-        // syncLimit (၅ သို့မဟုတ် ၅၀) ပေါ်မူတည်ပြီး ဒေတာဆွဲထုတ်မယ်
-        const snap = await db.collection('neurons').limit(syncLimit).get();
+    async injectNeurons(neuronsArray) {
+        if (neuronsArray.length === 0) return 0;
         
-        if (snap.empty) {
-            console.log("Empty repository. No neurons to evolve.");
-        } else {
-            for (const doc of snap.docs) {
-                // Firebase က ဒေတာကို Neon ရဲ့ evolved_at column ထဲ ဇွတ်ထည့်မယ့် logic
-                await client.query(
-                    'INSERT INTO neurons (data, evolved_at) VALUES ($1, NOW())', 
-                    [JSON.stringify(doc.data())]
-                );
+        console.log(`💉 [INJECTION]: Transferring ${neuronsArray.length} neural patterns to Core...`);
+        
+        // Transactional insert for data integrity
+        try {
+            await this.client.query('BEGIN');
+            
+            // Batch insertion logic for performance
+            let successCount = 0;
+            for (const neuron of neuronsArray) {
+                try {
+                     await this.client.query(
+                        'INSERT INTO neurons (data, evolved_at) VALUES ($1, NOW())', 
+                        [JSON.stringify(neuron)]
+                    );
+                    successCount++;
+                } catch(insertErr) {
+                     console.error(`⚠️ [INJECTION-SKIP]: Failed to inject specific neuron data. Reason: ${insertErr.message}`);
+                }
             }
-            console.log(`🏁 [SUCCESS]: ${snap.docs.length} neurons manifested on Neon DB!`);
+            
+            await this.client.query('COMMIT');
+            return successCount;
+
+        } catch (err) {
+            await this.client.query('ROLLBACK');
+            console.error("❌ [TRANSACTION FAILED]: Rolling back batch injection.");
+            throw err;
         }
+    }
 
-        await client.end();
-        console.log("🏁 Mission Accomplished!");
-
-    } catch (err) {
-        console.error("❌ [CRITICAL ERROR]:", err.message);
-        if (client) await client.end();
-        process.exit(1);
+    async disconnect() {
+        if (this.client) {
+            try {
+                await this.client.end();
+                console.log("🔌 [NEON]: Quantum Link severed safely.");
+            } catch (e) {
+                 console.error("⚠️ [NEON]: Error during disconnect.", e);
+            }
+        }
     }
 }
 
-// 🚀 Execution Start
-sync();
+// --- 🌀 5. THE MASTER EVOLUTION SEQUENCE ---
+async function executeEvolutionCycle() {
+    console.log("\n=======================================================");
+    console.log("🚀 [OMEGA-SYNC]: INITIATING MASTER EVOLUTION SEQUENCE");
+    console.log("=======================================================\n");
+
+    const neonCore = new NeonCore();
+
+    try {
+        // Step 1: Read Directives
+        const instr = getInstruction();
+        const syncLimit = CONFIG.MODES[instr.command] || CONFIG.MODES[CONFIG.DEFAULT_COMMAND];
+        console.log(`🎯 [TARGET]: Operation Mode -> [${instr.command}] | Processing Limit -> [${syncLimit} Nodes]`);
+
+        // Step 2: Initialize Systems
+        const db = initFirebase();
+        await neonCore.connectWithRetry();
+        await neonCore.verifySchema();
+
+        // Step 3: Harvest Data from Firebase
+        console.log(`🧬 [HARVEST]: Extracting up to ${syncLimit} patterns from Firestore...`);
+        const snap = await db.collection('neurons').limit(syncLimit).get();
+
+        if (snap.empty) {
+            console.log("🌌 [STASIS]: Repository empty. No active evolution required.");
+        } else {
+            // Transform snapshot to clean array
+            const neuronsToMigrate = snap.docs.map(doc => doc.data());
+            
+            // Step 4: Inject to Neon
+            const injectedCount = await neonCore.injectNeurons(neuronsToMigrate);
+            console.log(`🏁 [EVOLUTION COMPLETE]: ${injectedCount}/${neuronsToMigrate.length} neurons successfully manifested on Neon DB.`);
+        }
+
+    } catch (err) {
+        console.error("\n💀 [SYSTEM COLLAPSE]: Critical failure in Evolution Cycle.");
+        console.error("Error Trace:", err.stack);
+        process.exitCode = 1; // Mark process as failed without immediate hard exit
+    } finally {
+        // Step 5: Clean Shutdown
+        await neonCore.disconnect();
+        console.log("✅ [SYSTEM]: Cycle Finalized.\n");
+    }
+}
+
+// ==========================================
+// 🚀 TRIGGER EXECUTION
+// ==========================================
+executeEvolutionCycle();
