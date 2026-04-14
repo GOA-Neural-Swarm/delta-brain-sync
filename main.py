@@ -4,13 +4,13 @@ import time
 def swiglu(x):
     h = x.shape[-1] // 2
     a, b = x[..., :h], x[..., h:]
-    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -10, 10)))
+    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
     return (a * sig) * b
 
 def d_swiglu(x, dout):
     h = x.shape[-1] // 2
     a, b = x[..., :h], x[..., h:]
-    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -10, 10)))
+    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
     swi = a * sig
     da = dout * b * (sig + swi * (1.0 - sig))
     db = dout * swi
@@ -22,8 +22,8 @@ def softmax(x, axis=-1):
     return e / (np.sum(e, axis=axis, keepdims=True) + 1e-12)
 
 class Linear:
-    def __init__(self, in_d, out_d):
-        self.W = np.random.randn(in_d, out_d).astype(np.float32) * np.sqrt(2.0 / in_d)
+    def __init__(self, in_d, out_d, init_scale=0.02):
+        self.W = np.random.normal(0, init_scale, (in_d, out_d)).astype(np.float32)
         self.b = np.zeros(out_d, dtype=np.float32)
         self.x, self.dW, self.db = None, None, None
 
@@ -32,8 +32,10 @@ class Linear:
         return np.dot(x, self.W) + self.b
 
     def backward(self, dout):
-        self.dW = np.dot(self.x.reshape(-1, self.x.shape[-1]).T, dout.reshape(-1, dout.shape[-1]))
-        self.db = np.sum(dout, axis=tuple(range(len(dout.shape)-1)))
+        x_flat = self.x.reshape(-1, self.x.shape[-1])
+        dout_flat = dout.reshape(-1, dout.shape[-1])
+        self.dW = np.dot(x_flat.T, dout_flat)
+        self.db = np.sum(dout_flat, axis=0)
         return np.dot(dout, self.W.T)
 
 class RMSNorm:
@@ -113,8 +115,32 @@ class SovereignAttention:
         dv = np.sum(dv_rep.reshape(b, s, self.kv_heads, self.group, self.h_dim), axis=3)
         return self.q_proj.backward(dq.reshape(b, s, -1)) + self.k_proj.backward(dk.reshape(b, s, -1)) + self.v_proj.backward(dv.reshape(b, s, -1))
 
+class GeminiGroqRedundancy:
+    def __init__(self, dim):
+        self.gemini_path = Linear(dim, dim)
+        self.groq_path = Linear(dim, dim)
+        self.gate = Linear(dim, 2)
+
+    def forward(self, x):
+        self.x = x
+        self.g1 = self.gemini_path.forward(x)
+        self.g2 = self.groq_path.forward(x)
+        self.logits = self.gate.forward(x)
+        self.probs = softmax(self.logits)
+        return self.probs[..., 0:1] * self.g1 + self.probs[..., 1:2] * self.g2
+
+    def backward(self, dout):
+        dg1 = dout * self.probs[..., 0:1]
+        dg2 = dout * self.probs[..., 1:2]
+        d_p1 = np.sum(dout * self.g1, axis=-1, keepdims=True)
+        d_p2 = np.sum(dout * self.g2, axis=-1, keepdims=True)
+        d_probs = np.concatenate([d_p1, d_p2], axis=-1)
+        d_logits = self.probs * (d_probs - np.sum(self.probs * d_probs, axis=-1, keepdims=True))
+        dx = self.gemini_path.backward(dg1) + self.groq_path.backward(dg2) + self.gate.backward(d_logits)
+        return dx
+
 class SovereignMoE:
-    def __init__(self, dim, n_exp=4, mult=2):
+    def __init__(self, dim, n_exp=4, mult=4):
         self.dim, self.n_exp = dim, n_exp
         self.gate = Linear(dim, n_exp)
         self.experts = [[Linear(dim, dim * mult), Linear(dim * mult, dim)] for _ in range(n_exp)]
@@ -156,20 +182,24 @@ class SovereignMoE:
 class SovereignBlock:
     def __init__(self, dim):
         self.n1, self.attn = RMSNorm(dim), SovereignAttention(dim)
-        self.n2, self.moe = RMSNorm(dim), SovereignMoE(dim)
+        self.n2, self.redundancy = RMSNorm(dim), GeminiGroqRedundancy(dim)
+        self.n3, self.moe = RMSNorm(dim), SovereignMoE(dim)
 
     def forward(self, x):
         x = x + self.attn.forward(self.n1.forward(x))
-        x = x + self.moe.forward(self.n2.forward(x))
+        x = x + self.redundancy.forward(self.n2.forward(x))
+        x = x + self.moe.forward(self.n3.forward(x))
         return x
 
     def backward(self, dout):
         dm = self.moe.backward(dout)
-        dx = dout + self.n2.backward(dm)
+        dx = dout + self.n3.backward(dm)
+        dr = self.redundancy.backward(dx)
+        dx = dx + self.n2.backward(dr)
         da = self.attn.backward(dx)
         return dx + self.n1.backward(da)
 
-class OMEGA_ASI_X10:
+class OMEGA_ASI_X11:
     def __init__(self, in_d=784, h_d=128, out_d=10, depth=2):
         self.stem = Linear(in_d, h_d)
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
@@ -183,7 +213,7 @@ class OMEGA_ASI_X10:
         return self.head.forward(self.f)
 
     def backward(self, dout):
-        dout = self.norm.backward(self.head.backward(dout))[:, None, :]
+        dout = self.norm.backward(self.head.backward(dout))[:, None, : ]
         for b in reversed(self.blocks): dout = b.backward(dout)
         self.stem.backward(dout[:, 0, :])
 
@@ -220,29 +250,31 @@ class Lion:
                 p.g -= self.lr * (u + self.wd * p.g)
                 self.m[i] = self.b2 * m + (1.0 - self.b2) * g
 
-def get_data(n=2048):
+def get_data(n=4096):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 4.0
-    return (X - np.mean(X)) / (np.std(X) + 1e-6), y
+    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 5.0
+    X = (X - np.mean(X)) / (np.std(X) + 1e-6)
+    return X, y
 
 def train():
     X, y = get_data(4096)
-    model = OMEGA_ASI_X10(h_d=64, depth=1)
+    model = OMEGA_ASI_X11(h_d=64, depth=1)
     params = model.get_params()
-    opt = Lion(params, lr=2e-4)
-    bs, epochs = 64, 50
+    opt = Lion(params, lr=1e-4)
+    bs, epochs = 64, 40
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
         ls, acc, t0 = 0, 0, time.time()
-        opt.lr = 2e-4 * 0.5 * (1 + np.cos(np.pi * ep / epochs))
+        opt.lr = 1e-4 * 0.5 * (1 + np.cos(np.pi * ep / epochs))
         for i in range(0, len(X), bs):
             xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
             if len(xb) < bs: continue
-            probs = softmax(model.forward(xb))
+            logits = model.forward(xb)
+            probs = softmax(logits)
             ls += -np.mean(np.log(probs[range(bs), yb] + 1e-10)) * bs
             acc += np.sum(np.argmax(probs, axis=1) == yb)
-            dout = (probs.copy()); dout[range(bs), yb] -= 1
+            dout = probs.copy(); dout[range(bs), yb] -= 1
             model.backward(dout / bs)
             gn = np.sqrt(sum(np.sum(p.dW**2) + np.sum(p.db**2) if hasattr(p, "dW") else np.sum(p.dg**2) for p in params))
             if gn > 1.0:
@@ -250,7 +282,7 @@ def train():
                     if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
                     if hasattr(p, "dg"): p.dg /= gn
             opt.step()
-        print(f"EP:{ep:02d} | LOSS:{ls/len(X):.4f} | ACC:{acc/len(X):.4f} | {len(X)/(time.time()-t0):.1f} samples/s")
+        print(f"EPOCH:{ep:02d} | LOSS:{ls/len(X):.4f} | ACC:{acc/len(X):.4f} | SPEED:{len(X)/(time.time()-t0):.1f} samples/s")
 
 if __name__ == "__main__":
     train()
