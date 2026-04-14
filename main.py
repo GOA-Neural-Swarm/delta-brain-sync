@@ -1,26 +1,35 @@
 import numpy as np
 
-class SwiGLU:
+class Activation:
     @staticmethod
-    def forward(x):
+    def swiglu(x):
         h = x.shape[-1] // 2
         a, b = x[..., :h], x[..., h:]
-        s = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
-        return (a * s) * b
+        return a * (1.0 / (1.0 + np.exp(-np.clip(a, -10, 10)))) * b
 
     @staticmethod
-    def backward(x, d):
+    def swiglu_grad(x, d):
         h = x.shape[-1] // 2
         a, b = x[..., :h], x[..., h:]
-        s = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
+        s = 1.0 / (1.0 + np.exp(-np.clip(a, -10, 10)))
         sw = a * s
         da = d * b * (s + sw * (1 - s))
         db = d * sw
         return np.concatenate([da, db], axis=-1)
 
+    @staticmethod
+    def gelu(x):
+        return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+
+    @staticmethod
+    def gelu_grad(x, d):
+        cdf = 0.5 * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+        pdf = np.exp(-0.5 * x**2) / np.sqrt(2 * np.pi)
+        return d * (cdf + x * pdf)
+
 class Linear:
-    def __init__(self, i, o, s=0.02):
-        self.W = np.random.randn(i, o).astype("f") * s
+    def __init__(self, i, o, name=""):
+        self.W = np.random.randn(i, o).astype("f") * np.sqrt(2/i)
         self.b = np.zeros(o, "f")
         self.x, self.dW, self.db = None, None, None
 
@@ -102,14 +111,14 @@ class GQA:
 class SovereignLogic:
     def __init__(self, d):
         self.gemini_path = [Linear(d, d * 2), Linear(d, d)]
-        self.groq_path = [Linear(d, d * 2), Linear(d, d)]
+        self.groq_path = [Linear(d, d), Linear(d, d)]
         self.gate = Linear(d, 2)
         self.h_gem, self.h_gro, self.p, self.o_gem, self.o_gro = [None] * 5
 
     def forward(self, x):
-        self.h_gem = SwiGLU.forward(self.gemini_path[0].forward(x))
+        self.h_gem = Activation.swiglu(self.gemini_path[0].forward(x))
         self.o_gem = self.gemini_path[1].forward(self.h_gem)
-        self.h_gro = SwiGLU.forward(self.groq_path[0].forward(x))
+        self.h_gro = Activation.gelu(self.groq_path[0].forward(x))
         self.o_gro = self.groq_path[1].forward(self.h_gro)
         g = self.gate.forward(x)
         ex = np.exp(g - g.max(-1, keepdims=True))
@@ -121,9 +130,9 @@ class SovereignLogic:
         dg = self.p * (dp - (self.p * dp).sum(-1, keepdims=True))
         dx = self.gate.backward(dg)
         d_gem = self.gemini_path[1].backward(d * self.p[..., :1])
-        dx += self.gemini_path[0].backward(SwiGLU.backward(self.gemini_path[0].x, d_gem))
+        dx += self.gemini_path[0].backward(Activation.swiglu_grad(self.gemini_path[0].x, d_gem))
         d_gro = self.groq_path[1].backward(d * self.p[..., 1:2])
-        dx += self.groq_path[0].backward(SwiGLU.backward(self.groq_path[0].x, d_gro))
+        dx += self.groq_path[0].backward(Activation.gelu_grad(self.groq_path[0].x, d_gro))
         return dx
 
 class SparseMoE:
@@ -151,7 +160,7 @@ class SparseMoE:
                 continue
             p_idx = np.where(self.indices[mask] == i)[1]
             expert_p = self.p[mask, p_idx, None]
-            h = SwiGLU.forward(self.experts[i][0].forward(x_flat[mask]))
+            h = Activation.swiglu(self.experts[i][0].forward(x_flat[mask]))
             y = self.experts[i][1].forward(h)
             out[mask] += y * expert_p
             self.cache.append((mask, p_idx, h, y))
@@ -168,7 +177,7 @@ class SparseMoE:
             dp_full[mask, i] = (d_flat[mask] * y).sum(-1)
             dy = d_flat[mask] * expert_p
             dh = self.experts[i][1].backward(dy)
-            dx[mask] += self.experts[i][0].backward(SwiGLU.backward(self.experts[i][0].x, dh))
+            dx[mask] += self.experts[i][0].backward(Activation.swiglu_grad(self.experts[i][0].x, dh))
         logits_p = np.zeros((d_flat.shape[0], self.n))
         np.put_along_axis(logits_p, self.indices, self.p, axis=-1)
         dg = logits_p * (dp_full - (logits_p * dp_full).sum(-1, keepdims=True))
@@ -242,11 +251,12 @@ class Lion:
 
 def train():
     N, D, C, H = 1024, 784, 10, 128
-    X, Y = np.random.randn(N, D).astype("f"), np.random.randint(0, C, N)
+    X = np.random.randn(N, D).astype("f")
+    Y = np.random.randint(0, C, N)
     model = OMEGA_ASI(D, H, C, 2)
-    optimizer = Lion(model.get_params(), lr=2e-4, wd=0.01)
+    optimizer = Lion(model.get_params(), lr=1e-4, wd=0.01)
     
-    for epoch in range(100):
+    for epoch in range(50):
         idx = np.random.permutation(N)
         t_loss, t_acc = 0, 0
         for i in range(0, N, 32):
@@ -268,8 +278,8 @@ def train():
                     if hasattr(p, "dg"): p.dg /= gn
             optimizer.step()
             
-        if (epoch + 1) % 10 == 0:
-            print(f"Epoch {epoch+1:03d} | Loss: {t_loss/N:.4f} | Acc: {t_acc/N:.4f}")
+        if (epoch + 1) % 5 == 0:
+            print(f"Cycle {epoch+1:03d} | Loss: {t_loss/N:.4f} | Accuracy: {t_acc/N:.4f}")
 
 if __name__ == "__main__":
     train()
