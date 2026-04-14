@@ -1,5 +1,5 @@
-import numpy as np
 
+import numpy as np
 
 class Ops:
     @staticmethod
@@ -46,7 +46,6 @@ class Ops:
     def d_softmax(p, d):
         return p * (d - np.sum(p * d, axis=-1, keepdims=True))
 
-
 class Linear:
     def __init__(self, i, o, std=None):
         std = std or np.sqrt(2.0 / (i + o))
@@ -64,7 +63,6 @@ class Linear:
         self.db = d.sum(axis=tuple(range(d.ndim - 1)))
         return d @ self.W.T
 
-
 class RMSNorm:
     def __init__(self, d, e=1e-6):
         self.g = np.ones(d, "f")
@@ -80,7 +78,6 @@ class RMSNorm:
         self.dg = (d * nx).sum(axis=tuple(range(d.ndim - 1)))
         dn = d * self.g
         return self.v * (dn - nx * np.mean(dn * nx, axis=-1, keepdims=True))
-
 
 class RoPE:
     def __init__(self, d, m=2048):
@@ -98,8 +95,7 @@ class RoPE:
             return np.concatenate([x1 * c + x2 * sn, x2 * c - x1 * sn], axis=-1)
         return np.concatenate([x1 * c - x2 * sn, x2 * c + x1 * sn], axis=-1)
 
-
-class GQA:
+class Gemini:
     def __init__(self, d, h=8, k=2):
         self.d, self.h, self.k, self.hd = d, h, k, d // h
         self.g = h // k
@@ -143,8 +139,7 @@ class GQA:
             + self.wv.backward(dvc.reshape(b, s, -1))
         )
 
-
-class SovereignMLP:
+class Groq:
     def __init__(self, d, exp=4):
         self.gate = Linear(d, 2)
         self.gem_up = Linear(d, d * exp * 2)
@@ -171,11 +166,10 @@ class SovereignMLP:
         dx += self.gro_up.backward(Ops.d_geglu(self.gro_up.x, d_gro))
         return dx
 
-
 class Block:
     def __init__(self, d):
         self.n1, self.n2 = RMSNorm(d), RMSNorm(d)
-        self.attn, self.mlp = GQA(d), SovereignMLP(d)
+        self.attn, self.mlp = Gemini(d), Groq(d)
 
     def forward(self, x):
         x = x + self.attn.forward(self.n1.forward(x))
@@ -187,7 +181,6 @@ class Block:
         d_res2 = d + self.n2.backward(dm)
         da = self.attn.backward(d_res2)
         return d_res2 + self.n1.backward(da)
-
 
 class OMEGA_ASI:
     def __init__(self, i=784, h=256, o=10, depth=4):
@@ -225,7 +218,6 @@ class OMEGA_ASI:
         find(self)
         return list(set(p))
 
-
 class Lion:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
         self.params, self.lr, self.b1, self.b2, self.wd = params, lr, b1, b2, wd
@@ -242,7 +234,7 @@ class Lion:
         for p in self.params:
             pid = id(p)
             if hasattr(p, "W"):
-                for attr, mom_dict in [("W", self.m), ("b", self.mb)]:
+                for attr, mom_dict in [( "W", self.m), ( "b", self.mb)]:
                     if mom_dict[pid] is None:
                         continue
                     g, w = getattr(p, "d" + attr), getattr(p, attr)
@@ -254,7 +246,6 @@ class Lion:
                 u = np.sign(self.b1 * self.m[pid] + (1.0 - self.b1) * p.dg)
                 p.g -= lr * (u + self.wd * p.g)
                 self.m[pid] = self.b2 * self.m[pid] + (1.0 - self.b2) * p.dg
-
 
 def train():
     N, D, C = 2048, 784, 10
@@ -305,7 +296,6 @@ def train():
             print(
                 f"EPOCH {epoch+1:03d} | LOSS: {l_sum/N:.4f} | ACC: {a_sum/N:.4f} | GRAD: {gn:.2f} | LR: {opt.lr*lr_scale:.6f}"
             )
-
 
 if __name__ == "__main__":
     train()
