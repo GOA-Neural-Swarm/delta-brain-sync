@@ -267,7 +267,7 @@ def train():
             probs = Ops.softmax(logits)
             l_sum += -np.log(probs[range(len(yb)), yb] + 1e-10).sum()
             a_sum += (probs.argmax(1) == yb).sum()
-            dout = (probs.copy())
+            dout = probs.copy()
             dout[range(len(yb)), yb] -= 1
             model.backward(dout / len(yb))
             gn = np.sqrt(
