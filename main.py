@@ -1,4 +1,3 @@
-
 import numpy as np
 import time
 
@@ -24,7 +23,7 @@ def softmax(x, axis=-1):
 
 class Linear:
     def __init__(self, in_d, out_d, init_scale=0.02):
-        self.W = np.random.randn(in_d, out_d).astype(np.float32) * init_scale
+        self.W = np.random.randn(in_d, out_d).astype(np.float32) * (np.sqrt(2.0 / in_d) if init_scale is None else init_scale)
         self.b = np.zeros(out_d, dtype=np.float32)
         self.x, self.dW, self.db = None, None, None
 
@@ -93,72 +92,70 @@ class Gemini:
 
     def forward(self, x):
         b, s, d = x.shape
-        q = self.q_proj.forward(x).reshape(b, s, self.heads, self.h_dim)
-        k = self.k_proj.forward(x).reshape(b, s, self.kv_heads, self.h_dim)
-        v = self.v_proj.forward(x).reshape(b, s, self.kv_heads, self.h_dim)
-        qr, kr, v_raw = self.rope.apply(q), self.rope.apply(k), v
-        k_rep = np.repeat(kr, self.group, axis=2)
-        v_rep = np.repeat(v, self.group, axis=2)
-        attn = np.einsum("bshd,bthd->bsht", qr, k_rep) * self.scale
-        probs = softmax(attn)
-        out = np.einsum("bsht,bthd->bshd", probs, v_rep)
+        self.q = self.q_proj.forward(x).reshape(b, s, self.heads, self.h_dim)
+        self.k = self.k_proj.forward(x).reshape(b, s, self.kv_heads, self.h_dim)
+        self.v = self.v_proj.forward(x).reshape(b, s, self.kv_heads, self.h_dim)
+        self.qr, self.kr = self.rope.apply(self.q), self.rope.apply(self.k)
+        self.k_rep = np.repeat(self.kr, self.group, axis=2)
+        self.v_rep = np.repeat(self.v, self.group, axis=2)
+        attn = np.einsum("bshd,bthd->bsht", self.qr, self.k_rep) * self.scale
+        self.probs = softmax(attn)
+        out = np.einsum("bsht,bthd->bshd", self.probs, self.v_rep)
         return self.o_proj.forward(out.reshape(b, s, d))
 
     def backward(self, dout):
         b, s, d = dout.shape
         dout_o = self.o_proj.backward(dout).reshape(b, s, self.heads, self.h_dim)
-        d_probs = np.einsum("bshd,bthd->bsht", dout_o, np.repeat(self.v_proj.forward(self.rope.apply(self.k_proj.forward(dout))).reshape(b, s, self.kv_heads, self.h_dim), self.group, axis=2))
-        d_v_rep = np.einsum("bsht,bshd->bthd", softmax(np.einsum("bshd,bthd->bsht", self.rope.apply(self.q_proj.forward(dout)).reshape(b, s, self.heads, self.h_dim), np.repeat(self.k_proj.forward(dout).reshape(b, s, self.kv_heads, self.h_dim), self.group, axis=2)) * self.scale), dout_o)
-        d_attn = (softmax(np.einsum("bshd,bthd->bsht", self.rope.apply(self.q_proj.forward(dout)).reshape(b, s, self.heads, self.h_dim), np.repeat(self.k_proj.forward(dout).reshape(b, s, self.kv_heads, self.h_dim), self.group, axis=2)) * self.scale) * (d_probs - np.sum(softmax(np.einsum("bshd,bthd->bsht", self.rope.apply(self.q_proj.forward(dout)).reshape(b, s, self.heads, self.h_dim), np.repeat(self.k_proj.forward(dout).reshape(b, s, self.kv_heads, self.h_dim), self.group, axis=2)) * self.scale) * d_probs, axis=-1, keepdims=True))) * self.scale
-        d_qr = np.einsum("bsht,bthd->bshd", d_attn, np.repeat(self.k_proj.forward(dout).reshape(b, s, self.kv_heads, self.h_dim), self.group, axis=2))
-        d_kr_rep = np.einsum("bsht,bshd->bthd", d_attn, self.rope.apply(self.q_proj.forward(dout)).reshape(b, s, self.heads, self.h_dim))
-        dq = self.rope.backward(d_qr).reshape(b, s, d)
-        dk_sum = np.sum(d_kr_rep.reshape(b, s, self.kv_heads, self.group, self.h_dim), axis=3)
-        dk = self.rope.backward(dk_sum).reshape(b, s, -1)
-        dv = np.sum(d_v_rep.reshape(b, s, self.kv_heads, self.group, self.h_dim), axis=3).reshape(b, s, -1)
-        return self.q_proj.backward(dq) + self.k_proj.backward(dk) + self.v_proj.backward(dv)
+        dv_rep = np.einsum("bsht,bshd->bthd", self.probs, dout_o)
+        d_probs = np.einsum("bshd,bthd->bsht", dout_o, self.v_rep)
+        d_attn = self.probs * (d_probs - np.sum(self.probs * d_probs, axis=-1, keepdims=True)) * self.scale
+        d_qr = np.einsum("bsht,bthd->bshd", d_attn, self.k_rep)
+        d_k_rep = np.einsum("bsht,bshd->bthd", d_attn, self.qr)
+        dq = self.rope.backward(d_qr)
+        dk = self.rope.backward(np.sum(d_k_rep.reshape(b, s, self.kv_heads, self.group, self.h_dim), axis=3))
+        dv = np.sum(dv_rep.reshape(b, s, self.kv_heads, self.group, self.h_dim), axis=3)
+        return self.q_proj.backward(dq.reshape(b, s, -1)) + self.k_proj.backward(dk.reshape(b, s, -1)) + self.v_proj.backward(dv.reshape(b, s, -1))
 
 class Groq:
-    def __init__(self, dim, n_exp=4, top_k=1):
-        self.dim, self.n_exp, self.top_k = dim, n_exp, top_k
+    def __init__(self, dim, n_exp=4):
+        self.dim, self.n_exp = dim, n_exp
         self.gate = Linear(dim, n_exp)
         self.experts = [[Linear(dim, dim * 2), Linear(dim * 2, dim)] for _ in range(n_exp)]
 
     def forward(self, x):
+        self.shape = x.shape
         xf = x.reshape(-1, self.dim)
         logits = self.gate.forward(xf)
-        probs = softmax(logits)
-        self.indices = np.argmax(probs, axis=-1)
+        self.probs = softmax(logits)
+        self.indices = np.argmax(self.probs, axis=-1)
         out = np.zeros_like(xf)
-        self.cache = []
+        self.ex_cache = []
         for i in range(self.n_exp):
             mask = (self.indices == i)
             if not np.any(mask):
-                self.cache.append(None)
+                self.ex_cache.append(None)
                 continue
-            p = probs[mask, i][:, None]
             h = self.experts[i][0].forward(xf[mask])
             act = swiglu(h)
             eo = self.experts[i][1].forward(act)
-            out[mask] += eo * p
-            self.cache.append((mask, h, act, eo, p))
-        return out.reshape(x.shape)
+            out[mask] = eo * self.probs[mask, i][:, None]
+            self.ex_cache.append((mask, h, act, eo))
+        return out.reshape(self.shape)
 
     def backward(self, dout):
         df = dout.reshape(-1, self.dim)
-        xf = self.gate.x
-        dx = np.zeros_like(xf)
-        d_logits = np.zeros_like(softmax(self.gate.forward(xf)))
+        d_logits = np.zeros_like(self.probs)
+        dx = np.zeros((df.shape[0], self.dim), dtype=np.float32)
         for i in range(self.n_exp):
-            if self.cache[i] is None: continue
-            mask, h, act, eo, p = self.cache[i]
-            deo = df[mask] * p
+            if self.ex_cache[i] is None: continue
+            mask, h, act, eo = self.ex_cache[i]
+            d_eo = df[mask] * self.probs[mask, i][:, None]
             d_logits[mask, i] = np.sum(df[mask] * eo, axis=-1)
-            d_act = self.experts[i][1].backward(deo)
+            d_act = self.experts[i][1].backward(d_eo)
             d_h = d_swiglu(h, d_act)
             dx[mask] += self.experts[i][0].backward(d_h)
-        dg = softmax(self.gate.forward(xf)) * (d_logits - np.sum(softmax(self.gate.forward(xf)) * d_logits, axis=-1, keepdims=True))
-        return (dx + self.gate.backward(dg)).reshape(dout.shape)
+        dg = self.probs * (d_logits - np.sum(self.probs * d_logits, axis=-1, keepdims=True))
+        return (dx + self.gate.backward(dg)).reshape(self.shape)
 
 class SovereignBlock:
     def __init__(self, dim):
@@ -230,19 +227,20 @@ class Lion:
 def get_data(n=2048):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 4.0
+    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 5.0
     return (X - np.mean(X)) / (np.std(X) + 1e-6), y
 
 def train():
     X, y = get_data(2048)
     model = OMEGA_ASI_X10(h_d=64, depth=1)
     params = model.get_params()
-    opt = Lion(params, lr=2e-4)
-    bs, epochs = 64, 20
+    opt = Lion(params, lr=1e-4)
+    bs, epochs = 64, 30
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
         ls, acc, t0 = 0, 0, time.time()
-        opt.lr = 2e-4 * 0.5 * (1 + np.cos(np.pi * ep / epochs))
+        curr_lr = 1e-4 * 0.5 * (1 + np.cos(np.pi * ep / epochs))
+        opt.lr = curr_lr
         for i in range(0, len(X), bs):
             xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
             if len(xb) < bs: continue
@@ -257,7 +255,7 @@ def train():
                     if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
                     if hasattr(p, "dg"): p.dg /= gn
             opt.step()
-        print(f"EP:{ep:02d} | LOSS:{ls/len(X):.4f} | ACC:{acc/len(X):.4f} | {len(X)/(time.time()-t0):.1f} s/s")
+        print(f"EP:{ep:02d} | LOSS:{ls/len(X):.4f} | ACC:{acc/len(X):.4f} | {len(X)/(time.time()-t0):.1f} samples/s")
 
 if __name__ == "__main__":
     train()
