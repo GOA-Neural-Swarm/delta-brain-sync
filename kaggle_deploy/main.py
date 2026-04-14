@@ -5,32 +5,15 @@ import time
 import json
 import traceback
 import requests
-import git
 import re
 import random
 import base64
-import google.generativeai as genai
 from datetime import datetime, UTC
 from functools import lru_cache
 
-import numpy as np
-import torch
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
-from firebase_admin import credentials, db, initialize_app, _apps
-import firebase_admin
-
-# 🔒 Kaggle/Colab Secrets System
-try:
-    from kaggle_secrets import UserSecretsClient
-
-    user_secrets = UserSecretsClient()
-except ImportError:
-    user_secrets = None
-
 
 def install_requirements():
-    """Installs necessary libraries and fixes version conflicts."""
+    """Installs necessary libraries and fixes version conflicts before imports occur."""
     libs = [
         "psycopg2-binary",
         "firebase-admin",
@@ -41,21 +24,41 @@ def install_requirements():
         "sympy==1.12",
         "numpy",
         "scikit-learn",
-        "transformers --upgrade",
+        "transformers",
         "huggingface-hub>=0.24.0",
+        "google-genai",
     ]
     try:
+        # Moved --upgrade to the command arguments instead of the package name string
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                *libs,
+                "--quiet",
+                "--no-cache-dir",
+            ]
         )
-        print("✅ [SYSTEM]: Phase 7.1 Core & Stability Patch Ready.")
+        print(" Core & Stability Patch Ready.")
     except Exception as e:
-        print(f"⚠️ Install Warning: {e}")
+        print(f" Install Warning: {e}")
 
 
-# Run installation before importing transformers to avoid version lock
+# 1. Run installation BEFORE importing third-party modules
 install_requirements()
 
+# 2. Now import third-party modules
+import google.genai as genai
+import numpy as np
+import torch
+import git
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from firebase_admin import credentials, db, initialize_app, _apps
+import firebase_admin
 from transformers import (
     pipeline,
     AutoModelForCausalLM,
@@ -63,7 +66,15 @@ from transformers import (
     BitsAndBytesConfig,
 )
 
-# --- 🔱 CONFIGURATION & SECRETS ---
+#  Kaggle/Colab Secrets System
+try:
+    from kaggle_secrets import UserSecretsClient
+
+    user_secrets = UserSecretsClient()
+except ImportError:
+    user_secrets = None
+
+# ---  CONFIGURATION & SECRETS ---
 raw_db_url = os.getenv("NEON_DB_URL") or os.getenv("DATABASE_URL")
 if user_secrets:
     raw_db_url = user_secrets.get_secret("NEON_DB_URL") or raw_db_url
@@ -102,7 +113,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or (
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
     gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-    print("✅ [GEMINI]: Auditor Brain Initialized.")
+    print(" Auditor Brain Initialized.")
 
 if not firebase_admin._apps:
     try:
@@ -112,9 +123,9 @@ if not firebase_admin._apps:
             else credentials.Certificate("serviceAccountKey.json")
         )
         firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_URL})
-        print(f"✅ [FIREBASE]: Real-time Pulse Active.")
+        print(f" [FIREBASE]: Real-time Pulse Active.")
     except Exception as e:
-        print(f"🚫 [FIREBASE ERROR]: {e}")
+        print(f" [FIREBASE ERROR]: {e}")
 
 
 class HydraEngine:
@@ -148,7 +159,7 @@ class Brain:
             self.svm.fit(X_scaled, np.array(labels))
             self.is_trained = True
         except Exception as e:
-            print(f"⚠️ [ML ERROR]: {e}")
+            print(f" [ML ERROR]: {e}")
 
     def execute_natural_absorption(
         self, category=None, sequence=None, stability=None, target_data=None
@@ -208,7 +219,7 @@ def save_evolution_state_to_neon(state, gen_id):
                 )
                 conn.commit()
     except Exception as e:
-        print(f"⚠️ [NEON ERROR]: {e}")
+        print(f" [NEON ERROR]: {e}")
 
 
 def query_groq_api(prompt):
@@ -245,24 +256,26 @@ def get_gemini_wisdom(prompt_text):
             return None
         return gemini_model.generate_content(prompt_text).text
     except Exception as e:
-        print(f"⚠️ [GEMINI-ERROR]: {e}")
+        print(f" [GEMINI-ERROR]: {e}")
         return None
 
 
 def dual_brain_pipeline(prompt_text, current_gen, avg_error):
     if len(prompt_text) > 40000:
         return get_gemini_wisdom(prompt_text)
-    print("🏗️ [ARCHITECT - Groq]: Drafting...")
+    print(" [ARCHITECT - Groq]: Drafting...")
     draft_code = query_groq_api(prompt_text)
     if not draft_code or "rate_limit" in str(draft_code).lower():
         draft_code = get_gemini_wisdom(f"EMERGENCY ARCHITECT MODE: {prompt_text}")
     if not draft_code:
         return None
 
-    audit_prompt = f"system\nYou are the Supreme Auditor (Gen {current_gen}). Respond ONLY with Python code in python blocks.\nARCHITECT'S DRAFT:\n{draft_code}"
+    audit_prompt = f"You are the Supreme Auditor (Gen {current_gen}). Respond ONLY with Python code in python blocks.\nARCHITECT'S DRAFT:\n{draft_code}"
     final_code = get_gemini_wisdom(audit_prompt)
     if final_code and "python" in final_code:
-        final_code = re.search(r"python(.*?)", final_code, re.DOTALL).group(1).strip()
+        match = re.search(r"python(.*?)", final_code, re.DOTALL)
+        if match:
+            final_code = match.group(1).strip()
     return final_code or draft_code
 
 
@@ -304,14 +317,14 @@ def autonomous_git_push(gen, modified_files):
                 shutil.copy(f, os.path.join(REPO_PATH, f))
         repo.git.add(A=True)
         if repo.is_dirty():
-            repo.index.commit(f"🧬 Gen {gen} Evolution")
+            repo.index.commit(f" Gen {gen} Evolution")
             repo.remotes.origin.push()
-            print(f"✨ [GIT]: Gen {gen} manifested.")
+            print(f" [GIT]: Gen {gen} manifested.")
     except Exception as e:
-        print(f"❌ [GIT ERROR]: {e}")
+        print(f" [GIT ERROR]: {e}")
 
 
-# --- 🔱 MAIN EXECUTION LOOP ---
+# ---  MAIN EXECUTION LOOP ---
 brain = Brain()
 current_gen = 95
 try:
@@ -327,7 +340,7 @@ try:
 except:
     pass
 
-print(f"🔥 [STARTING]: PHASE 8 AT GEN {current_gen}")
+print(f" [STARTING]: PHASE 8 AT GEN {current_gen}")
 
 while True:
     try:
@@ -347,18 +360,18 @@ while True:
 
         thought_text = dual_brain_pipeline(prompt, current_gen, total_error)
         if not thought_text:
-            print("💾 [LOCAL-FALLBACK]: Cloud offline.")
-            thought_text = "# TARGET: brain.py\n# Stability patch\npass"
+            print(" [LOCAL-FALLBACK]: Cloud offline.")
+            thought_text = "python\n# TARGET: brain.py\n# Stability patch\npass\n"
 
         is_updated, files_changed = self_coding_engine(thought_text)
         autonomous_git_push(current_gen, files_changed)
 
         if is_updated and "main.py" in files_changed:
-            print("🧬 [RESTARTING]: New DNA injected.")
+            print(" [RESTARTING]: New DNA injected.")
             os.execv(sys.executable, ["python"] + sys.argv)
 
         current_gen += 1
         time.sleep(30)
     except Exception as e:
-        print(f"🚨 [CRASH]: {e}")
+        print(f" [CRASH]: {e}")
         time.sleep(10)
