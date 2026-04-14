@@ -1,3 +1,4 @@
+
 import numpy as np
 
 class Ops:
@@ -121,7 +122,7 @@ class GQA:
         dvc = dvr.reshape(b, s, self.k, self.g, self.hd).sum(axis=3)
         return self.wq.backward(dq.reshape(b, s, -1)) + self.wk.backward(dkc.reshape(b, s, -1)) + self.wv.backward(dvc.reshape(b, s, -1))
 
-class RedundantLogic:
+class GeminiGroq:
     def __init__(self, d):
         self.gate = Linear(d, 2)
         self.gemini = [Linear(d, d*2), Linear(d, d)]
@@ -150,7 +151,7 @@ class Block:
     def __init__(self, d):
         self.n1, self.n2 = RMSNorm(d), RMSNorm(d)
         self.attn = GQA(d)
-        self.logic = RedundantLogic(d)
+        self.logic = GeminiGroq(d)
 
     def forward(self, x):
         x = x + self.attn.forward(self.n1.forward(x))
@@ -200,7 +201,7 @@ class Lion:
     def step(self):
         for i, p in enumerate(self.params):
             if hasattr(p, "W"):
-                for attr, mom in [("W", self.m), ("b", self.mb)]:
+                for attr, mom in [(("W"), self.m), (("b"), self.mb)]:
                     if mom[i] is None: continue
                     g, w = getattr(p, "d" + attr), getattr(p, attr)
                     u = np.sign(self.b1 * mom[i] + (1.0 - self.b1) * g)
