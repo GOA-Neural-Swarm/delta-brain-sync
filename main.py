@@ -4,13 +4,13 @@ import time
 def swiglu(x):
     h = x.shape[-1] // 2
     a, b = x[..., :h], x[..., h:]
-    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
+    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -10, 10)))
     return (a * sig) * b
 
 def d_swiglu(x, dout):
     h = x.shape[-1] // 2
     a, b = x[..., :h], x[..., h:]
-    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
+    sig = 1.0 / (1.0 + np.exp(-np.clip(a, -10, 10)))
     swi = a * sig
     da = dout * b * (sig + swi * (1.0 - sig))
     db = dout * swi
@@ -22,8 +22,8 @@ def softmax(x, axis=-1):
     return e / (np.sum(e, axis=axis, keepdims=True) + 1e-12)
 
 class Linear:
-    def __init__(self, in_d, out_d, init_scale=0.02):
-        self.W = np.random.randn(in_d, out_d).astype(np.float32) * (np.sqrt(2.0 / in_d) if init_scale is None else init_scale)
+    def __init__(self, in_d, out_d):
+        self.W = np.random.randn(in_d, out_d).astype(np.float32) * np.sqrt(2.0 / in_d)
         self.b = np.zeros(out_d, dtype=np.float32)
         self.x, self.dW, self.db = None, None, None
 
@@ -32,10 +32,8 @@ class Linear:
         return np.dot(x, self.W) + self.b
 
     def backward(self, dout):
-        x_flat = self.x.reshape(-1, self.x.shape[-1])
-        d_flat = dout.reshape(-1, dout.shape[-1])
-        self.dW = np.dot(x_flat.T, d_flat)
-        self.db = np.sum(d_flat, axis=0)
+        self.dW = np.dot(self.x.reshape(-1, self.x.shape[-1]).T, dout.reshape(-1, dout.shape[-1]))
+        self.db = np.sum(dout, axis=tuple(range(len(dout.shape)-1)))
         return np.dot(dout, self.W.T)
 
 class RMSNorm:
@@ -51,7 +49,7 @@ class RMSNorm:
 
     def backward(self, dout):
         nx = self.x * self.inv_rms
-        self.dg = np.sum(dout * nx, axis=tuple(range(len(dout.shape) - 1)))
+        self.dg = np.sum(dout * nx, axis=tuple(range(len(dout.shape)-1)))
         d_nx = dout * self.g
         return self.inv_rms * (d_nx - nx * np.mean(d_nx * nx, axis=-1, keepdims=True))
 
@@ -61,8 +59,7 @@ class RoPE:
         t = np.arange(max_seq)
         freqs = np.outer(t, inv_freq)
         emb = np.concatenate([freqs, freqs], axis=-1)
-        self.cos = np.cos(emb)[None, :, None, :]
-        self.sin = np.sin(emb)[None, :, None, :]
+        self.cos, self.sin = np.cos(emb)[None, :, None, :], np.sin(emb)[None, :, None, :]
 
     def apply(self, x):
         s = x.shape[1]
@@ -78,7 +75,7 @@ class RoPE:
         dout_rot = np.concatenate([dout[..., h:], -dout[..., :h]], axis=-1)
         return dout * c + dout_rot * sn
 
-class Gemini:
+class SovereignAttention:
     def __init__(self, dim, heads=8, kv_heads=2):
         self.dim, self.heads, self.kv_heads = dim, heads, kv_heads
         self.h_dim = dim // heads
@@ -116,17 +113,16 @@ class Gemini:
         dv = np.sum(dv_rep.reshape(b, s, self.kv_heads, self.group, self.h_dim), axis=3)
         return self.q_proj.backward(dq.reshape(b, s, -1)) + self.k_proj.backward(dk.reshape(b, s, -1)) + self.v_proj.backward(dv.reshape(b, s, -1))
 
-class Groq:
-    def __init__(self, dim, n_exp=4):
+class SovereignMoE:
+    def __init__(self, dim, n_exp=4, mult=2):
         self.dim, self.n_exp = dim, n_exp
         self.gate = Linear(dim, n_exp)
-        self.experts = [[Linear(dim, dim * 2), Linear(dim * 2, dim)] for _ in range(n_exp)]
+        self.experts = [[Linear(dim, dim * mult), Linear(dim * mult, dim)] for _ in range(n_exp)]
 
     def forward(self, x):
         self.shape = x.shape
         xf = x.reshape(-1, self.dim)
-        logits = self.gate.forward(xf)
-        self.probs = softmax(logits)
+        self.probs = softmax(self.gate.forward(xf))
         self.indices = np.argmax(self.probs, axis=-1)
         out = np.zeros_like(xf)
         self.ex_cache = []
@@ -159,8 +155,8 @@ class Groq:
 
 class SovereignBlock:
     def __init__(self, dim):
-        self.n1, self.attn = RMSNorm(dim), Gemini(dim)
-        self.n2, self.moe = RMSNorm(dim), Groq(dim)
+        self.n1, self.attn = RMSNorm(dim), SovereignAttention(dim)
+        self.n2, self.moe = RMSNorm(dim), SovereignMoE(dim)
 
     def forward(self, x):
         x = x + self.attn.forward(self.n1.forward(x))
@@ -227,29 +223,28 @@ class Lion:
 def get_data(n=2048):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 5.0
+    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 4.0
     return (X - np.mean(X)) / (np.std(X) + 1e-6), y
 
 def train():
-    X, y = get_data(2048)
+    X, y = get_data(4096)
     model = OMEGA_ASI_X10(h_d=64, depth=1)
     params = model.get_params()
-    opt = Lion(params, lr=1e-4)
-    bs, epochs = 64, 30
+    opt = Lion(params, lr=2e-4)
+    bs, epochs = 64, 50
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
         ls, acc, t0 = 0, 0, time.time()
-        curr_lr = 1e-4 * 0.5 * (1 + np.cos(np.pi * ep / epochs))
-        opt.lr = curr_lr
+        opt.lr = 2e-4 * 0.5 * (1 + np.cos(np.pi * ep / epochs))
         for i in range(0, len(X), bs):
             xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
             if len(xb) < bs: continue
             probs = softmax(model.forward(xb))
             ls += -np.mean(np.log(probs[range(bs), yb] + 1e-10)) * bs
             acc += np.sum(np.argmax(probs, axis=1) == yb)
-            dout = probs.copy(); dout[range(bs), yb] -= 1
+            dout = (probs.copy()); dout[range(bs), yb] -= 1
             model.backward(dout / bs)
-            gn = np.sqrt(sum(np.sum(p.dW**2) + np.sum(p.db**2) for p in params if hasattr(p, "dW")))
+            gn = np.sqrt(sum(np.sum(p.dW**2) + np.sum(p.db**2) if hasattr(p, "dW") else np.sum(p.dg**2) for p in params))
             if gn > 1.0:
                 for p in params:
                     if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
