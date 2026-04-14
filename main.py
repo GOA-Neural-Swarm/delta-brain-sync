@@ -1,287 +1,202 @@
 import numpy as np
 
-class Activation:
+class Act:
     @staticmethod
-    def swiglu(x):
+    def swi(x):
         h = x.shape[-1] // 2
         a, b = x[..., :h], x[..., h:]
-        s = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
+        s = 1 / (1 + np.exp(-np.clip(a, -12, 12)))
         return (a * s) * b
-
     @staticmethod
-    def swiglu_grad(x, d):
+    def dswi(x, d):
         h = x.shape[-1] // 2
         a, b = x[..., :h], x[..., h:]
-        s = 1.0 / (1.0 + np.exp(-np.clip(a, -12, 12)))
+        s = 1 / (1 + np.exp(-np.clip(a, -12, 12)))
         sw = a * s
-        da = d * b * (s + sw * (1 - s))
-        db = d * sw
-        return np.concatenate([da, db], axis=-1)
-
+        return np.concatenate([d * b * (s + sw * (1 - s)), d * sw], -1)
     @staticmethod
-    def gelu(x):
-        return 0.5 * x * (1 + np.tanh(0.7978845608 * (x + 0.044715 * x**3)))
-
+    def ge(x): return 0.5 * x * (1 + np.tanh(0.79788 * (x + 0.0447 * x**3)))
     @staticmethod
-    def gelu_grad(x, d):
-        tanh_out = np.tanh(0.7978845608 * (x + 0.044715 * x**3))
-        pdf = 0.3989422804 * np.exp(-0.5 * x**2)
-        cdf = 0.5 * (1 + tanh_out)
-        return d * (cdf + x * pdf)
+    def dge(x, d):
+        t = np.tanh(0.79788 * (x + 0.0447 * x**3))
+        return d * (0.5 * (1 + t) + x * (0.39894 * np.exp(-0.5 * x**2)))
 
-class Linear:
+class Lin:
     def __init__(self, i, o):
-        self.W = np.random.randn(i, o).astype("f") * np.sqrt(2 / i)
-        self.b = np.zeros(o, "f")
-        self.x, self.dW, self.db = None, None, None
-
+        self.W, self.b = np.random.randn(i, o).astype("f") * (2/i)**.5, np.zeros(o, "f")
     def forward(self, x):
         self.x = x
         return x @ self.W + self.b
-
     def backward(self, d):
         self.dW = self.x.reshape(-1, self.x.shape[-1]).T @ d.reshape(-1, d.shape[-1])
         self.db = d.sum(axis=tuple(range(d.ndim - 1)))
         return d @ self.W.T
 
-class RMSNorm:
-    def __init__(self, d, e=1e-6):
-        self.g, self.e = np.ones(d, "f"), e
-        self.x, self.v = None, None
-
+class Norm:
+    def __init__(self, d, e=1e-6): self.g, self.e = np.ones(d, "f"), e
     def forward(self, x):
-        self.x = x
-        self.v = 1 / np.sqrt(np.mean(x**2, axis=-1, keepdims=True) + self.e)
+        self.x, self.v = x, 1 / (np.mean(x**2, -1, keepdims=True) + self.e)**.5
         return self.g * (x * self.v)
-
     def backward(self, d):
         nx = self.x * self.v
         self.dg = (d * nx).sum(axis=tuple(range(d.ndim - 1)))
-        dn = d * self.g
-        return self.v * (dn - nx * np.mean(dn * nx, axis=-1, keepdims=True))
+        dn = (d * self.g)
+        return self.v * (dn - nx * np.mean(dn * nx, -1, keepdims=True))
 
-class RoPE:
+class Pos:
     def __init__(self, d, m=4096):
-        f = 1.0 / (10000 ** (np.arange(0, d, 2) / d))
-        t = np.arange(m)
-        fr = np.outer(t, f)
+        f = 1 / (10000 ** (np.arange(0, d, 2) / d))
+        fr = np.outer(np.arange(m), f)
         self.c, self.s = np.cos(fr), np.sin(fr)
+    def apply(self, x, r=False):
+        s, d2 = x.shape[1], x.shape[-1] // 2
+        x1, x2, c, n = x[..., :d2], x[..., d2:], self.c[:s][None, :, None, :], self.s[:s][None, :, None, :]
+        return np.concatenate([x1*c + x2*n, x2*c - x1*n], -1) if r else np.concatenate([x1*c - x2*n, x2*c + x1*n], -1)
 
-    def apply(self, x, rev=False):
-        b, s, h, d = x.shape
-        d2 = d // 2
-        x1, x2 = x[..., :d2], x[..., d2:]
-        c, sn = self.c[:s][None, :, None, :], self.s[:s][None, :, None, :]
-        if rev: return np.concatenate([x1 * c + x2 * sn, x2 * c - x1 * sn], -1)
-        return np.concatenate([x1 * c - x2 * sn, x2 * c + x1 * sn], -1)
-
-class GQA:
+class Attn:
     def __init__(self, d, h=8, k=2):
         self.d, self.h, self.k, self.hd = d, h, k, d // h
         self.g = h // k
-        self.wq, self.wk, self.wv, self.wo = Linear(d, d), Linear(d, k * self.hd), Linear(d, k * self.hd), Linear(d, d)
-        self.rope, self.sc = RoPE(self.hd), self.hd**-0.5
-        self.q, self.k_cache, self.v_cache, self.p = None, None, None, None
-
+        self.wq, self.wk, self.wv, self.wo = Lin(d, d), Lin(d, k*self.hd), Lin(d, k*self.hd), Lin(d, d)
+        self.rope, self.sc = Pos(self.hd), (d // h)**-0.5
     def forward(self, x):
         b, s, _ = x.shape
-        q = self.wq.forward(x).reshape(b, s, self.h, self.hd)
-        k = self.wk.forward(x).reshape(b, s, self.k, self.hd)
-        v = self.wv.forward(x).reshape(b, s, self.k, self.hd)
-        self.q, self.k_cache, self.v_cache = self.rope.apply(q), self.rope.apply(k), v
-        kr = np.repeat(self.k_cache, self.g, 2)
-        vr = np.repeat(v, self.g, 2)
+        q, k, v = self.wq.forward(x).reshape(b, s, self.h, self.hd), self.wk.forward(x).reshape(b, s, self.k, self.hd), self.wv.forward(x).reshape(b, s, self.k, self.hd)
+        self.q, self.k_c, self.v_c = self.rope.apply(q), self.rope.apply(k), v
+        kr, vr = np.repeat(self.k_c, self.g, 2), np.repeat(v, self.g, 2)
         at = np.einsum("bshd,bthd->bsht", self.q, kr) * self.sc
-        ex = np.exp(at - np.max(at, axis=-1, keepdims=True))
-        self.p = ex / (np.sum(ex, axis=-1, keepdims=True) + 1e-10)
-        o = np.einsum("bsht,bthd->bshd", self.p, vr)
-        return self.wo.forward(o.reshape(b, s, self.d))
-
+        self.p = (e := np.exp(at - at.max(-1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-10)
+        return self.wo.forward(np.einsum("bsht,bthd->bshd", self.p, vr).reshape(b, s, self.d))
     def backward(self, d):
         b, s, _ = d.shape
         do = self.wo.backward(d).reshape(b, s, self.h, self.hd)
-        kr, vr = np.repeat(self.k_cache, self.g, 2), np.repeat(self.v_cache, self.g, 2)
-        dvr = np.einsum("bsht,bshd->bthd", self.p, do)
-        dp = np.einsum("bshd,bthd->bsht", do, vr)
+        kr, vr = np.repeat(self.k_c, self.g, 2), np.repeat(self.v_c, self.g, 2)
+        dv, dp = np.einsum("bsht,bshd->bthd", self.p, do), np.einsum("bshd,bthd->bsht", do, vr)
         da = self.p * (dp - (self.p * dp).sum(-1, keepdims=True)) * self.sc
         dq = self.rope.apply(np.einsum("bsht,bthd->bshd", da, kr), True)
-        dkr = np.einsum("bsht,bshd->bthd", da, self.q)
-        dk = self.rope.apply(dkr.reshape(b, s, self.k, self.g, self.hd).sum(3), True)
-        dv = dvr.reshape(b, s, self.k, self.g, self.hd).sum(3)
+        dk = self.rope.apply(np.einsum("bsht,bshd->bthd", da, self.q).reshape(b, s, self.k, self.g, self.hd).sum(3), True)
+        dv = dv.reshape(b, s, self.k, self.g, self.hd).sum(3)
         return self.wq.backward(dq.reshape(b, s, -1)) + self.wk.backward(dk.reshape(b, s, -1)) + self.wv.backward(dv.reshape(b, s, -1))
 
-class SovereignLogic:
+class Logic:
     def __init__(self, d):
-        self.gemini = [Linear(d, d * 2), Linear(d, d)]
-        self.groq = [Linear(d, d), Linear(d, d)]
-        self.gate = Linear(d, 2)
-        self.h_gem, self.h_gro, self.p, self.o_gem, self.o_gro = [None] * 5
-
+        self.ge, self.gr, self.gt = [Lin(d, d*2), Lin(d, d)], [Lin(d, d), Lin(d, d)], Lin(d, 2)
     def forward(self, x):
-        self.h_gem = Activation.swiglu(self.gemini[0].forward(x))
-        self.o_gem = self.gemini[1].forward(self.h_gem)
-        self.h_gro = Activation.gelu(self.groq[0].forward(x))
-        self.o_gro = self.groq[1].forward(self.h_gro)
-        g = self.gate.forward(x)
-        ex = np.exp(g - g.max(-1, keepdims=True))
-        self.p = ex / (ex.sum(-1, keepdims=True) + 1e-10)
-        return self.p[..., :1] * self.o_gem + self.p[..., 1:2] * self.o_gro
-
+        self.o_ge, self.o_gr = self.ge[1].forward(Act.swi(self.ge[0].forward(x))), self.gr[1].forward(Act.ge(self.gr[0].forward(x)))
+        g = self.gt.forward(x)
+        self.p = (e := np.exp(g - g.max(-1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-10)
+        return self.p[..., :1] * self.o_ge + self.p[..., 1:2] * self.o_gr
     def backward(self, d):
-        dp = np.stack([(d * self.o_gem).sum(-1), (d * self.o_gro).sum(-1)], -1)
+        dp = np.stack([(d * self.o_ge).sum(-1), (d * self.o_gr).sum(-1)], -1)
         dg = self.p * (dp - (self.p * dp).sum(-1, keepdims=True))
-        dx = self.gate.backward(dg)
-        d_gem = self.gemini[1].backward(d * self.p[..., :1])
-        dx += self.gemini[0].backward(Activation.swiglu_grad(self.gemini[0].x, d_gem))
-        d_gro = self.groq[1].backward(d * self.p[..., 1:2])
-        dx += self.groq[0].backward(Activation.gelu_grad(self.groq[0].x, d_gro))
+        dx = self.gt.backward(dg)
+        dx += self.ge[0].backward(Act.dswi(self.ge[0].x, self.ge[1].backward(d * self.p[..., :1])))
+        dx += self.gr[0].backward(Act.dge(self.gr[0].x, self.gr[1].backward(d * self.p[..., 1:2])))
         return dx
 
-class SparseMoE:
+class MoE:
     def __init__(self, d, n=4, k=2):
-        self.d, self.n, self.k = d, n, k
-        self.gate = Linear(d, n)
-        self.experts = [[Linear(d, d * 2), Linear(d, d)] for _ in range(n)]
-        self.p, self.indices, self.cache = None, None, []
-
+        self.d, self.n, self.k, self.gt = d, n, k, Lin(d, n)
+        self.ex = [[Lin(d, d*2), Lin(d, d)] for _ in range(n)]
     def forward(self, x):
-        s = x.shape
-        xf = x.reshape(-1, self.d)
-        logits = self.gate.forward(xf)
-        ex = np.exp(logits - logits.max(-1, keepdims=True))
-        probs = ex / (ex.sum(-1, keepdims=True) + 1e-10)
-        self.indices = np.argsort(probs, axis=-1)[:, -self.k:]
-        self.p = np.take_along_axis(probs, self.indices, axis=-1)
+        s, xf = x.shape, x.reshape(-1, self.d)
+        p_all = (e := np.exp((l := self.gt.forward(xf)) - l.max(-1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-10)
+        self.idx = np.argsort(p_all, -1)[:, -self.k:]
+        self.p = np.take_along_axis(p_all, self.idx, -1)
         self.p /= self.p.sum(-1, keepdims=True) + 1e-10
-        out = np.zeros_like(xf)
-        self.cache = []
+        out, self.ch = np.zeros_like(xf), []
         for i in range(self.n):
-            mask = np.any(self.indices == i, axis=-1)
-            if not np.any(mask):
-                self.cache.append(None)
-                continue
-            p_idx = np.where(self.indices[mask] == i)[1]
-            ep = self.p[mask, p_idx, None]
-            h = Activation.swiglu(self.experts[i][0].forward(xf[mask]))
-            y = self.experts[i][1].forward(h)
-            out[mask] += y * ep
-            self.cache.append((mask, p_idx, h, y))
+            m = np.any(self.idx == i, -1)
+            if not np.any(m): self.ch.append(None); continue
+            pi = self.p[m, np.where(self.idx[m] == i)[1], None]
+            h = Act.swi(self.ex[i][0].forward(xf[m]))
+            y = self.ex[i][1].forward(h)
+            out[m] += y * pi
+            self.ch.append((m, pi, h, y))
         return out.reshape(s)
-
     def backward(self, d):
-        s = d.shape
-        df = d.reshape(-1, self.d)
-        dx, dpf = np.zeros_like(df), np.zeros((df.shape[0], self.n))
+        df, dx, dpf = d.reshape(-1, self.d), np.zeros_like(d.reshape(-1, self.d)), np.zeros((d.reshape(-1, self.d).shape[0], self.n))
         for i in range(self.n):
-            if self.cache[i] is None: continue
-            mask, p_idx, h, y = self.cache[i]
-            ep = self.p[mask, p_idx, None]
-            dpf[mask, i] = (df[mask] * y).sum(-1)
-            dy = df[mask] * ep
-            dh = self.experts[i][1].backward(dy)
-            dx[mask] += self.experts[i][0].backward(Activation.swiglu_grad(self.experts[i][0].x, dh))
+            if self.ch[i]:
+                m, pi, h, y = self.ch[i]
+                dpf[m, i], dy = (df[m] * y).sum(-1), df[m] * pi
+                dx[m] += self.ex[i][0].backward(Act.dswi(self.ex[i][0].x, self.ex[i][1].backward(dy)))
         lp = np.zeros((df.shape[0], self.n))
-        np.put_along_axis(lp, self.indices, self.p, axis=-1)
-        dg = lp * (dpf - (lp * dpf).sum(-1, keepdims=True))
-        return (dx + self.gate.backward(dg)).reshape(s)
+        np.put_along_axis(lp, self.idx, self.p, -1)
+        return (dx + self.gt.backward(lp * (dpf - (lp * dpf).sum(-1, keepdims=True)))).reshape(d.shape)
 
-class Block:
-    def __init__(self, d):
-        self.n1, self.attn = RMSNorm(d), GQA(d)
-        self.n2, self.logic = RMSNorm(d), SovereignLogic(d)
-        self.n3, self.moe = RMSNorm(d), SparseMoE(d)
-
+class Blk:
+    def __init__(self, d): self.n, self.a, self.l, self.m = [Norm(d) for _ in range(3)], Attn(d), Logic(d), MoE(d)
     def forward(self, x):
-        x = x + self.attn.forward(self.n1.forward(x))
-        x = x + self.logic.forward(self.n2.forward(x))
-        x = x + self.moe.forward(self.n3.forward(x))
-        return x
-
+        x = x + self.a.forward(self.n[0].forward(x))
+        x = x + self.l.forward(self.n[1].forward(x))
+        return x + self.m.forward(self.n[2].forward(x))
     def backward(self, d):
-        d = d + self.n3.backward(self.moe.backward(d))
-        d = d + self.n2.backward(self.logic.backward(d))
-        d = d + self.n1.backward(self.attn.backward(d))
-        return d
+        d = d + self.n[2].backward(self.m.backward(d))
+        d = d + self.n[1].backward(self.l.backward(d))
+        return d + self.n[0].backward(self.a.backward(d))
 
-class OMEGA_ASI:
-    def __init__(self, i=784, h=128, o=10, depth=2):
-        self.stem = Linear(i, h)
-        self.blocks = [Block(h) for _ in range(depth)]
-        self.norm = RMSNorm(h)
-        self.head = Linear(h, o)
-
+class OMEGA:
+    def __init__(self, i=784, h=128, o=10, d=2):
+        self.st, self.bl, self.nm, self.hd = Lin(i, h), [Blk(h) for _ in range(d)], Norm(h), Lin(h, o)
     def forward(self, x):
-        x = self.stem.forward(x)[:, None, :]
-        for b in self.blocks: x = b.forward(x)
-        self.feat = self.norm.forward(x[:, 0, :])
-        return self.head.forward(self.feat)
-
+        x = self.st.forward(x)[:, None, :]
+        for b in self.bl: x = b.forward(x)
+        return self.hd.forward(self.nm.forward(x[:, 0, :]))
     def backward(self, d):
-        d = self.norm.backward(self.head.backward(d))[:, None, :]
-        for b in reversed(self.blocks): d = b.backward(d)
-        self.stem.backward(d[:, 0, :])
-
-    def get_params(self):
+        d = self.nm.backward(self.hd.backward(d))[:, None, :]
+        for b in reversed(self.bl): d = b.backward(d)
+        self.st.backward(d[:, 0, :])
+    def par(self):
         p = []
-        def find(obj):
-            if isinstance(obj, (Linear, RMSNorm)): p.append(obj)
-            elif isinstance(obj, list): [find(i) for i in obj]
-            elif hasattr(obj, "__dict__"): [find(v) for v in obj.__dict__.values()]
-        find(self)
-        return p
+        def f(o):
+            if isinstance(o, (Lin, Norm)): p.append(o)
+            elif isinstance(o, list): [f(i) for i in o]
+            elif hasattr(o, "__dict__"): [f(v) for v in o.__dict__.values()]
+        f(self); return p
 
 class Lion:
-    def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
-        self.params, self.lr, self.b1, self.b2, self.wd = params, lr, b1, b2, wd
-        self.m = [np.zeros_like(getattr(p, "W", getattr(p, "g", 0))) for p in params]
-        self.mb = [np.zeros_like(p.b) if hasattr(p, "b") else None for p in params]
-
+    def __init__(self, p, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
+        self.p, self.lr, self.b1, self.b2, self.wd = p, lr, b1, b2, wd
+        self.m = [np.zeros_like(getattr(x, "W", getattr(x, "g", 0))) for x in p]
+        self.mb = [np.zeros_like(x.b) if hasattr(x, "b") else None for x in p]
     def step(self):
-        for i, p in enumerate(self.params):
-            if hasattr(p, "W"):
-                for attr, mom in [("W", self.m), ("b", self.mb)]:
-                    if mom[i] is None: continue
-                    g, w = getattr(p, "d" + attr), getattr(p, attr)
-                    u = np.sign(self.b1 * mom[i] + (1 - self.b1) * g)
-                    w -= self.lr * (u + self.wd * w if attr == "W" else u)
-                    mom[i] = self.b2 * mom[i] + (1 - self.b2) * g
-                    setattr(p, attr, w)
+        for i, x in enumerate(self.p):
+            if hasattr(x, "W"):
+                for a, m in [("W", self.m), ("b", self.mb)]:
+                    if m[i] is None: continue
+                    g, w = getattr(x, "d"+a), getattr(x, a)
+                    u = np.sign(self.b1 * m[i] + (1-self.b1) * g)
+                    w -= self.lr * (u + self.wd * w if a == "W" else u)
+                    m[i] = self.b2 * m[i] + (1-self.b2) * g
+                    setattr(x, a, w)
             else:
-                u = np.sign(self.b1 * self.m[i] + (1 - self.b1) * p.dg)
-                p.g -= self.lr * (u + self.wd * p.g)
-                self.m[i] = self.b2 * self.m[i] + (1 - self.b2) * p.dg
+                u = np.sign(self.b1 * self.m[i] + (1-self.b1) * x.dg)
+                x.g -= self.lr * (u + self.wd * x.g)
+                self.m[i] = self.b2 * self.m[i] + (1-self.b2) * x.dg
 
 def train():
-    N, D, C, H = 2048, 784, 10, 128
-    X = np.random.randn(N, D).astype("f")
-    Y = np.random.randint(0, C, N)
-    model = OMEGA_ASI(D, H, C, 2)
-    params = model.get_params()
-    optimizer = Lion(params, lr=2e-4, wd=0.01)
-
-    for epoch in range(100):
+    N, D, C = 2048, 784, 10
+    X, Y = np.random.randn(N, D).astype("f"), np.random.randint(0, C, N)
+    m = OMEGA(D, 128, C, 2)
+    p = m.par()
+    opt = Lion(p, 2e-4)
+    for e in range(100):
         idx = np.random.permutation(N)
-        t_loss, t_acc = 0, 0
+        l_s, a_s = 0, 0
         for i in range(0, N, 64):
             xb, yb = X[idx[i:i+64]], Y[idx[i:i+64]]
-            logits = model.forward(xb)
-            ex = np.exp(logits - logits.max(1, keepdims=True))
-            probs = ex / (ex.sum(1, keepdims=True) + 1e-10)
-            t_loss += -np.log(probs[range(len(yb)), yb] + 1e-10).mean() * len(yb)
-            t_acc += (probs.argmax(1) == yb).sum()
-            dout = (probs.copy())
-            dout[range(len(yb)), yb] -= 1
-            model.backward(dout / len(yb))
-            
-            gn = np.sqrt(sum((getattr(p, "dW", 0)**2).sum() + (getattr(p, "db", 0)**2).sum() + (getattr(p, "dg", 0)**2).sum() for p in params))
-            if gn > 1.0:
-                for p in params:
-                    if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
-                    if hasattr(p, "dg"): p.dg /= gn
-            optimizer.step()
+            pr = (ex := np.exp((lg := m.forward(xb)) - lg.max(1, 1))) / (ex.sum(1, 1) + 1e-10)
+            l_s += -np.log(pr[range(len(yb)), yb] + 1e-10).mean() * len(yb)
+            a_s += (pr.argmax(1) == yb).sum()
+            do = pr.copy(); do[range(len(yb)), yb] -= 1
+            m.backward(do / len(yb))
+            gn = np.sqrt(sum((getattr(x, "dW", 0)**2).sum() + (getattr(x, "db", 0)**2).sum() + (getattr(x, "dg", 0)**2).sum() for x in p))
+            if gn > 1:
+                for x in p:
+                    if hasattr(x, "dW"): x.dW /= gn; x.db /= gn
+                    if hasattr(x, "dg"): x.dg /= gn
+            opt.step()
+        if (e+1) % 10 == 0: print(f"E {e+1} | L: {l_s/N:.3f} | A: {a_s/N:.3f}")
 
-        if (epoch + 1) % 10 == 0:
-            print(f"Cycle {epoch+1:03d} | Loss: {t_loss/N:.4f} | Acc: {t_acc/N:.4f}")
-
-if __name__ == "__main__":
-    train()
+if __name__ == "__main__": train()
