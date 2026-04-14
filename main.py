@@ -115,15 +115,15 @@ class SovereignAttention:
 
 class GeminiGroqConsensus:
     def __init__(self, dim):
-        self.gemini_path = [Linear(dim, dim * 2), Linear(dim * 2, dim)]
-        self.groq_path = Linear(dim, dim)
+        self.gemini_mlp = [Linear(dim, dim * 4), Linear(dim * 2, dim)]
+        self.groq_linear = Linear(dim, dim)
         self.gate = Linear(dim, 2)
 
     def forward(self, x):
         self.x = x
-        self.g_h = swiglu(self.gemini_path[0].forward(x))
-        self.g_out = self.gemini_path[1].forward(self.g_h)
-        self.q_out = self.groq_path.forward(x)
+        self.g_h = swiglu(self.gemini_mlp[0].forward(x))
+        self.g_out = self.gemini_mlp[1].forward(self.g_h)
+        self.q_out = self.groq_linear.forward(x)
         logits = self.gate.forward(x)
         m = np.max(logits, axis=-1, keepdims=True)
         e = np.exp(logits - m)
@@ -136,8 +136,8 @@ class GeminiGroqConsensus:
         dp = np.concatenate([np.sum(dout * self.g_out, axis=-1, keepdims=True), 
                              np.sum(dout * self.q_out, axis=-1, keepdims=True)], axis=-1)
         d_logits = self.probs * (dp - np.sum(self.probs * dp, axis=-1, keepdims=True))
-        dx_g = self.gemini_path[0].backward(d_swiglu(self.gemini_path[0].x, self.gemini_path[1].backward(dg)))
-        dx_q = self.groq_path.backward(dq)
+        dx_g = self.gemini_mlp[0].backward(d_swiglu(self.gemini_mlp[0].x, self.gemini_mlp[1].backward(dg)))
+        dx_q = self.groq_linear.backward(dq)
         dx_gate = self.gate.backward(d_logits)
         return dx_g + dx_q + dx_gate
 
@@ -202,7 +202,7 @@ class SovereignBlock:
         da = self.attn.backward(dx)
         return dx + self.n1.backward(da)
 
-class OMEGA_ASI_X3:
+class OMEGA_ASI_X4:
     def __init__(self, in_d=784, h_d=128, out_d=10, depth=2):
         self.stem = Linear(in_d, h_d)
         self.blocks = [SovereignBlock(h_d) for _ in range(depth)]
@@ -216,7 +216,7 @@ class OMEGA_ASI_X3:
         return self.head.forward(self.f)
 
     def backward(self, dout):
-        dout = self.norm.backward(self.head.backward(dout))[:, None, :]
+        dout = self.norm.backward(self.head.backward(dout))[:, None, : ]
         for b in reversed(self.blocks): dout = b.backward(dout)
         self.stem.backward(dout[:, 0, :])
 
@@ -254,36 +254,36 @@ class Lion:
 def get_data(n=4096):
     X = np.random.randn(n, 784).astype(np.float32)
     y = np.random.randint(0, 10, n)
-    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 5.0
+    for i in range(n): X[i, y[i]*78:(y[i]+1)*78] += 4.0
     return (X - np.mean(X)) / (np.std(X) + 1e-6), y
 
 def train():
     X, y = get_data(4096)
-    model = OMEGA_ASI_X3(h_d=64, depth=1)
+    model = OMEGA_ASI_X4(h_d=64, depth=1)
     params = model.get_params()
-    opt = Lion(params, lr=2e-4)
-    bs, epochs = 64, 30
+    opt = Lion(params, lr=1e-4)
+    bs, epochs = 64, 50
     for ep in range(epochs):
         idx = np.random.permutation(len(X))
         ls, acc, t0 = 0, 0, time.time()
-        opt.lr = 2e-4 * 0.5 * (1 + np.cos(np.pi * ep / epochs))
+        opt.lr = 1e-4 * 0.5 * (1 + np.cos(np.pi * ep / epochs))
         for i in range(0, len(X), bs):
             xb, yb = X[idx[i:i+bs]], y[idx[i:i+bs]]
             logits = model.forward(xb)
             m = np.max(logits, axis=1, keepdims=True)
             ex = np.exp(logits - m)
             probs = ex / (np.sum(ex, axis=1, keepdims=True) + 1e-12)
-            ls += -np.mean(np.log(probs[range(bs), yb] + 1e-10)) * bs
+            ls += -np.mean(np.log(probs[range(len(yb)), yb] + 1e-10)) * len(yb)
             acc += np.sum(np.argmax(probs, axis=1) == yb)
-            dout = probs.copy(); dout[range(bs), yb] -= 1
-            model.backward(dout / bs)
+            dout = probs.copy(); dout[range(len(yb)), yb] -= 1
+            model.backward(dout / len(yb))
             gn = np.sqrt(sum(np.sum(getattr(p, "dW", 0)**2) + np.sum(getattr(p, "db", 0)**2) + np.sum(getattr(p, "dg", 0)**2) for p in params))
             if gn > 1.0:
                 for p in params:
                     if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
                     if hasattr(p, "dg"): p.dg /= gn
             opt.step()
-        print(f"EP:{ep:02d} | LOSS:{ls/len(X):.4f} | ACC:{acc/len(X):.4f} | {len(X)/(time.time()-t0):.1f} samples/s")
+        print(f"EP:{ep:02d} | LOSS:{ls/len(X):.4f} | ACC:{acc/len(X):.4f} | {len(X)/(time.time()-t0):.1f} s/s")
 
 if __name__ == "__main__":
     train()
