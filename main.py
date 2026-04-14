@@ -1,3 +1,4 @@
+
 import numpy as np
 
 class Act:
@@ -17,7 +18,8 @@ class Act:
         return np.concatenate([d * b * (s + sw * (1 - s)), d * sw], -1)
 
     @staticmethod
-    def ge(x): return 0.5 * x * (1 + np.tanh(0.79788 * (x + 0.0447 * x**3)))
+    def ge(x):
+        return 0.5 * x * (1 + np.tanh(0.79788 * (x + 0.0447 * x**3)))
 
     @staticmethod
     def dge(x, d):
@@ -28,6 +30,8 @@ class Lin:
     def __init__(self, i, o):
         self.W = np.random.randn(i, o).astype("f") * (2/i)**0.5
         self.b = np.zeros(o, "f")
+        self.dW = np.zeros_like(self.W)
+        self.db = np.zeros_like(self.b)
 
     def forward(self, x):
         self.x = x
@@ -40,7 +44,9 @@ class Lin:
 
 class Norm:
     def __init__(self, d, e=1e-6):
-        self.g, self.e = np.ones(d, "f"), e
+        self.g = np.ones(d, "f")
+        self.e = e
+        self.dg = np.zeros_like(self.g)
 
     def forward(self, x):
         self.x = x
@@ -198,7 +204,7 @@ class Lion:
             if hasattr(x, "W"):
                 for a, m in [("W", self.m), ("b", self.mb)]:
                     if m[i] is None: continue
-                    g, w = getattr(x, "d"+a), getattr(x, a)
+                    g, w = getattr(x, "d" + a), getattr(x, a)
                     u = np.sign(self.b1 * m[i] + (1 - self.b1) * g)
                     w -= self.lr * (u + self.wd * w if a == "W" else u)
                     m[i] = self.b2 * m[i] + (1 - self.b2) * g
