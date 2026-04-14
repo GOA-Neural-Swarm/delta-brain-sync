@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Activation:
     @staticmethod
     def swiglu(x):
@@ -19,7 +20,11 @@ class Activation:
 
     @staticmethod
     def gelu(x):
-        return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+        return (
+            0.5
+            * x
+            * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+        )
 
     @staticmethod
     def gelu_grad(x, d):
@@ -27,9 +32,10 @@ class Activation:
         pdf = np.exp(-0.5 * x**2) / np.sqrt(2 * np.pi)
         return d * (cdf + x * pdf)
 
+
 class Linear:
     def __init__(self, i, o, name=""):
-        self.W = np.random.randn(i, o).astype("f") * np.sqrt(2/i)
+        self.W = np.random.randn(i, o).astype("f") * np.sqrt(2 / i)
         self.b = np.zeros(o, "f")
         self.x, self.dW, self.db = None, None, None
 
@@ -41,6 +47,7 @@ class Linear:
         self.dW = self.x.reshape(-1, self.x.shape[-1]).T @ d.reshape(-1, d.shape[-1])
         self.db = d.sum(axis=tuple(range(d.ndim - 1)))
         return d @ self.W.T
+
 
 class RMSNorm:
     def __init__(self, d, e=1e-6):
@@ -58,6 +65,7 @@ class RMSNorm:
         dn = d * self.g
         return self.v * (dn - nx * (dn * nx).mean(-1, keepdims=True))
 
+
 class RoPE:
     def __init__(self, d, m=4096):
         f = 1.0 / (10000 ** (np.arange(0, d, 2) / d))
@@ -70,15 +78,22 @@ class RoPE:
         d2 = d // 2
         x1, x2 = x[..., :d2], x[..., d2:]
         c, sn = self.c[:s][None, :, None, :], self.s[:s][None, :, None, :]
-        if rev: return np.concatenate([x1 * c + x2 * sn, x2 * c - x1 * sn], -1)
+        if rev:
+            return np.concatenate([x1 * c + x2 * sn, x2 * c - x1 * sn], -1)
         return np.concatenate([x1 * c - x2 * sn, x2 * c + x1 * sn], -1)
+
 
 class GQA:
     def __init__(self, d, h=8, k=2):
         self.d, self.h, self.k, self.hd = d, h, k, d // h
         self.g = h // k
-        self.wq, self.wk, self.wv, self.wo = Linear(d, d), Linear(d, k * self.hd), Linear(d, k * self.hd), Linear(d, d)
-        self.rope, self.sc = RoPE(self.hd), self.hd ** -0.5
+        self.wq, self.wk, self.wv, self.wo = (
+            Linear(d, d),
+            Linear(d, k * self.hd),
+            Linear(d, k * self.hd),
+            Linear(d, d),
+        )
+        self.rope, self.sc = RoPE(self.hd), self.hd**-0.5
         self.q, self.k_cache, self.v_cache, self.p = None, None, None, None
 
     def forward(self, x):
@@ -106,7 +121,12 @@ class GQA:
         dkr = np.einsum("bsht,bshd->bthd", da, self.q)
         dk = self.rope.apply(dkr.reshape(b, s, self.k, self.g, self.hd).sum(3), True)
         dv = dvr.reshape(b, s, self.k, self.g, self.hd).sum(3)
-        return self.wq.backward(dq.reshape(b, s, -1)) + self.wk.backward(dk.reshape(b, s, -1)) + self.wv.backward(dv.reshape(b, s, -1))
+        return (
+            self.wq.backward(dq.reshape(b, s, -1))
+            + self.wk.backward(dk.reshape(b, s, -1))
+            + self.wv.backward(dv.reshape(b, s, -1))
+        )
+
 
 class SovereignLogic:
     def __init__(self, d):
@@ -130,10 +150,15 @@ class SovereignLogic:
         dg = self.p * (dp - (self.p * dp).sum(-1, keepdims=True))
         dx = self.gate.backward(dg)
         d_gem = self.gemini_path[1].backward(d * self.p[..., :1])
-        dx += self.gemini_path[0].backward(Activation.swiglu_grad(self.gemini_path[0].x, d_gem))
+        dx += self.gemini_path[0].backward(
+            Activation.swiglu_grad(self.gemini_path[0].x, d_gem)
+        )
         d_gro = self.groq_path[1].backward(d * self.p[..., 1:2])
-        dx += self.groq_path[0].backward(Activation.gelu_grad(self.groq_path[0].x, d_gro))
+        dx += self.groq_path[0].backward(
+            Activation.gelu_grad(self.groq_path[0].x, d_gro)
+        )
         return dx
+
 
 class SparseMoE:
     def __init__(self, d, n=4, k=2):
@@ -171,17 +196,21 @@ class SparseMoE:
         d_flat = d.reshape(-1, self.d)
         dx, dp_full = np.zeros_like(d_flat), np.zeros((d_flat.shape[0], self.n))
         for i in range(self.n):
-            if self.cache[i] is None: continue
+            if self.cache[i] is None:
+                continue
             mask, p_idx, h, y = self.cache[i]
             expert_p = self.p[mask, p_idx, None]
             dp_full[mask, i] = (d_flat[mask] * y).sum(-1)
             dy = d_flat[mask] * expert_p
             dh = self.experts[i][1].backward(dy)
-            dx[mask] += self.experts[i][0].backward(Activation.swiglu_grad(self.experts[i][0].x, dh))
+            dx[mask] += self.experts[i][0].backward(
+                Activation.swiglu_grad(self.experts[i][0].x, dh)
+            )
         logits_p = np.zeros((d_flat.shape[0], self.n))
         np.put_along_axis(logits_p, self.indices, self.p, axis=-1)
         dg = logits_p * (dp_full - (logits_p * dp_full).sum(-1, keepdims=True))
         return (dx + self.gate.backward(dg)).reshape(s)
+
 
 class Block:
     def __init__(self, d):
@@ -201,6 +230,7 @@ class Block:
         d = d + self.n1.backward(self.attn.backward(d))
         return d
 
+
 class OMEGA_ASI:
     def __init__(self, i=784, h=128, o=10, depth=2):
         self.stem = Linear(i, h)
@@ -210,23 +240,31 @@ class OMEGA_ASI:
 
     def forward(self, x):
         x = self.stem.forward(x)[:, None, :]
-        for b in self.blocks: x = b.forward(x)
+        for b in self.blocks:
+            x = b.forward(x)
         self.feat = self.norm.forward(x[:, 0, :])
         return self.head.forward(self.feat)
 
     def backward(self, d):
         d = self.norm.backward(self.head.backward(d))[:, None, :]
-        for b in reversed(self.blocks): d = b.backward(d)
+        for b in reversed(self.blocks):
+            d = b.backward(d)
         self.stem.backward(d[:, 0, :])
 
     def get_params(self):
         p = []
+
         def find(obj):
-            if isinstance(obj, (Linear, RMSNorm)): p.append(obj)
-            elif isinstance(obj, list): [find(i) for i in obj]
-            elif hasattr(obj, "__dict__"): [find(v) for v in obj.__dict__.values()]
+            if isinstance(obj, (Linear, RMSNorm)):
+                p.append(obj)
+            elif isinstance(obj, list):
+                [find(i) for i in obj]
+            elif hasattr(obj, "__dict__"):
+                [find(v) for v in obj.__dict__.values()]
+
         find(self)
         return p
+
 
 class Lion:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
@@ -238,7 +276,8 @@ class Lion:
         for i, p in enumerate(self.params):
             if hasattr(p, "W"):
                 for attr, mom in [("W", self.m), ("b", self.mb)]:
-                    if mom[i] is None: continue
+                    if mom[i] is None:
+                        continue
                     g, w = getattr(p, "d" + attr), getattr(p, attr)
                     u = np.sign(self.b1 * mom[i] + (1 - self.b1) * g)
                     w -= self.lr * (u + self.wd * w if attr == "W" else u)
@@ -249,13 +288,14 @@ class Lion:
                 p.g -= self.lr * (u + self.wd * p.g)
                 self.m[i] = self.b2 * self.m[i] + (1 - self.b2) * p.dg
 
+
 def train():
     N, D, C, H = 1024, 784, 10, 128
     X = np.random.randn(N, D).astype("f")
     Y = np.random.randint(0, C, N)
     model = OMEGA_ASI(D, H, C, 2)
     optimizer = Lion(model.get_params(), lr=1e-4, wd=0.01)
-    
+
     for epoch in range(50):
         idx = np.random.permutation(N)
         t_loss, t_acc = 0, 0
@@ -266,20 +306,33 @@ def train():
             probs = ex / (ex.sum(1, keepdims=True) + 1e-10)
             t_loss += -np.log(probs[range(len(yb)), yb] + 1e-10).mean() * len(yb)
             t_acc += (probs.argmax(1) == yb).sum()
-            
+
             dout = probs.copy()
             dout[range(len(yb)), yb] -= 1
             model.backward(dout / len(yb))
-            
-            gn = np.sqrt(sum((getattr(p, "dW", 0)**2).sum() + (getattr(p, "db", 0)**2).sum() + (getattr(p, "dg", 0)**2).sum() for p in model.get_params()))
+
+            gn = np.sqrt(
+                sum(
+                    (getattr(p, "dW", 0) ** 2).sum()
+                    + (getattr(p, "db", 0) ** 2).sum()
+                    + (getattr(p, "dg", 0) ** 2).sum()
+                    for p in model.get_params()
+                )
+            )
             if gn > 1.0:
                 for p in model.get_params():
-                    if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
-                    if hasattr(p, "dg"): p.dg /= gn
+                    if hasattr(p, "dW"):
+                        p.dW /= gn
+                        p.db /= gn
+                    if hasattr(p, "dg"):
+                        p.dg /= gn
             optimizer.step()
-            
+
         if (epoch + 1) % 5 == 0:
-            print(f"Cycle {epoch+1:03d} | Loss: {t_loss/N:.4f} | Accuracy: {t_acc/N:.4f}")
+            print(
+                f"Cycle {epoch+1:03d} | Loss: {t_loss/N:.4f} | Accuracy: {t_acc/N:.4f}"
+            )
+
 
 if __name__ == "__main__":
     train()

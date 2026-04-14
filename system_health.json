@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-04-14T10:17:57.173762",
+    "timestamp": "2026-04-14T13:03:28.257606",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1010-azure",
@@ -32,6 +32,7 @@
         "annotated-doc": "0.0.4",
         "semantic-version": "2.10.0",
         "python-dotenv": "1.2.2",
+        "huggingface_hub": "1.10.2",
         "attrs": "26.1.0",
         "urllib3": "2.6.3",
         "python-multipart": "0.0.26",
@@ -66,7 +67,6 @@
         "gradio": "5.50.0",
         "aiosignal": "1.4.0",
         "transformers": "4.48.3",
-        "huggingface_hub": "1.10.1",
         "diffusers": "0.32.2",
         "numpy": "2.4.3",
         "propcache": "0.4.1",
@@ -157,7 +157,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.53,
+        "ram_available_gb": 14.56,
         "gpu_available": false
     }
 }
