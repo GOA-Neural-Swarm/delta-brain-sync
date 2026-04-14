@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Ops:
     @staticmethod
     def swiglu(x):
@@ -45,6 +46,7 @@ class Ops:
     def d_softmax(p, d):
         return p * (d - np.sum(p * d, axis=-1, keepdims=True))
 
+
 class Linear:
     def __init__(self, i, o, std=None):
         std = std or np.sqrt(2.0 / (i + o))
@@ -62,6 +64,7 @@ class Linear:
         self.db = d.sum(axis=tuple(range(d.ndim - 1)))
         return d @ self.W.T
 
+
 class RMSNorm:
     def __init__(self, d, e=1e-6):
         self.g = np.ones(d, "f")
@@ -78,6 +81,7 @@ class RMSNorm:
         dn = d * self.g
         return self.v * (dn - nx * np.mean(dn * nx, axis=-1, keepdims=True))
 
+
 class RoPE:
     def __init__(self, d, m=2048):
         f = 1.0 / (10000 ** (np.arange(0, d, 2) / d))
@@ -90,14 +94,21 @@ class RoPE:
         d2 = d // 2
         c, sn = self.cos[:s][None, :, None, :], self.sin[:s][None, :, None, :]
         x1, x2 = x[..., :d2], x[..., d2:]
-        if rev: return np.concatenate([x1 * c + x2 * sn, x2 * c - x1 * sn], axis=-1)
+        if rev:
+            return np.concatenate([x1 * c + x2 * sn, x2 * c - x1 * sn], axis=-1)
         return np.concatenate([x1 * c - x2 * sn, x2 * c + x1 * sn], axis=-1)
+
 
 class GQA:
     def __init__(self, d, h=8, k=2):
         self.d, self.h, self.k, self.hd = d, h, k, d // h
         self.g = h // k
-        self.wq, self.wk, self.wv, self.wo = Linear(d, d), Linear(d, k * self.hd), Linear(d, k * self.hd), Linear(d, d)
+        self.wq, self.wk, self.wv, self.wo = (
+            Linear(d, d),
+            Linear(d, k * self.hd),
+            Linear(d, k * self.hd),
+            Linear(d, d),
+        )
         self.rope, self.sc = RoPE(self.hd), self.hd**-0.5
         self.q, self.kc, self.vc, self.p = None, None, None, None
 
@@ -122,9 +133,16 @@ class GQA:
         da = Ops.d_softmax(self.p, dp) * self.sc
         dq = self.rope.apply(np.einsum("bsht,bthd->bshd", da, kr), rev=True)
         dkr = np.einsum("bsht,bshd->bthd", da, self.q)
-        dkc = self.rope.apply(dkr.reshape(b, s, self.k, self.g, self.hd).sum(axis=3), rev=True)
+        dkc = self.rope.apply(
+            dkr.reshape(b, s, self.k, self.g, self.hd).sum(axis=3), rev=True
+        )
         dvc = dvr.reshape(b, s, self.k, self.g, self.hd).sum(axis=3)
-        return self.wq.backward(dq.reshape(b, s, -1)) + self.wk.backward(dkc.reshape(b, s, -1)) + self.wv.backward(dvc.reshape(b, s, -1))
+        return (
+            self.wq.backward(dq.reshape(b, s, -1))
+            + self.wk.backward(dkc.reshape(b, s, -1))
+            + self.wv.backward(dvc.reshape(b, s, -1))
+        )
+
 
 class SovereignMLP:
     def __init__(self, d, exp=4):
@@ -142,7 +160,9 @@ class SovereignMLP:
         return self.p[..., 0:1] * self.o_gem + self.p[..., 1:2] * self.o_gro
 
     def backward(self, d):
-        dp = np.stack([(d * self.o_gem).sum(axis=-1), (d * self.o_gro).sum(axis=-1)], axis=-1)
+        dp = np.stack(
+            [(d * self.o_gem).sum(axis=-1), (d * self.o_gro).sum(axis=-1)], axis=-1
+        )
         dg = Ops.d_softmax(self.p, dp)
         dx = self.gate.backward(dg)
         d_gem = self.gem_dn.backward(d * self.p[..., 0:1])
@@ -150,6 +170,7 @@ class SovereignMLP:
         d_gro = self.gro_dn.backward(d * self.p[..., 1:2])
         dx += self.gro_up.backward(Ops.d_geglu(self.gro_up.x, d_gro))
         return dx
+
 
 class Block:
     def __init__(self, d):
@@ -167,6 +188,7 @@ class Block:
         da = self.attn.backward(d_res2)
         return d_res2 + self.n1.backward(da)
 
+
 class OMEGA_ASI:
     def __init__(self, i=784, h=256, o=10, depth=4):
         self.stem = Linear(i, h)
@@ -175,31 +197,45 @@ class OMEGA_ASI:
         self.head = Linear(h, o)
 
     def forward(self, x):
-        if x.ndim == 2: x = x[:, None, :]
+        if x.ndim == 2:
+            x = x[:, None, :]
         x = self.stem.forward(x)
-        for b in self.blocks: x = b.forward(x)
+        for b in self.blocks:
+            x = b.forward(x)
         self.feat = self.norm.forward(x[:, 0, :])
         return self.head.forward(self.feat)
 
     def backward(self, d):
         d = self.norm.backward(self.head.backward(d))[:, None, :]
-        for b in reversed(self.blocks): d = b.backward(d)
+        for b in reversed(self.blocks):
+            d = b.backward(d)
         self.stem.backward(d[:, 0, :])
 
     def get_params(self):
         p = []
+
         def find(obj):
-            if isinstance(obj, (Linear, RMSNorm)): p.append(obj)
-            elif isinstance(obj, list): [find(i) for i in obj]
-            elif hasattr(obj, "__dict__"): [find(v) for v in obj.__dict__.values() if v is not obj]
+            if isinstance(obj, (Linear, RMSNorm)):
+                p.append(obj)
+            elif isinstance(obj, list):
+                [find(i) for i in obj]
+            elif hasattr(obj, "__dict__"):
+                [find(v) for v in obj.__dict__.values() if v is not obj]
+
         find(self)
         return list(set(p))
+
 
 class Lion:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
         self.params, self.lr, self.b1, self.b2, self.wd = params, lr, b1, b2, wd
-        self.m = {id(p): np.zeros_like(p.W) if hasattr(p, "W") else np.zeros_like(p.g) for p in params}
-        self.mb = {id(p): np.zeros_like(p.b) if hasattr(p, "b") else None for p in params}
+        self.m = {
+            id(p): np.zeros_like(p.W) if hasattr(p, "W") else np.zeros_like(p.g)
+            for p in params
+        }
+        self.mb = {
+            id(p): np.zeros_like(p.b) if hasattr(p, "b") else None for p in params
+        }
 
     def step(self, lr_scale=1.0):
         lr = self.lr * lr_scale
@@ -207,7 +243,8 @@ class Lion:
             pid = id(p)
             if hasattr(p, "W"):
                 for attr, mom_dict in [("W", self.m), ("b", self.mb)]:
-                    if mom_dict[pid] is None: continue
+                    if mom_dict[pid] is None:
+                        continue
                     g, w = getattr(p, "d" + attr), getattr(p, attr)
                     u = np.sign(self.b1 * mom_dict[pid] + (1.0 - self.b1) * g)
                     w -= lr * (u + self.wd * w if attr == "W" else u)
@@ -218,43 +255,57 @@ class Lion:
                 p.g -= lr * (u + self.wd * p.g)
                 self.m[pid] = self.b2 * self.m[pid] + (1.0 - self.b2) * p.dg
 
+
 def train():
     N, D, C = 2048, 784, 10
     X = np.random.randn(N, D).astype("f")
     Y = np.random.randint(0, C, N)
-    
+
     model = OMEGA_ASI(i=D, h=128, o=C, depth=2)
     params = model.get_params()
     opt = Lion(params, lr=2e-4, wd=0.01)
-    
+
     bs, epochs = 64, 40
     for epoch in range(epochs):
         idx = np.random.permutation(N)
         l_sum, a_sum = 0, 0
         lr_scale = 0.5 * (1 + np.cos(np.pi * epoch / epochs))
-        
+
         for i in range(0, N, bs):
-            xb, yb = X[idx[i:i+bs]], Y[idx[i:i+bs]]
+            xb, yb = X[idx[i : i + bs]], Y[idx[i : i + bs]]
             logits = model.forward(xb)
             probs = Ops.softmax(logits)
-            
+
             l_sum += -np.log(probs[range(len(yb)), yb] + 1e-10).sum()
             a_sum += (probs.argmax(1) == yb).sum()
-            
+
             dout = probs.copy()
             dout[range(len(yb)), yb] -= 1
             model.backward(dout / len(yb))
-            
-            gn = np.sqrt(sum((getattr(p, "dW", 0)**2).sum() + (getattr(p, "db", 0)**2).sum() + (getattr(p, "dg", 0)**2).sum() for p in params))
+
+            gn = np.sqrt(
+                sum(
+                    (getattr(p, "dW", 0) ** 2).sum()
+                    + (getattr(p, "db", 0) ** 2).sum()
+                    + (getattr(p, "dg", 0) ** 2).sum()
+                    for p in params
+                )
+            )
             if gn > 1.0:
                 for p in params:
-                    if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
-                    if hasattr(p, "dg"): p.dg /= gn
-            
+                    if hasattr(p, "dW"):
+                        p.dW /= gn
+                        p.db /= gn
+                    if hasattr(p, "dg"):
+                        p.dg /= gn
+
             opt.step(lr_scale)
-            
+
         if (epoch + 1) % 5 == 0 or epoch == 0:
-            print(f"EPOCH {epoch+1:03d} | LOSS: {l_sum/N:.4f} | ACC: {a_sum/N:.4f} | GRAD: {gn:.2f} | LR: {opt.lr*lr_scale:.6f}")
+            print(
+                f"EPOCH {epoch+1:03d} | LOSS: {l_sum/N:.4f} | ACC: {a_sum/N:.4f} | GRAD: {gn:.2f} | LR: {opt.lr*lr_scale:.6f}"
+            )
+
 
 if __name__ == "__main__":
     train()
