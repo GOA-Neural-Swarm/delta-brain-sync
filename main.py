@@ -47,7 +47,7 @@ class Ops:
 
 class Linear:
     def __init__(self, i, o, std=None):
-        std = std or np.sqrt(2.0 / i)
+        std = std or np.sqrt(2.0 / (i + o))
         self.W = np.random.normal(0, std, (i, o)).astype("f")
         self.b = np.zeros(o, "f")
         self.dW, self.db = None, None
@@ -127,28 +127,28 @@ class GQA:
         return self.wq.backward(dq.reshape(b, s, -1)) + self.wk.backward(dkc.reshape(b, s, -1)) + self.wv.backward(dvc.reshape(b, s, -1))
 
 class SovereignMLP:
-    def __init__(self, d, exp_factor=4):
+    def __init__(self, d, exp=4):
         self.gate = Linear(d, 2)
-        self.gemini_up = Linear(d, d * exp_factor * 2)
-        self.gemini_dn = Linear(d * exp_factor, d)
-        self.groq_up = Linear(d, d * exp_factor * 2)
-        self.groq_dn = Linear(d * exp_factor, d)
+        self.gem_up = Linear(d, d * exp * 2)
+        self.gem_dn = Linear(d * exp, d)
+        self.gro_up = Linear(d, d * exp * 2)
+        self.gro_dn = Linear(d * exp, d)
         self.p, self.o_gem, self.o_gro = None, None, None
 
     def forward(self, x):
         self.p = Ops.softmax(self.gate.forward(x))
-        self.o_gem = self.gemini_dn.forward(Ops.swiglu(self.gemini_up.forward(x)))
-        self.o_gro = self.groq_dn.forward(Ops.geglu(self.groq_up.forward(x)))
+        self.o_gem = self.gem_dn.forward(Ops.swiglu(self.gem_up.forward(x)))
+        self.o_gro = self.gro_dn.forward(Ops.geglu(self.gro_up.forward(x)))
         return self.p[..., 0:1] * self.o_gem + self.p[..., 1:2] * self.o_gro
 
     def backward(self, d):
         dp = np.stack([(d * self.o_gem).sum(axis=-1), (d * self.o_gro).sum(axis=-1)], axis=-1)
         dg = Ops.d_softmax(self.p, dp)
         dx = self.gate.backward(dg)
-        d_gem = self.gemini_dn.backward(d * self.p[..., 0:1])
-        dx += self.gemini_up.backward(Ops.d_swiglu(self.gemini_up.x, d_gem))
-        d_gro = self.groq_dn.backward(d * self.p[..., 1:2])
-        dx += self.groq_up.backward(Ops.d_geglu(self.groq_up.x, d_gro))
+        d_gem = self.gem_dn.backward(d * self.p[..., 0:1])
+        dx += self.gem_up.backward(Ops.d_swiglu(self.gem_up.x, d_gem))
+        d_gro = self.gro_dn.backward(d * self.p[..., 1:2])
+        dx += self.gro_up.backward(Ops.d_geglu(self.gro_up.x, d_gro))
         return dx
 
 class Block:
@@ -201,7 +201,8 @@ class Lion:
         self.m = {id(p): np.zeros_like(p.W) if hasattr(p, "W") else np.zeros_like(p.g) for p in params}
         self.mb = {id(p): np.zeros_like(p.b) if hasattr(p, "b") else None for p in params}
 
-    def step(self):
+    def step(self, lr_scale=1.0):
+        lr = self.lr * lr_scale
         for p in self.params:
             pid = id(p)
             if hasattr(p, "W"):
@@ -209,16 +210,16 @@ class Lion:
                     if mom_dict[pid] is None: continue
                     g, w = getattr(p, "d" + attr), getattr(p, attr)
                     u = np.sign(self.b1 * mom_dict[pid] + (1.0 - self.b1) * g)
-                    w -= self.lr * (u + self.wd * w if attr == "W" else u)
+                    w -= lr * (u + self.wd * w if attr == "W" else u)
                     mom_dict[pid] = self.b2 * mom_dict[pid] + (1.0 - self.b2) * g
                     setattr(p, attr, w)
             else:
                 u = np.sign(self.b1 * self.m[pid] + (1.0 - self.b1) * p.dg)
-                p.g -= self.lr * (u + self.wd * p.g)
+                p.g -= lr * (u + self.wd * p.g)
                 self.m[pid] = self.b2 * self.m[pid] + (1.0 - self.b2) * p.dg
 
 def train():
-    N, D, C = 4096, 784, 10
+    N, D, C = 2048, 784, 10
     X = np.random.randn(N, D).astype("f")
     Y = np.random.randint(0, C, N)
     
@@ -226,15 +227,14 @@ def train():
     params = model.get_params()
     opt = Lion(params, lr=2e-4, wd=0.01)
     
-    bs = 64
-    epochs = 50
-    
+    bs, epochs = 64, 40
     for epoch in range(epochs):
         idx = np.random.permutation(N)
         l_sum, a_sum = 0, 0
+        lr_scale = 0.5 * (1 + np.cos(np.pi * epoch / epochs))
+        
         for i in range(0, N, bs):
             xb, yb = X[idx[i:i+bs]], Y[idx[i:i+bs]]
-            
             logits = model.forward(xb)
             probs = Ops.softmax(logits)
             
@@ -251,10 +251,10 @@ def train():
                     if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
                     if hasattr(p, "dg"): p.dg /= gn
             
-            opt.step()
+            opt.step(lr_scale)
             
         if (epoch + 1) % 5 == 0 or epoch == 0:
-            print(f"STEP {epoch+1:03d} | LOSS: {l_sum/N:.4f} | ACC: {a_sum/N:.4f} | GRAD: {gn:.2f}")
+            print(f"EPOCH {epoch+1:03d} | LOSS: {l_sum/N:.4f} | ACC: {a_sum/N:.4f} | GRAD: {gn:.2f} | LR: {opt.lr*lr_scale:.6f}")
 
 if __name__ == "__main__":
     train()
