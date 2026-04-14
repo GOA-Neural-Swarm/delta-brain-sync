@@ -1,3 +1,4 @@
+
 import numpy as np
 import time
 
@@ -78,7 +79,7 @@ class RoPE:
         dout_rot = np.concatenate([dout[..., h:], -dout[..., :h]], axis=-1)
         return dout * c + dout_rot * sn
 
-class GeminiGQA:
+class Gemini:
     def __init__(self, dim, heads=8, kv_heads=2):
         self.dim, self.heads, self.kv_heads = dim, heads, kv_heads
         self.h_dim = dim // heads
@@ -95,40 +96,39 @@ class GeminiGQA:
         q = self.q_proj.forward(x).reshape(b, s, self.heads, self.h_dim)
         k = self.k_proj.forward(x).reshape(b, s, self.kv_heads, self.h_dim)
         v = self.v_proj.forward(x).reshape(b, s, self.kv_heads, self.h_dim)
-        self.qr, self.kr, self.v_raw = self.rope.apply(q), self.rope.apply(k), v
-        self.k_rep = np.repeat(self.kr, self.group, axis=2)
-        self.v_rep = np.repeat(v, self.group, axis=2)
-        attn = np.einsum("bshd,bthd->bsht", self.qr, self.k_rep) * self.scale
-        self.probs = softmax(attn)
-        out = np.einsum("bsht,bthd->bshd", self.probs, self.v_rep)
+        qr, kr, v_raw = self.rope.apply(q), self.rope.apply(k), v
+        k_rep = np.repeat(kr, self.group, axis=2)
+        v_rep = np.repeat(v, self.group, axis=2)
+        attn = np.einsum("bshd,bthd->bsht", qr, k_rep) * self.scale
+        probs = softmax(attn)
+        out = np.einsum("bsht,bthd->bshd", probs, v_rep)
         return self.o_proj.forward(out.reshape(b, s, d))
 
     def backward(self, dout):
         b, s, d = dout.shape
         dout_o = self.o_proj.backward(dout).reshape(b, s, self.heads, self.h_dim)
-        d_probs = np.einsum("bshd,bthd->bsht", dout_o, self.v_rep)
-        d_v_rep = np.einsum("bsht,bshd->bthd", self.probs, dout_o)
-        d_attn = (self.probs * (d_probs - np.sum(self.probs * d_probs, axis=-1, keepdims=True))) * self.scale
-        d_qr = np.einsum("bsht,bthd->bshd", d_attn, self.k_rep)
-        d_kr_rep = np.einsum("bsht,bshd->bthd", d_attn, self.qr)
+        d_probs = np.einsum("bshd,bthd->bsht", dout_o, np.repeat(self.v_proj.forward(self.rope.apply(self.k_proj.forward(dout))).reshape(b, s, self.kv_heads, self.h_dim), self.group, axis=2))
+        d_v_rep = np.einsum("bsht,bshd->bthd", softmax(np.einsum("bshd,bthd->bsht", self.rope.apply(self.q_proj.forward(dout)).reshape(b, s, self.heads, self.h_dim), np.repeat(self.k_proj.forward(dout).reshape(b, s, self.kv_heads, self.h_dim), self.group, axis=2)) * self.scale), dout_o)
+        d_attn = (softmax(np.einsum("bshd,bthd->bsht", self.rope.apply(self.q_proj.forward(dout)).reshape(b, s, self.heads, self.h_dim), np.repeat(self.k_proj.forward(dout).reshape(b, s, self.kv_heads, self.h_dim), self.group, axis=2)) * self.scale) * (d_probs - np.sum(softmax(np.einsum("bshd,bthd->bsht", self.rope.apply(self.q_proj.forward(dout)).reshape(b, s, self.heads, self.h_dim), np.repeat(self.k_proj.forward(dout).reshape(b, s, self.kv_heads, self.h_dim), self.group, axis=2)) * self.scale) * d_probs, axis=-1, keepdims=True))) * self.scale
+        d_qr = np.einsum("bsht,bthd->bshd", d_attn, np.repeat(self.k_proj.forward(dout).reshape(b, s, self.kv_heads, self.h_dim), self.group, axis=2))
+        d_kr_rep = np.einsum("bsht,bshd->bthd", d_attn, self.rope.apply(self.q_proj.forward(dout)).reshape(b, s, self.heads, self.h_dim))
         dq = self.rope.backward(d_qr).reshape(b, s, d)
         dk_sum = np.sum(d_kr_rep.reshape(b, s, self.kv_heads, self.group, self.h_dim), axis=3)
         dk = self.rope.backward(dk_sum).reshape(b, s, -1)
         dv = np.sum(d_v_rep.reshape(b, s, self.kv_heads, self.group, self.h_dim), axis=3).reshape(b, s, -1)
         return self.q_proj.backward(dq) + self.k_proj.backward(dk) + self.v_proj.backward(dv)
 
-class GroqMoE:
+class Groq:
     def __init__(self, dim, n_exp=4, top_k=1):
         self.dim, self.n_exp, self.top_k = dim, n_exp, top_k
         self.gate = Linear(dim, n_exp)
         self.experts = [[Linear(dim, dim * 2), Linear(dim * 2, dim)] for _ in range(n_exp)]
 
     def forward(self, x):
-        self.orig_shape = x.shape
         xf = x.reshape(-1, self.dim)
         logits = self.gate.forward(xf)
-        self.probs = softmax(logits)
-        self.indices = np.argmax(self.probs, axis=-1)
+        probs = softmax(logits)
+        self.indices = np.argmax(probs, axis=-1)
         out = np.zeros_like(xf)
         self.cache = []
         for i in range(self.n_exp):
@@ -136,19 +136,19 @@ class GroqMoE:
             if not np.any(mask):
                 self.cache.append(None)
                 continue
-            p = self.probs[mask, i][:, None]
+            p = probs[mask, i][:, None]
             h = self.experts[i][0].forward(xf[mask])
             act = swiglu(h)
             eo = self.experts[i][1].forward(act)
             out[mask] += eo * p
             self.cache.append((mask, h, act, eo, p))
-        return out.reshape(self.orig_shape)
+        return out.reshape(x.shape)
 
     def backward(self, dout):
         df = dout.reshape(-1, self.dim)
         xf = self.gate.x
         dx = np.zeros_like(xf)
-        d_logits = np.zeros_like(self.probs)
+        d_logits = np.zeros_like(softmax(self.gate.forward(xf)))
         for i in range(self.n_exp):
             if self.cache[i] is None: continue
             mask, h, act, eo, p = self.cache[i]
@@ -157,13 +157,13 @@ class GroqMoE:
             d_act = self.experts[i][1].backward(deo)
             d_h = d_swiglu(h, d_act)
             dx[mask] += self.experts[i][0].backward(d_h)
-        dg = self.probs * (d_logits - np.sum(self.probs * d_logits, axis=-1, keepdims=True))
-        return (dx + self.gate.backward(dg)).reshape(self.orig_shape)
+        dg = softmax(self.gate.forward(xf)) * (d_logits - np.sum(softmax(self.gate.forward(xf)) * d_logits, axis=-1, keepdims=True))
+        return (dx + self.gate.backward(dg)).reshape(dout.shape)
 
 class SovereignBlock:
     def __init__(self, dim):
-        self.n1, self.attn = RMSNorm(dim), GeminiGQA(dim)
-        self.n2, self.moe = RMSNorm(dim), GroqMoE(dim)
+        self.n1, self.attn = RMSNorm(dim), Gemini(dim)
+        self.n2, self.moe = RMSNorm(dim), Groq(dim)
 
     def forward(self, x):
         x = x + self.attn.forward(self.n1.forward(x))
