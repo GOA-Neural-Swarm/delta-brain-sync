@@ -1,5 +1,7 @@
 {
-    "command": "NORMAL_GROWTH",
-    "core_power": 10001,
-    "updated_at": "Wed Apr 15 18:45:56 2026"
+  "command": "HYPER_EXPANSION",
+  "core_power": 346,
+  "avg_api": 4986.321663019694,
+  "replicate": true,
+  "updated_at": "2026-04-15T18:47:27.388Z"
 }
