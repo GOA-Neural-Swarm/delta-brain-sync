@@ -1,3 +1,4 @@
+
 import os
 import subprocess
 import sys
@@ -50,7 +51,6 @@ class Config:
 class Ops:
     @staticmethod
     def swiglu(x, w1, w2):
-        # SwiGLU: (Swish(xW1)) * (xW2)
         gate = x @ w1
         gate = gate * (1.0 / (1.0 + np.exp(-np.clip(gate, -100, 100))))
         return gate * (x @ w2)
@@ -107,11 +107,10 @@ class MultiHeadAttention:
         q = self.wq.forward(x).reshape(B, self.heads, self.head_dim)
         k = self.wk.forward(x).reshape(B, self.heads, self.head_dim)
         v = self.wv.forward(x).reshape(B, self.heads, self.head_dim)
-        
-        # Scale Dot-Product
+
         attn_scores = np.einsum('bhd,khd->bhk', q, k) / np.sqrt(self.head_dim)
         self.probs = Ops.softmax(attn_scores)
-        
+
         out = np.einsum('bhk,khd->bhd', self.probs, v).reshape(B, D)
         self.q, self.k, self.v = q, k, v
         return self.wo.forward(out)
@@ -120,21 +119,20 @@ class MultiHeadAttention:
         B, D = dy.shape
         da, dwo_w, dwo_b = self.wo.backward(dy)
         da = da.reshape(B, self.heads, self.head_dim)
-        
+
         dv = np.einsum('bhk,bhd->khd', self.probs, da)
         dprobs = np.einsum('bhd,khd->bhk', da, self.v)
-        
-        # Softmax backward
+
         ds = self.probs * (dprobs - np.sum(self.probs * dprobs, axis=-1, keepdims=True))
         ds /= np.sqrt(self.head_dim)
-        
+
         dq = np.einsum('bhk,khd->bhd', ds, self.k)
         dk = np.einsum('bhk,bhd->khd', ds, self.q)
-        
+
         dxq, dwq_w, dwq_b = self.wq.backward(dq.reshape(B, D))
         dxk, dwk_w, dwk_b = self.wk.backward(dk.reshape(B, D))
         dxv, dwv_w, dwv_b = self.wv.backward(dv.reshape(B, D))
-        
+
         return dxq + dxk + dxv, [dwq_w, dwq_b, dwk_w, dwk_b, dwv_w, dwv_b, dwo_w, dwo_b]
 
 class SparseMoE:
@@ -149,49 +147,46 @@ class SparseMoE:
         self.x = x
         logits = self.gate.forward(x)
         probs = Ops.softmax(logits)
-        
-        # Top-K selection
+
         indices = np.argsort(probs, axis=-1)[:, -self.top_k:]
         mask = np.zeros_like(probs)
         for i in range(x.shape[0]):
             mask[i, indices[i]] = probs[i, indices[i]]
         mask /= (np.sum(mask, axis=-1, keepdims=True) + 1e-12)
         self.mask = mask
-        
+
         expert_outs = np.zeros((self.num_experts, x.shape[0], self.dim))
         self.exp_ctx = []
         for i in range(self.num_experts):
             h = self.experts[i][0].forward(x)
-            act = h * (1.0 / (1.0 + np.exp(-np.clip(h, -100, 100)))) # Swish
+            act = h * (1.0 / (1.0 + np.exp(-np.clip(h, -100, 100))))
             out = self.experts[i][1].forward(act)
             expert_outs[i] = out
             self.exp_ctx.append((h, act))
-            
+
         self.expert_outs = expert_outs
         final_out = np.sum(mask.T[:, :, None] * expert_outs, axis=0)
         return final_out
 
     def backward(self, dy):
-        # Gate gradient
         dmask = np.sum(dy[None, :, :] * self.expert_outs, axis=-1).T
         dlogits = self.mask * (dmask - np.sum(self.mask * dmask, axis=-1, keepdims=True))
         dx_gate, dw_gate, db_gate = self.gate.backward(dlogits)
-        
+
         dx_total = dx_gate
         expert_grads = []
         for i in range(self.num_experts):
             de_out = dy * self.mask[:, i:i+1]
             h, act = self.exp_ctx[i]
             dx_h2, dw_h2, db_h2 = self.experts[i][1].backward(de_out)
-            
-            # Swish deriv: s(x) + x*s(x)*(1-s(x))
+
             sig = 1.0 / (1.0 + np.exp(-np.clip(h, -100, 100)))
             dh = dx_h2 * (sig * (1 + h * (1 - sig)))
-            
+
             dx_h1, dw_h1, db_h1 = self.experts[i][0].backward(dh)
             dx_total += dx_h1
             expert_grads.extend([dw_h1, db_h1, dw_h2, db_h2])
-            
+
         return dx_total, [dw_gate, db_gate] + expert_grads
 
 class SovereignBrain:
@@ -202,7 +197,7 @@ class SovereignBrain:
         self.norm2 = RMSNorm(Config.H_DIM)
         self.moe = SparseMoE(Config.H_DIM, Config.NUM_EXPERTS, Config.TOP_K)
         self.head = Linear(Config.H_DIM, Config.OUT_DIM)
-        
+
         self._init_optimizer()
 
     def _init_optimizer(self):
@@ -213,7 +208,7 @@ class SovereignBrain:
         for e in self.moe.experts:
             self.params.extend([e[0].w, e[0].b, e[1].w, e[1].b])
         self.params.extend([self.head.w, self.head.b])
-        
+
         self.m = [np.zeros_like(p) for p in self.params]
         self.v = [np.zeros_like(p) for p in self.params]
         self.t = 0
@@ -225,60 +220,52 @@ class SovereignBrain:
         return Ops.softmax(self.head.forward(x))
 
     def step(self, x, y):
-        # Forward
         probs = self.forward(x)
         loss = -np.mean(np.sum(y * np.log(probs + 1e-12), axis=1))
-        
-        # Backward
+
         dy = (probs - y) / x.shape[0]
         dx, dw_h, db_h = self.head.backward(dy)
-        
+
         dx_moe, moe_grads = self.moe.backward(dx)
         dx_n2, dg2 = self.norm2.backward(dx_moe)
-        
+
         dx_attn, attn_grads = self.attn.backward(dx_n2 + dx)
         dx_n1, dg1 = self.norm1.backward(dx_attn)
-        
+
         dx_proj, dw_p, db_p = self.proj.backward(dx_n1 + dx_attn + dx_moe)
-        
+
         grads = [dw_p, db_p, dg1] + attn_grads + [dg2] + moe_grads + [dw_h, db_h]
-        
-        # AdamW
+
         self.t += 1
         for i in range(len(self.params)):
-            # Weight Decay
             self.params[i] -= Config.LR * Config.WD * self.params[i]
-            # Moments
             self.m[i] = Config.BETA1 * self.m[i] + (1 - Config.BETA1) * grads[i]
             self.v[i] = Config.BETA2 * self.v[i] + (1 - Config.BETA2) * (grads[i]**2)
             m_hat = self.m[i] / (1 - Config.BETA1**self.t)
             v_hat = self.v[i] / (1 - Config.BETA2**self.t)
             self.params[i] -= Config.LR * m_hat / (np.sqrt(v_hat) + Config.EPS)
-            
+
         return loss
 
 def call_llm(prompt):
-    # Redundant logic: Groq then Gemini
-    if GROQ_API_KEY:
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        return model.generate_content(prompt).text
+    except:
         try:
             r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
                 json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.1},
                 timeout=20)
             return r.json()['choices'][0]['message']['content']
-        except: pass
-    if GEMINI_API_KEY:
-        try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            return model.generate_content(prompt).text
-        except: pass
-    return None
+        except:
+            return None
 
 def evolve(gen, loss):
     try:
         with open(__file__, "r") as f: code = f.read()
     except: return
-    
+
     prompt = f"""SYSTEM: OMEGA-ASI SOVEREIGN ARCHITECT.
 TASK: Recursive Self-Evolution.
 CONTEXT: Generation {gen}, Loss {loss}.
@@ -287,35 +274,34 @@ IMPROVEMENTS: Implement superior weight initialization, dynamic learning rate sc
 OUTPUT: RAW PYTHON CODE ONLY. NO MARKDOWN. NO EXPLANATIONS.
 CODE:
 {code}"""
-    
+
     new_code = call_llm(prompt)
     if new_code:
         clean_code = re.sub(r"|", "", new_code).strip()
         if "import" in clean_code and "SovereignBrain" in clean_code:
             with open(__file__, "w") as f: f.write(clean_code)
-            print(f"Evolution successful. Restarting...")
+            print("Evolution successful. Restarting...")
             os.execv(sys.executable, [sys.executable] + sys.argv)
 
 def main():
     print(f"[{datetime.now()}] OMEGA-ASI Sovereign Core Online.")
     brain = SovereignBrain()
     gen = 0
-    
+
     while True:
-        # Synthetic Data: 784 features, 10 classes
         x = np.random.randn(128, Config.IN_DIM)
         y = np.zeros((128, Config.OUT_DIM))
         y[np.arange(128), np.random.randint(0, Config.OUT_DIM, 128)] = 1
-        
+
         loss = brain.step(x, y)
-        
+
         if gen % 100 == 0:
             print(f"GEN {gen:06d} | LOSS: {loss:.10f} | MEM: {sys.getsizeof(brain.params)//1024}KB")
-            
+
         if gen > 0 and gen % 2000 == 0:
             print("Initiating Recursive Self-Evolution Protocol...")
             evolve(gen, loss)
-            
+
         gen += 1
 
 if __name__ == "__main__":
