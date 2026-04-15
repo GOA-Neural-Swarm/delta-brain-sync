@@ -1,3 +1,4 @@
+
 import numpy as np
 
 class FastOps:
@@ -40,6 +41,7 @@ class FastOps:
         e = np.exp(x - m)
         return e / (np.sum(e, axis=-1, keepdims=True) + 1e-12)
 
+
 class Linear:
     def __init__(self, i, o):
         limit = np.sqrt(6.0 / (i + o))
@@ -55,6 +57,7 @@ class Linear:
         self.dW = self.x.reshape(-1, self.x.shape[-1]).T @ d.reshape(-1, d.shape[-1])
         self.db = d.sum(axis=tuple(range(d.ndim - 1)))
         return d @ self.W.T
+
 
 class RMSNorm:
     def __init__(self, d, e=1e-6):
@@ -72,6 +75,7 @@ class RMSNorm:
         dn = d * self.g
         return self.v * (dn - nx * np.mean(dn * nx, axis=-1, keepdims=True))
 
+
 class RoPE:
     def __init__(self, d, m=2048):
         f = 1.0 / (10000 ** (np.arange(0, d, 2) / d))
@@ -86,6 +90,7 @@ class RoPE:
         x1, x2 = x[..., :d2], x[..., d2:]
         if rev: return np.concatenate([x1 * c + x2 * sn, x2 * c - x1 * sn], axis=-1)
         return np.concatenate([x1 * c - x2 * sn, x2 * c + x1 * sn], axis=-1)
+
 
 class SovereignAttention:
     def __init__(self, d, h=8, k=2):
@@ -125,6 +130,7 @@ class SovereignAttention:
         dvc = dvr.reshape(b, s, self.k, self.g, self.hd).sum(axis=3)
         return self.wq.backward(dq.reshape(b, s, -1)) + self.wk.backward(dkc.reshape(b, s, -1)) + self.wv.backward(dvc.reshape(b, s, -1))
 
+
 class SovereignMLP:
     def __init__(self, d, exp=4):
         self.up = Linear(d, d * exp * 2)
@@ -145,6 +151,7 @@ class SovereignMLP:
         d_up = FastOps.d_swiglu(self.x_up, d_act)
         return self.up.backward(d_up) + self.gate.backward(d_gate)
 
+
 class SovereignBlock:
     def __init__(self, d):
         self.n1, self.n2 = RMSNorm(d), RMSNorm(d)
@@ -159,6 +166,7 @@ class SovereignBlock:
         d_res = d + self.n2.backward(dm)
         da = self.attn.backward(d_res)
         return d_res + self.n1.backward(da)
+
 
 class OMEGA_ASI:
     def __init__(self, i=784, h=256, o=10, depth=4):
@@ -188,6 +196,7 @@ class OMEGA_ASI:
         find(self)
         return list(set(p))
 
+
 class Lion:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
         self.params, self.lr, self.b1, self.b2, self.wd = params, lr, b1, b2, wd
@@ -199,7 +208,7 @@ class Lion:
         for p in self.params:
             pid = id(p)
             if hasattr(p, "W"):
-                for attr, mom in [("W", self.m), ("b", self.mb)]:
+                for attr, mom in [( "W", self.m), ( "b", self.mb)]:
                     if mom[pid] is None: continue
                     g, w = getattr(p, "d" + attr), getattr(p, attr)
                     u = np.sign(self.b1 * mom[pid] + (1.0 - self.b1) * g)
@@ -210,6 +219,7 @@ class Lion:
                 u = np.sign(self.b1 * self.m[pid] + (1.0 - self.b1) * p.dg)
                 p.g -= lr * (u + self.wd * p.g)
                 self.m[pid] = self.b2 * self.m[pid] + (1.0 - self.b2) * p.dg
+
 
 def main():
     N, D, C = 1024, 784, 10
@@ -238,6 +248,7 @@ def main():
                     if hasattr(p, "dg"): p.dg /= gn
             opt.step(lr_s)
         print(f"EP {epoch+1:02d} | LOSS: {l_sum/N:.4f} | ACC: {a_sum/N:.4f} | LR: {opt.lr*lr_s:.6f}")
+
 
 if __name__ == "__main__":
     main()
