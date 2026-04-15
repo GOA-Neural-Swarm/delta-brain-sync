@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@octokit/rest": "^20.1.2",
-    "@supabase/supabase-js": "^2.103.0",
+    "@supabase/supabase-js": "^2.103.1",
     "axios": "^1.15.0",
     "firebase-admin": "^12.7.0",
     "pg": "^8.20.0"
