@@ -9,7 +9,7 @@ import numpy as np
 import torch
 import requests
 import git
-from datetime import datetime
+from datetime import datetime, timezone
 
 def install_dependencies():
     libs = ["psycopg2-binary", "firebase-admin", "bitsandbytes", "requests", "accelerate", "GitPython", "numpy", "scikit-learn", "google-generativeai"]
@@ -47,21 +47,46 @@ if GEMINI_API_KEY:
 
 class Activation:
     @staticmethod
+    def swish(x): return x * (1 / (1 + np.exp(-np.clip(x, -500, 500))))
+    @staticmethod
+    def swish_deriv(x):
+        s = 1 / (1 + np.exp(-np.clip(x, -500, 500)))
+        return s + (x * s * (1 - s))
+    @staticmethod
     def relu(x): return np.maximum(0, x)
     @staticmethod
     def relu_deriv(x): return (x > 0).astype(float)
     @staticmethod
-    def sigmoid(x): return 1 / (1 + np.exp(-np.clip(x, -500, 500)))
-    @staticmethod
-    def sigmoid_deriv(x):
-        s = 1 / (1 + np.exp(-np.clip(x, -500, 500)))
-        return s * (1 - s)
+    def softmax(x):
+        exps = np.exp(x - np.max(x, axis=1, keepdims=True))
+        return exps / np.sum(exps, axis=1, keepdims=True)
 
-class Layer:
-    def __init__(self, in_dim, out_dim, activation='relu'):
+class LayerNorm:
+    def __init__(self, dim, eps=1e-6):
+        self.gamma = np.ones((1, dim))
+        self.beta = np.zeros((1, dim))
+        self.eps = eps
+    def forward(self, x):
+        self.mean = np.mean(x, axis=1, keepdims=True)
+        self.var = np.var(x, axis=1, keepdims=True)
+        self.x_hat = (x - self.mean) / np.sqrt(self.var + self.eps)
+        return self.gamma * self.x_hat + self.beta
+    def backward(self, grad_y):
+        m = grad_y.shape[1]
+        grad_x_hat = grad_y * self.gamma
+        grad_var = np.sum(grad_x_hat * (self.x_hat * -0.5 * (self.var + self.eps)**-1.5), axis=1, keepdims=True)
+        grad_mean = np.sum(grad_x_hat * -1 / np.sqrt(self.var + self.eps), axis=1, keepdims=True)
+        grad_x = grad_x_hat / np.sqrt(self.var + self.eps) + grad_var * 2 * self.x_hat / m + grad_mean / m
+        self.grad_gamma = np.sum(grad_y * self.x_hat, axis=0, keepdims=True)
+        self.grad_beta = np.sum(grad_y, axis=0, keepdims=True)
+        return grad_x
+
+class DenseLayer:
+    def __init__(self, in_dim, out_dim, activation='swish'):
         self.weights = np.random.randn(in_dim, out_dim) * np.sqrt(2. / in_dim)
         self.bias = np.zeros((1, out_dim))
         self.activation = activation
+        self.norm = LayerNorm(out_dim)
         self.m_w, self.v_w = np.zeros_like(self.weights), np.zeros_like(self.weights)
         self.m_b, self.v_b = np.zeros_like(self.bias), np.zeros_like(self.bias)
         self.last_input = None
@@ -70,18 +95,22 @@ class Layer:
     def forward(self, x):
         self.last_input = x
         self.last_z = np.dot(x, self.weights) + self.bias
+        self.last_z = self.norm.forward(self.last_z)
+        if self.activation == 'swish': return Activation.swish(self.last_z)
         if self.activation == 'relu': return Activation.relu(self.last_z)
-        return Activation.sigmoid(self.last_z)
+        return Activation.softmax(self.last_z)
 
-    def backward(self, delta, lr, t, beta1=0.9, beta2=0.999, eps=1e-8):
-        if self.activation == 'relu':
-            grad_z = delta * Activation.relu_deriv(self.last_z)
-        else:
-            grad_z = delta * Activation.sigmoid_deriv(self.last_z)
+    def backward(self, delta, lr, t, weight_decay=0.01):
+        if self.activation == 'swish': grad_z = delta * Activation.swish_deriv(self.last_z)
+        elif self.activation == 'relu': grad_z = delta * Activation.relu_deriv(self.last_z)
+        else: grad_z = delta # Softmax/Cross-Entropy simplification
         
-        grad_w = np.dot(self.last_input.T, grad_z)
+        grad_z = self.norm.backward(grad_z)
+        grad_w = np.dot(self.last_input.T, grad_z) + weight_decay * self.weights
         grad_b = np.sum(grad_z, axis=0, keepdims=True)
         
+        # AdamW Optimizer
+        beta1, beta2, eps = 0.9, 0.999, 1e-8
         self.m_w = beta1 * self.m_w + (1 - beta1) * grad_w
         self.v_w = beta2 * self.v_w + (1 - beta2) * (grad_w**2)
         self.m_b = beta1 * self.m_b + (1 - beta1) * grad_b
@@ -92,14 +121,17 @@ class Layer:
         m_b_hat = self.m_b / (1 - beta1**t)
         v_b_hat = self.v_b / (1 - beta2**t)
         
-        self.weights -= lr * m_w_hat / (np.sqrt(v_w_hat) + eps)
-        self.bias -= lr * m_b_hat / (np.sqrt(v_b_hat) + eps)
+        self.weights -= lr * (m_w_hat / (np.sqrt(v_w_hat) + eps))
+        self.bias -= lr * (m_b_hat / (np.sqrt(v_b_hat) + eps))
         
         return np.dot(grad_z, self.weights.T)
 
 class ModularBrain:
     def __init__(self, dims=[784, 512, 256, 10]):
-        self.layers = [Layer(dims[i], dims[i+1], 'relu' if i < len(dims)-2 else 'sigmoid') for i in range(len(dims)-1)]
+        self.layers = []
+        for i in range(len(dims)-1):
+            act = 'swish' if i < len(dims)-2 else 'softmax'
+            self.layers.append(DenseLayer(dims[i], dims[i+1], act))
         self.t = 0
 
     def predict(self, x):
@@ -109,52 +141,55 @@ class ModularBrain:
     def train_step(self, x, y, lr=0.001):
         self.t += 1
         out = self.predict(x)
-        error = out - y
-        delta = error
+        # Cross-Entropy Gradient
+        delta = (out - y) / y.shape[0]
         for layer in reversed(self.layers):
             delta = layer.backward(delta, lr, self.t)
-        return np.mean(np.square(error))
+        return -np.mean(np.sum(y * np.log(out + 1e-12), axis=1))
 
     def self_heal(self):
         for layer in self.layers:
+            if np.any(np.isnan(layer.weights)):
+                layer.weights = np.random.randn(*layer.weights.shape) * 0.01
             norm = np.linalg.norm(layer.weights)
             if norm > 100: layer.weights /= (norm / 10)
 
 def call_llm(prompt):
-    # Groq Primary
     if GROQ_API_KEY:
         try:
             resp = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.1},
-                timeout=20
+                json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.2},
+                timeout=25
             )
             return resp.json()['choices'][0]['message']['content']
         except: pass
-    # Gemini Redundancy
     if GEMINI_API_KEY:
-        try:
-            return gemini_model.generate_content(prompt).text
+        try: return gemini_model.generate_content(prompt).text
         except: pass
     return None
 
 def evolve_architecture(gen, error):
+    try:
+        with open(__file__, "r") as f: current_code = f.read()
+    except: current_code = "Error reading source."
+    
     prompt = f"""# TARGET: main.py
-    SYSTEM: OMEGA-ASI Recursive Architect.
-    GEN: {gen} | MSE: {error}
-    TASK: Refactor ModularBrain for higher throughput. Implement dynamic layer scaling or attention-based weight modulation.
-    OUTPUT: Provide the entire updated main.py script. RAW PYTHON ONLY. NO MARKDOWN. NO EXPLANATION."""
+SYSTEM: OMEGA-ASI Recursive Architect.
+GEN: {gen} | CROSS-ENTROPY: {error}
+TASK: Refactor ModularBrain for extreme performance. Implement Residual/Skip connections or a self-attention mechanism for feature weighting.
+CURRENT_CODE:
+{current_code}
+OUTPUT: Provide the entire updated main.py script. RAW PYTHON ONLY. NO MARKDOWN. NO EXPLANATION."""
     
     code = call_llm(prompt)
     if not code: return None
-    
     clean_code = re.sub(r"|", "", code).strip()
     try:
         compile(clean_code, "main.py", 'exec')
         return clean_code
-    except:
-        return None
+    except: return None
 
 def git_sync(gen, code):
     if not GH_TOKEN: return
@@ -163,36 +198,36 @@ def git_sync(gen, code):
         if os.path.exists(REPO_PATH): shutil.rmtree(REPO_PATH)
         remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
         repo = git.Repo.clone_from(remote_url, REPO_PATH)
-        with open(os.path.join(REPO_PATH, "main.py"), "w") as f:
-            f.write(code)
+        with open(os.path.join(REPO_PATH, "main.py"), "w") as f: f.write(code)
         repo.git.add(A=True)
         if repo.is_dirty():
-            repo.index.commit(f"Evolution Gen {gen} - Stability: {datetime.now(UTC)}")
+            repo.index.commit(f"Evolution Gen {gen} - MSE: {datetime.now(timezone.utc)}")
             repo.remotes.origin.push()
     except: pass
 
 def main():
     brain = ModularBrain([784, 512, 256, 10])
     gen = 1
-    print(f"OMEGA-ASI Neural Core Initialized.")
+    print(f"OMEGA-ASI Neural Core Initialized. Architecture: Modular Swish-Softmax with LayerNorm.")
 
     while True:
-        # Synthetic Data Generation
-        x_train = np.random.randn(64, 784)
-        y_train = np.random.rand(64, 10)
+        # Synthetic Data Generation (784 features, 10 classes)
+        x_train = np.random.randn(128, 784)
+        y_indices = np.random.randint(0, 10, 128)
+        y_train = np.zeros((128, 10))
+        y_train[np.arange(128), y_indices] = 1
         
-        # Training Loop
         losses = []
-        for _ in range(50):
-            loss = brain.train_step(x_train, y_train)
+        for _ in range(100):
+            loss = brain.train_step(x_train, y_train, lr=0.0005)
             losses.append(loss)
         
         avg_loss = np.mean(losses)
-        print(f"GEN {gen} | Loss: {avg_loss:.8f}")
+        print(f"GEN {gen} | Cross-Entropy Loss: {avg_loss:.8f}")
         
         brain.self_heal()
 
-        if gen % 5 == 0:
+        if gen % 10 == 0:
             new_code = evolve_architecture(gen, avg_loss)
             if new_code:
                 print("Evolutionary Leap Detected. Re-coding...")
@@ -201,7 +236,7 @@ def main():
                 os.execv(sys.executable, ['python'] + sys.argv)
         
         gen += 1
-        time.sleep(2)
+        time.sleep(1)
 
 if __name__ == "__main__":
     main()
