@@ -208,7 +208,7 @@ class Lion:
         for p in self.params:
             pid = id(p)
             if hasattr(p, "W"):
-                for attr, mom in [( "W", self.m), ( "b", self.mb)]:
+                for attr, mom in [("W", self.m), ("b", self.mb)]:
                     if mom[pid] is None: continue
                     g, w = getattr(p, "d" + attr), getattr(p, attr)
                     u = np.sign(self.b1 * mom[pid] + (1.0 - self.b1) * g)
