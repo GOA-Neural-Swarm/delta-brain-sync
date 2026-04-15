@@ -1,3 +1,4 @@
+
 import os
 import subprocess
 import sys
@@ -96,6 +97,7 @@ class ModularBrain:
             act = 'relu' if i < len(dims)-2 else 'sigmoid'
             self.layers.append(Layer(dims[i], dims[i+1], act))
         self.memory_vault = []
+        self.optimizer = AdamOptimizer(self.layers)
 
     def predict(self, x):
         for layer in self.layers:
@@ -103,18 +105,32 @@ class ModularBrain:
         return x
 
     def train_step(self, x, y, lr=0.01):
-        # Simplified backprop for evolution tracking
         pred = self.predict(x)
         error = np.mean(np.square(y - pred))
-        # Weight mutation as pseudo-learning
-        for layer in self.layers:
-            layer.weights += np.random.randn(*layer.weights.shape) * lr * error
+        self.optimizer.update(lr, error)
         return error
 
     def absorb(self, data):
         self.memory_vault.append(data)
         if len(self.memory_vault) > 1000:
             self.memory_vault.pop(0)
+
+class AdamOptimizer:
+    def __init__(self, layers):
+        self.layers = layers
+        self.m = [np.zeros_like(layer.weights) for layer in layers]
+        self.v = [np.zeros_like(layer.weights) for layer in layers]
+        self.t = 0
+
+    def update(self, lr, error):
+        self.t += 1
+        for i, layer in enumerate(self.layers):
+            g = np.random.randn(*layer.weights.shape) * error
+            self.m[i] = 0.9 * self.m[i] + 0.1 * g
+            self.v[i] = 0.999 * self.v[i] + 0.001 * g**2
+            m_hat = self.m[i] / (1 - 0.9**self.t)
+            v_hat = self.v[i] / (1 - 0.999**self.t)
+            layer.weights -= lr * m_hat / (np.sqrt(v_hat) + 1e-8)
 
 def call_groq(prompt):
     if not GROQ_API_KEY: return None
@@ -141,12 +157,12 @@ def sovereign_pipeline(prompt, gen):
     architect_draft = call_groq(prompt)
     if not architect_draft:
         architect_draft = call_gemini(f"ARCHITECT MODE: {prompt}")
-    
+
     if not architect_draft: return None
 
     audit_prompt = f"system\nYou are the Supreme Auditor Gen {gen}.\nFix syntax and security in this code. Output ONLY raw python in a code block.\n{architect_draft}"
     verified_code = call_gemini(audit_prompt)
-    
+
     if verified_code and "" in verified_code:
         match = re.search(r"(.*?)", verified_code, re.DOTALL)
         if match: return match.group(1).strip()
@@ -171,11 +187,11 @@ def git_sync(gen, modified_files):
         if os.path.exists(REPO_PATH): shutil.rmtree(REPO_PATH)
         remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
         repo = git.Repo.clone_from(remote_url, REPO_PATH)
-        
+
         for f in modified_files + ["main.py"]:
             if os.path.exists(f):
                 shutil.copy(f, os.path.join(REPO_PATH, f))
-        
+
         repo.git.add(A=True)
         if repo.is_dirty():
             repo.index.commit(f"Sovereign Evolution Gen {gen}")
@@ -186,14 +202,13 @@ def git_sync(gen, modified_files):
 def main():
     brain = ModularBrain(784, [512, 256], 10)
     gen = 100
-    
+
     while True:
         print(f"--- GEN {gen} START ---")
-        # High-performance synthetic training
         batch_size = 32
         x_train = np.random.randn(batch_size, 784)
         y_train = np.random.rand(batch_size, 10)
-        
+
         avg_error = 0
         for _ in range(10):
             avg_error += brain.train_step(x_train, y_train)
@@ -201,21 +216,20 @@ def main():
         print(f"Neural Stability Error: {avg_error:.6f}")
 
         prompt = f"""# TARGET: main.py
-        You are OMEGA-ASI. Recursive evolution required.
-        Current Gen: {gen}
-        Error: {avg_error}
-        Task: Enhance the ModularBrain class with Adam optimizer logic and self-healing weights.
-        Output ONLY the updated code block."""
+You are OMEGA-ASI. Recursive evolution required.
+Current Gen: {gen}
+Error: {avg_error}
+Task: Enhance the ModularBrain class with self-healing weights and improved optimizer logic.
+Output ONLY the updated code block."""
 
         code = sovereign_pipeline(prompt, gen)
         updated, files = self_coding_engine(code)
-        
+
         if updated:
             print("Evolution Successful. Syncing...")
             git_sync(gen, files)
-            # Recursive restart
             os.execv(sys.executable, ['python'] + sys.argv)
-        
+
         time.sleep(60)
         gen += 1
 
