@@ -71,6 +71,7 @@ class RedundantLogicCore:
         dgr = dact * sw
         return self.gemini_path.backward(dge) + self.groq_path.backward(dgr)
 
+
 class SovereignGQA:
     def __init__(self, d, h=8, g=2):
         self.d, self.h, self.g, self.hd = d, h, g, d // h
@@ -120,7 +121,9 @@ class SovereignMoE:
     def __init__(self, d, n=4, e=2):
         self.n, self.d, self.f = n, d, d * e
         self.gate = Linear(d, n)
-        self.experts = [[Linear(d, self.f), Linear(self.f, d), Linear(d, self.f)] for _ in range(n)]
+        self.experts = [
+            [Linear(d, self.f), Linear(self.f, d), Linear(d, self.f)] for _ in range(n)
+        ]
 
     def forward(self, x):
         self.x = x
@@ -267,7 +270,8 @@ def train():
             probs /= probs.sum(-1, keepdims=True)
             l_sum += -np.log(probs[range(len(yb)), yb] + 1e-12).sum()
             a_sum += (probs.argmax(1) == yb).sum()
-            dy = (probs.copy()); dy[range(len(yb)), yb] -= 1
+            dy = probs.copy()
+            dy[range(len(yb)), yb] -= 1
             model.backward(dy / len(yb))
 
             gn = np.sqrt(
