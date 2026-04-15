@@ -37,7 +37,7 @@ jobs:
           python -m pip install --upgrade pip
           # Install necessary Python packages.
           # Including google-generativeai to ensure Gemini API compatibility if needed via script.
-          pip install kaggle psycopg2-binary requests groq google-generativeai
+          pip install numpy kaggle psycopg2-binary requests groq google-generativeai
           # Add local bin directory to PATH for kaggle command.
           echo "PATH=$PATH:/home/runner/.local/bin" >> $GITHUB_ENV
 
@@ -59,7 +59,22 @@ jobs:
           echo "Waiting for Kaggle to process the kernel push..."
           sleep 45
 
-      - name: Step 5 - Data Synchronization
+      - name: Step 5 - 🧠 AWAKEN OMEGA ASI
+        env:
+          NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          echo "Initializing Sovereign Neural Architecture..."
+          if [ -f "brain.py" ]; then
+            python brain.py
+            echo "🧠 [BRAIN-AWAKE]: Neural sequences activated."
+          else
+            echo "⚠️ [WARNING]: brain.py not found. Skipping awakening."
+          fi
+
+      - name: Step 6 - Data Synchronization
         env:
           NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
           FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
@@ -74,7 +89,7 @@ jobs:
             echo "No sync script found. Skipping data synchronization."
           fi
 
-      - name: Step 6 - AI Core Evolution (SUPREME GEMINI-GROQ HYBRID)
+      - name: Step 7 - AI Core Evolution (SUPREME GEMINI-GROQ HYBRID)
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -163,7 +178,7 @@ jobs:
             fi
           fi
 
-      - name: Step 7 - Commit and Push Changes (Manifestation)
+      - name: Step 8 - Commit and Push Changes (Manifestation)
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
