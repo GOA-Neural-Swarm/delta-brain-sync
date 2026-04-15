@@ -1,14 +1,13 @@
-
 import numpy as np
 
 class FastOps:
     @staticmethod
     def silu(x):
-        return x / (1.0 + np.exp(-np.clip(x, -14, 14)))
+        return x / (1.0 + np.exp(-np.clip(x, -12, 12)))
 
     @staticmethod
     def d_silu(x, d):
-        s = 1.0 / (1.0 + np.exp(-np.clip(x, -14, 14)))
+        s = 1.0 / (1.0 + np.exp(-np.clip(x, -12, 12)))
         return d * (s * (1.0 + x * (1.0 - s)))
 
     @staticmethod
@@ -23,10 +22,10 @@ class FastOps:
     def softmax(x):
         m = np.max(x, axis=-1, keepdims=True)
         e = np.exp(x - m)
-        return e / (np.sum(e, axis=-1, keepdims=True) + 1e-12)
+        return e / (np.sum(e, axis=-1, keepdims=True) + 1e-9)
 
 class Linear:
-    def __init__(self, i, o, name=""):
+    def __init__(self, i, o):
         self.W = (np.random.randn(i, o) * np.sqrt(2.0 / i)).astype("f")
         self.b = np.zeros(o, "f")
         self.x, self.dW, self.db = None, None, None
@@ -72,7 +71,7 @@ class RoPE:
         return np.concatenate([x1 * c - x2 * sn, x2 * c + x1 * sn], axis=-1)
 
 class SovereignAttention:
-    def __init__(self, d, h=8, k=4):
+    def __init__(self, d, h=8, k=2):
         self.d, self.h, self.k, self.hd = d, h, k, d // h
         self.g = h // k
         self.wq, self.wk, self.wv, self.wo = Linear(d, d), Linear(d, k * self.hd), Linear(d, k * self.hd), Linear(d, d)
@@ -84,7 +83,8 @@ class SovereignAttention:
         k = self.wk.forward(x).reshape(b, s, self.k, self.hd)
         v = self.wv.forward(x).reshape(b, s, self.k, self.hd)
         self.q, self.kc, self.vc = self.rope.apply(q), self.rope.apply(k), v
-        kr, vr = np.repeat(self.kc, self.g, axis=2), np.repeat(self.vc, self.g, axis=2)
+        kr = np.repeat(self.kc, self.g, axis=2)
+        vr = np.repeat(self.vc, self.g, axis=2)
         at = np.einsum("bshd,bthd->bsht", self.q, kr) * self.sc
         self.p = FastOps.softmax(at)
         out = np.einsum("bsht,bthd->bshd", self.p, vr).reshape(b, s, self.d)
@@ -93,7 +93,8 @@ class SovereignAttention:
     def backward(self, d):
         b, s, _ = d.shape
         do = self.wo.backward(d).reshape(b, s, self.h, self.hd)
-        kr, vr = np.repeat(self.kc, self.g, axis=2), np.repeat(self.vc, self.g, axis=2)
+        kr = np.repeat(self.kc, self.g, axis=2)
+        vr = np.repeat(self.vc, self.g, axis=2)
         dvr = np.einsum("bsht,bshd->bthd", self.p, do)
         dp = np.einsum("bshd,bthd->bsht", do, vr)
         da = self.p * (dp - np.sum(self.p * dp, axis=-1, keepdims=True)) * self.sc
@@ -119,35 +120,35 @@ class SovereignMLP:
 
 class GeminiGroqBlock:
     def __init__(self, d):
-        self.n1, self.n2 = RMSNorm(d), RMSNorm(d)
-        self.gemini_path = SovereignAttention(d)
-        self.groq_path = SovereignMLP(d)
+        self.norm = RMSNorm(d)
+        self.gemini = SovereignAttention(d)
+        self.groq = SovereignMLP(d)
         self.gate = Linear(d, 2)
 
     def forward(self, x):
         self.res = x
-        nx = self.n1.forward(x)
+        nx = self.norm.forward(x)
         self.g_logits = self.gate.forward(nx)
         self.g_probs = FastOps.softmax(self.g_logits)
-        self.out_gemini = self.gemini_path.forward(nx)
-        self.out_groq = self.groq_path.forward(self.n2.forward(nx))
+        self.out_gemini = self.gemini.forward(nx)
+        self.out_groq = self.groq.forward(nx)
         combined = (self.g_probs[..., 0:1] * self.out_gemini) + (self.g_probs[..., 1:2] * self.out_groq)
-        return self.res + combined
+        return x + combined
 
     def backward(self, d):
-        nx = self.n1.x
+        nx = self.norm.x
         dg_gemini = d * self.g_probs[..., 0:1]
         dg_groq = d * self.g_probs[..., 1:2]
-        d_gemini = self.gemini_path.backward(dg_gemini)
-        d_groq = self.n2.backward(self.groq_path.backward(dg_groq))
+        d_gemini = self.gemini.backward(dg_gemini)
+        d_groq = self.groq.backward(dg_groq)
         d_logits_gemini = (d * self.out_gemini).sum(axis=-1, keepdims=True)
         d_logits_groq = (d * self.out_groq).sum(axis=-1, keepdims=True)
         d_logits = np.concatenate([d_logits_gemini, d_logits_groq], axis=-1)
         d_gate = self.gate.backward(self.g_probs * (d_logits - np.sum(self.g_probs * d_logits, axis=-1, keepdims=True)))
-        return d + self.n1.backward(d_gemini + d_groq + d_gate)
+        return d + self.norm.backward(d_gemini + d_groq + d_gate)
 
 class OMEGA_ASI:
-    def __init__(self, i=784, h=256, o=10, depth=4):
+    def __init__(self, i=784, h=128, o=10, depth=4):
         self.stem = Linear(i, h)
         self.blocks = [GeminiGroqBlock(h) for _ in range(depth)]
         self.norm = RMSNorm(h)
@@ -157,13 +158,15 @@ class OMEGA_ASI:
         if x.ndim == 2: x = x[:, None, :]
         x = self.stem.forward(x)
         for b in self.blocks: x = b.forward(x)
-        self.feat = self.norm.forward(x[:, 0, :])
+        self.feat = self.norm.forward(x[:, -1, :])
         return self.head.forward(self.feat)
 
     def backward(self, d):
-        d = self.norm.backward(self.head.backward(d))[:, None, :]
-        for b in reversed(self.blocks): d = b.backward(d)
-        self.stem.backward(d[:, 0, :])
+        d = self.norm.backward(self.head.backward(d))
+        dz = np.zeros((d.shape[0], 1, d.shape[1]), dtype="f")
+        dz[:, -1, :] = d
+        for b in reversed(self.blocks): dz = b.backward(dz)
+        self.stem.backward(dz)
 
     def get_params(self):
         p = []
@@ -177,39 +180,39 @@ class OMEGA_ASI:
 class Lion:
     def __init__(self, params, lr=1e-4, b1=0.9, b2=0.99, wd=0.01):
         self.params, self.lr, self.b1, self.b2, self.wd = params, lr, b1, b2, wd
-        self.m = {id(p): np.zeros_like(p.W) if hasattr(p, "W") else np.zeros_like(p.g) for p in params}
-        self.mb = {id(p): np.zeros_like(p.b) if hasattr(p, "b") else None for p in params}
+        self.m = {id(p): (np.zeros_like(p.W) if hasattr(p, "W") else np.zeros_like(p.g)) for p in params}
+        self.mb = {id(p): (np.zeros_like(p.b) if hasattr(p, "b") else None) for p in params}
 
     def step(self, lr_scale=1.0):
         lr = self.lr * lr_scale
         for p in self.params:
             pid = id(p)
             if hasattr(p, "W"):
-                for attr, mom in [(("W", self.m)), (("b", self.mb))]:
+                for attr, mom in [("W", self.m), ("b", self.mb)]:
                     if mom[pid] is None: continue
-                    g, w = getattr(p, "d" + attr[0]), getattr(p, attr[0])
+                    g, w = getattr(p, "d" + attr), getattr(p, attr)
                     u = np.sign(self.b1 * mom[pid] + (1.0 - self.b1) * g)
-                    w -= lr * (u + self.wd * w if attr[0] == "W" else u)
+                    w -= lr * (u + self.wd * w if attr == "W" else u)
                     mom[pid] = self.b2 * mom[pid] + (1.0 - self.b2) * g
-                    setattr(p, attr[0], w)
+                    setattr(p, attr, w)
             else:
                 u = np.sign(self.b1 * self.m[pid] + (1.0 - self.b1) * p.dg)
                 p.g -= lr * (u + self.wd * p.g)
                 self.m[pid] = self.b2 * self.m[pid] + (1.0 - self.b2) * p.dg
 
 def main():
-    N, D, C = 4096, 784, 10
-    X = (np.random.randn(N, D) * 0.1).astype("f")
+    N, D, C = 2048, 784, 10
+    X = (np.random.randn(N, D) * 0.02).astype("f")
     Y = np.random.randint(0, C, N)
-    model = OMEGA_ASI(i=D, h=128, o=C, depth=4)
+    model = OMEGA_ASI(i=D, h=128, o=C, depth=3)
     params = model.get_params()
-    opt = Lion(params, lr=5e-4, wd=0.05)
-    bs, epochs = 128, 50
+    opt = Lion(params, lr=3e-4, wd=0.1)
+    bs, epochs = 64, 30
 
     for epoch in range(epochs):
         idx = np.random.permutation(N)
         l_sum, a_sum = 0, 0
-        lr_s = (epoch + 1) / 10 if epoch < 10 else 0.5 * (1 + np.cos(np.pi * (epoch - 10) / (epochs - 10)))
+        lr_s = (epoch + 1) / 5 if epoch < 5 else 0.5 * (1 + np.cos(np.pi * (epoch - 5) / (epochs - 5)))
 
         for i in range(0, N, bs):
             xb, yb = X[idx[i:i+bs]], Y[idx[i:i+bs]]
@@ -227,10 +230,9 @@ def main():
                 for p in params:
                     if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
                     if hasattr(p, "dg"): p.dg /= gn
-
             opt.step(lr_s)
 
-        print(f"EPOCH {epoch+1:02d} | LOSS: {l_sum/N:.4f} | ACC: {a_sum/N:.4f} | LR: {opt.lr*lr_s:.6f}")
+        print(f"STEP {epoch+1:02d} | LOSS: {l_sum/N:.4f} | ACC: {a_sum/N:.4f} | LR: {opt.lr*lr_s:.6f}")
 
 if __name__ == "__main__":
     main()
