@@ -1,5 +1,5 @@
-import numpy as np
 
+import numpy as np
 
 class Linear:
     def __init__(self, i, o, s=None):
@@ -17,7 +17,6 @@ class Linear:
         dx = dy @ self.W.T
         return dx.reshape(self.x.shape[:-1] + (self.W.shape[0],))
 
-
 class RMSNorm:
     def __init__(self, d, e=1e-6):
         self.g, self.e = np.ones(d, "f4"), e
@@ -34,7 +33,6 @@ class RMSNorm:
         dn = dy * self.g
         return self.r * (dn - xn * np.mean(dn * xn, -1, keepdims=True))
 
-
 class RoPE:
     def __init__(self, d, m=4096):
         f = 1.0 / (10000 ** (np.arange(0, d, 2) / d))
@@ -49,7 +47,6 @@ class RoPE:
             return np.concatenate([x1 * c + x2 * sn, x2 * c - x1 * sn], -1)
         return np.concatenate([x1 * c - x2 * sn, x2 * c + x1 * sn], -1)
 
-
 class RedundantLogicCore:
     def __init__(self, d):
         self.gemini_path = Linear(d, d * 2)
@@ -59,7 +56,6 @@ class RedundantLogicCore:
     def forward(self, x):
         self.ge = self.gemini_path.forward(x)
         self.gr = self.groq_path.forward(x)
-        # SwiGLU-style redundancy fusion
         self.act = (self.ge * (1 / (1 + np.exp(-np.clip(self.ge, -12, 12))))) * self.gr
         return self.out.forward(self.act)
 
@@ -70,7 +66,6 @@ class RedundantLogicCore:
         dge = dact * self.gr * (sig * (1 + self.ge * (1 - sig)))
         dgr = dact * sw
         return self.gemini_path.backward(dge) + self.groq_path.backward(dgr)
-
 
 class SovereignGQA:
     def __init__(self, d, h=8, g=2):
@@ -106,24 +101,15 @@ class SovereignGQA:
         dke = np.einsum("bsht,bshd->bthd", da, self.qr)
         dve = np.einsum("bsht,bshd->bthd", self.p, dy_wo)
         dq = self.rope.apply(dqr, True)
-        dk = self.rope.apply(
-            dke.reshape(b, s, self.h // self.g, self.g, self.hd).sum(3), True
-        )
+        dk = self.rope.apply(dke.reshape(b, s, self.h // self.g, self.g, self.hd).sum(3), True)
         dv = dve.reshape(b, s, self.h // self.g, self.g, self.hd).sum(3)
-        return (
-            self.wq.backward(dq.reshape(b, s, -1))
-            + self.wk.backward(dk.reshape(b, s, -1))
-            + self.wv.backward(dv.reshape(b, s, -1))
-        )
-
+        return self.wq.backward(dq.reshape(b, s, -1)) + self.wk.backward(dk.reshape(b, s, -1)) + self.wv.backward(dv.reshape(b, s, -1))
 
 class SovereignMoE:
     def __init__(self, d, n=4, e=2):
         self.n, self.d, self.f = n, d, d * e
         self.gate = Linear(d, n)
-        self.experts = [
-            [Linear(d, self.f), Linear(self.f, d), Linear(d, self.f)] for _ in range(n)
-        ]
+        self.experts = [[Linear(d, self.f), Linear(self.f, d), Linear(d, self.f)] for _ in range(n)]
 
     def forward(self, x):
         self.x = x
@@ -138,7 +124,7 @@ class SovereignMoE:
             sig = 1 / (1 + np.exp(-np.clip(x1, -12, 12)))
             sw = x1 * sig
             act = sw * x3
-            o = self.w2[i].forward(act)
+            o = w2.forward(act)
             self.cache.append((x1, x3, sig, sw, act))
             out += self.pr[..., i : i + 1] * o
         return out
@@ -147,15 +133,14 @@ class SovereignMoE:
         dx, dpr = np.zeros_like(self.x), np.zeros_like(self.pr)
         for i in range(self.n):
             x1, x3, sig, sw, act = self.cache[i]
-            dpr[..., i] = (dy * self.w2[i].forward(act)).sum(-1)
+            dpr[..., i] = (dy * self.experts[i][1].forward(act)).sum(-1)
             dy_exp = dy * self.pr[..., i : i + 1]
-            dact = self.w2[i].backward(dy_exp)
+            dact = self.experts[i][1].backward(dy_exp)
             dx3, dsw = dact * sw, dact * x3
             dx1 = dsw * (sig * (1 + x1 * (1 - sig)))
-            dx += w1.backward(dx1) + w3.backward(dx3)
+            dx += self.experts[i][0].backward(dx1) + self.experts[i][2].backward(dx3)
         dl = self.pr * (dpr - (self.pr * dpr).sum(-1, keepdims=True))
         return dx + self.gate.backward(dl)
-
 
 class SovereignBlock:
     def __init__(self, d):
@@ -174,7 +159,6 @@ class SovereignBlock:
         dy = dy + self.ln2.backward(self.logic.backward(dy))
         dy = dy + self.ln1.backward(self.attn.backward(dy))
         return dy
-
 
 class OMEGA_ASI:
     def __init__(self, i, h, o, d=2):
@@ -213,7 +197,6 @@ class OMEGA_ASI:
         g(self)
         return list(set(p))
 
-
 class AdamW:
     def __init__(self, p, lr=1e-3, b1=0.9, b2=0.999, wd=0.01):
         self.p, self.lr, self.b1, self.b2, self.wd, self.t = p, lr, b1, b2, wd, 0
@@ -250,7 +233,6 @@ class AdamW:
                 pv = getattr(x, a)
                 pv -= lr_t * (mh / (np.sqrt(vh) + 1e-8) + self.wd * pv)
                 setattr(x, a, pv)
-
 
 def train():
     N, D, C, BS, E = 1024, 784, 10, 32, 100
@@ -291,7 +273,6 @@ def train():
             print(
                 f"EPOCH {epoch+1:03d} | LOSS: {l_sum/N:.4f} | ACC: {a_sum/N:.4f} | GRAD: {gn:.2f}"
             )
-
 
 if __name__ == "__main__":
     train()
