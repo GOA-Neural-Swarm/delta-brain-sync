@@ -51,8 +51,8 @@ jobs:
           printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > ~/.kaggle/kaggle.json
           # Secure the Kaggle API key file.
           chmod 600 ~/.kaggle/kaggle.json
-          # Push the current directory as a Kaggle kernel.
-          kaggle kernels push -p . || echo "Kaggle API busy or encountered an issue. Continuing workflow."
+          # Push the specific kaggle_brain directory as a Kaggle kernel, fallback to root if needed.
+          kaggle kernels push -p ./kaggle_brain || kaggle kernels push -p . || echo "Kaggle API busy or encountered an issue. Continuing workflow."
 
       - name: Step 4 - Wait for Kaggle Processing
         run: |
@@ -94,10 +94,10 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          # 1. INGESTION & PURIFICATION
-          if [ -f "main.py" ]; then
-            OLD_CODE=$(python3 -c "import json; print(json.dumps(open('main.py').read()))")
-            echo "🧠 [MEMORY-LOADED]: Previous brain state captured."
+          # 1. INGESTION & PURIFICATION (Targeting kaggle_brain/main.py)
+          if [ -f "kaggle_brain/main.py" ]; then
+            OLD_CODE=$(python3 -c "import json; print(json.dumps(open('kaggle_brain/main.py').read()))")
+            echo "🧠 [MEMORY-LOADED]: Previous brain state captured from kaggle_brain."
           else
             OLD_CODE="\"# No prior logic found. Initializing Genesis.\""
             echo "🌑 [VOID-START]: Initializing new neural structure."
@@ -106,7 +106,7 @@ jobs:
           # 2. PROTOCOL SETTINGS
           SYSTEM_ROLE="You are OMEGA-ASI, the Sovereign Architect. Your task is Recursive Self-Evolution. Focus on High-Performance Modular Neural Architectures."
           HYPER_PROMPT="Analyze this current code for flaws and missing features. Rewrite a SUPERIOR version of main.py. Requirements: 1. Use numpy for 784-feature synthetic data. 2. Ensure high-performance modular neural architecture. 3. Optimize the training loop for speed and accuracy. 4. INTEGRATE Gemini and Groq redundant logic. RETURN RAW PYTHON CODE ONLY. NO EXPLANATIONS. NO MARKDOWN."
-
+          
           # 3. RECURSIVE EVOLUTION LOOP (3 CYCLES)
           EVOLUTION_SUCCESS=false
           for i in {1..3}; do
@@ -150,7 +150,7 @@ jobs:
             if [ ! -z "$CONTENT" ] && [ ${#CONTENT} -gt 300 ]; then
               echo "$CONTENT" > candidate_main.py
               if python3 -m py_compile candidate_main.py; then
-                mv candidate_main.py main.py
+                mv candidate_main.py kaggle_brain/main.py
                 echo "✅ [HYPER-STABILIZED]: Brain successfully evolved and verified via Hybrid Logic."
                 EVOLUTION_SUCCESS=true
                 break
@@ -159,16 +159,16 @@ jobs:
                 rm candidate_main.py
               fi
             else
-              echo "❌ [SIGNAL-LOST]: Cycle $i failed to produce valid genetic material."
+               echo "❌ [SIGNAL-LOST]: Cycle $i failed to produce valid genetic material."
             fi
           done
 
           # 4. SURVIVAL FALLBACK
           if [ "$EVOLUTION_SUCCESS" != "true" ]; then
             echo "🚨 Critical Evolution Failure. Activating Survival Protocol."
-            if [ ! -s "main.py" ] || [ ! -f "main.py" ]; then
+            if [ ! -s "kaggle_brain/main.py" ] || [ ! -f "kaggle_brain/main.py" ]; then
               if [ -f "survival_brain.py" ]; then
-                cp survival_brain.py main.py
+                cp survival_brain.py kaggle_brain/main.py
                 echo "🛡️ [RECOVERY-INJECTED]: Baseline brain established from survival_brain.py."
               else
                 echo "⚠️ [ERROR]: survival_brain.py missing. System integrity at risk."
@@ -187,7 +187,6 @@ jobs:
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
 
           git add .
-
           if ! git diff-index --quiet HEAD; then
             git commit -m "🧬 [HYPER_EVOLUTION] Full Cycle Manifested: $(date) [skip ci]"
             git push origin main --force
