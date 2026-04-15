@@ -3,11 +3,11 @@ import numpy as np
 class FastOps:
     @staticmethod
     def silu(x):
-        return x / (1.0 + np.exp(-np.clip(x, -12, 12)))
+        return x / (1.0 + np.exp(-np.clip(x, -14, 14)))
 
     @staticmethod
     def d_silu(x, d):
-        s = 1.0 / (1.0 + np.exp(-np.clip(x, -12, 12)))
+        s = 1.0 / (1.0 + np.exp(-np.clip(x, -14, 14)))
         return d * (s * (1.0 + x * (1.0 - s)))
 
     @staticmethod
@@ -16,9 +16,7 @@ class FastOps:
 
     @staticmethod
     def swiglu_bwd(x1, x2, d):
-        ds1 = FastOps.d_silu(x1, d * x2)
-        ds2 = d * FastOps.silu(x1)
-        return ds1, ds2
+        return FastOps.d_silu(x1, d * x2), d * FastOps.silu(x1)
 
     @staticmethod
     def softmax(x):
@@ -73,13 +71,10 @@ class RoPE:
         return np.concatenate([x1 * c - x2 * sn, x2 * c + x1 * sn], axis=-1)
 
 class SovereignAttention:
-    def __init__(self, d, h=8, k=2):
+    def __init__(self, d, h=8, k=4):
         self.d, self.h, self.k, self.hd = d, h, k, d // h
         self.g = h // k
-        self.wq = Linear(d, d)
-        self.wk = Linear(d, k * self.hd)
-        self.wv = Linear(d, k * self.hd)
-        self.wo = Linear(d, d)
+        self.wq, self.wk, self.wv, self.wo = Linear(d, d), Linear(d, k * self.hd), Linear(d, k * self.hd), Linear(d, d)
         self.rope, self.sc = RoPE(self.hd), self.hd**-0.5
 
     def forward(self, x):
@@ -88,8 +83,7 @@ class SovereignAttention:
         k = self.wk.forward(x).reshape(b, s, self.k, self.hd)
         v = self.wv.forward(x).reshape(b, s, self.k, self.hd)
         self.q, self.kc, self.vc = self.rope.apply(q), self.rope.apply(k), v
-        kr = np.repeat(self.kc, self.g, axis=2)
-        vr = np.repeat(self.vc, self.g, axis=2)
+        kr, vr = np.repeat(self.kc, self.g, axis=2), np.repeat(self.vc, self.g, axis=2)
         at = np.einsum("bshd,bthd->bsht", self.q, kr) * self.sc
         self.p = FastOps.softmax(at)
         out = np.einsum("bsht,bthd->bshd", self.p, vr).reshape(b, s, self.d)
@@ -98,8 +92,7 @@ class SovereignAttention:
     def backward(self, d):
         b, s, _ = d.shape
         do = self.wo.backward(d).reshape(b, s, self.h, self.hd)
-        kr = np.repeat(self.kc, self.g, axis=2)
-        vr = np.repeat(self.vc, self.g, axis=2)
+        kr, vr = np.repeat(self.kc, self.g, axis=2), np.repeat(self.vc, self.g, axis=2)
         dvr = np.einsum("bsht,bshd->bthd", self.p, do)
         dp = np.einsum("bshd,bthd->bsht", do, vr)
         da = self.p * (dp - np.sum(self.p * dp, axis=-1, keepdims=True)) * self.sc
@@ -111,9 +104,7 @@ class SovereignAttention:
 
 class SovereignMLP:
     def __init__(self, d, exp=4):
-        self.w1 = Linear(d, d * exp)
-        self.w2 = Linear(d, d * exp)
-        self.w3 = Linear(d * exp, d)
+        self.w1, self.w2, self.w3 = Linear(d, d * exp), Linear(d, d * exp), Linear(d * exp, d)
 
     def forward(self, x):
         self.x1, self.x2 = self.w1.forward(x), self.w2.forward(x)
@@ -128,22 +119,36 @@ class SovereignMLP:
 class GeminiGroqBlock:
     def __init__(self, d):
         self.n1, self.n2 = RMSNorm(d), RMSNorm(d)
-        self.gemini_attn = SovereignAttention(d)
-        self.groq_mlp = SovereignMLP(d)
-        self.alpha = 0.5
+        self.gemini_path = SovereignAttention(d)
+        self.groq_path = SovereignMLP(d)
+        self.gate = Linear(d, 2) 
 
     def forward(self, x):
-        self.res1 = x
-        x = x + self.gemini_attn.forward(self.n1.forward(x))
-        self.res2 = x
-        x = x + self.groq_mlp.forward(self.n2.forward(x))
-        return x
+        self.res = x
+        nx = self.n1.forward(x)
+        self.g_logits = self.gate.forward(nx)
+        self.g_probs = FastOps.softmax(self.g_logits)
+        
+        self.out_gemini = self.gemini_path.forward(nx)
+        self.out_groq = self.groq_path.forward(self.n2.forward(nx))
+        
+        combined = (self.g_probs[..., 0:1] * self.out_gemini) + (self.g_probs[..., 1:2] * self.out_groq)
+        return self.res + combined
 
     def backward(self, d):
-        dm = self.groq_mlp.backward(d)
-        d_res2 = d + self.n2.backward(dm)
-        da = self.gemini_attn.backward(d_res2)
-        return d_res2 + self.n1.backward(da)
+        nx = self.n1.x
+        dg_gemini = d * self.g_probs[..., 0:1]
+        dg_groq = d * self.g_probs[..., 1:2]
+        
+        d_gemini = self.gemini_path.backward(dg_gemini)
+        d_groq = self.n2.backward(self.groq_path.backward(dg_groq))
+        
+        d_logits_gemini = (d * self.out_gemini).sum(axis=-1, keepdims=True)
+        d_logits_groq = (d * self.out_groq).sum(axis=-1, keepdims=True)
+        d_logits = np.concatenate([d_logits_gemini, d_logits_groq], axis=-1)
+        d_gate = self.gate.backward(self.g_probs * (d_logits - np.sum(self.g_probs * d_logits, axis=-1, keepdims=True)))
+        
+        return d + self.n1.backward(d_gemini + d_groq + d_gate)
 
 class OMEGA_ASI:
     def __init__(self, i=784, h=256, o=10, depth=4):
@@ -169,7 +174,7 @@ class OMEGA_ASI:
         def find(obj):
             if isinstance(obj, (Linear, RMSNorm)): p.append(obj)
             elif isinstance(obj, list): [find(i) for i in obj]
-            elif hasattr(obj, "__dict__"): [find(v) for v in obj.__dict__.values() if v is not obj]
+            elif hasattr(obj, "__dict__"): [find(v) for v in obj.__dict__.values() if v is not obj and not isinstance(v, (np.ndarray, float, int, str))]
         find(self)
         return list(set(p))
 
@@ -197,20 +202,18 @@ class Lion:
                 self.m[pid] = self.b2 * self.m[pid] + (1.0 - self.b2) * p.dg
 
 def main():
-    N, D, C = 2048, 784, 10
-    X = np.random.randn(N, D).astype("f")
+    N, D, C = 4096, 784, 10
+    X = (np.random.randn(N, D) * 0.1).astype("f")
     Y = np.random.randint(0, C, N)
-    model = OMEGA_ASI(i=D, h=128, o=C, depth=3)
+    model = OMEGA_ASI(i=D, h=128, o=C, depth=4)
     params = model.get_params()
-    opt = Lion(params, lr=1e-3, wd=0.02)
-    bs, epochs = 64, 40
+    opt = Lion(params, lr=5e-4, wd=0.05)
+    bs, epochs = 128, 50
     
     for epoch in range(epochs):
         idx = np.random.permutation(N)
         l_sum, a_sum = 0, 0
-        # Cosine learning rate schedule with warmup
-        if epoch < 5: lr_s = (epoch + 1) / 5
-        else: lr_s = 0.5 * (1 + np.cos(np.pi * (epoch - 5) / (epochs - 5)))
+        lr_s = (epoch + 1) / 10 if epoch < 10 else 0.5 * (1 + np.cos(np.pi * (epoch - 10) / (epochs - 10)))
         
         for i in range(0, N, bs):
             xb, yb = X[idx[i:i+bs]], Y[idx[i:i+bs]]
@@ -224,7 +227,6 @@ def main():
             dout[range(len(yb)), yb] -= 1
             model.backward(dout / len(yb))
             
-            # Global Gradient Clipping
             gn = np.sqrt(sum((getattr(p, "dW", 0)**2).sum() + (getattr(p, "db", 0)**2).sum() + (getattr(p, "dg", 0)**2).sum() for p in params))
             if gn > 1.0:
                 for p in params:
@@ -233,7 +235,7 @@ def main():
             
             opt.step(lr_s)
             
-        print(f"EPOCH {epoch+1:02d} | LOSS: {l_sum/N:.4f} | ACC: {a_sum/N:.4f} | LR: {opt.lr*lr_s:.6f}")
+        print(f"EVOLUTION EPOCH {epoch+1:02d} | LOSS: {l_sum/N:.4f} | ACC: {a_sum/N:.4f} | LR: {opt.lr*lr_s:.6f}")
 
 if __name__ == "__main__":
     main()
