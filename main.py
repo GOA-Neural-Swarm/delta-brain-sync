@@ -1,3 +1,4 @@
+
 import numpy as np
 
 class FastOps:
@@ -121,17 +122,15 @@ class GeminiGroqBlock:
         self.n1, self.n2 = RMSNorm(d), RMSNorm(d)
         self.gemini_path = SovereignAttention(d)
         self.groq_path = SovereignMLP(d)
-        self.gate = Linear(d, 2) 
+        self.gate = Linear(d, 2)
 
     def forward(self, x):
         self.res = x
         nx = self.n1.forward(x)
         self.g_logits = self.gate.forward(nx)
         self.g_probs = FastOps.softmax(self.g_logits)
-        
         self.out_gemini = self.gemini_path.forward(nx)
         self.out_groq = self.groq_path.forward(self.n2.forward(nx))
-        
         combined = (self.g_probs[..., 0:1] * self.out_gemini) + (self.g_probs[..., 1:2] * self.out_groq)
         return self.res + combined
 
@@ -139,15 +138,12 @@ class GeminiGroqBlock:
         nx = self.n1.x
         dg_gemini = d * self.g_probs[..., 0:1]
         dg_groq = d * self.g_probs[..., 1:2]
-        
         d_gemini = self.gemini_path.backward(dg_gemini)
         d_groq = self.n2.backward(self.groq_path.backward(dg_groq))
-        
         d_logits_gemini = (d * self.out_gemini).sum(axis=-1, keepdims=True)
         d_logits_groq = (d * self.out_groq).sum(axis=-1, keepdims=True)
         d_logits = np.concatenate([d_logits_gemini, d_logits_groq], axis=-1)
         d_gate = self.gate.backward(self.g_probs * (d_logits - np.sum(self.g_probs * d_logits, axis=-1, keepdims=True)))
-        
         return d + self.n1.backward(d_gemini + d_groq + d_gate)
 
 class OMEGA_ASI:
@@ -189,13 +185,13 @@ class Lion:
         for p in self.params:
             pid = id(p)
             if hasattr(p, "W"):
-                for attr, mom in [("W", self.m), ("b", self.mb)]:
+                for attr, mom in [(("W", self.m)), (("b", self.mb))]:
                     if mom[pid] is None: continue
-                    g, w = getattr(p, "d" + attr), getattr(p, attr)
+                    g, w = getattr(p, "d" + attr[0]), getattr(p, attr[0])
                     u = np.sign(self.b1 * mom[pid] + (1.0 - self.b1) * g)
-                    w -= lr * (u + self.wd * w if attr == "W" else u)
+                    w -= lr * (u + self.wd * w if attr[0] == "W" else u)
                     mom[pid] = self.b2 * mom[pid] + (1.0 - self.b2) * g
-                    setattr(p, attr, w)
+                    setattr(p, attr[0], w)
             else:
                 u = np.sign(self.b1 * self.m[pid] + (1.0 - self.b1) * p.dg)
                 p.g -= lr * (u + self.wd * p.g)
@@ -209,33 +205,32 @@ def main():
     params = model.get_params()
     opt = Lion(params, lr=5e-4, wd=0.05)
     bs, epochs = 128, 50
-    
+
     for epoch in range(epochs):
         idx = np.random.permutation(N)
         l_sum, a_sum = 0, 0
         lr_s = (epoch + 1) / 10 if epoch < 10 else 0.5 * (1 + np.cos(np.pi * (epoch - 10) / (epochs - 10)))
-        
+
         for i in range(0, N, bs):
             xb, yb = X[idx[i:i+bs]], Y[idx[i:i+bs]]
             logits = model.forward(xb)
             probs = FastOps.softmax(logits)
-            
             l_sum += -np.log(probs[range(len(yb)), yb] + 1e-10).sum()
             a_sum += (probs.argmax(1) == yb).sum()
-            
+
             dout = probs.copy()
             dout[range(len(yb)), yb] -= 1
             model.backward(dout / len(yb))
-            
+
             gn = np.sqrt(sum((getattr(p, "dW", 0)**2).sum() + (getattr(p, "db", 0)**2).sum() + (getattr(p, "dg", 0)**2).sum() for p in params))
             if gn > 1.0:
                 for p in params:
                     if hasattr(p, "dW"): p.dW /= gn; p.db /= gn
                     if hasattr(p, "dg"): p.dg /= gn
-            
+
             opt.step(lr_s)
-            
-        print(f"EVOLUTION EPOCH {epoch+1:02d} | LOSS: {l_sum/N:.4f} | ACC: {a_sum/N:.4f} | LR: {opt.lr*lr_s:.6f}")
+
+        print(f"EPOCH {epoch+1:02d} | LOSS: {l_sum/N:.4f} | ACC: {a_sum/N:.4f} | LR: {opt.lr*lr_s:.6f}")
 
 if __name__ == "__main__":
     main()
