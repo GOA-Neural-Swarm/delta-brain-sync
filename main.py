@@ -1,3 +1,4 @@
+
 import numpy as np
 
 class Tensor:
@@ -231,7 +232,8 @@ def train():
             probs /= probs.sum(-1, keepdims=True)
             loss = -np.mean(np.log(probs[np.arange(len(yb)), yb] + 1e-12))
             acc = np.mean(np.argmax(probs, -1) == yb)
-            ls.append(loss); ac.append(acc)
+            ls.append(loss)
+            ac.append(acc)
             dl = probs.copy()
             dl[np.arange(len(yb)), yb] -= 1
             model.backward(dl / len(yb))
