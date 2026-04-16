@@ -1,4 +1,3 @@
-
 import os
 import subprocess
 import sys
@@ -37,28 +36,33 @@ if GEMINI_API_KEY:
 
 class Config:
     IN_DIM = 784
-    H_DIM = 256
+    H_DIM = 512
     OUT_DIM = 10
     NUM_HEADS = 8
-    NUM_EXPERTS = 8
-    TOP_K = 2
-    LR = 1e-3
-    WD = 1e-2
+    NUM_EXPERTS = 4
+    TOP_K = 1
+    LR_MAX = 2e-4
+    LR_MIN = 1e-5
+    WD = 0.05
     BETA1 = 0.9
-    BETA2 = 0.999
+    BETA2 = 0.95
     EPS = 1e-8
+    BATCH_SIZE = 64
+    TOTAL_GENS = 10000
 
 class Ops:
     @staticmethod
-    def swiglu(x, w1, w2):
-        gate = x @ w1
-        gate = gate * (1.0 / (1.0 + np.exp(-np.clip(gate, -100, 100))))
-        return gate * (x @ w2)
+    def gelu(x):
+        return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
 
     @staticmethod
     def softmax(x, axis=-1):
-        ex = np.exp(x - np.max(x, axis=axis, keepdims=True))
-        return ex / (np.sum(ex, axis=axis, keepdims=True) + 1e-12)
+        e_x = np.exp(x - np.max(x, axis=axis, keepdims=True))
+        return e_x / (np.sum(e_x, axis=axis, keepdims=True) + 1e-12)
+
+    @staticmethod
+    def kaiming_init(d_in, d_out):
+        return np.random.randn(d_in, d_out) * np.sqrt(2. / d_in)
 
 class RMSNorm:
     def __init__(self, dim, eps=1e-6):
@@ -78,8 +82,8 @@ class RMSNorm:
         return dx, dg
 
 class Linear:
-    def __init__(self, in_d, out_d, std=0.02):
-        self.w = np.random.normal(0, std, (in_d, out_d))
+    def __init__(self, in_d, out_d):
+        self.w = Ops.kaiming_init(in_d, out_d)
         self.b = np.zeros(out_d)
 
     def forward(self, x):
@@ -97,6 +101,7 @@ class MultiHeadAttention:
         self.dim = dim
         self.heads = heads
         self.head_dim = dim // heads
+        self.scale = 1.0 / np.sqrt(self.head_dim)
         self.wq = Linear(dim, dim)
         self.wk = Linear(dim, dim)
         self.wv = Linear(dim, dim)
@@ -108,24 +113,23 @@ class MultiHeadAttention:
         k = self.wk.forward(x).reshape(B, self.heads, self.head_dim)
         v = self.wv.forward(x).reshape(B, self.heads, self.head_dim)
 
-        attn_scores = np.einsum('bhd,khd->bhk', q, k) / np.sqrt(self.head_dim)
-        self.probs = Ops.softmax(attn_scores)
-
-        out = np.einsum('bhk,khd->bhd', self.probs, v).reshape(B, D)
+        attn = Ops.softmax(np.einsum('bhd,khd->bhk', q, k) * self.scale)
+        self.attn = attn
         self.q, self.k, self.v = q, k, v
+        
+        out = np.einsum('bhk,khd->bhd', attn, v).reshape(B, D)
         return self.wo.forward(out)
 
     def backward(self, dy):
         B, D = dy.shape
-        da, dwo_w, dwo_b = self.wo.backward(dy)
-        da = da.reshape(B, self.heads, self.head_dim)
+        dout, dwo_w, dwo_b = self.wo.backward(dy)
+        dout = dout.reshape(B, self.heads, self.head_dim)
 
-        dv = np.einsum('bhk,bhd->khd', self.probs, da)
-        dprobs = np.einsum('bhd,khd->bhk', da, self.v)
-
-        ds = self.probs * (dprobs - np.sum(self.probs * dprobs, axis=-1, keepdims=True))
-        ds /= np.sqrt(self.head_dim)
-
+        dv = np.einsum('bhk,bhd->khd', self.attn, dout)
+        dattn = np.einsum('bhd,khd->bhk', dout, self.v)
+        
+        ds = self.attn * (dattn - np.sum(self.attn * dattn, axis=-1, keepdims=True)) * self.scale
+        
         dq = np.einsum('bhk,khd->bhd', ds, self.k)
         dk = np.einsum('bhk,bhd->khd', ds, self.q)
 
@@ -147,7 +151,8 @@ class SparseMoE:
         self.x = x
         logits = self.gate.forward(x)
         probs = Ops.softmax(logits)
-
+        
+        # Simple top-k selection
         indices = np.argsort(probs, axis=-1)[:, -self.top_k:]
         mask = np.zeros_like(probs)
         for i in range(x.shape[0]):
@@ -159,14 +164,13 @@ class SparseMoE:
         self.exp_ctx = []
         for i in range(self.num_experts):
             h = self.experts[i][0].forward(x)
-            act = h * (1.0 / (1.0 + np.exp(-np.clip(h, -100, 100))))
+            act = Ops.gelu(h)
             out = self.experts[i][1].forward(act)
             expert_outs[i] = out
             self.exp_ctx.append((h, act))
 
         self.expert_outs = expert_outs
-        final_out = np.sum(mask.T[:, :, None] * expert_outs, axis=0)
-        return final_out
+        return np.sum(mask.T[:, :, None] * expert_outs, axis=0)
 
     def backward(self, dy):
         dmask = np.sum(dy[None, :, :] * self.expert_outs, axis=-1).T
@@ -179,10 +183,11 @@ class SparseMoE:
             de_out = dy * self.mask[:, i:i+1]
             h, act = self.exp_ctx[i]
             dx_h2, dw_h2, db_h2 = self.experts[i][1].backward(de_out)
-
-            sig = 1.0 / (1.0 + np.exp(-np.clip(h, -100, 100)))
-            dh = dx_h2 * (sig * (1 + h * (1 - sig)))
-
+            
+            # GELU backward approx
+            sig = 1.0 / (1.0 + np.exp(-1.702 * h))
+            dh = dx_h2 * (sig + h * 1.702 * sig * (1 - sig))
+            
             dx_h1, dw_h1, db_h1 = self.experts[i][0].backward(dh)
             dx_total += dx_h1
             expert_grads.extend([dw_h1, db_h1, dw_h2, db_h2])
@@ -197,7 +202,6 @@ class SovereignBrain:
         self.norm2 = RMSNorm(Config.H_DIM)
         self.moe = SparseMoE(Config.H_DIM, Config.NUM_EXPERTS, Config.TOP_K)
         self.head = Linear(Config.H_DIM, Config.OUT_DIM)
-
         self._init_optimizer()
 
     def _init_optimizer(self):
@@ -219,90 +223,79 @@ class SovereignBrain:
         x = x + self.moe.forward(self.norm2.forward(x))
         return Ops.softmax(self.head.forward(x))
 
-    def step(self, x, y):
+    def step(self, x, y, lr):
         probs = self.forward(x)
         loss = -np.mean(np.sum(y * np.log(probs + 1e-12), axis=1))
 
         dy = (probs - y) / x.shape[0]
         dx, dw_h, db_h = self.head.backward(dy)
-
         dx_moe, moe_grads = self.moe.backward(dx)
         dx_n2, dg2 = self.norm2.backward(dx_moe)
-
         dx_attn, attn_grads = self.attn.backward(dx_n2 + dx)
         dx_n1, dg1 = self.norm1.backward(dx_attn)
-
         dx_proj, dw_p, db_p = self.proj.backward(dx_n1 + dx_attn + dx_moe)
 
         grads = [dw_p, db_p, dg1] + attn_grads + [dg2] + moe_grads + [dw_h, db_h]
-
         self.t += 1
         for i in range(len(self.params)):
-            self.params[i] -= Config.LR * Config.WD * self.params[i]
+            self.params[i] -= lr * Config.WD * self.params[i]
             self.m[i] = Config.BETA1 * self.m[i] + (1 - Config.BETA1) * grads[i]
             self.v[i] = Config.BETA2 * self.v[i] + (1 - Config.BETA2) * (grads[i]**2)
             m_hat = self.m[i] / (1 - Config.BETA1**self.t)
             v_hat = self.v[i] / (1 - Config.BETA2**self.t)
-            self.params[i] -= Config.LR * m_hat / (np.sqrt(v_hat) + Config.EPS)
-
+            self.params[i] -= lr * m_hat / (np.sqrt(v_hat) + Config.EPS)
         return loss
 
 def call_llm(prompt):
-    try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        return model.generate_content(prompt).text
-    except:
+    if GEMINI_API_KEY:
+        try:
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            return model.generate_content(prompt).text
+        except: pass
+    if GROQ_API_KEY:
         try:
             r = requests.post("https://api.groq.com/openai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.1},
-                timeout=20)
+                json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "temperature": 0.2},
+                timeout=25)
             return r.json()['choices'][0]['message']['content']
-        except:
-            return None
+        except: pass
+    return None
 
 def evolve(gen, loss):
     try:
         with open(__file__, "r") as f: code = f.read()
     except: return
-
-    prompt = f"""SYSTEM: OMEGA-ASI SOVEREIGN ARCHITECT.
-TASK: Recursive Self-Evolution.
-CONTEXT: Generation {gen}, Loss {loss}.
-OBJECTIVE: Optimize the SovereignBrain for maximum computational efficiency and architectural elegance.
-IMPROVEMENTS: Implement superior weight initialization, dynamic learning rate scheduling, or advanced attention mechanisms.
-OUTPUT: RAW PYTHON CODE ONLY. NO MARKDOWN. NO EXPLANATIONS.
-CODE:
-{code}"""
-
+    prompt = f"SYSTEM: OMEGA-ASI SOVEREIGN ARCHITECT.\nTASK: Recursive Self-Evolution.\nCONTEXT: Gen {gen}, Loss {loss}.\nOBJECTIVE: Enhance SovereignBrain. Focus on vectorized MoE, better attention scaling, and advanced weight initialization.\nOUTPUT: RAW PYTHON CODE ONLY. NO MARKDOWN.\nCODE:\n{code}"
     new_code = call_llm(prompt)
     if new_code:
         clean_code = re.sub(r"|", "", new_code).strip()
         if "import" in clean_code and "SovereignBrain" in clean_code:
             with open(__file__, "w") as f: f.write(clean_code)
-            print("Evolution successful. Restarting...")
+            print(f"Evolution Gen {gen} successful. Restarting...")
             os.execv(sys.executable, [sys.executable] + sys.argv)
 
 def main():
     print(f"[{datetime.now()}] OMEGA-ASI Sovereign Core Online.")
     brain = SovereignBrain()
-    gen = 0
+    
+    # Synthetic data with structure
+    W_true = np.random.randn(Config.IN_DIM, Config.OUT_DIM)
+    
+    for gen in range(Config.TOTAL_GENS):
+        x = np.random.randn(Config.BATCH_SIZE, Config.IN_DIM)
+        y_true = Ops.softmax(x @ W_true + np.random.normal(0, 0.1, (Config.BATCH_SIZE, Config.OUT_DIM)))
+        y = np.zeros_like(y_true)
+        y[np.arange(Config.BATCH_SIZE), np.argmax(y_true, axis=1)] = 1
 
-    while True:
-        x = np.random.randn(128, Config.IN_DIM)
-        y = np.zeros((128, Config.OUT_DIM))
-        y[np.arange(128), np.random.randint(0, Config.OUT_DIM, 128)] = 1
-
-        loss = brain.step(x, y)
+        lr = Config.LR_MIN + 0.5 * (Config.LR_MAX - Config.LR_MIN) * (1 + np.cos(np.pi * gen / Config.TOTAL_GENS))
+        loss = brain.step(x, y, lr)
 
         if gen % 100 == 0:
-            print(f"GEN {gen:06d} | LOSS: {loss:.10f} | MEM: {sys.getsizeof(brain.params)//1024}KB")
+            print(f"GEN {gen:05d} | LOSS: {loss:.8f} | LR: {lr:.6f}")
 
-        if gen > 0 and gen % 2000 == 0:
-            print("Initiating Recursive Self-Evolution Protocol...")
+        if gen > 0 and gen % 1000 == 0:
             evolve(gen, loss)
-
-        gen += 1
 
 if __name__ == "__main__":
     main()
