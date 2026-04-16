@@ -1,24 +1,30 @@
 
 import numpy as np
 
+
 class Tensor:
     def __init__(self, data, name=""):
         self.data = data.astype("f4")
         self.grad = np.zeros_like(self.data)
 
+
 class Module:
     def params(self):
         ps = []
         for v in self.__dict__.values():
-            if isinstance(v, Tensor): ps.append(v)
-            elif isinstance(v, Module): ps.extend(v.params())
+            if isinstance(v, Tensor):
+                ps.append(v)
+            elif isinstance(v, Module):
+                ps.extend(v.params())
             elif isinstance(v, list) and len(v) > 0 and isinstance(v[0], Module):
-                for m in v: ps.extend(m.params())
+                for m in v:
+                    ps.extend(m.params())
         return ps
+
 
 class Linear(Module):
     def __init__(self, i, o):
-        self.w = Tensor(np.random.randn(i, o) * np.sqrt(2. / i))
+        self.w = Tensor(np.random.randn(i, o) * np.sqrt(2.0 / i))
         self.b = Tensor(np.zeros(o))
 
     def forward(self, x):
@@ -26,9 +32,12 @@ class Linear(Module):
         return x @ self.w.data + self.b.data
 
     def backward(self, dy):
-        self.w.grad += self.x.reshape(-1, self.x.shape[-1]).T @ dy.reshape(-1, dy.shape[-1])
+        self.w.grad += self.x.reshape(-1, self.x.shape[-1]).T @ dy.reshape(
+            -1, dy.shape[-1]
+        )
         self.b.grad += dy.reshape(-1, dy.shape[-1]).sum(0)
         return dy @ self.w.data.T
+
 
 class RMSNorm(Module):
     def __init__(self, d, e=1e-6):
@@ -38,7 +47,7 @@ class RMSNorm(Module):
     def forward(self, x):
         self.x = x
         self.v = np.mean(x**2, -1, keepdims=True)
-        self.inv = 1. / np.sqrt(self.v + self.e)
+        self.inv = 1.0 / np.sqrt(self.v + self.e)
         self.nx = x * self.inv
         return self.g.data * self.nx
 
@@ -46,6 +55,7 @@ class RMSNorm(Module):
         dg = dy * self.g.data
         self.g.grad += np.sum(dy * self.nx, axis=tuple(range(dy.ndim - 1)))
         return (dg - self.nx * np.mean(dg * self.nx, -1, keepdims=True)) * self.inv
+
 
 class GQA(Module):
     def __init__(self, d, h=8, g=2):
@@ -59,14 +69,15 @@ class GQA(Module):
     def _rope(self, t, inv=False):
         b, s, h, d = t.shape
         p = np.arange(s)[:, None]
-        f = 10000**-(np.arange(0, d, 2) / d)
+        f = 10000 ** -(np.arange(0, d, 2) / d)
         a = p * f
         cos, sin = np.cos(a), np.sin(a)
-        if inv: sin = -sin
+        if inv:
+            sin = -sin
         r, i = t[..., ::2], t[..., 1::2]
         out = np.empty_like(t)
         out[..., ::2] = r * cos[:, None, :] - i * sin[:, None, :]
-        out[..., 1::2] = r * sin[:, None, :] + i * cos[:, None, : ]
+        out[..., 1::2] = r * sin[:, None, :] + i * cos[:, None, :]
         return out
 
     def forward(self, x):
@@ -79,7 +90,7 @@ class GQA(Module):
         vr_rep = np.repeat(self.vr, self.g, 2)
         attn = np.einsum("bshd,bthd->bsht", self.qr, kr_rep) * self.scale
         self.p = np.exp(attn - np.max(attn, -1, keepdims=True))
-        self.p /= (self.p.sum(-1, keepdims=True) + 1e-12)
+        self.p /= self.p.sum(-1, keepdims=True) + 1e-12
         out = np.einsum("bsht,bthd->bshd", self.p, vr_rep).reshape(b, s, -1)
         return self.wo.forward(out)
 
@@ -100,6 +111,7 @@ class GQA(Module):
         dv = self.wv.backward(dvr.reshape(b, s, -1))
         return dq + dk + dv
 
+
 class MoE(Module):
     def __init__(self, d, n=4, k=2):
         self.d, self.n, self.k = d, n, k
@@ -109,12 +121,14 @@ class MoE(Module):
 
     def _swiglu(self, x):
         x, g = np.split(x, 2, -1)
-        sig = 1. / (1. + np.exp(-np.clip(g, -15, 15)))
+        sig = 1.0 / (1.0 + np.exp(-np.clip(g, -15, 15)))
         return x * (g * sig), (x, g, sig)
 
     def _swiglu_back(self, dy, c):
         x, g, sig = c
-        return np.concatenate([dy * (g * sig), dy * x * sig * (1. + g * (1. - sig))], -1)
+        return np.concatenate(
+            [dy * (g * sig), dy * x * sig * (1.0 + g * (1.0 - sig))], -1
+        )
 
     def forward(self, x):
         self.sh = x.shape
@@ -122,9 +136,9 @@ class MoE(Module):
         logits = self.gate.forward(xf)
         p = np.exp(logits - np.max(logits, -1, keepdims=True))
         p /= p.sum(-1, keepdims=True)
-        self.idx = np.argsort(p, -1)[:, -self.k:]
+        self.idx = np.argsort(p, -1)[:, -self.k :]
         self.w = np.take_along_axis(p, self.idx, -1)
-        self.w /= (self.w.sum(-1, keepdims=True) + 1e-12)
+        self.w /= self.w.sum(-1, keepdims=True) + 1e-12
         out = np.zeros_like(xf)
         self.cache = []
         for i in range(self.n):
@@ -145,12 +159,18 @@ class MoE(Module):
         dyf = dy.reshape(-1, self.d)
         dx, dg = np.zeros((dyf.shape[0], self.d)), np.zeros((dyf.shape[0], self.n))
         for i in range(self.n):
-            if self.cache[i] is None: continue
+            if self.cache[i] is None:
+                continue
             m, pos, act, c, h2 = self.cache[i]
             wi = self.w[m, pos][:, None]
             dg[m, i] = np.sum(dyf[m] * h2, -1)
-            dx[m] += self.w1[i].backward(self._swiglu_back(self.w2[i].backward(dyf[m] * wi), c))
-        return (dx + self.gate.backward(dg - np.mean(dg, -1, keepdims=True))).reshape(self.sh)
+            dx[m] += self.w1[i].backward(
+                self._swiglu_back(self.w2[i].backward(dyf[m] * wi), c)
+            )
+        return (dx + self.gate.backward(dg - np.mean(dg, -1, keepdims=True))).reshape(
+            self.sh
+        )
+
 
 class RedundantCompute(Module):
     def __init__(self, d):
@@ -164,7 +184,10 @@ class RedundantCompute(Module):
 
     def backward(self, dy):
         self.alpha.grad += np.sum(dy * (self.og - self.oq))
-        return self.gemini.backward(dy * self.alpha.data) + self.groq.backward(dy * (1 - self.alpha.data))
+        return self.gemini.backward(dy * self.alpha.data) + self.groq.backward(
+            dy * (1 - self.alpha.data)
+        )
+
 
 class SovereignBlock(Module):
     def __init__(self, d):
@@ -179,6 +202,7 @@ class SovereignBlock(Module):
         dy = dy + self.rc.backward(self.n2.backward(dy))
         return dy + self.at.backward(self.n1.backward(dy))
 
+
 class OMEGA_ASI(Module):
     def __init__(self, di, dm, do, depth=2):
         self.embed = Linear(di, dm)
@@ -188,15 +212,18 @@ class OMEGA_ASI(Module):
 
     def forward(self, x):
         x = self.embed.forward(x[:, None] if x.ndim == 2 else x)
-        for b in self.blocks: x = b.forward(x)
+        for b in self.blocks:
+            x = b.forward(x)
         return self.head.forward(self.fn.forward(x[:, -1]))
 
     def backward(self, dy):
         dy = self.fn.backward(self.head.backward(dy))
         db = np.zeros((dy.shape[0], self.embed.x.shape[1], dy.shape[1]))
         db[:, -1] = dy
-        for b in reversed(self.blocks): db = b.backward(db)
+        for b in reversed(self.blocks):
+            db = b.backward(db)
         self.embed.backward(db)
+
 
 class AdamW:
     def __init__(self, p, lr=1e-3, wd=0.01, b1=0.9, b2=0.999):
@@ -212,8 +239,11 @@ class AdamW:
             g = np.clip(pt.grad, -1, 1)
             self.m[i] = self.b1 * self.m[i] + (1 - self.b1) * g
             self.v[i] = self.b2 * self.v[i] + (1 - self.b2) * (g**2)
-            pt.data -= lr_t * (self.m[i] / (np.sqrt(self.v[i]) + 1e-8) + self.wd * pt.data)
+            pt.data -= lr_t * (
+                self.m[i] / (np.sqrt(self.v[i]) + 1e-8) + self.wd * pt.data
+            )
             pt.grad.fill(0)
+
 
 def train():
     N, D, C, BS, E = 1024, 784, 10, 64, 50
@@ -226,7 +256,7 @@ def train():
         idx = np.random.permutation(N)
         ls, ac = [], []
         for i in range(0, N, BS):
-            xb, yb = X[idx[i:i+BS]], Y[idx[i:i+BS]]
+            xb, yb = X[idx[i : i + BS]], Y[idx[i : i + BS]]
             logits = model.forward(xb)
             probs = np.exp(logits - np.max(logits, -1, keepdims=True))
             probs /= probs.sum(-1, keepdims=True)
@@ -239,7 +269,10 @@ def train():
             model.backward(dl / len(yb))
             optimizer.step()
         if (epoch + 1) % 5 == 0:
-            print(f"Epoch {epoch+1:03d} | Loss: {np.mean(ls):.4f} | Acc: {np.mean(ac):.4f}")
+            print(
+                f"Epoch {epoch+1:03d} | Loss: {np.mean(ls):.4f} | Acc: {np.mean(ac):.4f}"
+            )
+
 
 if __name__ == "__main__":
     train()

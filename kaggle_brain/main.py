@@ -19,24 +19,40 @@ def install_requirements():
     Fixes the 'torchvision::nms' error by ensuring torch and torchvision
     are installed together to maintain binary compatibility.
     """
-    libs = [
-        "torch torchvision --index-url https://download.pytorch.org/whl/cpu",  # Use CPU versions for stability in runners, or remove index-url for default
-        "huggingface-hub<1.0,>=0.24.0",
-        "transformers>=4.44.0",
-        "psycopg2-binary",
-        "firebase-admin",
-        "bitsandbytes",
-        "requests",
-        "accelerate",
-        "GitPython",
-        "sympy==1.12",
-        "numpy",
-        "scikit-learn",
-        "pygithub",
-        "google-genai",
-    ]
     try:
-        # Force reinstalling torch/torchvision together often fixes the NMS linkage error
+        # Install torch and torchvision with the specific index first to ensure CPU compatibility
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                "torch",
+                "torchvision",
+                "--index-url",
+                "https://download.pytorch.org/whl/cpu",
+                "--quiet",
+                "--no-cache-dir",
+            ]
+        )
+
+        # Install the rest of the requirements
+        libs = [
+            "huggingface-hub<1.0,>=0.24.0",
+            "transformers>=4.44.0",
+            "psycopg2-binary",
+            "firebase-admin",
+            "bitsandbytes",
+            "requests",
+            "accelerate",
+            "GitPython",
+            "sympy==1.12",
+            "numpy",
+            "scikit-learn",
+            "pygithub",
+            "google-genai",
+        ]
         subprocess.check_call(
             [
                 sys.executable,
