@@ -1,22 +1,20 @@
 import numpy as np
 
-
 def swiglu(x):
     x, gate = np.split(x, 2, axis=-1)
     sig = 1.0 / (1.0 + np.exp(-np.clip(gate, -15, 15)))
-    swi = gate * sig
-    return x * swi, (x, gate, sig, swi)
-
+    return x * (gate * sig), (x, gate, sig)
 
 def swiglu_back(dy, cache):
-    x, gate, sig, swi = cache
+    x, gate, sig = cache
+    swi = gate * sig
     dx = dy * swi
     dgate = dy * x * sig * (1.0 + gate * (1.0 - sig))
     return np.concatenate([dx, dgate], axis=-1)
 
-
 class Linear:
-    def __init__(self, i, o, std=0.02):
+    def __init__(self, i, o, std=None):
+        std = std or np.sqrt(2.0 / (i + o))
         self.W = np.random.normal(0, std, (i, o)).astype("f4")
         self.b = np.zeros(o, "f4")
         self.dW, self.db = None, None
@@ -31,7 +29,6 @@ class Linear:
         self.dW = x_flat.T @ dy_flat
         self.db = dy_flat.sum(0)
         return (dy @ self.W.T).reshape(self.x.shape)
-
 
 class RMSNorm:
     def __init__(self, d, e=1e-6):
@@ -48,32 +45,26 @@ class RMSNorm:
         self.dg = np.sum(dy * self.xn, axis=tuple(range(dy.ndim - 1)))
         return (dn - self.xn * np.mean(dn * self.xn, -1, keepdims=True)) / self.r
 
-
 class RoPE:
-    def __init__(self, d, m=2048):
+    def __init__(self, d, m=4096):
         f = 10000.0 ** -(np.arange(0, d, 2) / d)
         t = np.outer(np.arange(m), f)
         self.c, self.s = np.cos(t), np.sin(t)
 
     def apply(self, x, conj=False):
         s, d = x.shape[1], x.shape[-1]
-        x1, x2 = x[..., : d // 2], x[..., d // 2 :]
+        x1, x2 = x[..., : d // 2], x[..., d // 2 : d]
         c, sn = self.c[:s, None, :], self.s[:s, None, :]
-        return np.concatenate(
-            [
-                x1 * c + (x2 * sn if conj else -x2 * sn),
-                x2 * c + (-x1 * sn if conj else x1 * sn),
-            ],
-            -1,
-        )
-
+        if conj:
+            return np.concatenate([x1 * c + x2 * sn, x2 * c - x1 * sn], -1)
+        return np.concatenate([x1 * c - x2 * sn, x2 * c + x1 * sn], -1)
 
 class GQA:
     def __init__(self, d, h=8, g=2):
         self.d, self.h, self.g, self.hd = d, h, g, d // h
         self.wq = Linear(d, d)
-        self.wk = Linear(d, d // g)
-        self.wv = Linear(d, d // g)
+        self.wk = Linear(d, (h // g) * self.hd)
+        self.wv = Linear(d, (h // g) * self.hd)
         self.wo = Linear(d, d)
         self.rope = RoPE(self.hd)
         self.scale = self.hd**-0.5
@@ -101,30 +92,20 @@ class GQA:
         dp = np.einsum("bshd,bthd->bsht", dyo, ve)
         da = self.p * (dp - np.sum(self.p * dp, -1, keepdims=True)) * self.scale
         dqr = np.einsum("bsht,bthd->bshd", da, ke)
-        dkr = (
-            np.einsum("bsht,bshd->bthd", da, self.qr)
-            .reshape(b, s, self.h // self.g, self.g, self.hd)
-            .sum(3)
-        )
-        dv = (
-            np.einsum("bsht,bshd->bthd", self.p, dyo)
-            .reshape(b, s, self.h // self.g, self.g, self.hd)
-            .sum(3)
-        )
+        dkr = np.einsum("bsht,bshd->bthd", da, self.qr).reshape(b, s, self.h // self.g, self.g, self.hd).sum(3)
+        dv = np.einsum("bsht,bshd->bthd", self.p, dyo).reshape(b, s, self.h // self.g, self.g, self.hd).sum(3)
         dq = self.rope.apply(dqr, True).reshape(b, s, -1)
         dk = self.rope.apply(dkr, True).reshape(b, s, -1)
-        return (
-            self.wq.backward(dq)
-            + self.wk.backward(dk)
-            + self.wv.backward(dv.reshape(b, s, -1))
-        )
-
+        return self.wq.backward(dq) + self.wk.backward(dk) + self.wv.backward(dv.reshape(b, s, -1))
 
 class MoE:
     def __init__(self, d, n=4, k=2):
         self.d, self.n, self.k = d, n, k
         self.gate = Linear(d, n)
-        self.experts = [[Linear(d, d * 2), Linear(d, d)] for _ in range(n)]
+        # Vectorized Experts: [N, D, D*2] and [N, D, D]
+        self.W1 = np.random.normal(0, np.sqrt(2/(d+d*2)), (n, d, d * 2)).astype("f4")
+        self.W2 = np.random.normal(0, np.sqrt(2/(d+d)), (n, d, d)).astype("f4")
+        self.dW1, self.dW2 = None, None
 
     def forward(self, x):
         self.sh = x.shape
@@ -132,54 +113,60 @@ class MoE:
         lg = self.gate.forward(xf)
         p = np.exp(lg - np.max(lg, -1, keepdims=True))
         p /= p.sum(-1, keepdims=True)
-
-        # Groq-style deterministic top-k logic
-        self.idx = np.argsort(p, -1)[:, -self.k :]
+        
+        # Groq-style deterministic top-k
+        self.idx = np.argsort(p, -1)[:, -self.k:]
         self.gw = np.take_along_axis(p, self.idx, -1)
-        self.gw /= self.gw.sum(-1, keepdims=True) + 1e-12
+        self.gw /= self.gw.sum(-1, keepdims=True) + 1e-12 # Gemini-style redundant weighting
 
         out = np.zeros_like(xf)
-        self.caches = []
+        self.expert_caches = []
+        
         for i in range(self.n):
             mask = np.any(self.idx == i, axis=-1)
             if not np.any(mask):
-                self.caches.append(None)
+                self.expert_caches.append(None)
                 continue
+            
             ix = xf[mask]
-            f1 = self.experts[i][0].forward(ix)
+            f1 = ix @ self.W1[i]
             act, c = swiglu(f1)
-            f2 = self.experts[i][1].forward(act)
-
-            # Gemini-style redundant weighting
+            f2 = act @ self.W2[i]
+            
             w_idx = np.where(self.idx == i)
-            expert_weights = self.gw[w_idx[0], w_idx[1]][:, None]
-            out[mask] += f2 * expert_weights
-            self.caches.append((mask, c, act, f2, expert_weights))
+            # Match weights to tokens
+            token_indices = w_idx[0]
+            # Since a token can go to multiple experts, we need to sum contributions
+            # But here we iterate per expert, so we just add weighted output to 'out'
+            # We need to find which weight in self.gw corresponds to expert i for each token
+            expert_weight = self.gw[w_idx[0], w_idx[1]][:, None]
+            out[mask] += f2 * expert_weight
+            self.expert_caches.append((mask, c, act, f2, expert_weight, ix))
+            
         return out.reshape(self.sh)
 
     def backward(self, dy):
         df = dy.reshape(-1, self.d)
         dx = np.zeros((df.shape[0], self.d), "f4")
         dg = np.zeros((df.shape[0], self.n), "f4")
+        self.dW1 = np.zeros_like(self.W1)
+        self.dW2 = np.zeros_like(self.W2)
 
         for i in range(self.n):
-            if self.caches[i] is None:
-                continue
-            mask, c, act, f2, ew = self.caches[i]
-
-            # Gradient of expert output w.r.t weights
+            if self.expert_caches[i] is None: continue
+            mask, c, act, f2, ew, ix = self.expert_caches[i]
+            
             dg[mask, i] = np.sum(df[mask] * f2, -1)
-
-            # Backprop through expert
             df2 = df[mask] * ew
-            dact = self.experts[i][1].backward(df2)
+            
+            self.dW2[i] = act.T @ df2
+            dact = df2 @ self.W2[i].T
             df1 = swiglu_back(dact, c)
-            dx[mask] += self.experts[i][0].backward(df1)
+            self.dW1[i] = ix.T @ df1
+            dx[mask] += df1 @ self.W1[i].T
 
-        # Backprop through gate with load balancing
         d_gate = self.gate.backward(dg - np.mean(dg, -1, keepdims=True))
         return (dx + d_gate).reshape(self.sh)
-
 
 class SovereignBlock:
     def __init__(self, d):
@@ -199,20 +186,17 @@ class SovereignBlock:
         dy_attn = self.attn.backward(self.rms1.backward(dy))
         return dy + dy_attn
 
-
 class OMEGA_ASI:
-    def __init__(self, i, h, o, depth=2):
+    def __init__(self, i, h, o, depth=3):
         self.emb = Linear(i, h)
         self.blocks = [SovereignBlock(h) for _ in range(depth)]
         self.norm = RMSNorm(h)
         self.head = Linear(h, o)
 
     def forward(self, x):
-        if x.ndim == 2:
-            x = x[:, None, :]
+        if x.ndim == 2: x = x[:, None, :]
         x = self.emb.forward(x)
-        for b in self.blocks:
-            x = b.forward(x)
+        for b in self.blocks: x = b.forward(x)
         self.latent = self.norm.forward(x[:, -1, :])
         return self.head.forward(self.latent)
 
@@ -220,10 +204,8 @@ class OMEGA_ASI:
         dy = self.norm.backward(self.head.backward(dy))
         db = np.zeros((dy.shape[0], self.emb.x.shape[1], dy.shape[1]), "f4")
         db[:, -1, :] = dy
-        for b in reversed(self.blocks):
-            db = b.backward(db)
+        for b in reversed(self.blocks): db = b.backward(db)
         self.emb.backward(db)
-
 
 class AdamW:
     def __init__(self, model, lr=1e-3, wd=0.01, b1=0.9, b2=0.999):
@@ -232,36 +214,37 @@ class AdamW:
         self._collect(model)
 
     def _collect(self, obj):
-        if isinstance(obj, Linear):
-            for param in [obj.W, obj.b]:
-                self.p.append(param)
-                self.m.append(np.zeros_like(param))
-                self.v.append(np.zeros_like(param))
-        elif isinstance(obj, RMSNorm):
-            self.p.append(obj.g)
-            self.m.append(np.zeros_like(obj.g))
-            self.v.append(np.zeros_like(obj.g))
-        elif isinstance(obj, (list, tuple)):
-            for i in obj:
-                self._collect(i)
-        elif hasattr(obj, "__dict__"):
+        if isinstance(obj, (Linear, RMSNorm, MoE)):
+            if isinstance(obj, Linear):
+                params = [obj.W, obj.b]
+            elif isinstance(obj, RMSNorm):
+                params = [obj.g]
+            elif isinstance(obj, MoE):
+                params = [obj.W1, obj.W2]
+            for p in params:
+                self.p.append(p)
+                self.m.append(np.zeros_like(p))
+                self.v.append(np.zeros_like(p))
+        if hasattr(obj, "__dict__"):
             for k, v in obj.__dict__.items():
-                if k not in [
-                    "rope",
-                    "x",
-                    "xn",
-                    "r",
-                    "p",
-                    "qr",
-                    "kr",
-                    "v_raw",
-                    "gw",
-                    "idx",
-                    "caches",
-                    "sh",
-                    "latent",
-                ]:
-                    self._collect(v)
+                if k not in ["rope", "x", "xn", "r", "p", "qr", "kr", "v_raw", "gw", "idx", "expert_caches", "sh", "latent"]:
+                    if isinstance(v, list):
+                        for i in v: self._collect(i)
+                    else:
+                        self._collect(v)
+
+    def _get_grads(self, obj, gs):
+        if isinstance(obj, (Linear, RMSNorm, MoE)):
+            if isinstance(obj, Linear): gs.extend([obj.dW, obj.db])
+            elif isinstance(obj, RMSNorm): gs.append(obj.dg)
+            elif isinstance(obj, MoE): gs.extend([obj.dW1, obj.dW2])
+        if hasattr(obj, "__dict__"):
+            for k, v in obj.__dict__.items():
+                if k not in ["rope", "x", "xn", "r", "p", "qr", "kr", "v_raw", "gw", "idx", "expert_caches", "sh", "latent"]:
+                    if isinstance(v, list):
+                        for i in v: self._get_grads(i, gs)
+                    else:
+                        self._get_grads(v, gs)
 
     def step(self, model):
         self.t += 1
@@ -270,61 +253,27 @@ class AdamW:
         lr_t = self.lr * (np.sqrt(1 - self.b2**self.t) / (1 - self.b1**self.t))
         for i in range(len(self.p)):
             self.m[i] = self.b1 * self.m[i] + (1 - self.b1) * gs[i]
-            self.v[i] = self.b2 * self.v[i] + (1 - self.b2) * (gs[i] ** 2)
-            self.p[i] -= lr_t * (
-                self.m[i] / (np.sqrt(self.v[i]) + 1e-8) + self.wd * self.p[i]
-            )
-
-    def _get_grads(self, obj, gs):
-        if isinstance(obj, Linear):
-            gs.extend([obj.dW, obj.db])
-        elif isinstance(obj, RMSNorm):
-            gs.append(obj.dg)
-        elif isinstance(obj, (list, tuple)):
-            for i in obj:
-                self._get_grads(i, gs)
-        elif hasattr(obj, "__dict__"):
-            for k, v in obj.__dict__.items():
-                if k not in [
-                    "rope",
-                    "x",
-                    "xn",
-                    "r",
-                    "p",
-                    "qr",
-                    "kr",
-                    "v_raw",
-                    "gw",
-                    "idx",
-                    "caches",
-                    "sh",
-                    "latent",
-                ]:
-                    self._get_grads(v, gs)
-
+            self.v[i] = self.b2 * self.v[i] + (1 - self.b2) * (gs[i]**2)
+            self.p[i] -= lr_t * (self.m[i] / (np.sqrt(self.v[i]) + 1e-8) + self.wd * self.p[i])
 
 def train():
-    N, D, C, BS, E = 512, 784, 10, 64, 100
+    N, D, C, BS, E = 1024, 784, 10, 32, 100
     X = np.random.randn(N, D).astype("f4")
     Y = np.random.randint(0, C, N)
 
-    model = OMEGA_ASI(D, 256, C, depth=3)
-    opt = AdamW(model, lr=1e-3, wd=0.05)
+    model = OMEGA_ASI(D, 128, C, depth=2)
+    opt = AdamW(model, lr=2e-3, wd=0.01)
 
     for epoch in range(E):
         indices = np.random.permutation(N)
         total_loss, correct = 0, 0
-
         for i in range(0, N, BS):
             batch_idx = indices[i : i + BS]
             xb, yb = X[batch_idx], Y[batch_idx]
-
             logits = model.forward(xb)
-
-            # Softmax Cross-Entropy
             exps = np.exp(logits - np.max(logits, -1, keepdims=True))
-            probs = exps / np.sum(exps, -1, keepdims=True)
-
+            probs = exps / (np.sum(exps, -1, keepdims=True) + 1e-12)
+            
             batch_loss = -np.mean(np.log(probs[np.arange(len(yb)), yb] + 1e-12))
             total_loss += batch_loss * len(yb)
             correct += np.sum(np.argmax(probs, -1) == yb)
@@ -334,11 +283,8 @@ def train():
             model.backward(d_logits / len(yb))
             opt.step(model)
 
-        if (epoch + 1) % 10 == 0:
-            print(
-                f"Epoch {epoch+1:03d} | Loss: {total_loss/N:.4f} | Acc: {correct/N:.4f}"
-            )
-
+        if (epoch + 1) % 5 == 0:
+            print(f"STEP {epoch+1:03d} | LOSS {total_loss/N:.4f} | ACC {correct/N:.4f}")
 
 if __name__ == "__main__":
     train()
