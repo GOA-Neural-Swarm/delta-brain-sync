@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-04-16T11:54:55.086939",
+    "timestamp": "2026-04-16T15:13:23.915112",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1010-azure",
@@ -31,7 +31,6 @@
         "annotated-doc": "0.0.4",
         "semantic-version": "2.10.0",
         "python-dotenv": "1.2.2",
-        "huggingface_hub": "1.10.2",
         "attrs": "26.1.0",
         "urllib3": "2.6.3",
         "python-multipart": "0.0.26",
@@ -133,6 +132,7 @@
         "pathspec": "1.0.4",
         "anyio": "4.13.0",
         "stevedore": "5.7.0",
+        "huggingface_hub": "1.11.0",
         "importlib_resources": "6.5.2",
         "webencodings": "0.5.1",
         "starlette": "0.52.1",
