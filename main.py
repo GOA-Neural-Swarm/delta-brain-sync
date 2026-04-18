@@ -1,5 +1,5 @@
-
 import numpy as np
+
 
 class Tensor:
     def __init__(self, data, name=""):
@@ -7,17 +7,23 @@ class Tensor:
         self.grad = np.zeros_like(self.data)
         self.name = name
 
+
 class Module:
     def params(self):
         p = []
         for v in self.__dict__.values():
-            if isinstance(v, Tensor): p.append(v)
-            elif isinstance(v, Module): p.extend(v.params())
+            if isinstance(v, Tensor):
+                p.append(v)
+            elif isinstance(v, Module):
+                p.extend(v.params())
             elif isinstance(v, list):
                 for i in v:
-                    if isinstance(i, Module): p.extend(i.params())
-                    elif isinstance(i, Tensor): p.append(i)
+                    if isinstance(i, Module):
+                        p.extend(i.params())
+                    elif isinstance(i, Tensor):
+                        p.append(i)
         return p
+
 
 class Linear(Module):
     def __init__(self, i, o, bias=True):
@@ -32,8 +38,10 @@ class Linear(Module):
         xf = self.x.reshape(-1, self.x.shape[-1])
         df = dy.reshape(-1, dy.shape[-1])
         self.w.grad += xf.T @ df
-        if self.b: self.b.grad += df.sum(0)
+        if self.b:
+            self.b.grad += df.sum(0)
         return (dy @ self.w.data.T).reshape(self.x.shape)
+
 
 class RMSNorm(Module):
     def __init__(self, d, e=1e-6):
@@ -51,6 +59,7 @@ class RMSNorm(Module):
         dxn = dy * self.g.data
         return self.r * (dxn - xn * np.mean(dxn * xn, -1, keepdims=True))
 
+
 class SwiGLU(Module):
     def f(self, x):
         x1, x2 = np.split(x, 2, axis=-1)
@@ -64,6 +73,7 @@ class SwiGLU(Module):
         dx2 = dy * self.swish
         dx1 = ds * (self.sig * (1.0 + self.x1 * (1.0 - self.sig)))
         return np.concatenate([dx1, dx2], axis=-1)
+
 
 class RotaryAttention(Module):
     def __init__(self, d, h=8):
@@ -96,7 +106,9 @@ class RotaryAttention(Module):
         self.qr, self.kr = self._rope(q), self._rope(k)
         self.v = v
         sc = np.einsum("bshd,bthd->bsht", self.qr, self.kr) * (self.hd**-0.5)
-        self.p = (e := np.exp(sc - sc.max(-1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
+        self.p = (e := np.exp(sc - sc.max(-1, keepdims=True))) / (
+            e.sum(-1, keepdims=True) + 1e-12
+        )
         ctx = np.einsum("bsht,bthd->bshd", self.p, v).reshape(b, s, -1)
         return self.wo.f(ctx)
 
@@ -110,20 +122,30 @@ class RotaryAttention(Module):
         dv = np.einsum("bsht,bshd->bthd", self.p, do)
         dq = self._rope(dqr, True)
         dk = self._rope(dkr, True)
-        return self.wq.b(dq.reshape(b, s, -1)) + self.wk.b(dk.reshape(b, s, -1)) + self.wv.b(dv.reshape(b, s, -1))
+        return (
+            self.wq.b(dq.reshape(b, s, -1))
+            + self.wk.b(dk.reshape(b, s, -1))
+            + self.wv.b(dv.reshape(b, s, -1))
+        )
+
 
 class MoE(Module):
     def __init__(self, d, n=4, k=1):
         self.d, self.n, self.k = d, n, k
         self.gate = Linear(d, n, False)
-        self.experts = [[Linear(d, d*2, False), SwiGLU(), Linear(d*2, d, False)] for _ in range(n)]
+        self.experts = [
+            [Linear(d, d * 2, False), SwiGLU(), Linear(d * 2, d, False)]
+            for _ in range(n)
+        ]
 
     def f(self, x):
         self.sh = x.shape
         xf = x.reshape(-1, self.d)
         lg = self.gate.f(xf)
-        p = (e := np.exp(lg - lg.max(-1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
-        self.idx = np.argsort(p, -1)[:, -self.k:]
+        p = (e := np.exp(lg - lg.max(-1, keepdims=True))) / (
+            e.sum(-1, keepdims=True) + 1e-12
+        )
+        self.idx = np.argsort(p, -1)[:, -self.k :]
         self.w = np.take_along_axis(p, self.idx, -1)
         self.w /= self.w.sum(-1, keepdims=True) + 1e-12
         out, self.cache = np.zeros_like(xf), []
@@ -144,7 +166,8 @@ class MoE(Module):
         dyf = dy.reshape(-1, self.d)
         dx, dg = np.zeros((dyf.shape[0], self.d)), np.zeros((dyf.shape[0], self.n))
         for i in range(self.n):
-            if self.cache[i] is None: continue
+            if self.cache[i] is None:
+                continue
             mask, pos, h1, h2, h3 = self.cache[i]
             dg[mask, i] = (dyf[mask] * h3).sum(-1)
             dh3 = dyf[mask] * self.w[mask, pos][:, None]
@@ -152,6 +175,7 @@ class MoE(Module):
             dh1 = self.experts[i][1].b(dh2)
             dx[mask] += self.experts[i][0].b(dh1)
         return (dx + self.gate.b(dg - dg.mean(-1, keepdims=True))).reshape(self.sh)
+
 
 class RedundantConsensusBlock(Module):
     def __init__(self, d):
@@ -165,7 +189,9 @@ class RedundantConsensusBlock(Module):
         self.og = self.gemini.f(self.n1.f(x))
         self.oq = self.groq.f(self.n2.f(x))
         gl = self.gate.f(np.mean(x, axis=1))
-        self.p = (e := np.exp(gl - gl.max(-1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
+        self.p = (e := np.exp(gl - gl.max(-1, keepdims=True))) / (
+            e.sum(-1, keepdims=True) + 1e-12
+        )
         return x + self.p[:, 0:1, None] * self.og + self.p[:, 1:2, None] * self.oq
 
     def b(self, dy):
@@ -175,8 +201,9 @@ class RedundantConsensusBlock(Module):
         dxg = self.gate.b(dgl - dgl.mean(-1, keepdims=True))
         dg, dq = dy * self.p[:, 0:1, None], dy * self.p[:, 1:2, None]
         dx = dy + self.n1.b(self.gemini.b(dg)) + self.n2.b(self.groq.b(dq))
-        dx += (dxg[:, None, :] / self.x.shape[1])
+        dx += dxg[:, None, :] / self.x.shape[1]
         return dx
+
 
 class OMEGA_ASI(Module):
     def __init__(self, di, dm, do, depth=1):
@@ -187,15 +214,18 @@ class OMEGA_ASI(Module):
 
     def f(self, x):
         x = self.embed.f(x[:, None] if x.ndim == 2 else x)
-        for b in self.blocks: x = b.f(x)
+        for b in self.blocks:
+            x = b.f(x)
         return self.head.f(self.norm.f(x[:, -1]))
 
     def b(self, dy):
         dy = self.norm.b(self.head.b(dy))
         db = np.zeros((dy.shape[0], self.embed.x.shape[1], dy.shape[1]))
         db[:, -1] = dy
-        for b in reversed(self.blocks): db = b.b(db)
+        for b in reversed(self.blocks):
+            db = b.b(db)
         return self.embed.b(db)
+
 
 class AdamW:
     def __init__(self, params, lr=1e-3, b1=0.9, b2=0.999, wd=0.01):
@@ -213,6 +243,7 @@ class AdamW:
             p.data -= a * (self.m[i] / (np.sqrt(self.v[i]) + 1e-8) + self.wd * p.data)
             p.grad.fill(0)
 
+
 if __name__ == "__main__":
     N, D, C, BS, E = 1024, 784, 10, 64, 50
     X = np.random.randn(N, D).astype("f4")
@@ -223,12 +254,15 @@ if __name__ == "__main__":
         idx = np.random.permutation(N)
         L, A = [], []
         for i in range(0, N, BS):
-            xb, yb = X[idx[i:i+BS]], Y[idx[i:i+BS]]
+            xb, yb = X[idx[i : i + BS]], Y[idx[i : i + BS]]
             lg = model.f(xb)
-            pr = (ex := np.exp(lg - lg.max(-1, keepdims=True))) / (ex.sum(-1, keepdims=True) + 1e-12)
+            pr = (ex := np.exp(lg - lg.max(-1, keepdims=True))) / (
+                ex.sum(-1, keepdims=True) + 1e-12
+            )
             L.append(-np.mean(np.log(pr[range(len(yb)), yb] + 1e-12)))
             A.append(np.mean(pr.argmax(-1) == yb))
-            dl = pr.copy(); dl[range(len(yb)), yb] -= 1
+            dl = pr.copy()
+            dl[range(len(yb)), yb] -= 1
             model.b(dl / len(yb))
             opt.step()
         if (e + 1) % 5 == 0:
