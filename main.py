@@ -15,6 +15,7 @@ class Module:
             elif isinstance(v, list):
                 for i in v:
                     if isinstance(i, Module): p.extend(i.params())
+                    elif isinstance(i, Tensor): p.append(i)
         return p
 
 class Linear(Module):
@@ -111,38 +112,32 @@ class GQA(Module):
 
 class ConsensusCore(Module):
     def __init__(self, d):
-        self.gemini_path = [Linear(d, d * 4), SwiGLU(), Linear(d * 2, d)]
-        self.groq_path = [Linear(d, d * 4), SwiGLU(), Linear(d * 2, d)]
+        self.path_gemini = [Linear(d, d * 2), SwiGLU(), Linear(d, d)]
+        self.path_groq = [Linear(d, d * 2), SwiGLU(), Linear(d, d)]
         self.gate = Linear(d, 2)
 
     def forward(self, x):
         self.x = x
-        g1 = self.gemini_path[0].forward(x)
-        g2 = self.gemini_path[1].forward(g1)
-        self.g_out = self.gemini_path[2].forward(g2)
-        q1 = self.groq_path[0].forward(x)
-        q2 = self.groq_path[1].forward(q1)
-        self.q_out = self.groq_path[2].forward(q2)
+        g = self.path_gemini[2].forward(self.path_gemini[1].forward(self.path_gemini[0].forward(x)))
+        q = self.path_groq[2].forward(self.path_groq[1].forward(self.path_groq[0].forward(x)))
+        self.g_out, self.q_out = g, q
         lg = self.gate.forward(x)
         self.p = (e := np.exp(lg - np.max(lg, -1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
-        self.cache = (g1, g2, q1, q2)
-        return self.p[..., :1] * self.g_out + self.p[..., 1:] * self.q_out
+        return self.p[..., :1] * g + self.p[..., 1:] * q
 
     def backward(self, dy):
-        g1, g2, q1, q2 = self.cache
-        dg_out = dy * self.p[..., :1]
-        dq_out = dy * self.p[..., 1:]
+        dg, dq = dy * self.p[..., :1], dy * self.p[..., 1:]
         dp = np.stack([np.sum(dy * self.g_out, -1), np.sum(dy * self.q_out, -1)], -1)
-        d_gem = self.gemini_path[0].backward(self.gemini_path[1].backward(self.gemini_path[2].backward(dg_out)))
-        d_groq = self.groq_path[0].backward(self.groq_path[1].backward(self.groq_path[2].backward(dq_out)))
-        d_gate = self.gate.backward(dp - np.mean(dp, -1, keepdims=True))
-        return d_gem + d_groq + d_gate
+        dx_g = self.path_gemini[0].backward(self.path_gemini[1].backward(self.path_gemini[2].backward(dg)))
+        dx_q = self.path_groq[0].backward(self.path_groq[1].backward(self.path_groq[2].backward(dq)))
+        dx_gate = self.gate.backward(dp - np.mean(dp, -1, keepdims=True))
+        return dx_g + dx_q + dx_gate
 
 class MoE(Module):
     def __init__(self, d, n=4, k=2):
         self.d, self.n, self.k = d, n, k
         self.gate = Linear(d, n)
-        self.experts = [[Linear(d, d * 4, False), SwiGLU(), Linear(d * 2, d, False)] for _ in range(n)]
+        self.experts = [[Linear(d, d * 2, False), SwiGLU(), Linear(d, d, False)] for _ in range(n)]
 
     def forward(self, x):
         self.sh = x.shape
@@ -194,8 +189,8 @@ class SovereignBlock(Module):
         dy = dy + self.cc.backward(self.n2.backward(dy))
         return dy + self.at.backward(self.n1.backward(dy))
 
-class OMEGA_ASI_V4(Module):
-    def __init__(self, di, dm, do, depth=4):
+class OMEGA_ASI_V5(Module):
+    def __init__(self, di, dm, do, depth=3):
         self.embed = Linear(di, dm)
         self.blocks = [SovereignBlock(dm) for _ in range(depth)]
         self.norm, self.head = RMSNorm(dm), Linear(dm, do)
@@ -230,11 +225,11 @@ class AdamW:
             pt.grad.fill(0)
 
 def train():
-    N, D, C, BS, E = 1024, 784, 10, 64, 100
+    N, D, C, BS, E = 1024, 784, 10, 64, 50
     X = np.random.standard_normal((N, D)).astype("f4")
     Y = np.random.randint(0, C, N)
-    model = OMEGA_ASI_V4(D, 128, C, depth=2)
-    opt = AdamW(model.params(), lr=1e-3, wd=0.05)
+    model = OMEGA_ASI_V5(D, 128, C, depth=2)
+    opt = AdamW(model.params(), lr=2e-3, wd=0.02)
 
     for e in range(E):
         idx = np.random.permutation(N)
@@ -252,8 +247,8 @@ def train():
             dl[range(len(yb)), yb] -= 1
             model.backward(dl / len(yb))
             opt.step()
-        if (e + 1) % 10 == 0:
-            print(f"EPOCH {e+1:03d} | LOSS: {np.mean(losses):.4f} | ACC: {np.mean(accs):.4f}")
+        if (e + 1) % 5 == 0:
+            print(f"EVO_CYCLE {e+1:03d} | ENTROPY: {np.mean(losses):.4f} | ACCURACY: {np.mean(accs):.4f}")
 
 if __name__ == "__main__":
     train()
