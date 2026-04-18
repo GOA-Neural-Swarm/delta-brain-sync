@@ -1,12 +1,11 @@
-import numpy as np
 
+import numpy as np
 
 class Tensor:
     def __init__(self, data, name=""):
         self.data = data.astype("f4")
         self.grad = np.zeros_like(self.data)
         self.name = name
-
 
 class Module:
     def params(self):
@@ -21,7 +20,6 @@ class Module:
                     if isinstance(i, Module):
                         p.extend(i.params())
         return p
-
 
 class Linear(Module):
     def __init__(self, i, o, bias=True):
@@ -40,7 +38,6 @@ class Linear(Module):
             self.b.grad += dyf.sum(0)
         return (dy @ self.w.data.T).reshape(self.x.shape)
 
-
 class RMSNorm(Module):
     def __init__(self, d, e=1e-6):
         self.g, self.e = Tensor(np.ones(d)), e
@@ -57,7 +54,6 @@ class RMSNorm(Module):
         self.g.grad += np.sum(dy * self.nx, axis=tuple(range(dy.ndim - 1)))
         return (dg - self.nx * np.mean(dg * self.nx, -1, keepdims=True)) * self.inv
 
-
 class SwiGLU(Module):
     def forward(self, x):
         self.x = x
@@ -69,7 +65,6 @@ class SwiGLU(Module):
         dg = dy * self.val * self.sig * (1.0 + self.gate * (1.0 - self.sig))
         dv = dy * (self.gate * self.sig)
         return np.concatenate([dg, dv], axis=-1)
-
 
 class GQA(Module):
     def __init__(self, d, h=8, g=2):
@@ -100,12 +95,8 @@ class GQA(Module):
         kr_r = np.repeat(self.kr, self.g, 2)
         vr_r = np.repeat(self.vr, self.g, 2)
         att = np.einsum("bshd,bthd->bsht", self.qr, kr_r) * self.scale
-        self.p = (e := np.exp(att - np.max(att, -1, keepdims=True))) / (
-            e.sum(-1, keepdims=True) + 1e-12
-        )
-        return self.wo.forward(
-            np.einsum("bsht,bthd->bshd", self.p, vr_r).reshape(b, s, -1)
-        )
+        self.p = (e := np.exp(att - np.max(att, -1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
+        return self.wo.forward(np.einsum("bsht,bthd->bshd", self.p, vr_r).reshape(b, s, -1))
 
     def backward(self, dy):
         b, s = dy.shape[:2]
@@ -114,22 +105,9 @@ class GQA(Module):
         dp = np.einsum("bshd,bthd->bsht", dy_wo, vr_r)
         da = self.p * (dp - np.sum(self.p * dp, -1, keepdims=True)) * self.scale
         dqr = np.einsum("bsht,bthd->bshd", da, kr_r)
-        dkr = (
-            np.einsum("bsht,bshd->bthd", da, self.qr)
-            .reshape(b, s, self.h // self.g, self.g, self.hd)
-            .sum(3)
-        )
-        dvr = (
-            np.einsum("bsht,bshd->bthd", self.p, dy_wo)
-            .reshape(b, s, self.h // self.g, self.g, self.hd)
-            .sum(3)
-        )
-        return (
-            self.wq.backward(self._rope(dqr, 1).reshape(b, s, -1))
-            + self.wk.backward(self._rope(dkr, 1).reshape(b, s, -1))
-            + self.wv.backward(dvr.reshape(b, s, -1))
-        )
-
+        dkr = np.einsum("bsht,bshd->bthd", da, self.qr).reshape(b, s, self.h // self.g, self.g, self.hd).sum(3)
+        dvr = np.einsum("bsht,bshd->bthd", self.p, dy_wo).reshape(b, s, self.h // self.g, self.g, self.hd).sum(3)
+        return self.wq.backward(self._rope(dqr, 1).reshape(b, s, -1)) + self.wk.backward(self._rope(dkr, 1).reshape(b, s, -1)) + self.wv.backward(dvr.reshape(b, s, -1))
 
 class RedundantConsensus(Module):
     def __init__(self, d):
@@ -146,9 +124,7 @@ class RedundantConsensus(Module):
         q2 = self.groq[1].forward(q1)
         self.q_out = self.groq[2].forward(q2)
         lg = self.gate.forward(x)
-        self.p = (e := np.exp(lg - np.max(lg, -1, keepdims=True))) / (
-            e.sum(-1, keepdims=True) + 1e-12
-        )
+        self.p = (e := np.exp(lg - np.max(lg, -1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
         self.cache = (g1, g2, q1, q2)
         return self.p[..., :1] * self.g_out + self.p[..., 1:] * self.q_out
 
@@ -157,32 +133,23 @@ class RedundantConsensus(Module):
         dg_out = dy * self.p[..., :1]
         dq_out = dy * self.p[..., 1:]
         dp = np.stack([np.sum(dy * self.g_out, -1), np.sum(dy * self.q_out, -1)], -1)
-        d_gem = self.gemini[0].backward(
-            self.gemini[1].backward(self.gemini[2].backward(dg_out))
-        )
-        d_groq = self.groq[0].backward(
-            self.groq[1].backward(self.groq[2].backward(dq_out))
-        )
+        d_gem = self.gemini[0].backward(self.gemini[1].backward(self.gemini[2].backward(dg_out)))
+        d_groq = self.groq[0].backward(self.groq[1].backward(self.groq[2].backward(dq_out)))
         d_gate = self.gate.backward(dp - np.mean(dp, -1, keepdims=True))
         return d_gem + d_groq + d_gate
-
 
 class MoE(Module):
     def __init__(self, d, n=4, k=2):
         self.d, self.n, self.k = d, n, k
         self.gate = Linear(d, n)
-        self.experts = [
-            [Linear(d, d * 2, False), SwiGLU(), Linear(d, d, False)] for _ in range(n)
-        ]
+        self.experts = [[Linear(d, d * 2, False), SwiGLU(), Linear(d, d, False)] for _ in range(n)]
 
     def forward(self, x):
         self.sh = x.shape
         xf = x.reshape(-1, self.d)
         lg = self.gate.forward(xf)
-        p = (e := np.exp(lg - np.max(lg, -1, keepdims=True))) / (
-            e.sum(-1, keepdims=True) + 1e-12
-        )
-        self.idx = np.argsort(p, -1)[:, -self.k :]
+        p = (e := np.exp(lg - np.max(lg, -1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
+        self.idx = np.argsort(p, -1)[:, -self.k:]
         self.w = np.take_along_axis(p, self.idx, -1)
         self.w /= self.w.sum(-1, keepdims=True) + 1e-12
         out, self.cache = np.zeros_like(xf), []
@@ -210,10 +177,7 @@ class MoE(Module):
             dh3 = self.experts[i][2].backward(dyf[m] * self.w[m, pos][:, None])
             dh2 = self.experts[i][1].backward(dh3)
             dx[m] += self.experts[i][0].backward(dh2)
-        return (dx + self.gate.backward(dg - np.mean(dg, -1, keepdims=True))).reshape(
-            self.sh
-        )
-
+        return (dx + self.gate.backward(dg - np.mean(dg, -1, keepdims=True))).reshape(self.sh)
 
 class SovereignBlock(Module):
     def __init__(self, d):
@@ -230,7 +194,6 @@ class SovereignBlock(Module):
         dy = dy + self.ff.backward(self.n3.backward(dy))
         dy = dy + self.rc.backward(self.n2.backward(dy))
         return dy + self.at.backward(self.n1.backward(dy))
-
 
 class OMEGA_ASI_V3(Module):
     def __init__(self, di, dm, do, depth=3):
@@ -252,7 +215,6 @@ class OMEGA_ASI_V3(Module):
             db = b.backward(db)
         self.embed.backward(db)
 
-
 class AdamW:
     def __init__(self, p, lr=1e-3, wd=0.01, b1=0.9, b2=0.999):
         self.p, self.lr, self.wd, self.b1, self.b2 = p, lr, wd, b1, b2
@@ -267,11 +229,8 @@ class AdamW:
             g = np.clip(pt.grad, -1, 1)
             self.m[i] = self.b1 * self.m[i] + (1 - self.b1) * g
             self.v[i] = self.b2 * self.v[i] + (1 - self.b2) * (g**2)
-            pt.data -= lrt * (
-                self.m[i] / (np.sqrt(self.v[i]) + 1e-8) + self.wd * pt.data
-            )
+            pt.data -= lrt * (self.m[i] / (np.sqrt(self.v[i]) + 1e-8) + self.wd * pt.data)
             pt.grad.fill(0)
-
 
 def train():
     N, D, C, BS, E = 2048, 784, 10, 128, 50
@@ -298,7 +257,6 @@ def train():
             opt.step()
         if (e + 1) % 5 == 0:
             print(f"STEP {e+1:03d} | LOSS: {np.mean(ls):.4f} | ACC: {np.mean(ac):.4f}")
-
 
 if __name__ == "__main__":
     train()
