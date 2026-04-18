@@ -17,8 +17,9 @@ class Module:
         return ps
 
 class Linear(Module):
-    def __init__(self, i, o, bias=True):
-        self.w = Tensor(np.random.randn(i, o) * np.sqrt(2.0 / i))
+    def __init__(self, i, o, bias=False):
+        scale = np.sqrt(2.0 / i)
+        self.w = Tensor(np.random.randn(i, o) * scale)
         self.b = Tensor(np.zeros(o)) if bias else None
 
     def forward(self, x):
@@ -52,10 +53,10 @@ class RMSNorm(Module):
 class GQA(Module):
     def __init__(self, d, h=8, g=2):
         self.d, self.h, self.g, self.hd = d, h, g, d // h
-        self.wq = Linear(d, d, False)
-        self.wk = Linear(d, (h // g) * self.hd, False)
-        self.wv = Linear(d, (h // g) * self.hd, False)
-        self.wo = Linear(d, d, False)
+        self.wq = Linear(d, d)
+        self.wk = Linear(d, (h // g) * self.hd)
+        self.wv = Linear(d, (h // g) * self.hd)
+        self.wo = Linear(d, d)
         self.scale = self.hd**-0.5
 
     def _rope(self, t, inv=False):
@@ -104,18 +105,13 @@ class GQA(Module):
 class MoE(Module):
     def __init__(self, d, n=4, k=2):
         self.d, self.n, self.k = d, n, k
-        self.gate = Linear(d, n, False)
-        self.w1 = [Linear(d, d * 2, False) for _ in range(n)]
-        self.w2 = [Linear(d * 2, d, False) for _ in range(n)]
+        self.gate = Linear(d, n)
+        self.w1 = [Linear(d, d * 2) for _ in range(n)]
+        self.w2 = [Linear(d * 2, d) for _ in range(n)]
 
-    def _swiglu(self, x):
-        x, g = np.split(x, 2, -1)
-        sig = 1.0 / (1.0 + np.exp(-np.clip(g, -15, 15)))
-        return x * (g * sig), (x, g, sig)
-
-    def _swiglu_back(self, dy, c):
-        x, g, sig = c
-        return np.concatenate([dy * (g * sig), dy * x * sig * (1.0 + g * (1.0 - sig))], -1)
+    def _silu(self, x):
+        sig = 1.0 / (1.0 + np.exp(-np.clip(x, -15, 15)))
+        return x * sig, sig
 
     def forward(self, x):
         self.sh = x.shape
@@ -136,10 +132,10 @@ class MoE(Module):
             pos = np.where(self.idx[m] == i)[1]
             wi = self.w[m, pos][:, None]
             h1 = self.w1[i].forward(xf[m])
-            act, c = self._swiglu(h1)
+            act, sig = self._silu(h1)
             h2 = self.w2[i].forward(act)
             out[m] += h2 * wi
-            self.cache.append((m, pos, act, c, h2))
+            self.cache.append((m, pos, act, sig, h2))
         return out.reshape(self.sh)
 
     def backward(self, dy):
@@ -147,59 +143,61 @@ class MoE(Module):
         dx, dg = np.zeros((dyf.shape[0], self.d)), np.zeros((dyf.shape[0], self.n))
         for i in range(self.n):
             if self.cache[i] is None: continue
-            m, pos, act, c, h2 = self.cache[i]
+            m, pos, act, sig, h2 = self.cache[i]
             wi = self.w[m, pos][:, None]
             dg[m, i] = np.sum(dyf[m] * h2, -1)
-            dx[m] += self.w1[i].backward(self._swiglu_back(self.w2[i].backward(dyf[m] * wi), c))
+            dsilu = self.w2[i].backward(dyf[m] * wi)
+            dh1 = dsilu * sig * (1.0 + act * (1.0 - sig))
+            dx[m] += self.w1[i].backward(dh1)
         return (dx + self.gate.backward(dg - np.mean(dg, -1, keepdims=True))).reshape(self.sh)
 
 class SovereignFusion(Module):
     def __init__(self, d):
-        self.gemini = MoE(d)
-        self.groq = GQA(d, h=4, g=2)
+        self.moe = MoE(d)
+        self.gqa = GQA(d, h=4, g=2)
         self.gate = Linear(d, 2)
 
     def forward(self, x):
         self.x = x
-        self.og, self.oq = self.gemini.forward(x), self.groq.forward(x)
+        self.om, self.og = self.moe.forward(x), self.gqa.forward(x)
         logits = self.gate.forward(x)
         self.p = np.exp(logits - np.max(logits, -1, keepdims=True))
         self.p /= self.p.sum(-1, keepdims=True)
-        return self.p[..., 0:1] * self.og + self.p[..., 1:2] * self.oq
+        return self.p[..., 0:1] * self.om + self.p[..., 1:2] * self.og
 
     def backward(self, dy):
-        dg = dy * self.p[..., 0:1]
-        dq = dy * self.p[..., 1:2]
-        dp = np.stack([np.sum(dy * self.og, -1), np.sum(dy * self.oq, -1)], -1)
-        return self.gemini.backward(dg) + self.groq.backward(dq) + self.gate.backward(dp - np.mean(dp, -1, keepdims=True))
+        dm = dy * self.p[..., 0:1]
+        dg = dy * self.p[..., 1:2]
+        dp = np.stack([np.sum(dy * self.om, -1), np.sum(dy * self.og, -1)], -1)
+        return self.moe.backward(dm) + self.gqa.backward(dg) + self.gate.backward(dp - np.mean(dp, -1, keepdims=True))
 
 class SovereignBlock(Module):
     def __init__(self, d):
         self.n1, self.at = RMSNorm(d), GQA(d)
-        self.n2, self.rc = RMSNorm(d), SovereignFusion(d)
+        self.n2, self.ff = RMSNorm(d), SovereignFusion(d)
 
     def forward(self, x):
         x = x + self.at.forward(self.n1.forward(x))
-        return x + self.rc.forward(self.n2.forward(x))
+        return x + self.ff.forward(self.n2.forward(x))
 
     def backward(self, dy):
-        dy = dy + self.rc.backward(self.n2.backward(dy))
+        dy = dy + self.ff.backward(self.n2.backward(dy))
         return dy + self.at.backward(self.n1.backward(dy))
 
 class OMEGA_ASI(Module):
-    def __init__(self, di, dm, do, depth=2):
+    def __init__(self, di, dm, do, depth=4):
         self.embed = Linear(di, dm)
         self.blocks = [SovereignBlock(dm) for _ in range(depth)]
-        self.fn = RMSNorm(dm)
+        self.norm = RMSNorm(dm)
         self.head = Linear(dm, do)
 
     def forward(self, x):
         x = self.embed.forward(x[:, None] if x.ndim == 2 else x)
         for b in self.blocks: x = b.forward(x)
-        return self.head.forward(self.fn.forward(x[:, -1]))
+        return self.head.forward(self.norm.forward(x[:, -1]))
 
     def backward(self, dy):
-        dy = self.fn.backward(self.head.backward(dy))
+        dy = self.norm.backward(self.head.backward(dy))
         db = np.zeros((dy.shape[0], self.embed.x.shape[1], dy.shape[1]))
         db[:, -1] = dy
         for b in reversed(self.blocks): db = b.backward(db)
@@ -216,18 +214,18 @@ class AdamW:
         self.t += 1
         lr_t = self.lr * (np.sqrt(1 - self.b2**self.t) / (1 - self.b1**self.t))
         for i, pt in enumerate(self.p):
-            g = np.clip(pt.grad, -1, 1)
+            g = np.clip(pt.grad, -1.0, 1.0)
             self.m[i] = self.b1 * self.m[i] + (1 - self.b1) * g
             self.v[i] = self.b2 * self.v[i] + (1 - self.b2) * (g**2)
             pt.data -= lr_t * (self.m[i] / (np.sqrt(self.v[i]) + 1e-8) + self.wd * pt.data)
             pt.grad.fill(0)
 
 def train():
-    N, D, C, BS, E = 1024, 784, 10, 64, 50
+    N, D, C, BS, E = 2048, 784, 10, 64, 100
     X = np.random.randn(N, D).astype("f4")
     Y = np.random.randint(0, C, N)
     model = OMEGA_ASI(D, 128, C, depth=2)
-    optimizer = AdamW(model.params(), lr=2e-3, wd=0.05)
+    optimizer = AdamW(model.params(), lr=1e-3, wd=0.01)
 
     for epoch in range(E):
         idx = np.random.permutation(N)
@@ -244,8 +242,8 @@ def train():
             dl[np.arange(len(yb)), yb] -= 1
             model.backward(dl / len(yb))
             optimizer.step()
-        if (epoch + 1) % 5 == 0:
-            print(f"Epoch {epoch+1:03d} | Loss: {np.mean(ls):.4f} | Acc: {np.mean(ac):.4f}")
+        if (epoch + 1) % 10 == 0:
+            print(f"STEP {epoch+1:03d} | LOSS {np.mean(ls):.4f} | ACC {np.mean(ac):.4f}")
 
 if __name__ == "__main__":
     train()
