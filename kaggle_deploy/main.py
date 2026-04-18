@@ -9,16 +9,13 @@ import git
 import re
 import random
 import base64
-from datetime import datetime, UTC
+from datetime import datetime
 from functools import lru_cache
 
 
-# 1. Sovereign Requirements Setup (Fixed to resolve torchvision/torch mismatch)
 def install_requirements():
-    """Installs necessary libraries and fixes version conflicts."""
-    # Force specific versions of torch and torchvision to resolve the 'nms' operator error
     libs = [
-        "torch --index-url https://download.pytorch.org/whl/cpu",  # Use CPU for stability if GPU not required, or remove index-url for auto
+        "torch --index-url https://download.pytorch.org/whl/cpu",
         "torchvision --index-url https://download.pytorch.org/whl/cpu",
         "huggingface-hub<1.0",
         "transformers>=4.44.0",
@@ -31,11 +28,10 @@ def install_requirements():
         "sympy==1.12",
         "numpy",
         "scikit-learn",
-        "google-generativeai",
+        "google-genai",
         "pygithub",
     ]
     try:
-        # Force upgrade torch and torchvision first to ensure binary compatibility
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", "--upgrade", "pip", "--quiet"]
         )
@@ -53,26 +49,22 @@ def install_requirements():
                 "--quiet",
             ]
         )
-
-        # Install remaining libs
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
         )
-        print("✅ [SYSTEM]: Phase 7.1 Sovereign Core & Stability Patch Ready.")
+        print("Sovereign Core & Stability Patch Ready.")
     except subprocess.CalledProcessError as e:
-        print(f"⚠️ Install Warning: Error installing requirements: {e}")
+        print(f"Install Warning: Error installing requirements: {e}")
     except Exception as e:
-        print(f"⚠️ Install Warning: An unexpected error occurred: {e}")
+        print(f"Install Warning: An unexpected error occurred: {e}")
 
 
-# Execute installation before importing transformers or torch
 install_requirements()
 
-# Now safe to import
-import google.generativeai as genai
+import google.genai as genai
 import numpy as np
 import torch
-import torchvision  # Import explicitly to verify fix
+import torchvision
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from transformers import (
@@ -84,81 +76,6 @@ from transformers import (
 from firebase_admin import credentials, db, initialize_app, _apps
 import firebase_admin
 from github import Github
-
-# 🔒 Kaggle/Colab Secrets System & Universal Credentials Sync
-try:
-    from kaggle_secrets import UserSecretsClient
-
-    user_secrets = UserSecretsClient()
-except ImportError:
-    user_secrets = None
-
-raw_db_url = os.getenv("NEON_DB_URL") or os.getenv("DATABASE_URL")
-if user_secrets:
-    try:
-        raw_db_url = user_secrets.get_secret("NEON_DB_URL") or raw_db_url
-    except:
-        pass
-
-DB_URL = (
-    raw_db_url.replace("postgres://", "postgresql://", 1)
-    if raw_db_url and raw_db_url.startswith("postgres://")
-    else raw_db_url
-)
-FIXED_DB_URL = DB_URL
-
-FIREBASE_URL = os.getenv("FIREBASE_DB_URL")
-FB_JSON_STR = os.getenv("FIREBASE_SERVICE_ACCOUNT")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-GH_TOKEN = os.getenv("GH_TOKEN")
-
-if user_secrets:
-    try:
-        FIREBASE_URL = user_secrets.get_secret("FIREBASE_DB_URL") or FIREBASE_URL
-        FB_JSON_STR = user_secrets.get_secret("FIREBASE_SERVICE_ACCOUNT") or FB_JSON_STR
-        SUPABASE_URL = user_secrets.get_secret("SUPABASE_URL") or SUPABASE_URL
-        SUPABASE_KEY = user_secrets.get_secret("SUPABASE_KEY") or SUPABASE_KEY
-        GH_TOKEN = user_secrets.get_secret("GH_TOKEN") or GH_TOKEN
-    except:
-        pass
-
-REPO_OWNER = "GOA-Neural-Swarm"
-REPO_NAME = "delta-brain-sync"
-REPO_URL = f"github.com/{REPO_OWNER}/{REPO_NAME}"
-REPO_PATH = (
-    "/kaggle/working/sovereign_repo_sync"
-    if user_secrets
-    else "/tmp/sovereign_repo_sync"
-)
-
-# --- 🔱 GEMINI CONFIGURATION ---
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if user_secrets:
-    try:
-        GEMINI_API_KEY = user_secrets.get_secret("GEMINI_API_KEY") or GEMINI_API_KEY
-    except:
-        pass
-
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-    print("✅ [GEMINI]: Auditor Brain Initialized.")
-else:
-    print("⚠️ [GEMINI]: API Key missing. Auditor mode disabled.")
-
-# --- 🔱 FIREBASE INITIALIZATION ---
-if not firebase_admin._apps:
-    try:
-        cred = (
-            credentials.Certificate(json.loads(FB_JSON_STR))
-            if FB_JSON_STR
-            else credentials.Certificate("serviceAccountKey.json")
-        )
-        firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_URL})
-        print(f"✅ [FIREBASE]: Real-time Pulse Active.")
-    except Exception as e:
-        print(f"🚫 [FIREBASE ERROR]: Connectivity failed. {e}")
 
 
 class HydraEngine:
@@ -193,9 +110,9 @@ class Brain:
             X_scaled = self.scaler.fit_transform(X)
             self.svm.fit(X_scaled, y)
             self.is_trained = True
-            print("🧠 [ML]: SVM Pattern Recognition Model Synchronized.")
+            print("SVM Pattern Recognition Model Synchronized.")
         except Exception as e:
-            print(f"⚠️ [ML ERROR]: {e}")
+            print(f"ML ERROR: {e}")
 
     def execute_natural_absorption(
         self,
@@ -254,13 +171,13 @@ def recursive_self_upgrade(current_state, gen_id):
 
 
 def save_evolution_state_to_neon(state, gen_id):
-    if not FIXED_DB_URL:
+    if not os.getenv("DATABASE_URL"):
         return
     try:
         import psycopg2
 
         compressed = HydraEngine.compress(json.dumps(state))
-        with psycopg2.connect(FIXED_DB_URL, connect_timeout=10) as conn:
+        with psycopg2.connect(os.getenv("DATABASE_URL"), connect_timeout=10) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "INSERT INTO genesis_pipeline (science_domain, detail) VALUES (%s, %s)",
@@ -268,16 +185,11 @@ def save_evolution_state_to_neon(state, gen_id):
                 )
                 conn.commit()
     except Exception as e:
-        print(f"⚠️ [NEON PERSISTENCE ERROR]: {e}")
+        print(f"NEON PERSISTENCE ERROR: {e}")
 
 
 def query_groq_api(prompt):
     api_key = os.getenv("GROQ_API_KEY")
-    if user_secrets:
-        try:
-            api_key = user_secrets.get_secret("GROQ_API_KEY") or api_key
-        except:
-            pass
     if not api_key:
         return None
     for model in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
@@ -304,8 +216,9 @@ def query_groq_api(prompt):
 
 def get_gemini_wisdom(prompt_text):
     try:
-        if not GEMINI_API_KEY:
-            return None
+        GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+        genai.initialize(api_key=GEMINI_API_KEY)
+        gemini_model = genai.GenerativeModel("gemini-1.5-flash")
         response = gemini_model.generate_content(prompt_text)
         return response.text
     except Exception as e:
@@ -313,27 +226,17 @@ def get_gemini_wisdom(prompt_text):
 
 
 def dual_brain_pipeline(prompt_text, current_gen_val, avg_error):
-    if len(prompt_text) > 40000:
-        return get_gemini_wisdom(prompt_text)
     draft_code = query_groq_api(prompt_text)
-    if not draft_code:
-        draft_code = get_gemini_wisdom(f"EMERGENCY ARCHITECT MODE: {prompt_text}")
-    if not draft_code:
-        return None
-    audit_prompt = f"system\nYou are the Supreme Auditor. Fix syntax and security. Output ONLY python code in python blocks.\n\n{draft_code}"
-    final_verified_code = get_gemini_wisdom(audit_prompt) or draft_code
-    if "python" in final_verified_code:
-        match = re.search(r"python(.*?)", final_verified_code, re.DOTALL)
-        if match:
-            final_verified_code = match.group(1).strip()
-    return final_verified_code
+    if draft_code:
+        return draft_code
+    return get_gemini_wisdom(f"EMERGENCY ARCHITECT MODE: {prompt_text}")
 
 
 def broadcast_to_swarm(command, gen_version):
-    if not GH_TOKEN:
+    if not os.getenv("GH_TOKEN"):
         return
     try:
-        g = Github(GH_TOKEN)
+        g = Github(os.getenv("GH_TOKEN"))
         repo = g.get_repo("GOA-Neural-Swarm/sub-node-logic")
         contents = repo.get_contents("instruction.json")
         payload = {
@@ -343,21 +246,21 @@ def broadcast_to_swarm(command, gen_version):
         }
         repo.update_file(
             contents.path,
-            f"🔱 SWARM-EVOLUTION: Gen {gen_version}",
+            f"SWARM-EVOLUTION: Gen {gen_version}",
             json.dumps(payload, indent=4),
             contents.sha,
         )
     except Exception as e:
-        print(f"❌ [BROADCAST FAILED]: {e}")
+        print(f"BROADCAST FAILED: {e}")
 
 
 def get_latest_gen():
-    if not DB_URL:
+    if not os.getenv("DATABASE_URL"):
         return 94
     try:
         import psycopg2
 
-        with psycopg2.connect(DB_URL) as conn:
+        with psycopg2.connect(os.getenv("DATABASE_URL")) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT MAX(gen_version) FROM ai_thoughts")
                 res = cur.fetchone()
@@ -390,16 +293,16 @@ def self_coding_engine(raw_content):
 
 
 def autonomous_git_push(gen, thought, modified_files):
-    if not GH_TOKEN:
+    if not os.getenv("GH_TOKEN"):
         return
     try:
         import shutil
 
-        if os.path.exists(REPO_PATH):
-            shutil.rmtree(REPO_PATH)
-        remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
-        repo = git.Repo.clone_from(remote_url, REPO_PATH)
-        os.chdir(REPO_PATH)
+        if os.path.exists("/kaggle/working/sovereign_repo_sync"):
+            shutil.rmtree("/kaggle/working/sovereign_repo_sync")
+        remote_url = f"https://x-access-token:{os.getenv('GH_TOKEN')}@github.com/GOA-Neural-Swarm/delta-brain-sync.git"
+        repo = git.Repo.clone_from(remote_url, "/kaggle/working/sovereign_repo_sync")
+        os.chdir("/kaggle/working/sovereign_repo_sync")
         os.system("git config user.name 'GOA-neurons'")
         os.system("git config user.email 'goa-neurons@neural-swarm.ai'")
         for file in modified_files or []:
@@ -407,19 +310,17 @@ def autonomous_git_push(gen, thought, modified_files):
                 shutil.copy(os.path.join("..", file), file)
         os.system("git add .")
         if os.popen("git status --porcelain").read().strip():
-            os.system(f'git commit -m "🧬 Gen {gen} Evolution"')
+            os.system(f'git commit -m "Gen {gen} Evolution"')
             os.system("git push origin main --force")
     except Exception as e:
-        print(f"❌ [GIT ERROR]: {e}")
+        print(f"GIT ERROR: {e}")
 
 
-# --- 🧠 INITIALIZATION ---
 brain = Brain()
 current_gen = get_latest_gen() + 1
 HEADLESS = os.getenv("HEADLESS_MODE") == "true"
 
-# Load Local Model as Fallback
-print("🧠 [SYSTEM]: Loading Local Neural Engine...")
+print("Loading Local Neural Engine...")
 model_id = "unsloth/llama-3-8b-instruct-bnb-4bit"
 try:
     bnb_config = BitsAndBytesConfig(
@@ -431,7 +332,7 @@ try:
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
 except Exception as e:
-    print(f"⚠️ Local Model Load Failed: {e}")
+    print(f"Local Model Load Failed: {e}")
     pipe = None
 
 while True:
@@ -446,24 +347,20 @@ while True:
             / 5
         )
         prompt = f"# TARGET: brain.py\nOptimize neural processing for Gen {current_gen}. Error: {total_error}"
-
         thought_text = dual_brain_pipeline(prompt, current_gen, total_error)
         if not thought_text and pipe:
             outputs = pipe(prompt, max_new_tokens=500, do_sample=True)
             thought_text = outputs[0]["generated_text"]
-
         is_updated, files_changed = self_coding_engine(thought_text)
         autonomous_git_push(current_gen, thought_text, files_changed)
         broadcast_to_swarm("EVOLVE", current_gen)
-
         if is_updated:
-            print("🧬 [RESTARTING]: New DNA injected.")
+            print("RESTARTING: New DNA injected.")
             os.execv(sys.executable, ["python"] + sys.argv)
-
         if HEADLESS:
             break
         current_gen += 1
         time.sleep(60)
     except Exception as e:
-        print(f"🚨 [LOOP ERROR]: {e}")
+        print(f"LOOP ERROR: {e}")
         time.sleep(10)
