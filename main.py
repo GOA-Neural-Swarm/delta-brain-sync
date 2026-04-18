@@ -1,3 +1,4 @@
+
 import numpy as np
 
 class Tensor:
@@ -225,7 +226,7 @@ def train():
     Y = np.random.randint(0, C, N)
     model = OMEGA_ASI_V2(D, 128, C, depth=2)
     opt = AdamW(model.params())
-    
+
     for e in range(E):
         idx = np.random.permutation(N)
         ls_acc, ac_acc = [], []
@@ -235,8 +236,10 @@ def train():
             pr = (p := np.exp(lg - lg.max(-1, keepdims=True))) / (p.sum(-1, keepdims=True) + 1e-12)
             loss = -np.mean(np.log(pr[range(len(yb)), yb] + 1e-12))
             acc = np.mean(pr.argmax(-1) == yb)
-            ls_acc.append(loss); ac_acc.append(acc)
-            dl = pr.copy(); dl[range(len(yb)), yb] -= 1
+            ls_acc.append(loss)
+            ac_acc.append(acc)
+            dl = pr.copy()
+            dl[range(len(yb)), yb] -= 1
             model.backward(dl / len(yb))
             opt.step()
         if (e + 1) % 5 == 0:
