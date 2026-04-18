@@ -178,10 +178,8 @@ class RedundantConsensusBlock(Module):
         dg_logits[:, 0] = np.sum(dy * self.o_gemini, axis=(1, 2))
         dg_logits[:, 1] = np.sum(dy * self.o_groq, axis=(1, 2))
         dx_gate = self.gate.b(dg_logits - dg_logits.mean(-1, keepdims=True))
-        
         dg_stream = dy * self.p[:, 0:1, None]
         dq_stream = dy * self.p[:, 1:2, None]
-        
         dx = dy + self.norm_g.b(self.gemini_stream.b(dg_stream)) + self.norm_q.b(self.groq_stream.b(dq_stream))
         dx += (dx_gate[:, None, :] / self.x.shape[1])
         return dx
@@ -215,39 +213,32 @@ class AdamW:
         self.t += 1
         a = self.lr * (np.sqrt(1 - self.b2**self.t) / (1 - self.b1**self.t))
         for i, p in enumerate(self.p):
-            g = np.clip(p.grad, -5.0, 5.0)
+            g = np.clip(p.grad, -1.0, 1.0)
             self.m[i] = self.b1 * self.m[i] + (1 - self.b1) * g
             self.v[i] = self.b2 * self.v[i] + (1 - self.b2) * (g**2)
             p.data -= a * (self.m[i] / (np.sqrt(self.v[i]) + 1e-8) + self.wd * p.data)
             p.grad.fill(0)
 
 if __name__ == "__main__":
-    N, D, C, BS, E = 2048, 784, 10, 64, 100
+    N, D, C, BS, E = 1024, 784, 10, 32, 50
     X = np.random.randn(N, D).astype("f4")
     Y = np.random.randint(0, C, N)
-    
-    model = OMEGA_ASI(D, 128, C, depth=2)
-    optimizer = AdamW(model.params(), lr=1e-3, wd=0.01)
-    
+    model = OMEGA_ASI(D, 64, C, depth=1)
+    optimizer = AdamW(model.params(), lr=2e-3, wd=0.01)
     for e in range(E):
         idx = np.random.permutation(N)
         L, A = [], []
         for i in range(0, N, BS):
             xb, yb = X[idx[i:i+BS]], Y[idx[i:i+BS]]
             logits = model.f(xb)
-            
             ex = np.exp(logits - np.max(logits, -1, keepdims=True))
             probs = ex / (ex.sum(-1, keepdims=True) + 1e-12)
-            
             loss = -np.mean(np.log(probs[range(len(yb)), yb] + 1e-12))
             acc = np.mean(probs.argmax(-1) == yb)
-            
             L.append(loss); A.append(acc)
-            
             d_logits = probs.copy()
             d_logits[range(len(yb)), yb] -= 1
             model.b(d_logits / len(yb))
             optimizer.step()
-            
         if (e + 1) % 5 == 0:
-            print(f"STEP {e+1:03} | LOSS: {np.mean(L):.4f} | ACC: {np.mean(A):.4f}")
+            print(f"EPOCH {e+1:03} | LOSS: {np.mean(L):.4f} | ACC: {np.mean(A):.4f}")
