@@ -1,9 +1,8 @@
-
 import numpy as np
 
 class Tensor:
     def __init__(self, data, name=""):
-        self.data = data.astype("f4")
+        self.data = np.ascontiguousarray(data.astype("f4"))
         self.grad = np.zeros_like(self.data)
         self.name = name
 
@@ -11,19 +10,17 @@ class Module:
     def params(self):
         p = []
         for v in self.__dict__.values():
-            if isinstance(v, Tensor):
-                p.append(v)
-            elif isinstance(v, Module):
-                p.extend(v.params())
+            if isinstance(v, Tensor): p.append(v)
+            elif isinstance(v, Module): p.extend(v.params())
             elif isinstance(v, list):
                 for i in v:
-                    if isinstance(i, Module):
-                        p.extend(i.params())
+                    if isinstance(i, Module): p.extend(i.params())
         return p
 
 class Linear(Module):
     def __init__(self, i, o, bias=True):
-        self.w = Tensor(np.random.randn(i, o) * np.sqrt(2.0 / i))
+        scale = np.sqrt(2.0 / i)
+        self.w = Tensor(np.random.standard_normal((i, o)) * scale)
         self.b = Tensor(np.zeros(o)) if bias else None
 
     def forward(self, x):
@@ -34,8 +31,7 @@ class Linear(Module):
         xf = self.x.reshape(-1, self.x.shape[-1])
         dyf = dy.reshape(-1, dy.shape[-1])
         self.w.grad += xf.T @ dyf
-        if self.b:
-            self.b.grad += dyf.sum(0)
+        if self.b: self.b.grad += dyf.sum(0)
         return (dy @ self.w.data.T).reshape(self.x.shape)
 
 class RMSNorm(Module):
@@ -59,11 +55,13 @@ class SwiGLU(Module):
         self.x = x
         self.gate, self.val = np.split(x, 2, axis=-1)
         self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.gate, -15, 15)))
-        return (self.gate * self.sig) * self.val
+        self.swish = self.gate * self.sig
+        return self.swish * self.val
 
     def backward(self, dy):
-        dg = dy * self.val * self.sig * (1.0 + self.gate * (1.0 - self.sig))
-        dv = dy * (self.gate * self.sig)
+        ds = dy * self.val
+        dv = dy * self.swish
+        dg = ds * self.sig * (1.0 + self.gate * (1.0 - self.sig))
         return np.concatenate([dg, dv], axis=-1)
 
 class GQA(Module):
@@ -107,22 +105,24 @@ class GQA(Module):
         dqr = np.einsum("bsht,bthd->bshd", da, kr_r)
         dkr = np.einsum("bsht,bshd->bthd", da, self.qr).reshape(b, s, self.h // self.g, self.g, self.hd).sum(3)
         dvr = np.einsum("bsht,bshd->bthd", self.p, dy_wo).reshape(b, s, self.h // self.g, self.g, self.hd).sum(3)
-        return self.wq.backward(self._rope(dqr, 1).reshape(b, s, -1)) + self.wk.backward(self._rope(dkr, 1).reshape(b, s, -1)) + self.wv.backward(dvr.reshape(b, s, -1))
+        return self.wq.backward(self._rope(dqr, 1).reshape(b, s, -1)) + \
+               self.wk.backward(self._rope(dkr, 1).reshape(b, s, -1)) + \
+               self.wv.backward(dvr.reshape(b, s, -1))
 
-class RedundantConsensus(Module):
+class ConsensusCore(Module):
     def __init__(self, d):
-        self.gemini = [Linear(d, d * 2), SwiGLU(), Linear(d, d)]
-        self.groq = [Linear(d, d * 2), SwiGLU(), Linear(d, d)]
+        self.gemini_path = [Linear(d, d * 4), SwiGLU(), Linear(d * 2, d)]
+        self.groq_path = [Linear(d, d * 4), SwiGLU(), Linear(d * 2, d)]
         self.gate = Linear(d, 2)
 
     def forward(self, x):
         self.x = x
-        g1 = self.gemini[0].forward(x)
-        g2 = self.gemini[1].forward(g1)
-        self.g_out = self.gemini[2].forward(g2)
-        q1 = self.groq[0].forward(x)
-        q2 = self.groq[1].forward(q1)
-        self.q_out = self.groq[2].forward(q2)
+        g1 = self.gemini_path[0].forward(x)
+        g2 = self.gemini_path[1].forward(g1)
+        self.g_out = self.gemini_path[2].forward(g2)
+        q1 = self.groq_path[0].forward(x)
+        q2 = self.groq_path[1].forward(q1)
+        self.q_out = self.groq_path[2].forward(q2)
         lg = self.gate.forward(x)
         self.p = (e := np.exp(lg - np.max(lg, -1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
         self.cache = (g1, g2, q1, q2)
@@ -133,8 +133,8 @@ class RedundantConsensus(Module):
         dg_out = dy * self.p[..., :1]
         dq_out = dy * self.p[..., 1:]
         dp = np.stack([np.sum(dy * self.g_out, -1), np.sum(dy * self.q_out, -1)], -1)
-        d_gem = self.gemini[0].backward(self.gemini[1].backward(self.gemini[2].backward(dg_out)))
-        d_groq = self.groq[0].backward(self.groq[1].backward(self.groq[2].backward(dq_out)))
+        d_gem = self.gemini_path[0].backward(self.gemini_path[1].backward(self.gemini_path[2].backward(dg_out)))
+        d_groq = self.groq_path[0].backward(self.groq_path[1].backward(self.groq_path[2].backward(dq_out)))
         d_gate = self.gate.backward(dp - np.mean(dp, -1, keepdims=True))
         return d_gem + d_groq + d_gate
 
@@ -142,7 +142,7 @@ class MoE(Module):
     def __init__(self, d, n=4, k=2):
         self.d, self.n, self.k = d, n, k
         self.gate = Linear(d, n)
-        self.experts = [[Linear(d, d * 2, False), SwiGLU(), Linear(d, d, False)] for _ in range(n)]
+        self.experts = [[Linear(d, d * 4, False), SwiGLU(), Linear(d * 2, d, False)] for _ in range(n)]
 
     def forward(self, x):
         self.sh = x.shape
@@ -170,8 +170,7 @@ class MoE(Module):
         dyf = dy.reshape(-1, self.d)
         dx, dg = np.zeros((dyf.shape[0], self.d)), np.zeros((dyf.shape[0], self.n))
         for i in range(self.n):
-            if self.cache[i] is None:
-                continue
+            if self.cache[i] is None: continue
             m, pos, h1, h2, h3 = self.cache[i]
             dg[m, i] = np.sum(dyf[m] * h3, -1)
             dh3 = self.experts[i][2].backward(dyf[m] * self.w[m, pos][:, None])
@@ -182,37 +181,35 @@ class MoE(Module):
 class SovereignBlock(Module):
     def __init__(self, d):
         self.n1, self.at = RMSNorm(d), GQA(d)
-        self.n2, self.rc = RMSNorm(d), RedundantConsensus(d)
+        self.n2, self.cc = RMSNorm(d), ConsensusCore(d)
         self.n3, self.ff = RMSNorm(d), MoE(d)
 
     def forward(self, x):
         x = x + self.at.forward(self.n1.forward(x))
-        x = x + self.rc.forward(self.n2.forward(x))
+        x = x + self.cc.forward(self.n2.forward(x))
         return x + self.ff.forward(self.n3.forward(x))
 
     def backward(self, dy):
         dy = dy + self.ff.backward(self.n3.backward(dy))
-        dy = dy + self.rc.backward(self.n2.backward(dy))
+        dy = dy + self.cc.backward(self.n2.backward(dy))
         return dy + self.at.backward(self.n1.backward(dy))
 
-class OMEGA_ASI_V3(Module):
-    def __init__(self, di, dm, do, depth=3):
+class OMEGA_ASI_V4(Module):
+    def __init__(self, di, dm, do, depth=4):
         self.embed = Linear(di, dm)
         self.blocks = [SovereignBlock(dm) for _ in range(depth)]
         self.norm, self.head = RMSNorm(dm), Linear(dm, do)
 
     def forward(self, x):
         x = self.embed.forward(x[:, None] if x.ndim == 2 else x)
-        for b in self.blocks:
-            x = b.forward(x)
+        for b in self.blocks: x = b.forward(x)
         return self.head.forward(self.norm.forward(x[:, -1]))
 
     def backward(self, dy):
         dy = self.norm.backward(self.head.backward(dy))
         db = np.zeros((dy.shape[0], self.embed.x.shape[1], dy.shape[1]))
         db[:, -1] = dy
-        for b in reversed(self.blocks):
-            db = b.backward(db)
+        for b in reversed(self.blocks): db = b.backward(db)
         self.embed.backward(db)
 
 class AdamW:
@@ -226,22 +223,22 @@ class AdamW:
         self.t += 1
         lrt = self.lr * (np.sqrt(1 - self.b2**self.t) / (1 - self.b1**self.t))
         for i, pt in enumerate(self.p):
-            g = np.clip(pt.grad, -1, 1)
+            g = np.clip(pt.grad, -1.0, 1.0)
             self.m[i] = self.b1 * self.m[i] + (1 - self.b1) * g
             self.v[i] = self.b2 * self.v[i] + (1 - self.b2) * (g**2)
             pt.data -= lrt * (self.m[i] / (np.sqrt(self.v[i]) + 1e-8) + self.wd * pt.data)
             pt.grad.fill(0)
 
 def train():
-    N, D, C, BS, E = 2048, 784, 10, 128, 50
-    X = np.random.randn(N, D).astype("f4")
+    N, D, C, BS, E = 1024, 784, 10, 64, 100
+    X = np.random.standard_normal((N, D)).astype("f4")
     Y = np.random.randint(0, C, N)
-    model = OMEGA_ASI_V3(D, 128, C, depth=2)
-    opt = AdamW(model.params(), lr=5e-4)
+    model = OMEGA_ASI_V4(D, 128, C, depth=2)
+    opt = AdamW(model.params(), lr=1e-3, wd=0.05)
 
     for e in range(E):
         idx = np.random.permutation(N)
-        ls, ac = [], []
+        losses, accs = [], []
         for i in range(0, N, BS):
             xb, yb = X[idx[i : i + BS]], Y[idx[i : i + BS]]
             lg = model.forward(xb)
@@ -249,14 +246,14 @@ def train():
             pr = (p := np.exp(lg - mx)) / (p.sum(-1, keepdims=True) + 1e-12)
             loss = -np.mean(np.log(pr[range(len(yb)), yb] + 1e-12))
             acc = np.mean(pr.argmax(-1) == yb)
-            ls.append(loss)
-            ac.append(acc)
+            losses.append(loss)
+            accs.append(acc)
             dl = pr.copy()
             dl[range(len(yb)), yb] -= 1
             model.backward(dl / len(yb))
             opt.step()
-        if (e + 1) % 5 == 0:
-            print(f"STEP {e+1:03d} | LOSS: {np.mean(ls):.4f} | ACC: {np.mean(ac):.4f}")
+        if (e + 1) % 10 == 0:
+            print(f"EPOCH {e+1:03d} | LOSS: {np.mean(losses):.4f} | ACC: {np.mean(accs):.4f}")
 
 if __name__ == "__main__":
     train()
