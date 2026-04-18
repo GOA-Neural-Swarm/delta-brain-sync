@@ -1,22 +1,29 @@
 import numpy as np
 
+
 class Tensor:
     def __init__(self, data, name=""):
         self.data = np.ascontiguousarray(data).astype("f4")
         self.grad = np.zeros_like(self.data)
         self.name = name
 
+
 class Module:
     def params(self):
         p = []
         for v in self.__dict__.values():
-            if isinstance(v, Tensor): p.append(v)
-            elif isinstance(v, Module): p.extend(v.params())
+            if isinstance(v, Tensor):
+                p.append(v)
+            elif isinstance(v, Module):
+                p.extend(v.params())
             elif isinstance(v, list):
                 for i in v:
-                    if isinstance(i, Module): p.extend(i.params())
-                    elif isinstance(i, Tensor): p.append(i)
+                    if isinstance(i, Module):
+                        p.extend(i.params())
+                    elif isinstance(i, Tensor):
+                        p.append(i)
         return p
+
 
 class Linear(Module):
     def __init__(self, i, o, bias=True):
@@ -36,6 +43,7 @@ class Linear(Module):
             self.b_vec.grad += df.sum(0)
         return (dy @ self.w.data.T).reshape(self.x.shape)
 
+
 class RMSNorm(Module):
     def __init__(self, d, e=1e-6):
         self.g, self.e = Tensor(np.ones(d)), e
@@ -52,6 +60,7 @@ class RMSNorm(Module):
         dxn = dy * self.g.data
         return self.r * (dxn - xn * np.mean(dxn * xn, -1, keepdims=True))
 
+
 class SwiGLU(Module):
     def f(self, x):
         x1, x2 = np.split(x, 2, axis=-1)
@@ -65,6 +74,7 @@ class SwiGLU(Module):
         dx2 = dy * self.swish
         dx1 = ds * (self.sig * (1.0 + self.x1 * (1.0 - self.sig)))
         return np.concatenate([dx1, dx2], axis=-1)
+
 
 class GeminiAttention(Module):
     def __init__(self, d, h=8):
@@ -97,7 +107,9 @@ class GeminiAttention(Module):
         self.qr, self.kr = self._rope(q), self._rope(k)
         self.v = v
         sc = np.einsum("bshd,bthd->bsht", self.qr, self.kr) * (self.hd**-0.5)
-        self.p = (e := np.exp(sc - sc.max(-1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
+        self.p = (e := np.exp(sc - sc.max(-1, keepdims=True))) / (
+            e.sum(-1, keepdims=True) + 1e-12
+        )
         ctx = np.einsum("bsht,bthd->bshd", self.p, v).reshape(b, s, -1)
         return self.wo.f(ctx)
 
@@ -111,19 +123,29 @@ class GeminiAttention(Module):
         dv = np.einsum("bsht,bshd->bthd", self.p, do)
         dq = self._rope(dqr, True)
         dk = self._rope(dkr, True)
-        return self.wq.b(dq.reshape(b, s, -1)) + self.wk.b(dk.reshape(b, s, -1)) + self.wv.b(dv.reshape(b, s, -1))
+        return (
+            self.wq.b(dq.reshape(b, s, -1))
+            + self.wk.b(dk.reshape(b, s, -1))
+            + self.wv.b(dv.reshape(b, s, -1))
+        )
+
 
 class GroqMoE(Module):
     def __init__(self, d, n=4, k=1):
         self.d, self.n, self.k = d, n, k
         self.gate = Linear(d, n, False)
-        self.experts = [[Linear(d, d * 2, False), SwiGLU(), Linear(d * 2, d, False)] for _ in range(n)]
+        self.experts = [
+            [Linear(d, d * 2, False), SwiGLU(), Linear(d * 2, d, False)]
+            for _ in range(n)
+        ]
 
     def f(self, x):
         self.sh = x.shape
         xf = x.reshape(-1, self.d)
         lg = self.gate.f(xf)
-        p = (e := np.exp(lg - lg.max(-1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
+        p = (e := np.exp(lg - lg.max(-1, keepdims=True))) / (
+            e.sum(-1, keepdims=True) + 1e-12
+        )
         self.idx = np.argsort(p, -1)[:, -self.k :]
         self.w = np.take_along_axis(p, self.idx, -1)
         self.w /= self.w.sum(-1, keepdims=True) + 1e-12
@@ -145,7 +167,8 @@ class GroqMoE(Module):
         dyf = dy.reshape(-1, self.d)
         dx, dg = np.zeros((dyf.shape[0], self.d)), np.zeros((dyf.shape[0], self.n))
         for i in range(self.n):
-            if self.cache[i] is None: continue
+            if self.cache[i] is None:
+                continue
             mask, pos, h1, h2, h3 = self.cache[i]
             dg[mask, i] = (dyf[mask] * h3).sum(-1)
             dh3 = dyf[mask] * self.w[mask, pos][:, None]
@@ -153,6 +176,7 @@ class GroqMoE(Module):
             dh1 = self.experts[i][1].b(dh2)
             dx[mask] += self.experts[i][0].b(dh1)
         return (dx + self.gate.b(dg - dg.mean(-1, keepdims=True))).reshape(self.sh)
+
 
 class RedundantConsensusBlock(Module):
     def __init__(self, d):
@@ -166,7 +190,9 @@ class RedundantConsensusBlock(Module):
         self.og = self.gemini.f(self.n1.f(x))
         self.oq = self.groq.f(self.n2.f(x))
         gl = self.gate.f(np.mean(x, axis=1))
-        self.p = (e := np.exp(gl - gl.max(-1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
+        self.p = (e := np.exp(gl - gl.max(-1, keepdims=True))) / (
+            e.sum(-1, keepdims=True) + 1e-12
+        )
         return x + self.p[:, 0:1, None] * self.og + self.p[:, 1:2, None] * self.oq
 
     def b(self, dy):
@@ -179,6 +205,7 @@ class RedundantConsensusBlock(Module):
         dx += dxg[:, None, :] / self.x.shape[1]
         return dx
 
+
 class OMEGA_ASI(Module):
     def __init__(self, di, dm, do, depth=2):
         self.embed = Linear(di, dm)
@@ -187,17 +214,21 @@ class OMEGA_ASI(Module):
         self.head = Linear(dm, do)
 
     def f(self, x):
-        if x.ndim == 2: x = x[:, None]
+        if x.ndim == 2:
+            x = x[:, None]
         x = self.embed.f(x)
-        for b in self.blocks: x = b.f(x)
+        for b in self.blocks:
+            x = b.f(x)
         return self.head.f(self.norm.f(x[:, -1]))
 
     def b(self, dy):
         dy = self.norm.b(self.head.b(dy))
         db = np.zeros((dy.shape[0], self.embed.x.shape[1], dy.shape[1]))
         db[:, -1] = dy
-        for b in reversed(self.blocks): db = b.b(db)
+        for b in reversed(self.blocks):
+            db = b.b(db)
         return self.embed.b(db)
+
 
 class AdamW:
     def __init__(self, params, lr=1e-3, b1=0.9, b2=0.999, wd=0.01):
@@ -214,6 +245,7 @@ class AdamW:
             self.v[i] = self.b2 * self.v[i] + (1 - self.b2) * (g**2)
             p.data -= a * (self.m[i] / (np.sqrt(self.v[i]) + 1e-8) + self.wd * p.data)
             p.grad.fill(0)
+
 
 def train():
     N, D, C, BS, E = 2048, 784, 10, 64, 100
@@ -238,7 +270,10 @@ def train():
             model.b(d_logits / len(yb))
             opt.step()
         if (e + 1) % 10 == 0:
-            print(f"EPOCH {e+1:03} | LOSS: {np.mean(losses):.4f} | ACC: {np.mean(accs):.4f}")
+            print(
+                f"EPOCH {e+1:03} | LOSS: {np.mean(losses):.4f} | ACC: {np.mean(accs):.4f}"
+            )
+
 
 if __name__ == "__main__":
     train()

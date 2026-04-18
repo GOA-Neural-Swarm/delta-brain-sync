@@ -15,8 +15,8 @@ from functools import lru_cache
 
 def install_requirements():
     libs = [
-        "torch --index-url https://download.pytorch.org/whl/cpu",
-        "torchvision --index-url https://download.pytorch.org/whl/cpu",
+        "torch",
+        "torchvision",
         "huggingface-hub<1.0",
         "transformers>=4.44.0",
         "psycopg2-binary",
@@ -41,41 +41,16 @@ def install_requirements():
                 "-m",
                 "pip",
                 "install",
-                "torch",
-                "torchvision",
-                "--extra-index-url",
-                "https://download.pytorch.org/whl/cpu",
-                "--no-cache-dir",
+                *libs,
                 "--quiet",
+                "--no-cache-dir",
             ]
-        )
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
         )
         print("Sovereign Core & Stability Patch Ready.")
     except subprocess.CalledProcessError as e:
         print(f"Install Warning: Error installing requirements: {e}")
     except Exception as e:
         print(f"Install Warning: An unexpected error occurred: {e}")
-
-
-install_requirements()
-
-import google.genai as genai
-import numpy as np
-import torch
-import torchvision
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
-from transformers import (
-    pipeline,
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    BitsAndBytesConfig,
-)
-from firebase_admin import credentials, db, initialize_app, _apps
-import firebase_admin
-from github import Github
 
 
 class HydraEngine:
@@ -315,6 +290,24 @@ def autonomous_git_push(gen, thought, modified_files):
     except Exception as e:
         print(f"GIT ERROR: {e}")
 
+
+install_requirements()
+
+import google.genai as genai
+import numpy as np
+import torch
+import torchvision
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from transformers import (
+    pipeline,
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+)
+from firebase_admin import credentials, db, initialize_app, _apps
+import firebase_admin
+from github import Github
 
 brain = Brain()
 current_gen = get_latest_gen() + 1
