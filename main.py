@@ -65,11 +65,11 @@ class SwiGLU(Module):
         return np.concatenate([dx1, dx2], axis=-1)
 
 class RotaryAttention(Module):
-    def __init__(self, d, h=8, g=2):
-        self.d, self.h, self.g, self.hd = d, h, g, d // h
+    def __init__(self, d, h=8):
+        self.d, self.h, self.hd = d, h, d // h
         self.wq = Linear(d, d, False)
-        self.wk = Linear(d, (h // g) * self.hd, False)
-        self.wv = Linear(d, (h // g) * self.hd, False)
+        self.wk = Linear(d, d, False)
+        self.wv = Linear(d, d, False)
         self.wo = Linear(d, d, False)
         inv_freq = 1.0 / (10000 ** (np.arange(0, self.hd, 2) / self.hd))
         t = np.arange(2048)
@@ -95,30 +95,25 @@ class RotaryAttention(Module):
     def f(self, x):
         b, s, _ = x.shape
         q = self.wq.f(x).reshape(b, s, self.h, self.hd)
-        k = self.wk.f(x).reshape(b, s, self.h // self.g, self.hd)
-        v = self.wv.f(x).reshape(b, s, self.h // self.g, self.hd)
+        k = self.wk.f(x).reshape(b, s, self.h, self.hd)
+        v = self.wv.f(x).reshape(b, s, self.h, self.hd)
         self.q_rope, self.k_rope = self._apply_rope(q), self._apply_rope(k)
         self.v_cached = v
-        k_rep = np.repeat(self.k_rope, self.g, axis=2)
-        v_rep = np.repeat(v, self.g, axis=2)
-        score = np.einsum("bshd,bthd->bsht", self.q_rope, k_rep) * (self.hd**-0.5)
+        score = np.einsum("bshd,bthd->bsht", self.q_rope, self.k_rope) * (self.hd**-0.5)
         self.p = (e := np.exp(score - score.max(-1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
-        ctx = np.einsum("bsht,bthd->bshd", self.p, v_rep).reshape(b, s, -1)
+        ctx = np.einsum("bsht,bthd->bshd", self.p, v).reshape(b, s, -1)
         return self.wo.f(ctx)
 
     def b(self, dy):
         b, s = dy.shape[:2]
         do = self.wo.b(dy).reshape(b, s, self.h, self.hd)
-        v_rep = np.repeat(self.v_cached, self.g, axis=2)
-        dp = np.einsum("bshd,bthd->bsht", do, v_rep)
+        dp = np.einsum("bshd,bthd->bsht", do, self.v_cached)
         ds = self.p * (dp - (self.p * dp).sum(-1, keepdims=True)) * (self.hd**-0.5)
-        k_rep = np.repeat(self.k_rope, self.g, axis=2)
-        dq_rope = np.einsum("bsht,bthd->bshd", ds, k_rep)
-        dk_rep = np.einsum("bsht,bshd->bthd", ds, self.q_rope)
-        dv_rep = np.einsum("bsht,bshd->bthd", self.p, do)
+        dq_rope = np.einsum("bsht,bthd->bshd", ds, self.k_rope)
+        dk_rope = np.einsum("bsht,bshd->bthd", ds, self.q_rope)
+        dv = np.einsum("bsht,bshd->bthd", self.p, do)
         dq = self._rope_grad(dq_rope)
-        dk = self._rope_grad(dk_rep.reshape(b, s, self.h // self.g, self.g, self.hd).sum(3))
-        dv = dv_rep.reshape(b, s, self.h // self.g, self.g, self.hd).sum(3)
+        dk = self._rope_grad(dk_rope)
         return self.wq.b(dq.reshape(b, s, -1)) + self.wk.b(dk.reshape(b, s, -1)) + self.wv.b(dv.reshape(b, s, -1))
 
 class MoE(Module):
@@ -168,19 +163,27 @@ class RedundantConsensusBlock(Module):
         self.gemini_stream = RotaryAttention(d)
         self.norm_q = RMSNorm(d)
         self.groq_stream = MoE(d)
-        self.alpha = Tensor(np.array([0.5]))
+        self.gate = Linear(d, 2, False)
 
     def f(self, x):
         self.x = x
         self.o_gemini = self.gemini_stream.f(self.norm_g.f(x))
         self.o_groq = self.groq_stream.f(self.norm_q.f(x))
-        return x + self.alpha.data * self.o_gemini + (1.0 - self.alpha.data) * self.o_groq
+        g_logits = self.gate.f(np.mean(x, axis=1))
+        self.p = (e := np.exp(g_logits - g_logits.max(-1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
+        return x + self.p[:, 0:1, None] * self.o_gemini + self.p[:, 1:2, None] * self.o_groq
 
     def b(self, dy):
-        self.alpha.grad += np.sum(dy * (self.o_gemini - self.o_groq))
-        dg_stream = dy * self.alpha.data
-        dq_stream = dy * (1.0 - self.alpha.data)
+        dg_logits = np.zeros_like(self.p)
+        dg_logits[:, 0] = np.sum(dy * self.o_gemini, axis=(1, 2))
+        dg_logits[:, 1] = np.sum(dy * self.o_groq, axis=(1, 2))
+        dx_gate = self.gate.b(dg_logits - dg_logits.mean(-1, keepdims=True))
+        
+        dg_stream = dy * self.p[:, 0:1, None]
+        dq_stream = dy * self.p[:, 1:2, None]
+        
         dx = dy + self.norm_g.b(self.gemini_stream.b(dg_stream)) + self.norm_q.b(self.groq_stream.b(dq_stream))
+        dx += (dx_gate[:, None, :] / self.x.shape[1])
         return dx
 
 class OMEGA_ASI(Module):
@@ -203,7 +206,7 @@ class OMEGA_ASI(Module):
         return self.embed.b(db)
 
 class AdamW:
-    def __init__(self, params, lr=1e-3, b1=0.9, b2=0.95, wd=0.01):
+    def __init__(self, params, lr=1e-3, b1=0.9, b2=0.999, wd=0.01):
         self.p, self.lr, self.b1, self.b2, self.wd, self.t = params, lr, b1, b2, wd, 0
         self.m = [np.zeros_like(p.data) for p in params]
         self.v = [np.zeros_like(p.data) for p in params]
@@ -212,19 +215,19 @@ class AdamW:
         self.t += 1
         a = self.lr * (np.sqrt(1 - self.b2**self.t) / (1 - self.b1**self.t))
         for i, p in enumerate(self.p):
-            g = np.clip(p.grad, -1.0, 1.0)
+            g = np.clip(p.grad, -5.0, 5.0)
             self.m[i] = self.b1 * self.m[i] + (1 - self.b1) * g
             self.v[i] = self.b2 * self.v[i] + (1 - self.b2) * (g**2)
             p.data -= a * (self.m[i] / (np.sqrt(self.v[i]) + 1e-8) + self.wd * p.data)
             p.grad.fill(0)
 
 if __name__ == "__main__":
-    N, D, C, BS, E = 1024, 784, 10, 64, 50
+    N, D, C, BS, E = 2048, 784, 10, 64, 100
     X = np.random.randn(N, D).astype("f4")
     Y = np.random.randint(0, C, N)
     
     model = OMEGA_ASI(D, 128, C, depth=2)
-    optimizer = AdamW(model.params(), lr=2e-3, wd=0.05)
+    optimizer = AdamW(model.params(), lr=1e-3, wd=0.01)
     
     for e in range(E):
         idx = np.random.permutation(N)
@@ -247,4 +250,4 @@ if __name__ == "__main__":
             optimizer.step()
             
         if (e + 1) % 5 == 0:
-            print(f"EPOCH {e+1:02} | LOSS: {np.mean(L):.4f} | ACC: {np.mean(A):.4f}")
+            print(f"STEP {e+1:03} | LOSS: {np.mean(L):.4f} | ACC: {np.mean(A):.4f}")
