@@ -19,9 +19,8 @@ class Module:
         return p
 
 class Linear(Module):
-    def __init__(self, i, o, bias=True):
-        scale = np.sqrt(2.0 / i)
-        self.w = Tensor(np.random.standard_normal((i, o)) * scale)
+    def __init__(self, i, o, bias=False):
+        self.w = Tensor(np.random.randn(i, o) * np.sqrt(2.0 / i))
         self.b = Tensor(np.zeros(o)) if bias else None
 
     def forward(self, x):
@@ -56,22 +55,21 @@ class SwiGLU(Module):
         self.x = x
         self.gate, self.val = np.split(x, 2, axis=-1)
         self.sig = 1.0 / (1.0 + np.exp(-np.clip(self.gate, -15, 15)))
-        self.swish = self.gate * self.sig
-        return self.swish * self.val
+        return (self.gate * self.sig) * self.val
 
     def backward(self, dy):
         ds = dy * self.val
-        dv = dy * self.swish
+        dv = dy * (self.gate * self.sig)
         dg = ds * self.sig * (1.0 + self.gate * (1.0 - self.sig))
         return np.concatenate([dg, dv], axis=-1)
 
 class GQA(Module):
     def __init__(self, d, h=8, g=2):
         self.d, self.h, self.g, self.hd = d, h, g, d // h
-        self.wq = Linear(d, d, False)
-        self.wk = Linear(d, (h // g) * self.hd, False)
-        self.wv = Linear(d, (h // g) * self.hd, False)
-        self.wo = Linear(d, d, False)
+        self.wq = Linear(d, d)
+        self.wk = Linear(d, (h // g) * self.hd)
+        self.wv = Linear(d, (h // g) * self.hd)
+        self.wo = Linear(d, d)
         self.scale = self.hd**-0.5
 
     def _rope(self, t, inv=False):
@@ -112,14 +110,14 @@ class GQA(Module):
 
 class ConsensusCore(Module):
     def __init__(self, d):
-        self.path_gemini = [Linear(d, d * 2), SwiGLU(), Linear(d, d)]
-        self.path_groq = [Linear(d, d * 2), SwiGLU(), Linear(d, d)]
+        self.gemini_path = [Linear(d, d * 4), SwiGLU(), Linear(d * 2, d)]
+        self.groq_path = [Linear(d, d * 4), SwiGLU(), Linear(d * 2, d)]
         self.gate = Linear(d, 2)
 
     def forward(self, x):
         self.x = x
-        g = self.path_gemini[2].forward(self.path_gemini[1].forward(self.path_gemini[0].forward(x)))
-        q = self.path_groq[2].forward(self.path_groq[1].forward(self.path_groq[0].forward(x)))
+        g = self.gemini_path[2].forward(self.gemini_path[1].forward(self.gemini_path[0].forward(x)))
+        q = self.groq_path[2].forward(self.groq_path[1].forward(self.groq_path[0].forward(x)))
         self.g_out, self.q_out = g, q
         lg = self.gate.forward(x)
         self.p = (e := np.exp(lg - np.max(lg, -1, keepdims=True))) / (e.sum(-1, keepdims=True) + 1e-12)
@@ -128,8 +126,8 @@ class ConsensusCore(Module):
     def backward(self, dy):
         dg, dq = dy * self.p[..., :1], dy * self.p[..., 1:]
         dp = np.stack([np.sum(dy * self.g_out, -1), np.sum(dy * self.q_out, -1)], -1)
-        dx_g = self.path_gemini[0].backward(self.path_gemini[1].backward(self.path_gemini[2].backward(dg)))
-        dx_q = self.path_groq[0].backward(self.path_groq[1].backward(self.path_groq[2].backward(dq)))
+        dx_g = self.gemini_path[0].backward(self.gemini_path[1].backward(self.gemini_path[2].backward(dg)))
+        dx_q = self.groq_path[0].backward(self.groq_path[1].backward(self.groq_path[2].backward(dq)))
         dx_gate = self.gate.backward(dp - np.mean(dp, -1, keepdims=True))
         return dx_g + dx_q + dx_gate
 
@@ -137,7 +135,7 @@ class MoE(Module):
     def __init__(self, d, n=4, k=2):
         self.d, self.n, self.k = d, n, k
         self.gate = Linear(d, n)
-        self.experts = [[Linear(d, d * 2, False), SwiGLU(), Linear(d, d, False)] for _ in range(n)]
+        self.experts = [[Linear(d, d * 4), SwiGLU(), Linear(d * 2, d)] for _ in range(n)]
 
     def forward(self, x):
         self.sh = x.shape
@@ -189,8 +187,8 @@ class SovereignBlock(Module):
         dy = dy + self.cc.backward(self.n2.backward(dy))
         return dy + self.at.backward(self.n1.backward(dy))
 
-class OMEGA_ASI_V5(Module):
-    def __init__(self, di, dm, do, depth=3):
+class OMEGA_ASI_V6(Module):
+    def __init__(self, di, dm, do, depth=4):
         self.embed = Linear(di, dm)
         self.blocks = [SovereignBlock(dm) for _ in range(depth)]
         self.norm, self.head = RMSNorm(dm), Linear(dm, do)
@@ -225,11 +223,11 @@ class AdamW:
             pt.grad.fill(0)
 
 def train():
-    N, D, C, BS, E = 1024, 784, 10, 64, 50
-    X = np.random.standard_normal((N, D)).astype("f4")
+    N, D, C, BS, E = 2048, 784, 10, 128, 100
+    X = np.random.randn(N, D).astype("f4")
     Y = np.random.randint(0, C, N)
-    model = OMEGA_ASI_V5(D, 128, C, depth=2)
-    opt = AdamW(model.params(), lr=2e-3, wd=0.02)
+    model = OMEGA_ASI_V6(D, 256, C, depth=3)
+    opt = AdamW(model.params(), lr=1e-3, wd=0.05)
 
     for e in range(E):
         idx = np.random.permutation(N)
@@ -237,18 +235,15 @@ def train():
         for i in range(0, N, BS):
             xb, yb = X[idx[i : i + BS]], Y[idx[i : i + BS]]
             lg = model.forward(xb)
-            mx = np.max(lg, -1, keepdims=True)
-            pr = (p := np.exp(lg - mx)) / (p.sum(-1, keepdims=True) + 1e-12)
+            pr = (p := np.exp(lg - np.max(lg, -1, keepdims=True))) / (p.sum(-1, keepdims=True) + 1e-12)
             loss = -np.mean(np.log(pr[range(len(yb)), yb] + 1e-12))
             acc = np.mean(pr.argmax(-1) == yb)
-            losses.append(loss)
-            accs.append(acc)
-            dl = pr.copy()
-            dl[range(len(yb)), yb] -= 1
+            losses.append(loss); accs.append(acc)
+            dl = pr.copy(); dl[range(len(yb)), yb] -= 1
             model.backward(dl / len(yb))
             opt.step()
-        if (e + 1) % 5 == 0:
-            print(f"EVO_CYCLE {e+1:03d} | ENTROPY: {np.mean(losses):.4f} | ACCURACY: {np.mean(accs):.4f}")
+        if (e + 1) % 10 == 0:
+            print(f"CYCLE {e+1:03d} | LOSS: {np.mean(losses):.4f} | ACC: {np.mean(accs):.4f}")
 
 if __name__ == "__main__":
     train()
