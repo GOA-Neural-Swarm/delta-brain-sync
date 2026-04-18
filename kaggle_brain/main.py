@@ -13,10 +13,13 @@ from datetime import datetime, UTC
 from functools import lru_cache
 
 
-# 1. Sovereign Requirements Setup (Moved to top to fix ImportErrors)
+# 1. Sovereign Requirements Setup (Fixed to resolve torchvision/torch mismatch)
 def install_requirements():
     """Installs necessary libraries and fixes version conflicts."""
+    # Force specific versions of torch and torchvision to resolve the 'nms' operator error
     libs = [
+        "torch --index-url https://download.pytorch.org/whl/cpu",  # Use CPU for stability if GPU not required, or remove index-url for auto
+        "torchvision --index-url https://download.pytorch.org/whl/cpu",
         "huggingface-hub<1.0",
         "transformers>=4.44.0",
         "psycopg2-binary",
@@ -32,7 +35,26 @@ def install_requirements():
         "pygithub",
     ]
     try:
-        # Force install compatible versions to resolve the huggingface-hub conflict
+        # Force upgrade torch and torchvision first to ensure binary compatibility
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "--upgrade", "pip", "--quiet"]
+        )
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "torch",
+                "torchvision",
+                "--extra-index-url",
+                "https://download.pytorch.org/whl/cpu",
+                "--no-cache-dir",
+                "--quiet",
+            ]
+        )
+
+        # Install remaining libs
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
         )
@@ -43,13 +65,14 @@ def install_requirements():
         print(f"⚠️ Install Warning: An unexpected error occurred: {e}")
 
 
-# Execute installation before importing transformers
+# Execute installation before importing transformers or torch
 install_requirements()
 
 # Now safe to import
 import google.generativeai as genai
 import numpy as np
 import torch
+import torchvision  # Import explicitly to verify fix
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from transformers import (
@@ -77,7 +100,6 @@ if user_secrets:
     except:
         pass
 
-# Protocol Fix
 DB_URL = (
     raw_db_url.replace("postgres://", "postgresql://", 1)
     if raw_db_url and raw_db_url.startswith("postgres://")
@@ -101,7 +123,6 @@ if user_secrets:
     except:
         pass
 
-# GitHub Configuration
 REPO_OWNER = "GOA-Neural-Swarm"
 REPO_NAME = "delta-brain-sync"
 REPO_URL = f"github.com/{REPO_OWNER}/{REPO_NAME}"
