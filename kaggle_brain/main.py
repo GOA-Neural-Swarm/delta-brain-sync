@@ -5,26 +5,19 @@ import time
 import json
 import traceback
 import requests
-import git
 import re
 import random
 import base64
-import torch
 import numpy as np
 from datetime import datetime
 from functools import lru_cache
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
-from transformers import (
-    pipeline,
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    BitsAndBytesConfig,
-)
 
 
 def install_requirements():
-    """Installs necessary libraries for the Sovereign Engine."""
+    # Added torchvision and torchaudio to the list and used --upgrade
+    # to allow pip to resolve the version conflict between torch and torchvision.
     libs = [
         "psycopg2-binary",
         "firebase-admin",
@@ -37,10 +30,22 @@ def install_requirements():
         "scikit-learn",
         "transformers",
         "torch",
+        "torchvision",
+        "torchaudio",
+        "sentencepiece",
     ]
     try:
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                *libs,
+                "--quiet",
+                "--no-cache-dir",
+            ]
         )
         print("Phase 7.1 Sovereign Core & Stability Patch Ready.")
     except Exception as e:
@@ -51,10 +56,20 @@ if not os.environ.get("REQUIREMENTS_INSTALLED"):
     install_requirements()
     os.environ["REQUIREMENTS_INSTALLED"] = "1"
 
+# Delayed imports to prevent crash before installation
+try:
+    import torch
+    from transformers import (
+        pipeline,
+        AutoModelForCausalLM,
+        AutoTokenizer,
+        BitsAndBytesConfig,
+    )
+except ImportError:
+    print("Heavy libraries not yet available. Restarting after installation...")
+
 
 class Brain:
-    """Represents a neural brain with RNA QT45 Absorption capabilities."""
-
     def __init__(self):
         self.memory = np.random.rand(1000)
         self.connections = {}
@@ -66,7 +81,6 @@ class Brain:
         self.is_trained = False
 
     def learn(self, input_data, output_data):
-        """Updates brain memory based on input and output data."""
         error = np.mean((output_data - self.memory) ** 2)
         self.memory += error * (input_data - self.memory)
         for i in range(len(self.memory)):
@@ -75,7 +89,6 @@ class Brain:
         return error
 
     def learn_ml(self, stabilities, labels):
-        """Trains the SVM model with given stability and label data."""
         try:
             X = np.array(stabilities).reshape(-1, 1)
             y = np.array(labels)
@@ -87,7 +100,6 @@ class Brain:
             print(f"[ML ERROR]: {e}")
 
     def execute_natural_absorption(self, category, sequence, stability):
-        """Executes natural absorption based on the given category, sequence, and stability."""
         data_id = len(self.memory_vault)
         stab_val = stability if stability is not None else 0.0
         seq_val = sequence if sequence is not None else "ACTG"
@@ -112,6 +124,7 @@ def main():
             f.write("# Initial Sovereign Main\nimport os\n")
 
     print("Loading LLM Pipeline...")
+    pipe = None
     try:
         if torch.cuda.is_available():
             bnb_config = BitsAndBytesConfig(
@@ -137,7 +150,6 @@ def main():
             )
     except Exception as e:
         print(f"Pipeline Load Failed: {e}. Falling back to dummy logic.")
-        pipe = None
 
     current_gen = 95
     while True:
@@ -187,20 +199,16 @@ Current Gen: {current_gen} | Error: {avg_error}
                 )
                 full_text = result[0]["generated_text"]
 
-                # Extract only the newly generated part
-                assistant_part = full_text[len(prompt) :].strip()
-
-                # Fixed Regex to correctly find markdown code blocks
+                assistant_part = full_text.split(prompt)[-1].strip()
                 code_match = re.search(r"python\s*(.*?)\s*", assistant_part, re.DOTALL)
 
                 final_code = None
                 if code_match:
                     final_code = code_match.group(1).strip()
                 elif f"# TARGET: {target_file}" in assistant_part:
-                    # Fallback if model forgot backticks but included the target header
                     final_code = assistant_part.strip()
 
-                if final_code:
+                if final_code and len(final_code) > 10:
                     with open(target_file, "w") as f:
                         f.write(final_code)
                     print(f"[FILESYSTEM]: {target_file} updated by AI.")
