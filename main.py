@@ -1,14 +1,13 @@
 import numpy as np
 
 def S(x, a=-1):
-    e = np.exp(x - np.max(x, a, keepdims=True))
-    return e / (e.sum(a, keepdims=True) + 1e-9)
+    e = np.exp(x - x.max(a, keepdims=1))
+    return e / (e.sum(a, keepdims=1) + 1e-9)
 
 class T:
-    def __init__(self, d, n=""):
+    def __init__(self, d):
         self.data = np.ascontiguousarray(d).astype("f4")
         self.grad = np.zeros_like(self.data)
-        self.name = n
 
 class M:
     def params(self):
@@ -21,7 +20,7 @@ class M:
         return p
 
 class L(M):
-    def __init__(self, i, o, b=False):
+    def __init__(self, i, o, b=0):
         self.w = T(np.random.randn(i, o) * (2/i)**0.5)
         self.b = T(np.zeros(o)) if b else None
     def f(self, x):
@@ -37,13 +36,13 @@ class RN(M):
     def __init__(self, d, e=1e-6): self.g, self.e = T(np.ones(d)), e
     def f(self, x):
         self.x = x
-        self.r = 1/np.sqrt((x*x).mean(-1, keepdims=True) + self.e)
+        self.r = 1/np.sqrt((x*x).mean(-1, keepdims=1) + self.e)
         return self.g.data * (x * self.r)
     def b(self, dy):
         xn = self.x * self.r
         self.g.grad += (dy * xn).sum(tuple(range(dy.ndim-1)))
         dxn = dy * self.g.data
-        return self.r * (dxn - xn * (dxn * xn).mean(-1, keepdims=True))
+        return self.r * (dxn - xn * (dxn * xn).mean(-1, keepdims=1))
 
 class SG(M):
     def f(self, x):
@@ -59,7 +58,7 @@ class RP(M):
     def __init__(self, d, m=2048):
         f = np.outer(np.arange(m), 1/(10000**(np.arange(0, d, 2)/d)))
         self.c, self.s = np.cos(f), np.sin(f)
-    def apply(self, x, v=False):
+    def apply(self, x, v=0):
         s = x.shape[1]
         c, sn = self.c[:s, None, :], self.s[:s, None, :]
         r, i = x[..., ::2], x[..., 1::2]
@@ -71,7 +70,7 @@ class RP(M):
 class SA(M):
     def __init__(self, d, h=8, rope=None):
         self.h, self.hd, self.rope = h, d//h, rope
-        self.wq, self.wk, self.wv, self.wo = [L(d, d) for _ in range(4)]
+        for i in 'qkv o': setattr(self, f'w{i.strip()}', L(d, d))
     def f(self, x):
         b, s, _ = x.shape
         q, k, v = [getattr(self, f'w{i}').f(x).reshape(b, s, self.h, self.hd) for i in 'qkv']
@@ -83,7 +82,7 @@ class SA(M):
         b, s = dy.shape[:2]
         do = self.wo.b(dy).reshape(b, s, self.h, self.hd)
         dp = np.einsum("bshd,bthd->bsht", do, self.v)
-        ds = self.p * (dp - (self.p * dp).sum(-1, keepdims=True)) * (self.hd**-0.5)
+        ds = self.p * (dp - (self.p * dp).sum(-1, keepdims=1)) * (self.hd**-0.5)
         dq, dk, dv = np.einsum("bsht,bthd->bshd", ds, self.k), np.einsum("bsht,bshd->bthd", ds, self.q), np.einsum("bsht,bshd->bthd", self.p, do)
         if self.rope: dq, dk = self.rope.apply(dq, 1), self.rope.apply(dk, 1)
         return self.wq.b(dq.reshape(b,s,-1)) + self.wk.b(dk.reshape(b,s,-1)) + self.wv.b(dv.reshape(b,s,-1))
@@ -95,31 +94,30 @@ class SM(M):
     def f(self, x):
         self.sh = x.shape
         xf = x.reshape(-1, self.d)
-        p = S(self.gate.f(xf))
-        self.idx = np.argsort(p, -1)[:, -self.k:]
-        self.w = np.take_along_axis(p, self.idx, -1)
-        self.w /= self.w.sum(-1, 1)[:, None] + 1e-9
+        self.p = S(self.gate.f(xf))
+        self.idx = np.argsort(self.p, -1)[:, -self.k:]
+        self.w = np.take_along_axis(self.p, self.idx, -1)
+        self.w /= self.w.sum(-1, keepdims=1) + 1e-9
         out, self.cache = np.zeros_like(xf), []
         for i in range(self.n):
             m = np.any(self.idx == i, -1)
             if not np.any(m): self.cache.append(None); continue
             pos = np.where(self.idx[m] == i)[1]
-            h1 = self.exp[i][0].f(xf[m])
-            h2 = self.exp[i][1].f(h1)
-            h3 = self.exp[i][2].f(h2)
+            h1 = self.exp[i][0].f(xf[m]); h2 = self.exp[i][1].f(h1); h3 = self.exp[i][2].f(h2)
             out[m] += h3 * self.w[m, pos][:, None]
             self.cache.append((m, pos, h1, h2, h3))
         return out.reshape(self.sh)
     def b(self, dy):
-        dyf = dy.reshape(-1, self.d)
-        dx, dg = np.zeros((dyf.shape[0], self.d)), np.zeros((dyf.shape[0], self.n))
+        dyf, xf = dy.reshape(-1, self.d), self.gate.x
+        dx, dg = np.zeros_like(xf), np.zeros_like(self.p)
         for i in range(self.n):
             if self.cache[i] is None: continue
             m, pos, h1, h2, h3 = self.cache[i]
             dg[m, i] = (dyf[m] * h3).sum(-1)
             dh2 = self.exp[i][2].b(dyf[m] * self.w[m, pos][:, None])
             dx[m] += self.exp[i][0].b(self.exp[i][1].b(dh2))
-        return (dx + self.gate.b(dg - dg.mean(-1, 1)[:, None])).reshape(self.sh)
+        d_gate = self.p * (dg - (self.p * dg).sum(-1, keepdims=1))
+        return (dx + self.gate.b(d_gate)).reshape(self.sh)
 
 class SB(M):
     def __init__(self, d, r):
@@ -131,7 +129,8 @@ class SB(M):
     def b(self, dy):
         dg = np.zeros_like(self.g)
         dg[:,0], dg[:,1] = (dy*self.ao).sum((1,2)), (dy*self.moo).sum((1,2))
-        df = self.fs.b(dg - dg.mean(-1, 1)[:, None])
+        d_fs = self.g * (dg - (self.g * dg).sum(-1, keepdims=1))
+        df = self.fs.b(d_fs)
         dx = dy + self.n1.b(self.at.b(dy*self.g[:,0:1,None])) + self.n2.b(self.mo.b(dy*self.g[:,1:2,None]))
         return dx + df[:, None, :] / self.x.shape[1]
 
@@ -154,7 +153,8 @@ class ASI(M):
 class AW:
     def __init__(self, p, lr=1e-3, b1=0.9, b2=0.999, wd=0.01):
         self.p, self.lr, self.b1, self.b2, self.wd, self.t = p, lr, b1, b2, wd, 0
-        self.m, self.v = [np.zeros_like(x.data) for x in p], [np.zeros_like(x.data) for x in p]
+        self.m = [np.zeros_like(x.data) for x in p]
+        self.v = [np.zeros_like(x.data) for x in p]
     def step(self):
         self.t += 1
         a = self.lr * ((1-self.b2**self.t)**0.5 / (1-self.b1**self.t))
@@ -176,7 +176,7 @@ def train():
         for i in range(0, N, BS):
             xb, yb = X[idx[i:i+BS]], Y[idx[i:i+BS]]
             p = S(m.f(xb))
-            mtr.append([-np.mean(np.log(p[range(len(yb)), yb]+1e-9)), np.mean(np.argmax(p, 1)==yb)])
+            mtr.append([-np.mean(np.log(p[range(len(yb)), yb]+1e-9)), np.mean(p.argmax(1)==yb)])
             dl = p.copy(); dl[range(len(yb)), yb] -= 1
             m.b(dl/len(yb)); opt.step()
         if (e+1)%5==0:
