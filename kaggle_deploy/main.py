@@ -13,11 +13,16 @@ from datetime import datetime
 from functools import lru_cache
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
+import torch
+from transformers import (
+    pipeline,
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+)
 
 
 def install_requirements():
-    # Added torchvision and torchaudio to the list and used --upgrade
-    # to allow pip to resolve the version conflict between torch and torchvision.
     libs = [
         "psycopg2-binary",
         "firebase-admin",
@@ -55,18 +60,6 @@ def install_requirements():
 if not os.environ.get("REQUIREMENTS_INSTALLED"):
     install_requirements()
     os.environ["REQUIREMENTS_INSTALLED"] = "1"
-
-# Delayed imports to prevent crash before installation
-try:
-    import torch
-    from transformers import (
-        pipeline,
-        AutoModelForCausalLM,
-        AutoTokenizer,
-        BitsAndBytesConfig,
-    )
-except ImportError:
-    print("Heavy libraries not yet available. Restarting after installation...")
 
 
 class Brain:
