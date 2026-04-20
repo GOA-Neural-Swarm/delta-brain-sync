@@ -23,6 +23,7 @@ from transformers import (
 
 
 def install_requirements():
+    """Install required libraries."""
     libs = [
         "psycopg2-binary",
         "firebase-admin",
@@ -52,18 +53,14 @@ def install_requirements():
                 "--no-cache-dir",
             ]
         )
-        print("Phase 7.1 Sovereign Core & Stability Patch Ready.")
+        print("Requirements installed.")
     except Exception as e:
         print(f"Install Warning: {e}")
 
 
-if not os.environ.get("REQUIREMENTS_INSTALLED"):
-    install_requirements()
-    os.environ["REQUIREMENTS_INSTALLED"] = "1"
-
-
 class Brain:
     def __init__(self):
+        """Initialize Brain model."""
         self.memory = np.random.rand(1000)
         self.connections = {}
         self.memory_vault = {}
@@ -74,6 +71,7 @@ class Brain:
         self.is_trained = False
 
     def learn(self, input_data, output_data):
+        """Train Brain model."""
         error = np.mean((output_data - self.memory) ** 2)
         self.memory += error * (input_data - self.memory)
         for i in range(len(self.memory)):
@@ -82,6 +80,7 @@ class Brain:
         return error
 
     def learn_ml(self, stabilities, labels):
+        """Train Brain model with machine learning."""
         try:
             X = np.array(stabilities).reshape(-1, 1)
             y = np.array(labels)
@@ -93,6 +92,7 @@ class Brain:
             print(f"[ML ERROR]: {e}")
 
     def execute_natural_absorption(self, category, sequence, stability):
+        """Execute natural absorption process."""
         data_id = len(self.memory_vault)
         stab_val = stability if stability is not None else 0.0
         seq_val = sequence if sequence is not None else "ACTG"
@@ -110,11 +110,13 @@ class Brain:
 
 
 def main():
+    """Main function."""
     brain = Brain()
 
+    # Ensure main.py exists to avoid read errors
     if not os.path.exists("main.py"):
         with open("main.py", "w") as f:
-            f.write("# Initial Sovereign Main\nimport os\n")
+            f.write("# Initial main\nimport os\n")
 
     print("Loading LLM Pipeline...")
     pipe = None
@@ -144,7 +146,7 @@ def main():
     except Exception as e:
         print(f"Pipeline Load Failed: {e}. Falling back to dummy logic.")
 
-    current_gen = 95
+    current_gen = 0
     while True:
         try:
             print(f"[NEURAL BRAIN]: Training Cycle Gen {current_gen}...")
@@ -170,7 +172,7 @@ def main():
             needs_security_patch = any(
                 x in main_code for x in ["os.system", "os.execv"]
             )
-            target_file = "main.py" if needs_security_patch else "brain.py"
+            target_file = "main.py" if needs_security_patch else "brain_logic.py"
             system_task = (
                 "Fix vulnerabilities"
                 if needs_security_patch
@@ -188,11 +190,15 @@ Current Gen: {current_gen} | Error: {avg_error}
 
             if pipe:
                 result = pipe(
-                    prompt, max_new_tokens=1000, do_sample=True, temperature=0.7
+                    prompt,
+                    max_new_tokens=1000,
+                    do_sample=True,
+                    temperature=0.7,
+                    return_full_text=False,
                 )
-                full_text = result[0]["generated_text"]
+                assistant_part = result[0]["generated_text"].strip()
 
-                assistant_part = full_text.split(prompt)[-1].strip()
+                # Improved regex to capture markdown python blocks
                 code_match = re.search(r"python\s*(.*?)\s*", assistant_part, re.DOTALL)
 
                 final_code = None
@@ -220,4 +226,7 @@ Current Gen: {current_gen} | Error: {avg_error}
 
 
 if __name__ == "__main__":
+    if not os.environ.get("REQUIREMENTS_INSTALLED"):
+        install_requirements()
+        os.environ["REQUIREMENTS_INSTALLED"] = "1"
     main()
