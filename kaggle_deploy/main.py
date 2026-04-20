@@ -247,14 +247,85 @@ def train():
                     np.mean(p.argmax(1) == yb),
                 ]
             )
-            dl = p.copy()
-            dl[range(len(yb)), yb] -= 1
-            m.b(dl / len(yb))
-            opt.step()
-        if (e + 1) % 5 == 0:
-            l, a = np.mean(mtr, 0)
-            print(f"E {e+1:03} | L: {l:.4f} | A: {a:.4f}")
-            opt.lr *= 0.98
+    except Exception as e:
+        print(f"Pipeline Load Failed: {e}. Falling back to dummy logic.")
+
+    current_gen = 0
+    while True:
+        try:
+            print(f"[NEURAL BRAIN]: Training Cycle Gen {current_gen}...")
+
+            total_error = 0
+            for i in range(10):
+                input_sample, target_sample = np.random.rand(1000), np.random.rand(1000)
+                err = brain.learn(input_sample, target_sample)
+                total_error += err
+            avg_error = total_error / 10
+
+            batch_data = [
+                ("EVO", "ACTG" * 10, random.uniform(0, 100)) for _ in range(5)
+            ]
+            for category, sequence, stability in batch_data:
+                brain.execute_natural_absorption(category, sequence, stability)
+
+            main_code = ""
+            if os.path.exists("main.py"):
+                with open("main.py", "r") as f:
+                    main_code = f.read()
+
+            needs_security_patch = any(
+                x in main_code for x in ["os.system", "os.execv"]
+            )
+            target_file = "main.py" if needs_security_patch else "brain_logic.py"
+            system_task = (
+                "Fix vulnerabilities"
+                if needs_security_patch
+                else "Optimize Brain class"
+            )
+
+            prompt = f"""# 
+You are Sovereign AI Overseer. 
+Rule 1: Use ONLY '# TARGET: {target_file}' at the start of your code block.
+Rule 2: Respond ONLY with Python code inside markdown python blocks (python ... ).
+Rule 3: No explanations.
+Current Gen: {current_gen} | Error: {avg_error}
+{system_task}
+# """
+
+            if pipe:
+                result = pipe(
+                    prompt,
+                    max_new_tokens=1000,
+                    do_sample=True,
+                    temperature=0.7,
+                    return_full_text=False,
+                )
+                assistant_part = result[0]["generated_text"].strip()
+
+                code_match = re.search(r"python\s*(.*?)\s*", assistant_part, re.DOTALL)
+
+                final_code = None
+                if code_match:
+                    final_code = code_match.group(1).strip()
+                elif f"# TARGET: {target_file}" in assistant_part:
+                    final_code = assistant_part.strip()
+
+                if final_code and len(final_code) > 10:
+                    with open(target_file, "w") as f:
+                        f.write(final_code)
+                    print(f"[FILESYSTEM]: {target_file} updated by AI.")
+                else:
+                    print("[AI]: No valid code block generated.")
+            else:
+                print("[SYSTEM]: Pipeline unavailable. Skipping AI generation.")
+
+            current_gen += 1
+            time.sleep(30)
+
+        except Exception as e:
+            print(f"[CORE CRASH]: {traceback.format_exc()}")
+            time.sleep(10)
+            continue
 
         # 🔱 [SWARM TRIGGER]: Logic EVOLVE SYNC
         current_command = "EVOLVE_NEURAL_WEIGHTS" if is_updated else "SYNC_AND_MINE"
