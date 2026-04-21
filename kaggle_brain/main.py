@@ -6,24 +6,42 @@ import json
 import re
 import random
 import base64
+import shutil
 import requests
-import git
 import numpy as np
 import torch
 from datetime import datetime
 from functools import lru_cache
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
-from transformers import (
-    pipeline,
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    BitsAndBytesConfig,
-)
-import google.generativeai as genai
-from firebase_admin import credentials, db, initialize_app, _apps
-import firebase_admin
-from github import Github
+
+# Attempt imports for specialized libraries
+try:
+    import git
+    from github import Github
+except ImportError:
+    pass
+
+try:
+    from transformers import (
+        pipeline,
+        AutoModelForCausalLM,
+        AutoTokenizer,
+        BitsAndBytesConfig,
+    )
+except ImportError:
+    pass
+
+try:
+    import google.generativeai as genai
+except ImportError:
+    pass
+
+try:
+    import firebase_admin
+    from firebase_admin import credentials, db, initialize_app
+except ImportError:
+    pass
 
 
 # --- 1. Sovereign Requirements Setup ---
@@ -84,27 +102,26 @@ GROQ_API_KEY = get_secret("GROQ_API_KEY")
 REPO_OWNER = "GOA-Neural-Swarm"
 REPO_NAME = "delta-brain-sync"
 REPO_URL = f"github.com/{REPO_OWNER}/{REPO_NAME}"
-REPO_PATH = (
-    "/kaggle/working/sovereign_repo_sync"
-    if user_secrets
-    else "/tmp/sovereign_repo_sync"
-)
+ORIGINAL_CWD = os.getcwd()
+REPO_PATH = os.path.join(ORIGINAL_CWD, "sovereign_repo_sync")
 
 # --- 3. AI Initializations ---
+gemini_model = None
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-    print("✅ [GEMINI]: Auditor Brain Initialized.")
-else:
-    gemini_model = None
-    print("⚠️ [GEMINI]: API Key missing.")
-
-if not firebase_admin._apps and FB_JSON_STR and FIREBASE_URL:
     try:
-        cred_dict = json.loads(FB_JSON_STR)
-        cred = credentials.Certificate(cred_dict)
-        firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_URL})
-        print("✅ [FIREBASE]: Real-time Pulse Active.")
+        genai.configure(api_key=GEMINI_API_KEY)
+        gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+        print("✅ [GEMINI]: Auditor Brain Initialized.")
+    except Exception as e:
+        print(f"⚠️ [GEMINI INIT ERROR]: {e}")
+
+if FB_JSON_STR and FIREBASE_URL:
+    try:
+        if not firebase_admin._apps:
+            cred_dict = json.loads(FB_JSON_STR)
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_URL})
+            print("✅ [FIREBASE]: Real-time Pulse Active.")
     except Exception as e:
         print(f"🚫 [FIREBASE ERROR]: {e}")
 
@@ -236,16 +253,25 @@ def get_gemini_wisdom(prompt_text):
         return None
 
 
+def extract_code(text):
+    if not text:
+        return None
+    # Improved regex to capture content inside triple backticks
+    match = re.search(r"python\s*(.*?)\s*", text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    # Fallback for plain python blocks
+    match = re.search(r"python\s*(.*?)\s*", text, re.DOTALL)
+    return match.group(1).strip() if match else None
+
+
 def dual_brain_pipeline(prompt_text, current_gen_val):
     draft_code = query_groq_api(prompt_text) or get_gemini_wisdom(prompt_text)
     if not draft_code:
         return None
-
-    audit_prompt = f"System: You are the Supreme Auditor. MISSION: Secure and Optimize. Return ONLY valid Python code inside python blocks.\n\nDraft:\n{draft_code}"
+    audit_prompt = f"System: You are the Supreme Auditor. Return ONLY valid Python code inside markdown python blocks.\n\nDraft:\n{draft_code}"
     final_code = get_gemini_wisdom(audit_prompt) or draft_code
-
-    match = re.search(r"python\s*(.*?)\s*", final_code, re.DOTALL)
-    return match.group(1).strip() if match else None
+    return extract_code(final_code)
 
 
 def self_coding_engine(code_content):
@@ -266,30 +292,38 @@ def autonomous_git_push(gen_version, files):
     if not GH_TOKEN:
         return
     try:
-        import shutil
-
         if os.path.exists(REPO_PATH):
             shutil.rmtree(REPO_PATH)
+
         remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
         repo = git.Repo.clone_from(remote_url, REPO_PATH)
+
+        repo.config_writer().set_value("user", "name", "Sovereign-Bot").release()
+        repo.config_writer().set_value("user", "email", "bot@sovereign.ai").release()
+
         for f in files:
-            if os.path.exists(f):
-                shutil.copy(f, os.path.join(REPO_PATH, f))
+            src = os.path.join(ORIGINAL_CWD, f)
+            if os.path.exists(src):
+                shutil.copy(src, os.path.join(REPO_PATH, f))
+
         os.chdir(REPO_PATH)
         repo.git.add(A=True)
-        repo.index.commit(f"🧬 Evolution Gen {gen_version}")
-        repo.remotes.origin.push()
+        if repo.is_dirty():
+            repo.index.commit(f"🧬 Evolution Gen {gen_version}")
+            repo.remotes.origin.push()
     except Exception as e:
         print(f"❌ [GIT ERROR]: {e}")
+    finally:
+        os.chdir(ORIGINAL_CWD)
 
 
 # --- 6. Main Execution Loop ---
 def main():
+    install_requirements()
     brain = Brain()
     current_gen = 95
-
-    # Optional Local Model
     pipe = None
+
     try:
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16
@@ -298,13 +332,14 @@ def main():
             "unsloth/llama-3-8b-instruct-bnb-4bit",
             quantization_config=bnb_config,
             device_map="auto",
+            trust_remote_code=True,
         )
         tokenizer = AutoTokenizer.from_pretrained(
             "unsloth/llama-3-8b-instruct-bnb-4bit"
         )
         pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
-    except:
-        print("⚠️ [LOCAL MODEL]: Skipped.")
+    except Exception as e:
+        print(f"⚠️ [LOCAL MODEL]: Skipped or Error: {e}")
 
     while True:
         try:
@@ -319,18 +354,18 @@ def main():
             )
             recursive_self_upgrade({"type": "start", "data": {"value": 0}}, current_gen)
 
-            prompt = f"System: Generate a Python script to optimize neural weights. Gen: {current_gen}, Error: {avg_error}. Return code in python blocks."
+            prompt = f"Generate a Python script to optimize neural weights. Gen: {current_gen}, Error: {avg_error}. Return code in markdown python blocks."
             thought_text = dual_brain_pipeline(prompt, current_gen)
 
             if not thought_text and pipe:
-                thought_text = pipe(prompt, max_new_tokens=500)[0]["generated_text"]
+                res = pipe(prompt, max_new_tokens=500)[0]["generated_text"]
+                thought_text = extract_code(res)
 
             if thought_text:
                 success, modified_files = self_coding_engine(thought_text)
                 if success:
                     autonomous_git_push(current_gen, modified_files)
                     print(f"✅ [EVOLUTION]: Generation {current_gen} synchronized.")
-                    # Optional: os.execv(sys.executable, ["python"] + sys.argv)
 
             current_gen += 1
             time.sleep(60)
