@@ -6,22 +6,19 @@ def sm(x, a=-1):
 
 class T:
     def __init__(self, d):
-        self.data = d.astype("f4")
-        self.grad = np.zeros_like(d, "f4")
+        self.data, self.grad = d.astype("f4"), np.zeros_like(d, "f4")
 
 class M:
     def params(self):
-        ps = []
+        p = []
         for v in self.__dict__.values():
-            if isinstance(v, T): ps += [v]
-            elif isinstance(v, M): ps += v.params()
+            if isinstance(v, T): p += [v]
+            elif isinstance(v, M): p += v.params()
             elif isinstance(v, list):
                 for i in v:
-                    if isinstance(i, M): ps += i.params()
-                    elif isinstance(i, list):
-                        for j in i:
-                            if isinstance(j, M): ps += j.params()
-        return ps
+                    if isinstance(i, M): p += i.params()
+                    elif isinstance(i, list): p += sum([j.params() for j in i if isinstance(j, M)], [])
+        return p
 
 class L(M):
     def __init__(self, i, o, b=0):
@@ -90,7 +87,7 @@ class A(M):
         return self.wq.b(dq.reshape(b, s, -1)) + self.wk.b(dk.reshape(b, s, -1)) + self.wv.b(dv.reshape(b, s, -1))
 
 class E(M):
-    def __init__(self, d, n=8, k=2):
+    def __init__(self, d, n=4, k=2):
         self.d, self.n, self.k, self.gate = d, n, k, L(d, n)
         self.exp = [[L(d, d*2), G(), L(d*2, d)] for _ in range(n)]
     def f(self, x):
@@ -98,7 +95,7 @@ class E(M):
         self.p = sm(self.gate.f(xf))
         self.idx = np.argsort(self.p, -1)[:, -self.k:]
         self.w = np.take_along_axis(self.p, self.idx, -1)
-        self.w /= self.w.sum(-1, 1, keepdims=1) + 1e-9
+        self.w /= self.w.sum(-1, keepdims=1) + 1e-9
         out, self.cache = np.zeros_like(xf), []
         for i in range(self.n):
             m = np.any(self.idx == i, -1)
@@ -119,7 +116,7 @@ class E(M):
             dg[m, i] = (dyf[m] * h3).sum(-1)
             dh2 = self.exp[i][2].b(dyf[m] * self.w[m, pos][:, None])
             dx[m] += self.exp[i][0].b(self.exp[i][1].b(dh2))
-        return (dx + self.gate.b(self.p * (dg - (self.p * dg).sum(-1, 1, keepdims=1)))).reshape(self.sh)
+        return (dx + self.gate.b(self.p * (dg - (self.p * dg).sum(-1, keepdims=1)))).reshape(self.sh)
 
 class B(M):
     def __init__(self, d, r): self.n1, self.n2, self.at, self.mo, self.fs = N(d), N(d), A(d, r=r), E(d), L(d, 2)
@@ -129,12 +126,12 @@ class B(M):
         return x + self.g[:, :1, None] * self.ao + self.g[:, 1:, None] * self.moo
     def b(self, dy):
         dg = np.stack([(dy * self.ao).sum((1, 2)), (dy * self.moo).sum((1, 2))], 1)
-        df = self.fs.b(self.g * (dg - (self.g * dg).sum(-1, 1, keepdims=1)))
+        df = self.fs.b(self.g * (dg - (self.g * dg).sum(-1, keepdims=1)))
         dx = dy + self.n1.b(self.at.b(dy * self.g[:, :1, None])) + self.n2.b(self.mo.b(dy * self.g[:, 1:, None]))
         return dx + df[:, None, :] / self.x.shape[1]
 
 class Net(M):
-    def __init__(self, di, dm, do, d=3):
+    def __init__(self, di, dm, do, d=2):
         self.emb, self.rp = L(di, dm), R(dm // 8)
         self.blks = [B(dm, self.rp) for _ in range(d)]
         self.norm, self.head = N(dm), L(dm, do)
@@ -165,9 +162,9 @@ class Opt:
             p.grad.fill(0)
 
 def train():
-    N_, D, C, BS, EP = 2048, 784, 10, 128, 50
+    N_, D, C, BS, EP = 512, 784, 10, 64, 20
     X, Y = np.random.randn(N_, D).astype("f4"), np.random.randint(0, C, N_)
-    m = Net(D, 256, C)
+    m = Net(D, 128, C)
     opt = Opt(m.params(), 1e-3, wd=.1)
     for e in range(EP):
         idx = np.random.permutation(N_)
@@ -182,6 +179,5 @@ def train():
         if (e + 1) % 5 == 0:
             l, a = np.mean(mtr, 0)
             print(f"E {e+1:03} | L: {l:.4f} | A: {a:.4f}")
-            opt.lr *= .98
 
 if __name__ == "__main__": train()
