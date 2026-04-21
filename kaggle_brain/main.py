@@ -327,6 +327,9 @@ Current Gen: {current_gen} | Error: {avg_error}
             time.sleep(10)
             continue
 
+        # 🔱 [SWARM TRIGGER]: Logic EVOLVE SYNC
+        current_command = "EVOLVE_NEURAL_WEIGHTS" if is_updated else "SYNC_AND_MINE"
+        broadcast_to_swarm(current_command, current_gen)
 
 if __name__ == "__main__":
     train()
