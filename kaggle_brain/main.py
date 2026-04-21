@@ -17,6 +17,8 @@ from functools import lru_cache
 # 1. Sovereign Requirements Setup
 def install_requirements():
     """Installs necessary libraries and fixes dependency conflicts."""
+    # Fixed: torch 2.11.0 does not exist. Changed to 'torch' for latest stable compatibility.
+    # Fixed: Removed strict versioning on sympy to allow the resolver to find a compatible match.
     libs = [
         "huggingface-hub<1.0",
         "transformers",
@@ -26,12 +28,12 @@ def install_requirements():
         "requests",
         "accelerate",
         "GitPython",
-        "sympy==1.12",
+        "sympy",
         "numpy",
         "scikit-learn",
         "pygithub",
         "google-genai",
-        "torch==2.11.0",  # To fix the torch version
+        "torch",
     ]
     try:
         subprocess.check_call(
@@ -296,9 +298,9 @@ def dual_brain_pipeline(prompt_text, current_gen_val, avg_error):
     audit_prompt = f"system\nYou are the Supreme Auditor (Gen {current_gen_val}). MISSION: Secure and Optimize. Respond ONLY with Python code in python blocks.\n\nARCHITECT'S DRAFT:\n{draft_code}"
     final_verified_code = get_gemini_wisdom(audit_prompt) or draft_code
     if "python" in final_verified_code:
-        final_verified_code = (
-            re.search(r"python(.*?)", final_verified_code, re.DOTALL).group(1).strip()
-        )
+        match = re.search(r"python(.*?)", final_verified_code, re.DOTALL)
+        if match:
+            final_verified_code = match.group(1).strip()
     return final_verified_code
 
 
@@ -353,7 +355,9 @@ def autonomous_git_push(gen, thought, modified_files):
         return
     try:
         if os.path.exists(REPO_PATH):
-            os.system(f"rm -rf {REPO_PATH}")
+            import shutil
+
+            shutil.rmtree(REPO_PATH)
         remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
         repo = git.Repo.clone_from(remote_url, REPO_PATH)
         os.chdir(REPO_PATH)
@@ -361,10 +365,11 @@ def autonomous_git_push(gen, thought, modified_files):
             "git config user.name 'GOA-neurons' && git config user.email 'goa-neurons@neural-swarm.ai'"
         )
         for f in modified_files or ["main.py", "brain.py"]:
-            if os.path.exists(os.path.join("..", f)):
+            source = os.path.join("..", f)
+            if os.path.exists(source):
                 import shutil
 
-                shutil.copy(os.path.join("..", f), f)
+                shutil.copy(source, f)
         os.system(
             "git add . && git commit -m '🧬 Evolution' && git push origin main --force"
         )
@@ -374,10 +379,9 @@ def autonomous_git_push(gen, thought, modified_files):
 
 # --- Main Execution Loop ---
 brain = Brain()
-current_gen = 95  # Default start
+current_gen = 95
 HEADLESS = os.getenv("HEADLESS_MODE") == "true"
 
-# Load Local Model as Fallback
 try:
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16
@@ -412,12 +416,14 @@ while True:
         if not thought_text and "pipe" in locals():
             thought_text = pipe(prompt, max_new_tokens=500)[0]["generated_text"]
 
-        is_updated, files = self_coding_engine(thought_text)
-        autonomous_git_push(current_gen, thought_text, files)
-        broadcast_to_swarm("EVOLVE", current_gen)
+        if thought_text:
+            is_updated, files = self_coding_engine(thought_text)
+            autonomous_git_push(current_gen, thought_text, files)
+            broadcast_to_swarm("EVOLVE", current_gen)
 
-        if is_updated:
-            os.execv(sys.executable, ["python"] + sys.argv)
+            if is_updated:
+                os.execv(sys.executable, ["python"] + sys.argv)
+
         if HEADLESS:
             break
         current_gen += 1
