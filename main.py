@@ -6,43 +6,46 @@ def sm(x, a=-1):
 
 class T:
     def __init__(self, d):
-        self.data = np.ascontiguousarray(d).astype("f4")
-        self.grad = np.zeros_like(self.data)
+        self.data = d.astype("f4")
+        self.grad = np.zeros_like(d, "f4")
 
 class M:
     def params(self):
-        p, q = [], [list(self.__dict__.values())]
-        while q:
-            for v in q.pop():
-                if isinstance(v, T): p.append(v)
-                elif isinstance(v, M): q.append(list(v.__dict__.values()))
-                elif isinstance(v, (list, tuple)): q.append(v)
-        return p
+        ps = []
+        for v in self.__dict__.values():
+            if isinstance(v, T): ps += [v]
+            elif isinstance(v, M): ps += v.params()
+            elif isinstance(v, list):
+                for i in v:
+                    if isinstance(i, M): ps += i.params()
+                    elif isinstance(i, list):
+                        for j in i:
+                            if isinstance(j, M): ps += j.params()
+        return ps
 
 class L(M):
     def __init__(self, i, o, b=0):
-        self.w = T(np.random.randn(i, o) * (2 / i)**0.5)
-        self.b = T(np.zeros(o)) if b else None
+        self.w = T(np.random.randn(i, o) * (2/i)**.5)
+        self.b_ = T(np.zeros(o)) if b else None
     def f(self, x):
         self.x = x
-        return x @ self.w.data + (self.b.data if self.b else 0)
+        return x @ self.w.data + (self.b_.data if self.b_ else 0)
     def b(self, dy):
         xf, df = self.x.reshape(-1, self.x.shape[-1]), dy.reshape(-1, dy.shape[-1])
         self.w.grad += xf.T @ df
-        if self.b: self.b.grad += df.sum(0)
+        if self.b_: self.b_.grad += df.sum(0)
         return (dy @ self.w.data.T).reshape(self.x.shape)
 
 class N(M):
-    def __init__(self, d, e=1e-6):
-        self.g, self.e = T(np.ones(d)), e
+    def __init__(self, d, e=1e-6): self.g, self.e = T(np.ones(d)), e
     def f(self, x):
-        self.x, self.r = x, 1 / np.sqrt((x * x).mean(-1, keepdims=1) + self.e)
+        self.x, self.r = x, 1/np.sqrt((x*x).mean(-1, keepdims=1) + self.e)
         return self.g.data * (x * self.r)
     def b(self, dy):
         xn = self.x * self.r
         self.g.grad += (dy * xn).sum(tuple(range(dy.ndim - 1)))
-        dxn = dy * self.g.data
-        return self.r * (dxn - xn * (dxn * xn).mean(-1, keepdims=1))
+        dn = dy * self.g.data
+        return self.r * (dn - xn * (dn * xn).mean(-1, keepdims=1))
 
 class G(M):
     def f(self, x):
@@ -56,7 +59,7 @@ class G(M):
 
 class R(M):
     def __init__(self, d, m=2048):
-        f = np.outer(np.arange(m), 1 / (10000 ** (np.arange(0, d, 2) / d)))
+        f = np.outer(np.arange(m), 1/(10000**(np.arange(0, d, 2)/d)))
         self.c, self.s = np.cos(f), np.sin(f)
     def apply(self, x, v=0):
         s = x.shape[1]
@@ -75,8 +78,7 @@ class A(M):
         b, s, _ = x.shape
         q, k, v = [getattr(self, f"w{i}").f(x).reshape(b, s, self.h, self.hd) for i in "qkv"]
         if self.r: q, k = self.r.apply(q), self.r.apply(k)
-        self.q, self.k, self.v = q, k, v
-        self.p = sm(np.einsum("bshd,bthd->bsht", q, k) * (self.hd**-0.5))
+        self.q, self.k, self.v, self.p = q, k, v, sm(np.einsum("bshd,bthd->bsht", q, k) * (self.hd**-0.5))
         return self.wo.f(np.einsum("bsht,bthd->bshd", self.p, v).reshape(b, s, -1))
     def b(self, dy):
         b, s = dy.shape[:2]
@@ -90,14 +92,13 @@ class A(M):
 class E(M):
     def __init__(self, d, n=8, k=2):
         self.d, self.n, self.k, self.gate = d, n, k, L(d, n)
-        self.exp = [[L(d, d * 2), G(), L(d * 2, d)] for _ in range(n)]
+        self.exp = [[L(d, d*2), G(), L(d*2, d)] for _ in range(n)]
     def f(self, x):
-        self.sh = x.shape
-        xf = x.reshape(-1, self.d)
+        self.sh = x.shape; xf = x.reshape(-1, self.d)
         self.p = sm(self.gate.f(xf))
         self.idx = np.argsort(self.p, -1)[:, -self.k:]
         self.w = np.take_along_axis(self.p, self.idx, -1)
-        self.w /= self.w.sum(-1, keepdims=1) + 1e-9
+        self.w /= self.w.sum(-1, 1, keepdims=1) + 1e-9
         out, self.cache = np.zeros_like(xf), []
         for i in range(self.n):
             m = np.any(self.idx == i, -1)
@@ -118,28 +119,24 @@ class E(M):
             dg[m, i] = (dyf[m] * h3).sum(-1)
             dh2 = self.exp[i][2].b(dyf[m] * self.w[m, pos][:, None])
             dx[m] += self.exp[i][0].b(self.exp[i][1].b(dh2))
-        d_gate = self.p * (dg - (self.p * dg).sum(-1, keepdims=1))
-        return (dx + self.gate.b(d_gate)).reshape(self.sh)
+        return (dx + self.gate.b(self.p * (dg - (self.p * dg).sum(-1, 1, keepdims=1)))).reshape(self.sh)
 
 class B(M):
-    def __init__(self, d, r):
-        self.n1, self.n2, self.at, self.mo, self.fs = N(d), N(d), A(d, r=r), E(d), L(d, 2)
+    def __init__(self, d, r): self.n1, self.n2, self.at, self.mo, self.fs = N(d), N(d), A(d, r=r), E(d), L(d, 2)
     def f(self, x):
         self.x, self.ao, self.moo = x, self.at.f(self.n1.f(x)), self.mo.f(self.n2.f(x))
         self.g = sm(self.fs.f(x.mean(1)))
-        return x + self.g[:, 0:1, None] * self.ao + self.g[:, 1:2, None] * self.moo
+        return x + self.g[:, :1, None] * self.ao + self.g[:, 1:, None] * self.moo
     def b(self, dy):
-        dg = np.zeros_like(self.g)
-        dg[:, 0], dg[:, 1] = (dy * self.ao).sum((1, 2)), (dy * self.moo).sum((1, 2))
-        d_fs = self.g * (dg - (self.g * dg).sum(-1, keepdims=1))
-        df = self.fs.b(d_fs)
-        dx = dy + self.n1.b(self.at.b(dy * self.g[:, 0:1, None])) + self.n2.b(self.mo.b(dy * self.g[:, 1:2, None]))
+        dg = np.stack([(dy * self.ao).sum((1, 2)), (dy * self.moo).sum((1, 2))], 1)
+        df = self.fs.b(self.g * (dg - (self.g * dg).sum(-1, 1, keepdims=1)))
+        dx = dy + self.n1.b(self.at.b(dy * self.g[:, :1, None])) + self.n2.b(self.mo.b(dy * self.g[:, 1:, None]))
         return dx + df[:, None, :] / self.x.shape[1]
 
 class Net(M):
-    def __init__(self, di, dm, do, depth=3):
+    def __init__(self, di, dm, do, d=3):
         self.emb, self.rp = L(di, dm), R(dm // 8)
-        self.blks = [B(dm, self.rp) for _ in range(depth)]
+        self.blks = [B(dm, self.rp) for _ in range(d)]
         self.norm, self.head = N(dm), L(dm, do)
     def f(self, x):
         x = self.emb.f(x[:, None] if x.ndim == 2 else x)
@@ -147,18 +144,19 @@ class Net(M):
         return self.head.f(self.norm.f(x[:, -1]))
     def b(self, dy):
         dy = self.norm.b(self.head.b(dy))
-        db = np.zeros((dy.shape[0], self.emb.x.shape[1], dy.shape[1]))
+        db = np.zeros((dy.shape[0], self.emb.x.shape[1], dy.shape[1]), "f4")
         db[:, -1] = dy
         for b in reversed(self.blks): db = b.b(db)
         return self.emb.b(db)
 
 class Opt:
-    def __init__(self, p, lr=1e-3, b1=0.9, b2=0.999, wd=0.01):
+    def __init__(self, p, lr=1e-3, b1=.9, b2=.999, wd=.01):
         self.p, self.lr, self.b1, self.b2, self.wd, self.t = p, lr, b1, b2, wd, 0
-        self.m, self.v = [np.zeros_like(x.data) for x in p], [np.zeros_like(x.data) for x in p]
+        self.m = [np.zeros_like(x.data) for x in p]
+        self.v = [np.zeros_like(x.data) for x in p]
     def step(self):
         self.t += 1
-        a = self.lr * ((1 - self.b2**self.t)**0.5 / (1 - self.b1**self.t))
+        a = self.lr * ((1 - self.b2**self.t)**.5 / (1 - self.b1**self.t))
         for i, p in enumerate(self.p):
             g = np.clip(p.grad, -1, 1)
             self.m[i] = self.b1 * self.m[i] + (1 - self.b1) * g
@@ -167,23 +165,23 @@ class Opt:
             p.grad.fill(0)
 
 def train():
-    N, D, C, BS, E = 2048, 784, 10, 128, 50
-    X, Y = np.random.randn(N, D).astype("f4"), np.random.randint(0, C, N)
-    m = Net(D, 256, C, 3)
-    opt = Opt(m.params(), 1e-3, wd=0.1)
-    for e in range(E):
-        idx = np.random.permutation(N)
+    N_, D, C, BS, EP = 2048, 784, 10, 128, 50
+    X, Y = np.random.randn(N_, D).astype("f4"), np.random.randint(0, C, N_)
+    m = Net(D, 256, C)
+    opt = Opt(m.params(), 1e-3, wd=.1)
+    for e in range(EP):
+        idx = np.random.permutation(N_)
         mtr = []
-        for i in range(0, N, BS):
+        for i in range(0, N_, BS):
             xb, yb = X[idx[i:i+BS]], Y[idx[i:i+BS]]
             p = sm(m.f(xb))
-            mtr.append([-np.mean(np.log(p[range(len(yb)), yb] + 1e-9)), np.mean(p.argmax(1) == yb)])
+            mtr += [[-np.mean(np.log(p[range(len(yb)), yb] + 1e-9)), np.mean(p.argmax(1) == yb)]]
             dl = p.copy(); dl[range(len(yb)), yb] -= 1
             m.b(dl / len(yb))
             opt.step()
         if (e + 1) % 5 == 0:
             l, a = np.mean(mtr, 0)
             print(f"E {e+1:03} | L: {l:.4f} | A: {a:.4f}")
-            opt.lr *= 0.98
+            opt.lr *= .98
 
 if __name__ == "__main__": train()
