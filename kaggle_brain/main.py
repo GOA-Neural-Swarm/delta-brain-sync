@@ -9,16 +9,16 @@ import git
 import re
 import random
 import base64
-import google.generativeai as genai
+import google.genai as genai
 from datetime import datetime, UTC
 from functools import lru_cache
 
 
-# 1. Sovereign Requirements Setup (FIXED: Added version pinning for huggingface-hub)
+# 1. Sovereign Requirements Setup
 def install_requirements():
     """Installs necessary libraries and fixes dependency conflicts."""
     libs = [
-        "huggingface-hub<1.0",  # Fixes the ImportError: huggingface-hub>=0.24.0,<1.0 required
+        "huggingface-hub<1.0",
         "transformers",
         "psycopg2-binary",
         "firebase-admin",
@@ -30,11 +30,21 @@ def install_requirements():
         "numpy",
         "scikit-learn",
         "pygithub",
-        "google-generativeai",
+        "google-genai",
+        "torch==2.11.0",  # To fix the torch version
     ]
     try:
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                *libs,
+                "--quiet",
+                "--no-cache-dir",
+                "--upgrade",
+            ]
         )
         print("✅ [SYSTEM]: Phase 7.1 Sovereign Core & Stability Patch Ready.")
     except subprocess.CalledProcessError as e:
