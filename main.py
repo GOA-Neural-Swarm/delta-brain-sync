@@ -1,5 +1,5 @@
 import numpy as np as n
-
+ 
 def sm(x, a=-1):
   e = n.exp(x - x.max(a, 1, keepdims=1))
   return e / (e.sum(a, 1, keepdims=1) + 1e-9)
