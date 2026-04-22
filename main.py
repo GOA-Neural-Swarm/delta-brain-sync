@@ -2,9 +2,7 @@ import numpy as n, time as t
 
 class S:
     def __init__(self, i=784, o=10):
-        self.w = (n.random.randn(i, o) * (2 / (i + o)) ** 0.5).astype("f4")
-        self.b, self.a = n.zeros(o, "f4"), 0
-
+        self.w, self.b, self.a = (n.random.randn(i, o) * (2 / (i + o)) ** 0.5).astype("f4"), n.zeros(o, "f4"), 0
     def r(self):
         self.a = 1
         print("\n[!] SB ACTIVE.")
@@ -13,16 +11,14 @@ class S:
 class W:
     def __init__(self):
         self.c = S()
-
     def m(self):
         print("[*] Booting...")
         try:
             raise RuntimeError("OOM")
         except Exception as e:
-            m = str(e)
-            print(f"[ERR] {m}")
-            self.v(m)
-
+            s = str(e)
+            print(f"[ERR] {s}")
+            self.v(s)
     def v(self, e):
         self.c.r()
         try:
