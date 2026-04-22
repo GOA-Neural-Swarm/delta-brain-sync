@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-04-22T16:13:43.560501",
+    "timestamp": "2026-04-22T17:42:57.817138",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1011-azure",
@@ -17,7 +17,6 @@
         "kagglesdk": "0.1.19",
         "bandit": "1.9.4",
         "cffi": "2.0.0",
-        "idna": "3.12",
         "uvicorn": "0.45.0",
         "torch": "2.11.0+cpu",
         "certifi": "2026.4.22",
@@ -132,6 +131,7 @@
         "importlib_resources": "6.5.2",
         "annotated-doc": "0.0.4",
         "propcache": "0.4.1",
+        "idna": "3.13",
         "mdurl": "0.1.2",
         "librt": "0.9.0",
         "aiofiles": "23.2.1",
@@ -157,7 +157,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.63,
+        "ram_available_gb": 14.55,
         "gpu_available": false
     }
 }
