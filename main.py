@@ -19,9 +19,9 @@ class W:
         try:
             raise RuntimeError("OOM")
         except Exception as e:
-            msg = str(e)
-            print(f"[ERR] {msg}")
-            self.v(msg)
+            m = str(e)
+            print(f"[ERR] {m}")
+            self.v(m)
 
     def v(self, e):
         self.c.r()
