@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-04-22T14:57:28.403937",
+    "timestamp": "2026-04-22T16:13:43.560501",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1011-azure",
@@ -37,6 +37,7 @@
         "googleapis-common-protos": "1.74.0",
         "charset-normalizer": "3.4.7",
         "sympy": "1.14.0",
+        "click": "8.3.3",
         "httpcore": "1.0.9",
         "pytz": "2026.1.post1",
         "websockets": "15.0.1",
@@ -137,7 +138,6 @@
         "transformers": "4.48.3",
         "smmap": "5.0.3",
         "pillow": "10.4.0",
-        "click": "8.3.2",
         "google-auth-httplib2": "0.3.1",
         "httpx": "0.28.1",
         "joblib": "1.5.3",
@@ -156,7 +156,7 @@
     },
     "conflicts": [],
     "hardware": {
-        "ram_total_gb": 15.62,
+        "ram_total_gb": 15.61,
         "ram_available_gb": 14.63,
         "gpu_available": false
     }
