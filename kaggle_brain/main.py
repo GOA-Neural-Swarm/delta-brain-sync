@@ -6,8 +6,12 @@ import sys
 # 1. Sovereign Requirements Setup (Must run before heavy imports)
 def install_requirements():
     """Installs necessary libraries and fixes version conflicts."""
+    # The "torchvision::nms" error is caused by a mismatch between torch and torchvision versions.
+    # We force-reinstall them together to ensure binary compatibility.
     libs = [
-        "huggingface-hub>=0.24.0,<1.0",  # Strict versioning to fix the ImportError
+        "torch",
+        "torchvision",
+        "huggingface-hub>=0.24.0,<1.0",
         "transformers>=4.44.0",
         "psycopg2-binary",
         "firebase-admin",
@@ -22,9 +26,18 @@ def install_requirements():
         "google-generativeai",
     ]
     try:
-        # Force install specific versions to resolve the environment conflict
+        # Force upgrade torch and torchvision to ensure they are linked correctly
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                *libs,
+                "--quiet",
+                "--no-cache-dir",
+            ]
         )
         print("✅ [SYSTEM]: Phase 7.1 Sovereign Core & Stability Patch Ready.")
     except subprocess.CalledProcessError as e:
