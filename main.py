@@ -13,8 +13,7 @@ class L:
         self.x = x
         return x @ self.w.d + self.b.d
     def b(self, dy):
-        xf = self.x.reshape(-1, self.x.shape[-1])
-        df = dy.reshape(-1, dy.shape[-1])
+        xf, df = self.x.reshape(-1, self.x.shape[-1]), dy.reshape(-1, dy.shape[-1])
         self.w.g += xf.T @ df
         self.b.g += df.sum(0)
         return dy @ self.w.d.T
@@ -23,8 +22,7 @@ class N:
     def __init__(self, d):
         self.g, self.e = P(np.ones(d)), 1e-6
     def f(self, x):
-        self.x = x
-        self.v = np.mean(x**2, -1, keepdims=1)
+        self.x, self.v = x, np.mean(x**2, -1, keepdims=1)
         self.i = 1/(self.v + self.e)**.5
         self.n = x * self.i
         return self.g.d * self.n
@@ -55,12 +53,10 @@ class A:
         return np.stack([r*c-i*s, r*s+i*c], -1).reshape(t.shape)
     def f(self, x):
         b, s, _ = x.shape
-        q = self.wq.f(x).reshape(b, s, self.h, self.hd)
-        k = self.wk.f(x).reshape(b, s, self.h//self.g, self.hd)
-        v = self.wv.f(x).reshape(b, s, self.h//self.g, self.hd)
-        a = np.arange(s)[:, None] * (10000**-(np.arange(0, self.hd, 2)/self.hd))
-        co, si = np.cos(a)[:, None, :], np.sin(a)[:, None, :]
-        self.qr, self.kr, self.vr = self._r(q, co, si), self._r(k, co, si), v
+        q, k, v = self.wq.f(x).reshape(b,s,self.h,self.hd), self.wk.f(x).reshape(b,s,self.h//self.g,self.hd), self.wv.f(x).reshape(b,s,self.h//self.g,self.hd)
+        a = np.arange(s)[:,None] * (10000**-(np.arange(0,self.hd,2)/self.hd))
+        co, si = np.cos(a)[:,None,:], np.sin(a)[:,None,:]
+        self.qr, self.kr, self.vr = self._r(q,co,si), self._r(k,co,si), v
         ke, ve = np.repeat(self.kr, self.g, 2), np.repeat(v, self.g, 2)
         at = np.einsum("bshd,bthd->bsht", self.qr, ke) * self.sc
         at = np.exp(at - np.max(at, -1, keepdims=1))
@@ -72,17 +68,16 @@ class A:
         ke, ve = np.repeat(self.kr, self.g, 2), np.repeat(self.vr, self.g, 2)
         dp = np.einsum("bshd,bthd->bsht", dw, ve)
         da = self.p * (dp - np.sum(self.p*dp, -1, keepdims=1)) * self.sc
-        dq = np.einsum("bsht,bthd->bshd", da, ke)
-        dk = np.einsum("bsht,bshd->bthd", da, self.qr).reshape(b, s, self.h//self.g, self.g, self.hd).sum(3)
-        dv = np.einsum("bsht,bshd->bthd", self.p, dw).reshape(b, s, self.h//self.g, self.g, self.hd).sum(3)
-        return self.wq.b(dq.reshape(b, s, -1)) + self.wk.b(dk.reshape(b, s, -1)) + self.wv.b(dv.reshape(b, s, -1))
+        dq, dk = np.einsum("bsht,bthd->bshd", da, ke), np.einsum("bsht,bshd->bthd", da, self.qr).reshape(b,s,self.h//self.g,self.g,self.hd).sum(3)
+        dv = np.einsum("bsht,bshd->bthd", self.p, dw).reshape(b,s,self.h//self.g,self.g,self.hd).sum(3)
+        return self.wq.b(dq.reshape(b,s,-1)) + self.wk.b(dk.reshape(b,s,-1)) + self.wv.b(dv.reshape(b,s,-1))
 
 class M:
     def __init__(self, d, n=4, k=2):
         self.d, self.n, self.k = d, n, k
         self.gt = L(d, n)
-        self.w1 = [P(np.random.randn(d, d*2)*(2/(d*3))**.5) for _ in range(n)]
-        self.w2 = [P(np.random.randn(d*2, d)*d**-.5) for _ in range(n)]
+        self.w1 = [P(np.random.randn(d,d*2)*(2/(d*3))**.5) for _ in range(n)]
+        self.w2 = [P(np.random.randn(d*2,d)*d**-.5) for _ in range(n)]
         self.sw = [S() for _ in range(n)]
     def f(self, x):
         sh, x = x.shape, x.reshape(-1, self.d)
@@ -96,8 +91,7 @@ class M:
         for i in range(self.n):
             m = np.any(self.ix == i, -1)
             if not np.any(m): self.ch.append(None); continue
-            ps = np.where(self.ix[m] == i)[1][:, None]
-            xi = x[m]
+            ps, xi = np.where(self.ix[m] == i)[1][:, None], x[m]
             h1 = xi @ self.w1[i].d
             at = self.sw[i].f(h1)
             wi = self.wt[m, ps[:, 0]][:, None]
@@ -144,13 +138,13 @@ class Model:
                 if isinstance(v, list): [self._g(i) for i in v]
                 else: self._g(v)
     def f(self, x):
-        x = self.eb.f(x[:, None, :] if x.ndim == 2 else x)
+        x = self.eb.f(x[:,None,:] if x.ndim==2 else x)
         for b in self.bl: x = b.f(x)
-        return self.hd.f(self.fn.f(x[:, -1, :]))
+        return self.hd.f(self.fn.f(x[:,-1,:]))
     def b(self, dy):
         dy = self.fn.b(self.hd.b(dy))
         db = np.zeros((dy.shape[0], self.eb.x.shape[1], dy.shape[1]), "f4")
-        db[:, -1, :] = dy
+        db[:,-1,:] = dy
         for b in reversed(self.bl): db = b.b(db)
         self.eb.b(db)
 
@@ -172,20 +166,20 @@ class Opt:
 def train():
     NS, D, C, BS, E = 1024, 784, 10, 64, 50
     X, Y = np.random.randn(NS, D).astype("f4"), np.random.randint(0, C, NS)
-    m = Model(D, 128, C)
-    opt = Opt(m.ps, 3e-3)
+    m, opt = Model(D, 128, C), Opt([], 3e-3)
+    opt.ps = m.ps
     for e in range(E):
         ix, ls, ac = np.random.permutation(NS), [], []
         for i in range(0, NS, BS):
             xb, yb = X[ix[i:i+BS]], Y[ix[i:i+BS]]
             lg = m.f(xb)
-            pr = np.exp(lg - lg.max(-1, keepdims=1))
+            pr = np.exp(lg - lg.max(-1, 1, keepdims=1))
             pr /= pr.sum(-1, keepdims=1)
             ls.append(-np.mean(np.log(pr[np.arange(len(yb)), yb] + 1e-12)))
             ac.append(np.mean(np.argmax(pr, -1) == yb))
             dl = pr.copy(); dl[np.arange(len(yb)), yb] -= 1
             m.b(dl / len(yb)); opt.step()
-        if (e + 1) % 5 == 0: print(f"E {e+1} | L {np.mean(ls):.4f} | A {np.mean(ac):.4f}")
+        if (e+1)%5==0: print(f"E {e+1} | L {np.mean(ls):.4f} | A {np.mean(ac):.4f}")
 
 if __name__ == "__main__":
     train()
