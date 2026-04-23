@@ -12,23 +12,7 @@ from functools import lru_cache
 
 # 1. Sovereign Requirements Setup (Executed BEFORE heavy imports)
 def install_requirements():
-    """Installs necessary libraries and fixes version conflicts."""
-    torch_libs = ["torch", "torchvision"]
-    other_libs = [
-        "huggingface-hub>=0.24.0",
-        "transformers>=4.48.0",
-        "google-genai",
-        "psycopg2-binary",
-        "firebase-admin",
-        "bitsandbytes",
-        "requests",
-        "accelerate",
-        "GitPython",
-        "sympy==1.12",
-        "numpy",
-        "scikit-learn",
-        "PyGithub",
-    ]
+    """Installs necessary libraries and fixes version conflicts by forcing compatible torch versions."""
     try:
         print("🛠️ [SYSTEM]: Patching environment and fixing version conflicts...")
         # Force upgrade pip first
@@ -36,19 +20,39 @@ def install_requirements():
             [sys.executable, "-m", "pip", "install", "--upgrade", "pip", "--quiet"]
         )
 
-        # Install Torch/Torchvision with specific CPU index
+        # Fix: Install torch and torchvision together with --upgrade to let the resolver
+        # find a compatible pair, specifically targeting the CPU wheels to avoid mismatches.
         subprocess.check_call(
             [
                 sys.executable,
                 "-m",
                 "pip",
                 "install",
-                *torch_libs,
+                "--upgrade",
+                "torch",
+                "torchvision",
+                "torchaudio",
                 "--index-url",
                 "https://download.pytorch.org/whl/cpu",
                 "--quiet",
             ]
         )
+
+        other_libs = [
+            "huggingface-hub>=0.24.0",
+            "transformers>=4.48.0",
+            "google-genai",
+            "psycopg2-binary",
+            "firebase-admin",
+            "bitsandbytes",
+            "requests",
+            "accelerate",
+            "GitPython",
+            "sympy==1.12",
+            "numpy",
+            "scikit-learn",
+            "PyGithub",
+        ]
 
         # Install remaining dependencies
         subprocess.check_call(
