@@ -10,7 +10,7 @@ from datetime import datetime, UTC
 from functools import lru_cache
 
 
-# 1. Sovereign Requirements Setup (Executed BEFORE heavy imports)
+# 1. Sovereign Requirements Setup
 def install_requirements():
     """Installs necessary libraries and fixes version conflicts by forcing compatible torch versions."""
     try:
@@ -20,8 +20,8 @@ def install_requirements():
             [sys.executable, "-m", "pip", "install", "--upgrade", "pip", "--quiet"]
         )
 
-        # Fix: Install torch and torchvision together with --upgrade to let the resolver
-        # find a compatible pair, specifically targeting the CPU wheels to avoid mismatches.
+        # Fix: Force reinstall specific compatible versions to resolve the torchvision/torch mismatch
+        # Using --extra-index-url allows pip to resolve dependencies across the standard repo and pytorch repo
         subprocess.check_call(
             [
                 sys.executable,
@@ -29,9 +29,10 @@ def install_requirements():
                 "pip",
                 "install",
                 "--upgrade",
-                "torch",
-                "torchvision",
-                "torchaudio",
+                "--force-reinstall",
+                "torch==2.4.1",
+                "torchvision==0.19.1",
+                "torchaudio==2.4.1",
                 "--index-url",
                 "https://download.pytorch.org/whl/cpu",
                 "--quiet",
@@ -73,7 +74,7 @@ def install_requirements():
         print(f"⚠️ Install Warning: An unexpected error occurred: {e}")
 
 
-# Run installation before importing transformers or genai
+# Run installation before importing heavy modules
 if __name__ == "__main__":
     if "RESTARTED" not in os.environ:
         install_requirements()
@@ -138,7 +139,7 @@ REPO_PATH = (
     else "/tmp/sovereign_repo_sync"
 )
 
-# --- 🔱 GEMINI CONFIGURATION (MIGRATED TO google.genai) ---
+# --- 🔱 GEMINI CONFIGURATION ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or (
     user_secrets.get_secret("GEMINI_API_KEY") if user_secrets else None
 )
@@ -146,7 +147,7 @@ gemini_client = None
 if GEMINI_API_KEY:
     try:
         gemini_client = genai.Client(api_key=GEMINI_API_KEY)
-        print("✅ [GEMINI]: Auditor Brain Initialized via google.genai.")
+        print("✅ [GEMINI]: Auditor Brain Initialized.")
     except Exception as e:
         print(f"⚠️ [GEMINI INIT ERROR]: {e}")
 else:
