@@ -12,66 +12,52 @@ from functools import lru_cache
 
 # 1. Sovereign Requirements Setup
 def install_requirements():
-    """Installs necessary libraries and fixes version conflicts by forcing compatible torch versions."""
+    """Installs necessary libraries and fixes version conflicts."""
+    libs = [
+        "torch",
+        "torchvision",
+        "huggingface-hub==0.25.0",
+        "transformers>=4.44.0",
+        "google-genai",
+        "psycopg2-binary",
+        "firebase-admin",
+        "bitsandbytes",
+        "requests",
+        "accelerate",
+        "GitPython",
+        "sympy==1.12",
+        "numpy",
+        "scikit-learn",
+        "PyGithub",
+    ]
     try:
-        print("🛠️ [SYSTEM]: Patching environment and fixing version conflicts...")
-        # Force upgrade pip first
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "--upgrade", "pip", "--quiet"]
-        )
-
-        # Fix: Force reinstall specific compatible versions to resolve the torchvision/torch mismatch
-        # Using --extra-index-url allows pip to resolve dependencies across the standard repo and pytorch repo
+        print(" [SYSTEM]: Patching environment and fixing version conflicts...")
         subprocess.check_call(
             [
                 sys.executable,
                 "-m",
                 "pip",
                 "install",
-                "--upgrade",
-                "--force-reinstall",
-                "torch==2.4.1",
-                "torchvision==0.19.1",
-                "torchaudio==2.4.1",
-                "--index-url",
-                "https://download.pytorch.org/whl/cpu",
+                "huggingface-hub==0.25.0",
+                "google-genai",
                 "--quiet",
             ]
         )
-
-        other_libs = [
-            "huggingface-hub>=0.24.0",
-            "transformers>=4.48.0",
-            "google-genai",
-            "psycopg2-binary",
-            "firebase-admin",
-            "bitsandbytes",
-            "requests",
-            "accelerate",
-            "GitPython",
-            "sympy==1.12",
-            "numpy",
-            "scikit-learn",
-            "PyGithub",
-        ]
-
-        # Install remaining dependencies
         subprocess.check_call(
             [
                 sys.executable,
                 "-m",
                 "pip",
                 "install",
-                *other_libs,
+                *libs,
                 "--quiet",
                 "--no-cache-dir",
+                "--upgrade",
             ]
         )
-        print("✅ [SYSTEM]: Phase 7.1 Sovereign Core & Stability Patch Ready.")
+        print("[SYSTEM]: Environment Stability Patch Applied.")
     except subprocess.CalledProcessError as e:
-        print(f"⚠️ Install Warning: Error installing requirements: {e}")
-    except Exception as e:
-        print(f"⚠️ Install Warning: An unexpected error occurred: {e}")
+        print(f"Install Warning: Error installing requirements: {e}")
 
 
 # Run installation before importing heavy modules
@@ -98,7 +84,7 @@ from github import Github
 import requests
 import git
 
-# 🔒 Kaggle/Colab Secrets System & Universal Credentials Sync
+#  Kaggle/Colab Secrets System
 try:
     from kaggle_secrets import UserSecretsClient
 
@@ -139,21 +125,20 @@ REPO_PATH = (
     else "/tmp/sovereign_repo_sync"
 )
 
-# --- 🔱 GEMINI CONFIGURATION ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or (
     user_secrets.get_secret("GEMINI_API_KEY") if user_secrets else None
 )
+
 gemini_client = None
 if GEMINI_API_KEY:
     try:
         gemini_client = genai.Client(api_key=GEMINI_API_KEY)
-        print("✅ [GEMINI]: Auditor Brain Initialized.")
+        print("[GEMINI]: Auditor Brain Initialized (google-genai).")
     except Exception as e:
-        print(f"⚠️ [GEMINI INIT ERROR]: {e}")
+        print(f"[GEMINI INIT ERROR]: {e}")
 else:
-    print("⚠️ [GEMINI]: API Key missing. Auditor mode disabled.")
+    print("[GEMINI]: API Key missing. Auditor mode disabled.")
 
-# --- 🔱 FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
     try:
         cred = (
@@ -162,9 +147,9 @@ if not firebase_admin._apps:
             else credentials.Certificate("serviceAccountKey.json")
         )
         firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_URL})
-        print(f"✅ [FIREBASE]: Real-time Pulse Active.")
+        print(f"[FIREBASE]: Real-time Pulse Active.")
     except (json.JSONDecodeError, ValueError, Exception) as e:
-        print(f"🚫 [FIREBASE ERROR]: {e}")
+        print(f"[FIREBASE ERROR]: {e}")
 
 
 class HydraEngine:
@@ -199,9 +184,9 @@ class Brain:
             X_scaled = self.scaler.fit_transform(X)
             self.svm.fit(X_scaled, y)
             self.is_trained = True
-            print("🧠 [ML]: SVM Pattern Recognition Model Synchronized.")
+            print("[ML]: SVM Pattern Recognition Model Synchronized.")
         except Exception as e:
-            print(f"⚠️ [ML ERROR]: {e}")
+            print(f"[ML ERROR]: {e}")
 
     def execute_natural_absorption(
         self,
@@ -259,7 +244,7 @@ def save_evolution_state_to_neon(state, gen_id):
                 )
                 conn.commit()
     except Exception as e:
-        print(f"⚠️ [NEON PERSISTENCE ERROR]: {e}")
+        print(f"[NEON PERSISTENCE ERROR]: {e}")
 
 
 def query_groq_api(prompt):
@@ -300,7 +285,7 @@ def get_gemini_wisdom(prompt_text):
         )
         return response.text
     except Exception as e:
-        print(f"⚠️ [GEMINI-ERROR]: {e}")
+        print(f"[GEMINI-ERROR]: {e}")
         return None
 
 
@@ -338,12 +323,12 @@ def broadcast_to_swarm(command, gen_version):
         }
         repo.update_file(
             contents.path,
-            f"🔱 SWARM-EVOLUTION: Gen {gen_version}",
+            f" SWARM-EVOLUTION: Gen {gen_version}",
             json.dumps(payload, indent=4),
             contents.sha,
         )
     except Exception as e:
-        print(f"❌ [BROADCAST FAILED]: {e}")
+        print(f"[BROADCAST FAILED]: {e}")
 
 
 def self_coding_engine(raw_content):
@@ -387,14 +372,14 @@ def autonomous_git_push(gen, thought, modified_files):
                 shutil.copy(os.path.join("..", file), file)
         os.system("git add .")
         if os.popen("git status --porcelain").read().strip():
-            os.system(f'git commit -m "🧬 Gen {gen} Evolution [skip ci]"')
+            os.system(f'git commit -m " Gen {gen} Evolution [skip ci]"')
             os.system("git push origin main --force")
     except Exception as e:
-        print(f"❌ [GIT ERROR]: {e}")
+        print(f"[GIT ERROR]: {e}")
 
 
-# --- 🧠 INITIALIZE LOCAL MODEL ---
-print("🧠 [SYSTEM]: Loading Local Neural Weights...")
+# ---  LOCAL MODEL ---
+print("[SYSTEM]: Loading Local Neural Weights...")
 model_id = "unsloth/llama-3-8b-instruct-bnb-4bit"
 try:
     bnb_config = BitsAndBytesConfig(
@@ -412,16 +397,16 @@ try:
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
     pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
 except Exception as e:
-    print(f"🚨 [MODEL LOAD ERROR]: {e}")
+    print(f"[MODEL LOAD ERROR]: {e}")
 
-# --- 🔱 MAIN LOOP ---
+# ---  MAIN LOOP ---
 brain = Brain()
 current_gen = 95
 HEADLESS = os.getenv("HEADLESS_MODE") == "true"
 
 while True:
     try:
-        print(f"⚙️ [CYCLE]: Gen {current_gen} Initiated...")
+        print(f"[CYCLE]: Gen {current_gen} Initiated...")
         total_error = (
             sum(
                 [
@@ -442,7 +427,7 @@ while True:
         broadcast_to_swarm("EVOLVE", current_gen)
 
         if is_updated:
-            print("🧬 [RESTARTING]: New DNA injected.")
+            print("[RESTARTING]: New DNA injected.")
             os.execv(sys.executable, ["python"] + sys.argv)
 
         if HEADLESS:
@@ -450,5 +435,5 @@ while True:
         current_gen += 1
         time.sleep(60)
     except Exception as e:
-        print(f"🚨 [CRASH]: {e}")
+        print(f"[CRASH]: {e}")
         time.sleep(10)
