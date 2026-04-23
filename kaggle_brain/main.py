@@ -13,14 +13,11 @@ from functools import lru_cache
 # 1. Sovereign Requirements Setup (Executed BEFORE heavy imports)
 def install_requirements():
     """Installs necessary libraries and fixes version conflicts."""
-    # The 'torchvision::nms' error is caused by a mismatch between torch and torchvision.
-    # We force-reinstall them to ensure compatibility.
-    libs = [
-        "torch --index-url https://download.pytorch.org/whl/cpu",  # Defaulting to CPU for stability in runners
-        "torchvision --index-url https://download.pytorch.org/whl/cpu",
-        "huggingface-hub>=0.24.0,<1.0",
-        "transformers>=4.44.0",
-        "google-generativeai",
+    torch_libs = ["torch", "torchvision"]
+    other_libs = [
+        "huggingface-hub>=0.24.0",
+        "transformers>=4.48.0",
+        "google-genai",
         "psycopg2-binary",
         "firebase-admin",
         "bitsandbytes",
@@ -33,17 +30,21 @@ def install_requirements():
         "PyGithub",
     ]
     try:
-        print("🛠️ [SYSTEM]: Patching environment and fixing torchvision binaries...")
-        # Fix the specific torchvision/torch mismatch first
+        print("🛠️ [SYSTEM]: Patching environment and fixing version conflicts...")
+        # Force upgrade pip first
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "--upgrade", "pip", "--quiet"]
+        )
+
+        # Install Torch/Torchvision with specific CPU index
         subprocess.check_call(
             [
                 sys.executable,
                 "-m",
                 "pip",
                 "install",
-                "torch",
-                "torchvision",
-                "--extra-index-url",
+                *torch_libs,
+                "--index-url",
                 "https://download.pytorch.org/whl/cpu",
                 "--quiet",
             ]
@@ -51,7 +52,15 @@ def install_requirements():
 
         # Install remaining dependencies
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                *other_libs,
+                "--quiet",
+                "--no-cache-dir",
+            ]
         )
         print("✅ [SYSTEM]: Phase 7.1 Sovereign Core & Stability Patch Ready.")
     except subprocess.CalledProcessError as e:
@@ -62,13 +71,12 @@ def install_requirements():
 
 # Run installation before importing transformers or genai
 if __name__ == "__main__":
-    # Only run install if we aren't already in a sub-process
     if "RESTARTED" not in os.environ:
         install_requirements()
         os.environ["RESTARTED"] = "1"
 
 # Now safe to import
-import google.generativeai as genai
+from google import genai
 import numpy as np
 import torch
 from sklearn.preprocessing import StandardScaler
@@ -126,14 +134,17 @@ REPO_PATH = (
     else "/tmp/sovereign_repo_sync"
 )
 
-# --- 🔱 GEMINI CONFIGURATION ---
+# --- 🔱 GEMINI CONFIGURATION (MIGRATED TO google.genai) ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or (
     user_secrets.get_secret("GEMINI_API_KEY") if user_secrets else None
 )
+gemini_client = None
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-    print("✅ [GEMINI]: Auditor Brain Initialized.")
+    try:
+        gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+        print("✅ [GEMINI]: Auditor Brain Initialized via google.genai.")
+    except Exception as e:
+        print(f"⚠️ [GEMINI INIT ERROR]: {e}")
 else:
     print("⚠️ [GEMINI]: API Key missing. Auditor mode disabled.")
 
@@ -277,9 +288,11 @@ def query_groq_api(prompt):
 
 def get_gemini_wisdom(prompt_text):
     try:
-        if not GEMINI_API_KEY:
+        if not gemini_client:
             return None
-        response = gemini_model.generate_content(prompt_text)
+        response = gemini_client.models.generate_content(
+            model="gemini-1.5-flash", contents=prompt_text
+        )
         return response.text
     except Exception as e:
         print(f"⚠️ [GEMINI-ERROR]: {e}")
@@ -297,12 +310,10 @@ def dual_brain_pipeline(prompt_text, current_gen_val, avg_error):
     audit_prompt = f"system\nYou are the Supreme Auditor (Gen {current_gen_val}). MISSION: Secure and Optimize.\nRULES: 1. FIX Syntax/CWE. 2. Respond ONLY with Python code in python blocks.\nARCHITECT'S DRAFT: {draft_code}"
     try:
         final_verified_code = get_gemini_wisdom(audit_prompt)
-        if "python" in final_verified_code:
-            final_verified_code = (
-                re.search(r"python(.*?)", final_verified_code, re.DOTALL)
-                .group(1)
-                .strip()
-            )
+        if final_verified_code and "python" in final_verified_code:
+            match = re.search(r"python(.*?)", final_verified_code, re.DOTALL)
+            if match:
+                final_verified_code = match.group(1).strip()
         return final_verified_code
     except:
         return draft_code
@@ -420,12 +431,15 @@ while True:
         if not thought_text:
             outputs = pipe(prompt, max_new_tokens=500, do_sample=True, temperature=0.7)
             thought_text = outputs[0]["generated_text"]
+
         is_updated, files = self_coding_engine(thought_text)
         autonomous_git_push(current_gen, thought_text, files)
         broadcast_to_swarm("EVOLVE", current_gen)
+
         if is_updated:
             print("🧬 [RESTARTING]: New DNA injected.")
             os.execv(sys.executable, ["python"] + sys.argv)
+
         if HEADLESS:
             break
         current_gen += 1
