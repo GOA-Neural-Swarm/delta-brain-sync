@@ -1,6 +1,6 @@
 import numpy as n, time as t
 class S:
- def __init__(self, i=784, o=10): self.w, self.b, self.a = n.random.randn(i, o).astype("f4") * (2 / (i + o)) ** .5, n.zeros(o, "f4"), 0
+ def __init__(self, i=784, o=10): self.w, self.b, self.a = n.random.randn(i, o).astype("f4") * (2 / (i + o))**.5, n.zeros(o, "f4"), 0
  def r(self): self.a = 1; print("\n[!] SB ACTIVE.")
 class W:
  def __init__(self): self.c = S()
