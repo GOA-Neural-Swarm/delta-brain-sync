@@ -3,9 +3,6 @@ import subprocess
 import sys
 import time
 import json
-import traceback
-import requests
-import git
 import re
 import random
 import base64
@@ -16,7 +13,11 @@ from functools import lru_cache
 # 1. Sovereign Requirements Setup (Executed BEFORE heavy imports)
 def install_requirements():
     """Installs necessary libraries and fixes version conflicts."""
+    # The 'torchvision::nms' error is caused by a mismatch between torch and torchvision.
+    # We force-reinstall them to ensure compatibility.
     libs = [
+        "torch --index-url https://download.pytorch.org/whl/cpu",  # Defaulting to CPU for stability in runners
+        "torchvision --index-url https://download.pytorch.org/whl/cpu",
         "huggingface-hub>=0.24.0,<1.0",
         "transformers>=4.44.0",
         "google-generativeai",
@@ -32,17 +33,23 @@ def install_requirements():
         "PyGithub",
     ]
     try:
-        # Force update huggingface-hub first to resolve the version conflict
+        print("🛠️ [SYSTEM]: Patching environment and fixing torchvision binaries...")
+        # Fix the specific torchvision/torch mismatch first
         subprocess.check_call(
             [
                 sys.executable,
                 "-m",
                 "pip",
                 "install",
-                "huggingface-hub>=0.24.0,<1.0",
+                "torch",
+                "torchvision",
+                "--extra-index-url",
+                "https://download.pytorch.org/whl/cpu",
                 "--quiet",
             ]
         )
+
+        # Install remaining dependencies
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
         )
@@ -54,7 +61,11 @@ def install_requirements():
 
 
 # Run installation before importing transformers or genai
-install_requirements()
+if __name__ == "__main__":
+    # Only run install if we aren't already in a sub-process
+    if "RESTARTED" not in os.environ:
+        install_requirements()
+        os.environ["RESTARTED"] = "1"
 
 # Now safe to import
 import google.generativeai as genai
@@ -71,6 +82,8 @@ from transformers import (
 from firebase_admin import credentials, db, initialize_app, _apps
 import firebase_admin
 from github import Github
+import requests
+import git
 
 # 🔒 Kaggle/Colab Secrets System & Universal Credentials Sync
 try:
@@ -84,7 +97,6 @@ raw_db_url = os.getenv("NEON_DB_URL") or os.getenv("DATABASE_URL")
 if user_secrets:
     raw_db_url = user_secrets.get_secret("NEON_DB_URL") or raw_db_url
 
-# Protocol Fix
 DB_URL = (
     raw_db_url.replace("postgres://", "postgresql://", 1)
     if raw_db_url and raw_db_url.startswith("postgres://")
@@ -92,7 +104,6 @@ DB_URL = (
 )
 
 FIXED_DB_URL = DB_URL
-
 FIREBASE_URL = os.getenv("FIREBASE_DB_URL")
 FB_JSON_STR = os.getenv("FIREBASE_SERVICE_ACCOUNT")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -106,7 +117,6 @@ if user_secrets:
     SUPABASE_KEY = user_secrets.get_secret("SUPABASE_KEY") or SUPABASE_KEY
     GH_TOKEN = user_secrets.get_secret("GH_TOKEN") or GH_TOKEN
 
-# GitHub Configuration
 REPO_OWNER = "GOA-Neural-Swarm"
 REPO_NAME = "delta-brain-sync"
 REPO_URL = f"github.com/{REPO_OWNER}/{REPO_NAME}"
@@ -205,17 +215,6 @@ class Brain:
             self.memory *= self.qt45_growth_factor + factor
             self.memory = np.clip(self.memory, 0.0, 1.0)
 
-    def generate_synthetic_output(self, length=100):
-        if not self.memory_vault:
-            return "NO_DATA_AVAILABLE"
-        base_data = random.choice(list(self.memory_vault.values()))
-        base_seq = base_data["seq"]
-        output = list(base_seq[:length])
-        for i in range(len(output)):
-            if random.random() > 0.95:
-                output[i] = random.choice("ACGT")
-        return "".join(output)
-
 
 @lru_cache(maxsize=None)
 def predator_logic(input_data_json):
@@ -227,14 +226,6 @@ def predator_logic(input_data_json):
         new_type = "finish" if val >= 10 else "next"
         return json.dumps({"type": new_type, "data": {"value": val + 1}})
     return input_data_json
-
-
-def recursive_self_upgrade(current_state, gen_id):
-    save_evolution_state_to_neon(current_state, gen_id)
-    if current_state["type"] == "finish":
-        return current_state
-    next_state_raw = predator_logic(json.dumps(current_state))
-    return recursive_self_upgrade(json.loads(next_state_raw), gen_id)
 
 
 def save_evolution_state_to_neon(state, gen_id):
@@ -303,12 +294,7 @@ def dual_brain_pipeline(prompt_text, current_gen_val, avg_error):
         draft_code = get_gemini_wisdom(f"EMERGENCY ARCHITECT MODE: {prompt_text}")
     if not draft_code:
         return None
-
-    audit_prompt = f"""system
-You are the Supreme Auditor (Gen {current_gen_val}). MISSION: Secure and Optimize.
-RULES: 1. FIX Syntax/CWE. 2. Respond ONLY with Python code in python blocks.
-ARCHITECT'S DRAFT: {draft_code}"""
-
+    audit_prompt = f"system\nYou are the Supreme Auditor (Gen {current_gen_val}). MISSION: Secure and Optimize.\nRULES: 1. FIX Syntax/CWE. 2. Respond ONLY with Python code in python blocks.\nARCHITECT'S DRAFT: {draft_code}"
     try:
         final_verified_code = get_gemini_wisdom(audit_prompt)
         if "python" in final_verified_code:
@@ -380,11 +366,9 @@ def autonomous_git_push(gen, thought, modified_files):
         os.chdir(REPO_PATH)
         os.system("git config user.name 'GOA-neurons'")
         os.system("git config user.email 'goa-neurons@neural-swarm.ai'")
-
         for file in modified_files or []:
             if os.path.exists(os.path.join("..", file)):
                 shutil.copy(os.path.join("..", file), file)
-
         os.system("git add .")
         if os.popen("git status --porcelain").read().strip():
             os.system(f'git commit -m "🧬 Gen {gen} Evolution [skip ci]"')
@@ -416,7 +400,7 @@ except Exception as e:
 
 # --- 🔱 MAIN LOOP ---
 brain = Brain()
-current_gen = 95  # Default start
+current_gen = 95
 HEADLESS = os.getenv("HEADLESS_MODE") == "true"
 
 while True:
@@ -431,22 +415,17 @@ while True:
             )
             / 10
         )
-
         prompt = f"system\n# TARGET: brain.py\nRespond ONLY with Python code in python blocks.\nGen: {current_gen} | Error: {total_error}\nTASK: Optimize neural stability."
         thought_text = dual_brain_pipeline(prompt, current_gen, total_error)
-
         if not thought_text:
             outputs = pipe(prompt, max_new_tokens=500, do_sample=True, temperature=0.7)
             thought_text = outputs[0]["generated_text"]
-
         is_updated, files = self_coding_engine(thought_text)
         autonomous_git_push(current_gen, thought_text, files)
         broadcast_to_swarm("EVOLVE", current_gen)
-
         if is_updated:
             print("🧬 [RESTARTING]: New DNA injected.")
             os.execv(sys.executable, ["python"] + sys.argv)
-
         if HEADLESS:
             break
         current_gen += 1
