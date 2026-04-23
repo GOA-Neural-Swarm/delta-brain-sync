@@ -534,6 +534,22 @@ def self_coding_engine(raw_content):
                 ]
             )
 
+            # -------- 🧬 ဒီနေရာမှာ ကပ်ထည့်ပါ 🧬 --------
+            words_in_code = valid_code.split()
+            # Code ရဲ့ အတိမ်အနက် (Logic Depth) ကို တိုင်းတာခြင်း
+            code_structure_depth = re.findall(r'def |class |for |if |while |import ', valid_code)
+            
+            # Fitness တွက်ချက်ခြင်း (Novelty Search)
+            fitness = len(set(words_in_code)) * 2 + len(code_structure_depth)
+            print(f"🧬 [FITNESS SCORE]: Gen Evolution Novelty = {fitness}")
+            
+            # (ရွေးချယ်ရန်) အမှတ် အရမ်းနည်းနေရင် reject လုပ်ချင်ရင်-
+            # if fitness < 20: 
+            #     raise Exception("Fitness too low, Code shrunk! Rejecting...")
+            # ---------------------------------------
+
+            target_match = re.search(r"# TARGET:\s*(\S+)", valid_code)
+
             target_match = re.search(r"# TARGET:\s*(\S+)", valid_code)
             if target_match:
                 filename = target_match.group(1).strip()
