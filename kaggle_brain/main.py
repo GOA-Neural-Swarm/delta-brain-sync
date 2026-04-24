@@ -13,10 +13,10 @@ from functools import lru_cache
 # 1. Sovereign Requirements Setup - Fixed to align Torch and Torchvision
 def install_requirements():
     """Installs and aligns libraries to fix the torchvision::nms error."""
-    # We force upgrade torch and torchvision together to ensure binary compatibility
+    # Package names only in the list
     libs = [
-        "torch --upgrade",
-        "torchvision --upgrade",
+        "torch",
+        "torchvision",
         "huggingface-hub>=0.24.0",
         "transformers>=4.44.0",
         "psycopg2-binary",
@@ -28,12 +28,22 @@ def install_requirements():
         "sympy==1.12",
         "numpy",
         "scikit-learn",
-        "google-genai",  # Switched to the new recommended package
+        "google-genai",
         "pygithub",
     ]
     try:
+        # Added "--upgrade" as a separate argument in the subprocess call
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                *libs,
+                "--quiet",
+                "--no-cache-dir",
+            ]
         )
         print("✅ [SYSTEM]: Dependencies aligned and patched.")
     except subprocess.CalledProcessError as e:
@@ -227,9 +237,9 @@ def dual_brain_pipeline(prompt_text, current_gen_val, avg_error):
     )
     final_verified_code = get_gemini_wisdom(audit_prompt) or draft_code
     if "python" in final_verified_code:
-        final_verified_code = (
-            re.search(r"python(.*?)", final_verified_code, re.DOTALL).group(1).strip()
-        )
+        match = re.search(r"python(.*?)", final_verified_code, re.DOTALL)
+        if match:
+            final_verified_code = match.group(1).strip()
     return final_verified_code
 
 
