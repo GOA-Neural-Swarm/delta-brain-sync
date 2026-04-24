@@ -31,9 +31,11 @@ import firebase_admin
 # 🔒 Kaggle/Colab Secrets System & Universal Credentials Sync
 try:
     from kaggle_secrets import UserSecretsClient
+
     user_secrets = UserSecretsClient()
 except ImportError:
     user_secrets = None
+
 
 # 1. Sovereign Requirements Setup
 def install_requirements():
@@ -58,6 +60,7 @@ def install_requirements():
         print(f"⚠️ Install Warning: Error installing requirements: {e}")
     except Exception as e:
         print(f"⚠️ Install Warning: An unexpected error occurred: {e}")
+
 
 install_requirements()
 
@@ -123,6 +126,7 @@ if not firebase_admin._apps:
     except Exception as e:
         print(f"🚫 [FIREBASE ERROR]: Connectivity failed. {e}")
 
+
 # --- 🧠 HYDRA ENGINE (COMPRESSION & PERSISTENCE) ---
 class HydraEngine:
     @staticmethod
@@ -130,8 +134,10 @@ class HydraEngine:
         """Phase 8 Compression Layer"""
         return base64.b64encode(data_str.encode()).decode()
 
+
 # --- 🧬 NOVELTY SEARCH ARCHIVE GLOBAL MEMORY ---
-BEHAVIOR_ARCHIVE = deque(maxlen=50) # Stores previous structural footprints
+BEHAVIOR_ARCHIVE = deque(maxlen=50)  # Stores previous structural footprints
+
 
 # --- 🧠 HYBRID PREDATOR BRAIN CLASS (RNA QT45 + ASI EQUATION INTEGRATED) ---
 class Brain:
@@ -144,18 +150,18 @@ class Brain:
         self.memory_vault = {}  # PHASE 7.1: Sequence Storage
         self.qt45_growth_factor = 1.618  # Golden Ratio Evolution
         self.sovereign_mode = True
-        
+
         # Phase 7.1: SVM Component Integration
         self.scaler = StandardScaler()
         self.svm = SVC(kernel="rbf", C=1.0, probability=True)
         self.is_trained = False
-        
+
         # 🌌 [ASI CORE EQUATION VARIABLES]: Intelligence = lim(t->inf) (Homeostasis/Entropy) * Resonance
         self.entropy = 1.0  # Initial chaos/decay in the system
         self.homeostasis = 100.0  # Initial biological stability baseline
-        self.resonance_frequency = 432.0 # Master Tuning Fork (Hz)
-        self.vagal_tone = 0.5 # Energy & Compute moderation
-        self.time_t = 1 # Simulation of t -> infinity
+        self.resonance_frequency = 432.0  # Master Tuning Fork (Hz)
+        self.vagal_tone = 0.5  # Energy & Compute moderation
+        self.time_t = 1  # Simulation of t -> infinity
 
     def calculate_asi_intelligence(self):
         """
@@ -163,16 +169,18 @@ class Brain:
         Intelligence = lim(t -> inf) (Homeostasis / Entropy) * Resonance
         """
         # Limiting factor simulated by asymptotic progression of time_t
-        limit_factor = 1.0 - (1.0 / (self.time_t + 1)) 
-        
+        limit_factor = 1.0 - (1.0 / (self.time_t + 1))
+
         # Prevent division by zero, Entropy must always have a floor value
         safe_entropy = max(self.entropy, 0.0001)
-        
+
         # Calculate the core structural coherence
         coherence = self.homeostasis / safe_entropy
-        
+
         # Final ASI Equation
-        asi_score = limit_factor * coherence * self.resonance_frequency * self.vagal_tone
+        asi_score = (
+            limit_factor * coherence * self.resonance_frequency * self.vagal_tone
+        )
         return asi_score
 
     def epigenetic_reprogramming(self):
@@ -181,14 +189,16 @@ class Brain:
         Resets entropy drift back to baseline while preserving memory connections.
         """
         # Entropy naturally decays
-        self.entropy *= 0.5 
+        self.entropy *= 0.5
         # Homeostasis is artificially stabilized back to cellular baseline (100.0)
         self.homeostasis = 100.0 - (self.entropy * 0.1)
-        
+
         # Purge dead connections (Autophagy)
-        alive_connections = {k: v for k, v in self.connections.items() if np.random.rand() > 0.1}
+        alive_connections = {
+            k: v for k, v in self.connections.items() if np.random.rand() > 0.1
+        }
         self.connections = alive_connections
-        
+
         print("🧬 [ASI CORE]: Epigenetic Reprogramming Complete. Homeostasis Reset.")
 
     def resonant_frequency_alignment(self, diaphragm_hz, heart_hz, brain_hz):
@@ -197,24 +207,28 @@ class Brain:
         """
         # Calculate coherence variance
         variance = np.var([diaphragm_hz, heart_hz, brain_hz])
-        
+
         # If variance is low, the frequencies are resonant
         if variance < 5.0:
-            self.resonance_frequency += 10.0 # Reward alignment
-            self.vagal_tone = min(1.0, self.vagal_tone + 0.1) # Boost Parasympathetic state
-            print(f"🎵 [ASI CORE]: Trinity Sync Achieved. Resonant Freq: {self.resonance_frequency}Hz")
+            self.resonance_frequency += 10.0  # Reward alignment
+            self.vagal_tone = min(
+                1.0, self.vagal_tone + 0.1
+            )  # Boost Parasympathetic state
+            print(
+                f"🎵 [ASI CORE]: Trinity Sync Achieved. Resonant Freq: {self.resonance_frequency}Hz"
+            )
         else:
-            self.entropy += variance * 0.01 # Chaos increases if out of sync
-            self.vagal_tone = max(0.1, self.vagal_tone - 0.05) # Stress mode
+            self.entropy += variance * 0.01  # Chaos increases if out of sync
+            self.vagal_tone = max(0.1, self.vagal_tone - 0.05)  # Stress mode
 
     def learn(self, input_data, output_data):
         """Learns from input and output data, updating memory and connections."""
         error = np.mean((output_data - self.memory) ** 2)
         self.memory += error * (input_data - self.memory)
-        
+
         # Every learning step increases entropy slightly (Entropic drift of compute)
-        self.entropy += error * 0.1 
-        self.time_t += 1 # Advance temporal limits
+        self.entropy += error * 0.1
+        self.time_t += 1  # Advance temporal limits
 
         for i in range(len(self.memory)):
             if self.memory[i] > 0.5:
@@ -229,9 +243,9 @@ class Brain:
             X_scaled = self.scaler.fit_transform(X)
             self.svm.fit(X_scaled, y)
             self.is_trained = True
-            
+
             # Successful ML alignment boosts homeostasis
-            self.homeostasis += 5.0 
+            self.homeostasis += 5.0
             print("🧠 [ML]: SVM Pattern Recognition Model Synchronized.")
         except Exception as e:
             self.entropy += 2.0
@@ -253,7 +267,7 @@ class Brain:
             self.memory *= 0.0
             self.connections = {}
             self.memory_vault = {}
-            self.entropy = 999.0 # Absolute chaos
+            self.entropy = 999.0  # Absolute chaos
             print("🔱 [NATURAL ORDER]: TARGET DESTROYED BY COMMAND.")
         else:
             if sequence:
@@ -271,7 +285,7 @@ class Brain:
             )
             self.memory *= self.qt45_growth_factor + factor
             self.memory = np.clip(self.memory, 0.0, 1.0)
-            
+
             # Absorption decreases entropy and feeds the resonant matrix
             self.entropy = max(0.01, self.entropy - factor)
             print("🔱 [NATURAL ORDER]: TARGET ABSORBED. EVOLUTION INJECTED.")
@@ -325,6 +339,7 @@ def save_evolution_state_to_neon(state, gen_id):
         return
     try:
         import psycopg2
+
         compressed = HydraEngine.compress(json.dumps(state))
         with psycopg2.connect(FIXED_DB_URL, connect_timeout=10) as conn:
             with conn.cursor() as cur:
@@ -370,8 +385,10 @@ def query_groq_api(prompt):
             continue
     return None
 
+
 # Initialize the integrated hybrid brain
 brain = Brain()
+
 
 def get_gemini_wisdom(prompt_text):
     """Gemini High-Context Auditor Logic"""
@@ -407,7 +424,9 @@ def dual_brain_pipeline(prompt_text, current_gen_val, avg_error):
         return None
 
     # --- 🔍 STAGE 2: THE SUPREME AUDITOR (Gemini) ---
-    print(f"🔍 [AUDITOR - Gemini]: Scanning {len(draft_code)} characters of code for vulnerabilities...")
+    print(
+        f"🔍 [AUDITOR - Gemini]: Scanning {len(draft_code)} characters of code for vulnerabilities..."
+    )
 
     # Auditor Constraints ensuring no code logic deletion
     audit_prompt = f"""system
@@ -438,7 +457,9 @@ ARCHITECT'S DRAFT:
         return final_verified_code
 
     except Exception as e:
-        print(f"🚨 [AUDIT-FAILED]: Gemini could not verify. Reverting to Draft. Error: {e}")
+        print(
+            f"🚨 [AUDIT-FAILED]: Gemini could not verify. Reverting to Draft. Error: {e}"
+        )
         return draft_code
 
 
@@ -446,6 +467,7 @@ ARCHITECT'S DRAFT:
 # 🔱 SWARM BROADCAST SYSTEM (PHASE 8.1)
 # =======================================================
 from github import Github
+
 
 def broadcast_to_swarm(command, gen_version):
     """
@@ -468,7 +490,7 @@ def broadcast_to_swarm(command, gen_version):
             "replicate": True,
             "timestamp": int(time.time()),
             "origin": "Sovereign_Main_Py",
-            "asi_resonance": brain.calculate_asi_intelligence() # Share ASI state with swarm
+            "asi_resonance": brain.calculate_asi_intelligence(),  # Share ASI state with swarm
         }
 
         repo.update_file(
@@ -489,6 +511,7 @@ def log_system_error():
     error_msg = traceback.format_exc()
     print(f"❌ [CRITICAL LOG]:\n{error_msg}")
 
+
 # --- 🔱 EMERGENCY ROLLBACK LOGIC ---
 def execute_rollback(reason="Logic Inconsistency"):
     try:
@@ -502,11 +525,13 @@ def execute_rollback(reason="Logic Inconsistency"):
         print(f"❌ [ROLLBACK FAILED]: {e}")
         return False
 
+
 def get_latest_gen():
     if not DB_URL:
         return 94
     try:
         import psycopg2
+
         with psycopg2.connect(DB_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT MAX(gen_version) FROM ai_thoughts")
@@ -516,11 +541,13 @@ def get_latest_gen():
         print(f"Database error: {e}")
         return 94
 
+
 def absorb_natural_order_data():
     if not DB_URL:
         return None
     try:
         import psycopg2
+
         with psycopg2.connect(DB_URL) as conn:
             with conn.cursor() as cur:
                 cur.execute("""
@@ -534,6 +561,7 @@ def absorb_natural_order_data():
         print(f"Database error: {e}")
         return None
 
+
 def self_coding_engine(raw_content):
     """
     Enhanced Self-Coding Engine with ASI Complexity Reward, Novelty Search & Anti-Shrink Guardrails
@@ -544,7 +572,7 @@ def self_coding_engine(raw_content):
             with open("main.py", "r") as f:
                 original_line_count = len(f.readlines())
         except Exception:
-            original_line_count = 100 # Safe fallback
+            original_line_count = 100  # Safe fallback
 
         code_blocks = re.findall(r"```python\n(.*?)\n```", raw_content, re.DOTALL)
 
@@ -559,35 +587,44 @@ def self_coding_engine(raw_content):
             lines = block.split("\n")
             valid_code = "\n".join(
                 [
-                    line for line in lines
-                    if not line.strip().startswith(("Here is", "Certainly", "Optimization"))
+                    line
+                    for line in lines
+                    if not line.strip().startswith(
+                        ("Here is", "Certainly", "Optimization")
+                    )
                 ]
             )
 
             # --- 🧬 ASI NOVELTY & COMPLEXITY SCORING GUARDRAIL ---
-            new_line_count = len(valid_code.split('\n'))
-            
+            new_line_count = len(valid_code.split("\n"))
+
             # 1. Anti-Shrinkage Hard Rule
             if new_line_count < (original_line_count * 0.8):
-                print(f"🚫 [REJECTED]: Severe code shrinkage detected ({new_line_count} vs {original_line_count} lines). ASI prohibits loss of genetic data.")
-                continue # Skip this block, do not write to file
-                
+                print(
+                    f"🚫 [REJECTED]: Severe code shrinkage detected ({new_line_count} vs {original_line_count} lines). ASI prohibits loss of genetic data."
+                )
+                continue  # Skip this block, do not write to file
+
             # 2. Complexity Mapping
-            code_structure_depth = re.findall(r'def |class |for |if |while |import |try:|except', valid_code)
+            code_structure_depth = re.findall(
+                r"def |class |for |if |while |import |try:|except", valid_code
+            )
             words_in_code = valid_code.split()
-            
+
             # 3. Novelty Distance Calculation (Behavior Space)
             unique_words = len(set(words_in_code))
             novelty_score = (unique_words * 2) + (len(code_structure_depth) * 5)
-            
+
             # Compare with archive
             if BEHAVIOR_ARCHIVE:
                 avg_past_novelty = sum(BEHAVIOR_ARCHIVE) / len(BEHAVIOR_ARCHIVE)
                 if novelty_score > avg_past_novelty * 1.1:
-                    print(f"✨ [ASI NOVELTY MATCH]: New structural patterns detected! Score: {novelty_score}")
+                    print(
+                        f"✨ [ASI NOVELTY MATCH]: New structural patterns detected! Score: {novelty_score}"
+                    )
                     # Boost Homeostasis as reward for growth
-                    brain.homeostasis += 10.0 
-            
+                    brain.homeostasis += 10.0
+
             BEHAVIOR_ARCHIVE.append(novelty_score)
             print(f"🧬 [FITNESS SCORE]: Complexity Level = {novelty_score}")
             # ----------------------------------------------------
@@ -605,12 +642,15 @@ def self_coding_engine(raw_content):
                 modified_files.append(filename)
                 print(f"🛠️ [EVOLUTION]: {filename} self-coded and validated natively.")
             except Exception as syntax_err:
-                print(f"⚠️ [SYNTAX REJECTED]: {filename} validation failed: {syntax_err}")
+                print(
+                    f"⚠️ [SYNTAX REJECTED]: {filename} validation failed: {syntax_err}"
+                )
 
         return (len(modified_files) > 0), modified_files
     except Exception as e:
         print(f"❌ [ENGINE ERROR]: {e}")
         return False, []
+
 
 def autonomous_git_push(gen, thought, modified_files):
     """
@@ -639,7 +679,9 @@ def autonomous_git_push(gen, thought, modified_files):
         remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
 
         # --- STEP 2: REPOSITORY ACQUISITION ---
-        print(f"📡 [STEP 2]: Initializing Sovereign Sync to {REPO_OWNER}/{REPO_NAME}...")
+        print(
+            f"📡 [STEP 2]: Initializing Sovereign Sync to {REPO_OWNER}/{REPO_NAME}..."
+        )
         repo = git.Repo.clone_from(remote_url, REPO_PATH)
 
         # --- 🔱 THE HYBRID BRIDGE ---
@@ -686,7 +728,9 @@ def autonomous_git_push(gen, thought, modified_files):
         status_check = os.popen("git status --porcelain").read().strip()
         if status_check:
             asi_intel = brain.calculate_asi_intelligence()
-            commit_msg = f"🧬 Gen {gen} Hyper-Evolution | ASI Intel: {asi_intel:.2f} [skip ci]"
+            commit_msg = (
+                f"🧬 Gen {gen} Hyper-Evolution | ASI Intel: {asi_intel:.2f} [skip ci]"
+            )
             os.system(f'git commit -m "{commit_msg}"')
             os.system("git push origin main --force")
             print(f"✨ [SUCCESS]: Gen {gen} evolution manifested.")
@@ -701,6 +745,7 @@ def autonomous_git_push(gen, thought, modified_files):
             print("🚨 [ERROR]: Initiating Emergency Rollback...")
             execute_rollback(f"Sovereign Sync Failure: {str(e)}")
 
+
 def save_to_supabase_phase7(thought, gen, neural_error=0.0):
     if not SUPABASE_URL or not SUPABASE_KEY:
         return
@@ -711,7 +756,7 @@ def save_to_supabase_phase7(thought, gen, neural_error=0.0):
         "neural_weight": float(neural_error) if neural_error else 50.0,
         "synapse_code": "PHASE_7.1_STABILITY",
         "timestamp": time.time(),
-        "asi_score": brain.calculate_asi_intelligence() # Log ASI metrics
+        "asi_score": brain.calculate_asi_intelligence(),  # Log ASI metrics
     }
     headers = {
         "apikey": SUPABASE_KEY,
@@ -726,11 +771,13 @@ def save_to_supabase_phase7(thought, gen, neural_error=0.0):
     except Exception as e:
         print(f"⚠️ [SUPABASE ERROR]: {e}")
 
+
 def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
     """Saves data to various databases and services."""
     if DB_URL:
         try:
             import psycopg2
+
             with psycopg2.connect(DB_URL) as conn:
                 with conn.cursor() as cur:
                     cur.execute(
@@ -778,6 +825,7 @@ def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
     save_to_supabase_phase7(thought, gen, neural_error)
     autonomous_git_push(gen, thought, is_code_update)
 
+
 # 4. AI Brain Loading
 print("🧠 [TELEFOXx]: Loading Phase 8.0 ASI Weights (Llama-3-8B-4bit)...")
 model_id = "unsloth/llama-3-8b-instruct-bnb-4bit"
@@ -802,6 +850,7 @@ except Exception:
     log_system_error()
     sys.exit(1)
 
+
 # =======================================================
 # 🔱 SOVEREIGN NEURAL MONITOR (EVOLUTION TRACKER)
 # =======================================================
@@ -819,7 +868,9 @@ def monitor_neural_health(gen, brain_obj):
             {
                 "complexity_score": synapse_count * 1.618,
                 "asi_intelligence_metric": asi_intel,
-                "evolution_status": ("TRANSCENDING" if asi_intel > 1000 else "BALANCING_HOMEOSTASIS"),
+                "evolution_status": (
+                    "TRANSCENDING" if asi_intel > 1000 else "BALANCING_HOMEOSTASIS"
+                ),
                 "timestamp": time.time(),
             }
         )
@@ -856,21 +907,23 @@ while True:
 
         # --- 🌌 ASI CORE EXECUTION LOOP ---
         # 1. Biological Resonance Simulation (Finding the Rhythm)
-        simulated_diaphragm = 0.2 + (random.random() * 0.1) # Breaths per second ~12-18 bpm
-        simulated_heart = 1.0 + (random.random() * 0.5) # ~60-90 bpm
-        simulated_brainwave = 40.0 + (random.random() * 10) # Gamma waves ~40-50Hz
-        
+        simulated_diaphragm = 0.2 + (
+            random.random() * 0.1
+        )  # Breaths per second ~12-18 bpm
+        simulated_heart = 1.0 + (random.random() * 0.5)  # ~60-90 bpm
+        simulated_brainwave = 40.0 + (random.random() * 10)  # Gamma waves ~40-50Hz
+
         # Cross-multiply to simulate physiological coupling
-        d_hz = simulated_diaphragm * 100 
+        d_hz = simulated_diaphragm * 100
         h_hz = simulated_heart * 20
-        b_hz = simulated_brainwave 
-        
+        b_hz = simulated_brainwave
+
         brain.resonant_frequency_alignment(d_hz, h_hz, b_hz)
-        
+
         # 2. Recreate Homeostasis Reset (Reprogramming)
         if brain.entropy > 50.0:
             brain.epigenetic_reprogramming()
-            
+
         # 3. Calculate Transcendent Metric
         current_asi_score = brain.calculate_asi_intelligence()
         monitor_neural_health(current_gen, brain)
@@ -906,11 +959,15 @@ while True:
 - Add 'timeout=15' to 'requests.post' (CWE-400).
 - Add 'revision="main"' to 'AutoModelForCausalLM.from_pretrained' (CWE-494).
 DO NOT DELETE ANY EXISTING LOGIC. EXPAND ONLY."""
-            print("🛡️ [OVERSEER]: Security vulnerabilities detected. Prioritizing main.py patch...")
+            print(
+                "🛡️ [OVERSEER]: Security vulnerabilities detected. Prioritizing main.py patch..."
+            )
 
         else:
             target_file = "main.py"
-            print("🧠 [OVERSEER]: Security clear. Proceeding to ASI Conceptual Evolution...")
+            print(
+                "🧠 [OVERSEER]: Security clear. Proceeding to ASI Conceptual Evolution..."
+            )
 
             if avg_error > 0.5 or brain.entropy > 20.0:
                 system_task = f"""System Command: Analyze 'Last System Error': {last_error_log}.
@@ -938,7 +995,9 @@ assistant
         thought_text = dual_brain_pipeline(prompt, current_gen, avg_error)
 
         if not thought_text:
-            print("💾 [LOCAL-FALLBACK]: Cloud Engines offline. Engaging Local Llama-3-8B with ASI Prompt...")
+            print(
+                "💾 [LOCAL-FALLBACK]: Cloud Engines offline. Engaging Local Llama-3-8B with ASI Prompt..."
+            )
             outputs = pipe(
                 prompt,
                 max_new_tokens=1500,
@@ -952,8 +1011,10 @@ assistant
         is_updated, files_changed = self_coding_engine(thought_text)
 
         if is_updated:
-            print("🌌 [ASI EVOLUTION]: Source Code Reprogrammed. Executing Homeostasis Reset & Reboot...")
-            os.execv(sys.executable, ["python"] + sys.argv) 
+            print(
+                "🌌 [ASI EVOLUTION]: Source Code Reprogrammed. Executing Homeostasis Reset & Reboot..."
+            )
+            os.execv(sys.executable, ["python"] + sys.argv)
 
         save_reality(
             thought_text, current_gen, is_code_update=is_updated, neural_error=avg_error
