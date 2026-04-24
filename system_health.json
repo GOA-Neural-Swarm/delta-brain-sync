@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-04-24T18:39:05.193788",
+    "timestamp": "2026-04-24T19:54:31.465551",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1010-azure",
@@ -86,6 +86,7 @@
         "aiofiles": "23.2.1",
         "jsonschema": "4.26.0",
         "librt": "0.9.0",
+        "cryptography": "47.0.0",
         "matplotlib": "3.10.9",
         "PyYAML": "6.0.3",
         "multiprocess": "0.70.19",
@@ -107,7 +108,6 @@
         "typing-inspection": "0.4.2",
         "scikit-learn": "1.8.0",
         "proto-plus": "1.27.2",
-        "cryptography": "46.0.7",
         "python-slugify": "8.0.4",
         "safetensors": "0.7.0",
         "groovy": "0.1.2",
@@ -167,7 +167,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.64,
+        "ram_available_gb": 14.59,
         "gpu_available": false
     }
 }
