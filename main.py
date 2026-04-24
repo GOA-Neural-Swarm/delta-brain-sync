@@ -12,6 +12,7 @@ import copy
 # 🧩 PARAM SYSTEM
 # ============================================
 
+
 class P:
     def __init__(self, d):
         self.d = d.astype("f4")
@@ -21,6 +22,7 @@ class P:
 # ============================================
 # 🔧 LINEAR
 # ============================================
+
 
 class L:
     def __init__(self, i, o):
@@ -42,6 +44,7 @@ class L:
 # 🧠 NORMALIZATION
 # ============================================
 
+
 class N:
     def __init__(self, d):
         self.g, self.e = P(np.ones(d)), 1e-6
@@ -62,6 +65,7 @@ class N:
 # ⚡ ACTIVATION
 # ============================================
 
+
 class S:
     def f(self, x):
         x, g = np.split(x, 2, -1)
@@ -78,6 +82,7 @@ class S:
 # ============================================
 # ⚡ ATTENTION
 # ============================================
+
 
 class A:
     def __init__(self, d, h=4):
@@ -106,6 +111,7 @@ class A:
 # 🧬 FEEDFORWARD
 # ============================================
 
+
 class M:
     def __init__(self, d):
         self.w1 = P(np.random.randn(d, d * 2) * 0.02)
@@ -129,6 +135,7 @@ class M:
 # 🔷 BLOCK
 # ============================================
 
+
 class B:
     def __init__(self, d):
         self.n1, self.at = N(d), A(d)
@@ -145,6 +152,7 @@ class B:
 # ============================================
 # 🧠 MODEL
 # ============================================
+
 
 class Model:
     def __init__(self, di, dm, do):
@@ -180,6 +188,7 @@ class Model:
 # ⚙️ OPTIMIZER
 # ============================================
 
+
 class Opt:
     def __init__(self, ps, lr=1e-3):
         self.ps, self.lr = ps, lr
@@ -194,6 +203,7 @@ class Opt:
 # 🔱 ASI CORE
 # ============================================
 
+
 class Brain:
     def __init__(self):
         self.entropy = 1.0
@@ -207,7 +217,11 @@ class Brain:
         self.history = []
 
     def asi_score(self):
-        return (self.homeostasis / (self.entropy + 1e-6)) * self.resonance * (1 - 1/(self.time+1))
+        return (
+            (self.homeostasis / (self.entropy + 1e-6))
+            * self.resonance
+            * (1 - 1 / (self.time + 1))
+        )
 
     def train_step(self, x, y):
         logits = self.model.f(x)
@@ -256,6 +270,7 @@ class Brain:
 # ============================================
 # 🔁 LOOP
 # ============================================
+
 
 def run():
     brain = Brain()
