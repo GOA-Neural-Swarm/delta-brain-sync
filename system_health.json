@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-04-24T13:01:17.463627",
+    "timestamp": "2026-04-24T14:47:41.769216",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1010-azure",
@@ -118,6 +118,7 @@
         "brotli": "1.2.0",
         "grpcio-status": "1.71.2",
         "aiohttp": "3.13.5",
+        "huggingface_hub": "1.12.0",
         "greenlet": "3.4.0",
         "fastapi": "0.136.1",
         "tzdata": "2026.1",
@@ -135,7 +136,6 @@
         "stevedore": "5.7.0",
         "nbformat": "5.10.4",
         "click": "8.3.3",
-        "huggingface_hub": "1.11.0",
         "importlib_resources": "6.5.2",
         "kaggle": "2.0.2",
         "webencodings": "0.5.1",
@@ -167,7 +167,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.64,
+        "ram_available_gb": 14.59,
         "gpu_available": false
     }
 }
