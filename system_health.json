@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-04-24T16:01:09.153054",
+    "timestamp": "2026-04-24T17:00:11.633254",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1010-azure",
@@ -9,6 +9,7 @@
     },
     "packages": {
         "typing_extensions": "4.15.0",
+        "kaggle": "2.1.0",
         "SQLAlchemy": "2.0.49",
         "pip": "26.0.1",
         "jupytext": "1.19.1",
@@ -67,6 +68,7 @@
         "google-genai": "1.73.1",
         "aiosignal": "1.4.0",
         "transformers": "4.48.3",
+        "kagglesdk": "0.1.21",
         "diffusers": "0.32.2",
         "numpy": "2.4.3",
         "tzdata": "2026.2",
@@ -137,7 +139,6 @@
         "nbformat": "5.10.4",
         "click": "8.3.3",
         "importlib_resources": "6.5.2",
-        "kaggle": "2.0.2",
         "webencodings": "0.5.1",
         "starlette": "0.52.1",
         "traitlets": "5.14.3",
@@ -156,7 +157,6 @@
         "rpds-py": "0.30.0",
         "pyparsing": "3.3.2",
         "aiohappyeyeballs": "2.6.1",
-        "kagglesdk": "0.1.20",
         "pydub": "0.25.1",
         "bleach": "6.3.0",
         "typer": "0.24.2",
@@ -166,8 +166,8 @@
     },
     "conflicts": [],
     "hardware": {
-        "ram_total_gb": 15.61,
-        "ram_available_gb": 14.66,
+        "ram_total_gb": 15.62,
+        "ram_available_gb": 14.61,
         "gpu_available": false
     }
 }
