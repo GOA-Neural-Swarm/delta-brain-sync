@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-04-24T19:54:31.465551",
+    "timestamp": "2026-04-24T20:38:57.931614",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1010-azure",
@@ -38,7 +38,6 @@
         "frozenlist": "1.8.0",
         "google-generativeai": "0.8.6",
         "sympy": "1.14.0",
-        "packaging": "26.1",
         "GitPython": "3.1.47",
         "ffmpy": "1.0.0",
         "importlib_metadata": "9.0.0",
@@ -51,6 +50,7 @@
         "shellingham": "1.5.4",
         "pycparser": "3.0",
         "pyasn1_modules": "0.4.2",
+        "packaging": "26.2",
         "distro": "1.9.0",
         "bandit": "1.9.4",
         "orjson": "3.11.8",
@@ -167,7 +167,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.59,
+        "ram_available_gb": 14.58,
         "gpu_available": false
     }
 }
