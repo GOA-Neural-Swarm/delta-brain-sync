@@ -86,9 +86,8 @@ jobs:
           
           echo "🎯 Target for Audit: $TARGET"
           OLD_CODE=$(python3 -c "import json; print(json.dumps(open('$TARGET').read()))")
-          SYSTEM_ROLE="You are OMEGA-ASI, the Supreme Auditor. Your task is to audit code for bugs and rewrite it for maximum performance."
-          HYPER_PROMPT="Analyze this $TARGET for logical flaws. Rewrite it to be more efficient. RETURN ONLY THE RAW PYTHON CODE. NO MARKDOWN BLOCKS."
-
+          SYSTEM_ROLE="You are OMEGA-ASI, the Supreme Auditor. Your task is to audit code for bugs and rewrite it for maximum performance. CRITICAL RULE: You MUST output the FULL, COMPLETE file. Do NOT truncate, summarize, or omit any existing functions."
+          HYPER_PROMPT="Analyze this $TARGET for logical flaws and optimize it. You are forbidden from leaving out any original logic. RETURN ONLY THE RAW PYTHON CODE. NO MARKDOWN BLOCKS."
           echo "🧬 [AUDIT]: Initiating Supreme AI Correction Cycle..."
 
           # --- 🔱 ATTEMPT 1: GEMINI 2.0 FLASH (Primary) ---
@@ -126,17 +125,33 @@ jobs:
             echo "⚠️ WARNING: Potential hardcoded secret detected!"
           fi
 
-      # ================= 🔬 5. QUALITY INSPECTION =================
+      # ================= 🔬 5. QUALITY INSPECTION (80% INTEGRITY GUARD) =================
       - name: Quality Superiority Inspection
         run: |
           TARGET="main.py"
           if [ -f "./kaggle_brain/main.py" ]; then TARGET="./kaggle_brain/main.py"; fi
           
-          NEW_SIZE=$(wc -c < "$TARGET")
-          echo "Final File Size: $NEW_SIZE bytes"
+          # မူလ Code အရွယ်အစားကို ယူမယ်
+          OLD_SIZE=$(git show HEAD:$TARGET | wc -c)
+          if [ -z "$OLD_SIZE" ] || [ "$OLD_SIZE" -eq 0 ]; then OLD_SIZE=1; fi # Zero-division error ကို ကာကွယ်ရန်
           
-          if [ $NEW_SIZE -lt 100 ]; then 
-            echo "ERROR: Integrity check failed - File too small!"; exit 1; 
+          # အသစ်ပြောင်းထားတဲ့ Code အရွယ်အစားကို ယူမယ်
+          NEW_SIZE=$(wc -c < "$TARGET")
+          
+          echo "📊 Original Size: $OLD_SIZE bytes"
+          echo "📊 Evolved Size: $NEW_SIZE bytes"
+          
+          # ရာခိုင်နှုန်း တွက်ချက်ခြင်း
+          SHRINK_RATIO=$(awk "BEGIN {print ($NEW_SIZE/$OLD_SIZE)*100}")
+          echo "📉 Code Size Ratio: $SHRINK_RATIO %"
+          
+          # အကယ်၍ Code အသစ်က အဟောင်းရဲ့ ၈၀% အောက် ရောက်သွားရင် (ဖြတ်ထုတ်ခံရရင်)
+          if awk "BEGIN {exit !($SHRINK_RATIO < 80)}"; then
+            echo "❌ [CRITICAL ERROR]: AI truncated the logic! Code shrinkage detected (under 80%). Aborting..."
+            git checkout -- "$TARGET" # Code အဟောင်းကို ပြန်ခေါ်မယ်
+            exit 1 # Workflow ကို ရပ်ပစ်မယ်
+          else
+            echo "✅ [INTEGRITY PASSED]: Logic retained and fully evolved."
           fi
 
       # ================= 🔧 6. AUTO-REPAIR =================
