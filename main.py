@@ -14,21 +14,20 @@ class L:
         return dy @ self.w.d.T
 
 class N:
-    def __init__(self, d): self.g, self.e = P(np.ones(d)), 1e-6
+    def __init__(self, d): self.g = P(np.ones(d))
     def f(self, x):
-        self.x, self.v = x, np.mean(x**2, -1, keepdims=True)
-        self.i = 1/(self.v + self.e)**.5; self.n = x * self.i
-        return self.g.d * self.n
+        self.x, self.i = x, 1/(np.mean(x**2, -1, keepdims=True) + 1e-6)**.5
+        self.n = x * self.i; return self.g.d * self.n
     def b(self, dy):
-        self.g.g += np.sum(dy * self.n, axis=tuple(range(dy.ndim - 1)))
+        self.g.g += np.sum(dy * self.n, axis=tuple(range(dy.ndim-1)))
         dn = dy * self.g.d; return (dn - self.n * np.mean(dn * self.n, -1, keepdims=True)) * self.i
 
 class S:
     def f(self, x):
         x, g = np.split(x, 2, -1); self.s = 1/(1+np.exp(-np.clip(g, -15, 15)))
-        self.sw, self.x, self.g = g * self.s, x, g; return x * self.sw
+        self.x, self.g = x, g; return x * (g * self.s)
     def b(self, dy):
-        dx, dg = dy * self.sw, dy * self.x * self.s * (1 + self.g * (1 - self.s))
+        dx, dg = dy * (self.g * self.s), dy * self.x * self.s * (1 + self.g * (1 - self.s))
         return np.concatenate([dx, dg], -1)
 
 class A:
@@ -39,25 +38,24 @@ class A:
         b, s, _ = x.shape
         self.q, self.k, self.v = [m.f(x).reshape(b, s, self.h, self.hd) for m in (self.wq, self.wk, self.wv)]
         at = np.einsum("bshd,bthd->bsht", self.q, self.k) * self.sc
-        at = np.exp(at - at.max(-1, keepdims=True)); self.p = at / (at.sum(-1, keepdims=True) + 1e-12)
+        at = np.exp(at - at.max(-1, keepdims=True)); self.p = at / (at.sum(-1, keepdims=True) + 1e-9)
         return self.wo.f(np.einsum("bsht,bthd->bshd", self.p, self.v).reshape(b, s, -1))
     def b(self, dy):
         b, s, _ = dy.shape; dyo = self.wo.b(dy).reshape(b, s, self.h, self.hd)
         dv = np.einsum("bsht,bshd->bthd", self.p, dyo)
         dp = np.einsum("bshd,bthd->bsht", dyo, self.v)
-        da = dp * self.p * (1 - self.p) * self.sc
+        da = self.p * (dp - (dp * self.p).sum(-1, keepdims=True)) * self.sc
         dq, dk = np.einsum("bsht,bthd->bshd", da, self.k), np.einsum("bsht,bshd->bthd", da, self.q)
         return self.wq.b(dq.reshape(b, s, -1)) + self.wk.b(dk.reshape(b, s, -1)) + self.wv.b(dv.reshape(b, s, -1))
 
-class M:
-    def __init__(self, d): self.w1, self.w2, self.sw = L(d, d * 2), L(d, d), S()
-    def f(self, x): return self.w2.f(self.sw.f(self.w1.f(x)))
-    def b(self, dy): return self.w1.b(self.sw.b(self.w2.b(dy)))
-
 class B:
-    def __init__(self, d): self.n1, self.at, self.n2, self.ff = N(d), A(d), N(d), M(d)
-    def f(self, x): self.x1 = x + self.at.f(self.n1.f(x)); return self.x1 + self.ff.f(self.n2.f(self.x1))
-    def b(self, dy): df = self.n2.b(self.ff.b(dy)) + dy; return self.n1.b(self.at.b(df)) + df
+    def __init__(self, d): self.n1, self.at, self.n2, self.w1, self.w2, self.sw = N(d), A(d), N(d), L(d, d*2), L(d, d), S()
+    def f(self, x):
+        self.x1 = x + self.at.f(self.n1.f(x))
+        return self.x1 + self.w2.f(self.sw.f(self.w1.f(self.n2.f(self.x1))))
+    def b(self, dy):
+        df = self.n2.b(self.w1.b(self.sw.b(self.w2.b(dy)))) + dy
+        return self.n1.b(self.at.b(df)) + df
 
 class Mod:
     def __init__(self, di, dm, do):
@@ -80,24 +78,24 @@ class Mod:
 
 class Br:
     def __init__(self):
-        self.en, self.ho, self.re, self.ti, self.hi, self.m, self.lr = 1.0, 100.0, 432.0, 1, [], Mod(784, 128, 10), 1e-3
+        self.en, self.ho, self.re, self.ti, self.hi, self.m, self.lr = 1., 100., 432., 1, [], Mod(784, 128, 10), 1e-3
     def cycle(self, x, y):
         lts = self.m.f(x); pr = np.exp(lts - lts.max(-1, keepdims=True)); pr /= pr.sum(-1, keepdims=True)
-        loss = -np.mean(np.log(pr[np.arange(len(y)), y] + 1e-12)); dl = pr.copy(); dl[np.arange(len(y)), y] -= 1
+        loss = -np.mean(np.log(pr[np.arange(len(y)), y] + 1e-9)); dl = pr.copy(); dl[np.arange(len(y)), y] -= 1
         self.m.b(dl / len(y))
         for p in self.m.ps: p.d -= self.lr * np.clip(p.g, -1, 1); p.g.fill(0)
         self.ho += max(0, 1 - loss); self.en += loss * 0.1; self.ti += 1; self.hi.append(loss)
         if len(self.hi) > 10:
-            if np.mean(self.hi[-10:]) > 2: self.re, self.ho = self.re + 5, self.ho - 1
+            if np.mean(self.hi[-10:]) > 2: self.re += 5; self.ho -= 1
             else: self.ho += 2
         if np.random.random() < 0.1:
-            for p in self.m.ps: p.d += np.random.randn(*p.d.shape) * 1e-3
+            for p in self.m.ps: p.d += np.random.normal(0, 1e-3, p.d.shape)
         return loss
     def score(self): return (self.ho / (self.en + 1e-6)) * self.re * (1 - 1 / (self.ti + 1))
 
 if __name__ == "__main__":
     b = Br()
     for s in range(200):
-        x, y = np.random.randn(32, 784).astype("f4"), np.random.randint(0, 10, 32)
+        x, y = np.random.normal(0, 1, (32, 784)).astype("f4"), np.random.randint(0, 10, 32)
         l = b.cycle(x, y)
         if s % 10 == 0: print(f"[{s}] L:{l:.3f}|ASI:{b.score():.1f}")
