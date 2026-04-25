@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-04-25T10:36:51.139055",
+    "timestamp": "2026-04-25T11:33:54.391643",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1010-azure",
@@ -144,7 +144,6 @@
         "starlette": "0.52.1",
         "traitlets": "5.14.3",
         "fsspec": "2026.2.0",
-        "xxhash": "3.6.0",
         "Jinja2": "3.1.6",
         "protobuf": "5.29.6",
         "scipy": "1.17.1",
@@ -160,6 +159,7 @@
         "pydub": "0.25.1",
         "bleach": "6.3.0",
         "typer": "0.24.2",
+        "xxhash": "3.7.0",
         "idna": "3.13",
         "kiwisolver": "1.5.0",
         "psutil": "7.2.2"
@@ -167,7 +167,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.57,
+        "ram_available_gb": 14.55,
         "gpu_available": false
     }
 }
