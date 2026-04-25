@@ -274,20 +274,32 @@ async function executeAutonomousTrinity() {
                 });
                 const pyContent = Buffer.from(corePy.content, 'base64').toString();
                 
-                const auditPrompt = `system\nYou are the Supreme Auditor. Analyze this Python code. Fix syntax, and dramatically optimize tokens to prevent Groq '12000 limit exceeded' errors during execution. Output ONLY the improved code inside \`\`\`python blocks.\n\nCode:\n${pyContent.substring(0, 50000)}`;
+                // 🚨 PROMPT ပြင်ဆင်ချက်: Code တွေကို လုံးဝမဖျက်ဖို့ အတိအကျ တားမြစ်လိုက်သည်
+                const auditPrompt = `system\nYou are the Supreme Auditor. Analyze this Python code for syntax errors. CRITICAL RULE: DO NOT delete any existing imports, functions, classes, or core logic. You must output the ENTIRE file completely. Only EXPAND or fix errors. Output ONLY the code inside \`\`\`python blocks.\n\nCode:\n${pyContent}`;
                 
                 const evolvedCode = await callGeminiNeural(auditPrompt);
                 
                 if (evolvedCode && evolvedCode.includes("```python")) {
                     const cleanCode = evolvedCode.split("```python")[1].split("```")[0].trim();
-                    if (cleanCode.length > 500 && cleanCode !== pyContent) {
+                    
+                    // 🛡️ THE 80% GUARDRAIL: မူလ Code ထက် ၂၀% ပိုနည်းသွားရင် Reject လုပ်မည်
+                    const originalLength = pyContent.length;
+                    const newLength = cleanCode.length;
+                    const shrinkRatio = (newLength / originalLength) * 100;
+                    
+                    console.log(`📊 Code Size Ratio: ${shrinkRatio.toFixed(2)}%`);
+
+                    if (shrinkRatio >= 80 && cleanCode !== pyContent) {
                         await octokit.repos.createOrUpdateFileContents({
                             owner: REPO_OWNER, repo: CORE_REPO, path: 'main.py',
-                            message: "💎 [EVOLUTION]: Gemini Hybrid Match & Token Limit Bypass Optimization",
+                            message: "💎 [EVOLUTION]: Gemini Hybrid Match (Integrity Passed)",
                             content: Buffer.from(cleanCode).toString('base64'),
                             sha: corePy.sha
                         });
-                        console.log("✅ [GEMINI]: main.py Optimized & Token Limits bypassed.");
+                        console.log("✅ [GEMINI]: main.py Optimized successfully without shrinkage.");
+                    } else if (shrinkRatio < 80) {
+                        // AI က Code တွေ ဖြတ်ချလိုက်ရင် ဒီမှာ Block လိုက်ပြီ
+                        console.log(`🚫 [REJECTED]: AI truncated the code! Shrinkage detected. Keeping original main.py.`);
                     } else {
                         console.log("⚡ [GEMINI]: No optimization required. Code is stable.");
                     }
