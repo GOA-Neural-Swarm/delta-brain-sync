@@ -115,9 +115,12 @@ class Mod:
 
     def _g(self, o):
         if isinstance(o, P):
-            self.ps.append(o)
+            if o not in self.ps:
+                self.ps.append(o)
         elif hasattr(o, "__dict__"):
             for v in o.__dict__.values():
+                if v is self.ps:
+                    continue
                 if isinstance(v, list):
                     [self._g(i) for i in v]
                 else:
