@@ -104,12 +104,12 @@ class B:
 
 class Mod:
     def __init__(self, di, dm, do):
-        self.eb, self.bl, self.fn, self.hd, self.ps = (
+        self.ps = []
+        self.eb, self.bl, self.fn, self.hd = (
             L(di, dm),
             [B(dm) for _ in range(2)],
             N(dm),
             L(dm, do),
-            [],
         )
         self._g(self)
 
