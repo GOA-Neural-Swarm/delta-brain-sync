@@ -42,7 +42,7 @@ class S:
         x, g = np.split(x, 2, -1)
         self.s = 1 / (1 + np.exp(-np.clip(g, -15, 15)))
         self.x, self.g = x, g
-        return x * (g * self.s)
+        return x * (self.g * self.s)
 
     def b(self, dy):
         dx, dg = dy * (self.g * self.s), dy * self.x * self.s * (
