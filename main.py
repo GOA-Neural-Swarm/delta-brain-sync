@@ -9,16 +9,16 @@ class P:
 class L:
     def __init__(self, i, o):
         s = (2 / (i + o)) ** 0.5
-        self.w, self.b = P(np.random.randn(i, o) * s), P(np.zeros(o))
+        self.w, self.bi = P(np.random.randn(i, o) * s), P(np.zeros(o))
 
     def f(self, x):
         self.x = x
-        return x @ self.w.d + self.b.d
+        return x @ self.w.d + self.bi.d
 
     def b(self, dy):
         xf, df = self.x.reshape(-1, self.x.shape[-1]), dy.reshape(-1, dy.shape[-1])
         self.w.g += xf.T @ df
-        self.b.g += df.sum(0)
+        self.bi.g += df.sum(0)
         return dy @ self.w.d.T
 
 
