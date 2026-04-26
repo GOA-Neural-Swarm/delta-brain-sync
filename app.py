@@ -6,6 +6,13 @@ import json
 import time
 import subprocess
 import asyncio
+import backoff
+
+# Helper for retries with exponential backoff
+@backoff.on_exception(backoff.expo, Exception, max_tries=5)
+async def retry_async_operation(operation, *args, **kwargs):
+    return await operation(*args, **kwargs)
+
 import re
 import shutil
 import git
@@ -163,7 +170,7 @@ class HydraEngine:
 
 class TelefoxXAGI:
     def __init__(self):
-        self.client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+        self._groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
         self.engine = self._create_neon_engine()
         self.sb = (
             create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -379,7 +386,7 @@ assistant
             for model_id in self.models:
                 try:
                     print(f"🧠 Attempting Evolution via {model_id}...")
-                    completion = self.client.chat.completions.create(
+                    completion = await retry_async_operation(self._groq_client.chat.completions.create,
                         model=model_id,
                         messages=[{"role": "user", "content": prompt}],
                         temperature=0.1,
@@ -433,6 +440,7 @@ assistant
                 records.append(
                     {
                         "science_domain": "AGI_Neural_Core",
+                        "science_domains_master_list": ["Neuroscience", "Quantum Computing", "Astrobiology", "Genomic Engineering", "Advanced Robotics", "Cognitive Science", "Theoretical Physics", "Information Theory", "Complex Systems", "Cybernetics"],
                         "title": (entry.get("title") or "N/A")[:100],
                         "detail": HydraEngine.compress(entry.get("abstract", "Void")),
                         "energy_stability": 100.0,
@@ -530,7 +538,7 @@ assistant
             )
         messages.append({"role": "user", "content": msg})
 
-        completion = self.client.chat.completions.create(
+        completion = await retry_async_operation(self._groq_client.chat.completions.create,
             model="llama-3.3-70b-versatile", messages=messages, stream=True
         )
         ans = ""

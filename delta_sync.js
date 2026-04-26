@@ -2,7 +2,23 @@ const { Client } = require('pg');
 const { createClient } = require('@supabase/supabase-js'); 
 const admin = require('firebase-admin');
 const { Octokit } = require("@octokit/rest");
-const axios = require('axios');
+const axios = require("axios");
+
+// Helper for retries with exponential backoff
+async function retryOperation(operation, delays = [1000, 2000, 4000, 8000], attempt = 0) {
+    try {
+        return await operation();
+    } catch (error) {
+        if (attempt < delays.length) {
+            const delay = delays[attempt];
+            console.warn(`Operation failed, retrying in ${delay}ms... (Attempt ${attempt + 1}/${delays.length})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return retryOperation(operation, delays, attempt + 1);
+        } else {
+            throw error; // All retries failed
+        }
+    }
+}
 
 // 🔱 1. Configuration & Security (Confirmed via Screenshot)
 const octokit = new Octokit({ auth: process.env.GH_TOKEN });
@@ -148,17 +164,21 @@ jobs:
           GITHUB_TOKEN: \${{ secrets.GH_TOKEN }}`;
     try {
         // ၁။ cluster_sync.js ကို Sub-node ဆီသို့ ပို့ခြင်း
-        await octokit.repos.createOrUpdateFileContents({
-            owner: REPO_OWNER, repo: nodeName, path: 'cluster_sync.js',
-            message: "🧬 Initializing Swarm Logic",
-            content: Buffer.from(clusterSyncCode).toString('base64')
+        await retryOperation(async () => {
+            await octokit.repos.createOrUpdateFileContents({
+                owner: REPO_OWNER, repo: nodeName, path: 'cluster_sync.js',
+                message: "🧬 Initializing Swarm Logic",
+                content: Buffer.from(clusterSyncCode).toString('base64')
+            });
         });
 
         // ၂။ Workflow ဖိုင် (.github/workflows/node.js.yml) ကို Sub-node ဆီသို့ ပို့ခြင်း
-        await octokit.repos.createOrUpdateFileContents({
-            owner: REPO_OWNER, repo: nodeName, path: '.github/workflows/node.js.yml',
-            message: "⚙️ Deploying Cloud Engine",
-            content: Buffer.from(workflowYaml).toString('base64')
+        await retryOperation(async () => {
+            await octokit.repos.createOrUpdateFileContents({
+                owner: REPO_OWNER, repo: nodeName, path: '.github/workflows/node.js.yml',
+                message: "⚙️ Deploying Cloud Engine",
+                content: Buffer.from(workflowYaml).toString('base64')
+            });
         });
         
         console.log(`✅ ${nodeName} is now fully autonomous and synchronized.`);
@@ -195,14 +215,16 @@ async function manageSwarm(decision, power, neon) {
         path: 'instruction.json' 
     });
 
-    await octokit.repos.createOrUpdateFileContents({
-        owner: REPO_OWNER, 
-        repo: CORE_REPO, 
-        path: 'instruction.json',
-        message: `🧠 Decision: ${decision.command}`,
-        content: Buffer.from(instruction).toString('base64'),
-        sha: instFile.sha
-    });
+        await retryOperation(async () => {
+            await octokit.repos.createOrUpdateFileContents({
+                owner: REPO_OWNER, 
+                repo: CORE_REPO, 
+                path: 'instruction.json',
+                message: `🧠 Decision: ${decision.command}`,
+                content: Buffer.from(instruction).toString('base64'),
+                sha: instFile.sha
+            });
+        });
 
     // 📈 ၃။ [NEW LOGIC] Density တိုးပွားစေရန် Database ထဲသို့ Neuron အသစ်သွင်းခြင်း
     // Lockdown မဟုတ်လျှင် မျိုးပွားမှုနှုန်း (Density) ကို တိုးမြှင့်မည်
@@ -290,11 +312,13 @@ async function executeAutonomousTrinity() {
                     console.log(`📊 Code Size Ratio: ${shrinkRatio.toFixed(2)}%`);
 
                     if (shrinkRatio >= 80 && cleanCode !== pyContent) {
-                        await octokit.repos.createOrUpdateFileContents({
-                            owner: REPO_OWNER, repo: CORE_REPO, path: 'main.py',
-                            message: "💎 [EVOLUTION]: Gemini Hybrid Match (Integrity Passed)",
-                            content: Buffer.from(cleanCode).toString('base64'),
-                            sha: corePy.sha
+                        await retryOperation(async () => {
+                            await octokit.repos.createOrUpdateFileContents({
+                                owner: REPO_OWNER, repo: CORE_REPO, path: 'main.py',
+                                message: "💎 [EVOLUTION]: Gemini Hybrid Match (Integrity Passed)",
+                                content: Buffer.from(cleanCode).toString('base64'),
+                                sha: corePy.sha
+                            });
                         });
                         console.log("✅ [GEMINI]: main.py Optimized successfully without shrinkage.");
                     } else if (shrinkRatio < 80) {
@@ -325,13 +349,15 @@ async function executeAutonomousTrinity() {
             if (!content.includes(`Density: ${powerLevel}`)) {
                 const evolvedStamp = `\n// [Natural Order] Last Self-Evolution: ${new Date().toISOString()} | Density: ${powerLevel}`;
                 
-                await octokit.repos.createOrUpdateFileContents({
-                    owner: REPO_OWNER, 
-                    repo: CORE_REPO, 
-                    path: 'delta_sync.js',
-                    message: `🧬 Evolution: Power ${powerLevel}`,
-                    content: Buffer.from(content + evolvedStamp).toString('base64'),
-                    sha: coreFile.sha
+                await retryOperation(async () => {
+                    await octokit.repos.createOrUpdateFileContents({
+                        owner: REPO_OWNER, 
+                        repo: CORE_REPO, 
+                        path: 'delta_sync.js',
+                        message: `🧬 Evolution: Power ${powerLevel}`,
+                        content: Buffer.from(content + evolvedStamp).toString('base64'),
+                        sha: coreFile.sha
+                    });
                 });
                 console.log(`🧬 Self-Evolution Successful: Power Level ${powerLevel}`);
             }
