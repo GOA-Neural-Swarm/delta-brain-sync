@@ -205,6 +205,7 @@ async function manageSwarm(decision, power, neon) {
     const instruction = JSON.stringify({
         command: decision.command, core_power: power,
         avg_api: decision.avgApi, replicate: decision.replicate,
+        scienceDomains: ["Quantum Computing", "Neuro-Symbolic AI", "Bio-Integrated Systems", "Hyper-Dimensional Physics"],
         updated_at: new Date().toISOString()
     }, null, 2);
 
