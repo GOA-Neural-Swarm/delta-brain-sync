@@ -176,7 +176,7 @@ class Br:
                 self.ho += 2
         if np.random.random() < 0.1:
             for p in self.m.ps:
-                p.d += np.random.normal(0, 1e-3, p.d.shape)
+                p.d += np.random.normal(0, 1e-3, p.d.shape).astype("f4")
         return loss
 
     def score(self):
