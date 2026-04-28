@@ -122,7 +122,8 @@ class Mod:
                 if v is self.ps:
                     continue
                 if isinstance(v, list):
-                    [self._g(i) for i in v]
+                    for i in v:
+                        self._g(i)
                 else:
                     self._g(v)
 
