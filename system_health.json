@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-04-28T15:49:49.833551",
+    "timestamp": "2026-04-28T17:10:52.209531",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1011-azure",
@@ -99,7 +99,6 @@
         "multiprocess": "0.70.19",
         "httplib2": "0.31.2",
         "safehttpx": "0.1.7",
-        "kagglesdk": "0.1.21",
         "setuptools": "79.0.1",
         "fonttools": "4.62.1",
         "kaggle": "2.1.0",
@@ -136,6 +135,7 @@
         "importlib_metadata": "9.0.0",
         "importlib_resources": "6.5.2",
         "annotated-doc": "0.0.4",
+        "kagglesdk": "0.1.22",
         "fastjsonschema": "2.21.2",
         "propcache": "0.4.1",
         "idna": "3.13",
@@ -167,7 +167,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.62,
+        "ram_available_gb": 14.64,
         "gpu_available": false
     }
 }
