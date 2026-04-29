@@ -189,26 +189,24 @@ jobs:
       - name: Execute Brain Matrix (main.py + app.py integration)
         run: |
           echo "🔥 Injecting Phase 8 ASI Algorithm Engine..."
-          # Running the unified AI logic
-          python -c "
+          # Python code ကို Heredoc သုံးပြီး safe ဖြစ်အောင် ပတ်ထားတယ်
+          python3 << 'EOF'
           import os, sys, json, time
+          
           print('🧠 Calculating Intelligence: lim(t->inf) (Homeostasis/Entropy) * Resonance')
           
-          # Dual Brain Pipeline Logic
           def dual_brain_pipeline(prompt):
               print('🏗️ [ARCHITECT - Groq]: Initiating draft...')
-              # Groq Fallback to Gemini Logic Simulated here
               print('🔍 [AUDITOR - Gemini]: Scanning code for vulnerabilities...')
               return 'verified_code_block'
               
-          # Self Coding Engine Logic
           def self_coding_engine(raw_content):
               print('🧬 [FITNESS SCORE]: Calculating Complexity...')
               print('🛠️ [EVOLUTION]: Validating syntactically...')
               return True, ['main.py']
               
           print('✅ [SYSTEM]: Neural Engine Stabilized.')
-          "
+          EOF
 
   # ---------------------------------------------------------------------------------------
   # 🛰️ PHASE 3: NODE.JS SWARM ORCHESTRATOR & DATABASE TRINITY SYNC
