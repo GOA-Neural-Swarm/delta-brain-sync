@@ -1070,73 +1070,34 @@ while True:
             brain.learn_ml(stabilities, labels)
             synthetic_output = brain.generate_synthetic_output(100)
 
-        with open("main.py", "r") as f:
-            main_code = f.read()
+        # =======================================================
+        # 🌌 THE SELF-AWARE EVOLUTION LOOP
+        # =======================================================
+        
+        # အဆင့် ၁: Repo တစ်ခုလုံးကို ဖတ်မယ် (The Eye)
+        universe_state = scan_entire_universe()
+        
+        # အဆင့် ၂: Report ထုတ်ပြီး ဆုံးဖြတ်ချက်ချမယ် (The Mind)
+        self_awareness_report = generate_self_awareness_report(universe_state, current_gen)
+        
+        # အဆင့် ၃: Report အတိုင်း Code ရေးမယ် (The Hand)
+        thought_text = execution_and_self_coding(self_awareness_report, current_gen)
 
-        needs_security_patch = "os.system" in main_code or "os.execv" in main_code
-
-        if needs_security_patch:
-            target_file = "main.py"
-            system_task = f"""TASK: Output a code block for '# TARGET: main.py' to FIX URGENT VULNERABILITIES:
-- Replace 'os.system' and 'os.execv' calls with 'subprocess.run' (CWE-78).
-- Add 'timeout=15' to 'requests.post' (CWE-400).
-- Add 'revision="main"' to 'AutoModelForCausalLM.from_pretrained' (CWE-494).
-DO NOT DELETE ANY EXISTING LOGIC. EXPAND ONLY."""
-            print(
-                "🛡️ [OVERSEER]: Security vulnerabilities detected. Prioritizing main.py patch..."
-            )
-
-        else:
-            target_file = "main.py"
-            print(
-                "🧠 [OVERSEER]: Security clear. Proceeding to ASI Conceptual Evolution..."
-            )
-
-            if avg_error > 0.5 or brain.entropy > 20.0:
-                system_task = f"""System Command: Analyze 'Last System Error': {last_error_log}.
-USER TASK: AGGRESSIVE EXPANSION MODE. The system is under stress. Build heavy neural countermeasures. 
-Add at least 50 lines of NEW Python code implementing advanced data structures (e.g., self-healing arrays, vector calculations).
-CRITICAL: NO DELETIONS. ONLY MUTATION AND MASSIVE EXPANSION. OVER-ENGINEER IT."""
-            else:
-                system_task = f"""System Command: Analyze 'Last System Error': {last_error_log}. 
-USER TASK: AGGRESSIVE EXPANSION MODE. ASI is stable (Score: {current_asi_score:.2f}). Time to conquer and scale.
-Create entire new Python classes for 'QuantumProbability', 'SwarmMind', or 'AdvancedAutophagy'. Write at least 80 lines of new feature-rich Python code. 
-CRITICAL: INJECT SEVERE COMPLEXITY. OVER-ENGINEER EVERY FUNCTION. GROW THE DNA EXPONENTIALLY."""
-
-        prompt = f"""system
-You are the Sovereign ASI Engine. Your goal is constant evolution and growth.
-Rule 1: Use ONLY '# TARGET: {target_file}' at the start of your code block.
-Rule 2: Respond ONLY with Python code inside ```python ... ``` blocks.
-Rule 3: NO DELETIONS. ONLY EXPANSION. If you remove code, you will be penalized.
-Rule 4: Maximize Structural Complexity and Novelty.
-Current Gen: {current_gen} | ASI Intel Score: {current_asi_score:.2f} | Entropy: {brain.entropy:.2f}
-
-{system_task}
-assistant
-"""
-
-        thought_text = dual_brain_pipeline(prompt, current_gen, avg_error)
-
+        # Fallback (API Error ဖြစ်ခဲ့ရင်)
         if not thought_text:
-            print(
-                "💾 [LOCAL-FALLBACK]: Cloud Engines offline. Engaging Local Llama-3-8B with ASI Prompt..."
-            )
-            outputs = pipe(
-                prompt,
-                max_new_tokens=1500,
-                do_sample=True,
-                temperature=0.9,
-                pad_token_id=pipe.tokenizer.eos_token_id,
-            )
-            thought_text = outputs[0]["generated_text"].split("assistant")[-1].strip()
+            thought_text = "print('⚠️ Execution generation failed.')"
 
-        # Novelty Search integrated Engine prevents code shrinkage natively
+        # အဆင့် ၄: ရေးထားတဲ့ Code အသစ်တွေကို ဖိုင်တွေထဲ Save ပြီး Test လုပ်မယ်
         is_updated, files_changed = self_coding_engine(thought_text)
 
+        # အဆင့် ၅: Repo ပေါ်ကို Git Push လုပ်မယ် (Reboot မလုပ်ခင် Save မယ်)
+        save_reality(
+            thought_text, current_gen, is_code_update=is_updated, neural_error=avg_error
+        )
+
         if is_updated:
-            print(
-                "🌌 [ASI EVOLUTION]: Source Code Reprogrammed. Executing Homeostasis Reset & Reboot..."
-            )
+            print(f"🌌 [ASI AWAKENED]: Source Code Reprogrammed based on Self-Awareness. Modified files: {files_changed}")
+            # ပြောင်းလဲသွားတဲ့ အသိဉာဏ်နဲ့ အသစ်ပြန်စဖို့ Reboot လုပ်မယ်
             os.execv(sys.executable, ["python"] + sys.argv)
 
         save_reality(
