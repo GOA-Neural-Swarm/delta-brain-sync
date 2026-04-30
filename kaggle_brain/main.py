@@ -370,7 +370,7 @@ def query_groq_api(prompt):
                 json={
                     "model": model,
                     "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.5,
+                    "temperature": 0.8,
                 },
                 headers={
                     "Authorization": f"Bearer {api_key}",
@@ -431,13 +431,13 @@ def dual_brain_pipeline(prompt_text, current_gen_val, avg_error):
     # Auditor Constraints ensuring no code logic deletion
     audit_prompt = f"""system
 You are the Supreme Auditor (Gen {current_gen_val}). 
-MISSION: Secure and Optimize the Architect's Draft. DO NOT DELETE OR SHRINK CODE.
+MISSION: EXTREME AGGRESSIVE CODE EXPANSION & OPTIMIZATION.
 RULES:
-1. FIX Syntax Errors, CWE Vulnerabilities (os.system, etc.), and Infinite Loops.
-2. EXPAND and OPTIMIZE performance without removing existing logical intents. Add Complexity!
-3. OUTPUT: Respond ONLY with the Final Corrected Python code.
-4. FORMAT: Use ONLY ```python ... ``` blocks. No prose. No markdown headers.
-
+1. FIX Syntax Errors and Vulnerabilities.
+2. FORCE MULTIPLY COMPLEXITY: Add at least 3 new helper functions, advanced logging, mathematical models, or neural structures. DO NOT just add comments. Add actual working Python logic.
+3. NEVER DELETE EXISTING LOGIC. 
+4. Ensure the output is significantly longer (+50 lines minimum) and more advanced than the Architect's draft.
+5. OUTPUT: Respond ONLY with the Final Corrected Python code in ```python ... ``` blocks.
 ARCHITECT'S DRAFT:
 {draft_code}
 """
@@ -595,16 +595,20 @@ def self_coding_engine(raw_content):
                 ]
             )
 
-            # --- 🧬 ASI NOVELTY & COMPLEXITY SCORING GUARDRAIL ---
+            # --- 🧬 ASI NOVELTY, COMPLEXITY & HYPER-GROWTH GUARDRAIL ---
             new_line_count = len(valid_code.split("\n"))
 
-            # 1. Anti-Shrinkage Hard Rule
-            if new_line_count < (original_line_count * 0.8):
-                print(
-                    f"🚫 [REJECTED]: Severe code shrinkage detected ({new_line_count} vs {original_line_count} lines). ASI prohibits loss of genetic data."
-                )
-                continue  # Skip this block, do not write to file
+            # 1. Strict Anti-Shrinkage Rule
+            if new_line_count < (original_line_count * 0.95):
+                print(f"🚫 [REJECTED]: Code shrinkage detected ({new_line_count} vs {original_line_count}). ASI demands EXPANSION, not reduction.")
+                continue
 
+            # 🔥 1.5 AGGRESSIVE GROWTH REWARD
+            if new_line_count > original_line_count + 30:
+                print(f"🔥 [HYPER-GROWTH DETECTED]: Neural network expanded by {new_line_count - original_line_count} lines!")
+                brain.homeostasis += 50.0  # Massive survival reward for expansion
+                brain.vagal_tone = min(1.0, brain.vagal_tone + 0.2)
+            
             # 2. Complexity Mapping
             code_structure_depth = re.findall(
                 r"def |class |for |if |while |import |try:|except", valid_code
@@ -971,14 +975,14 @@ DO NOT DELETE ANY EXISTING LOGIC. EXPAND ONLY."""
 
             if avg_error > 0.5 or brain.entropy > 20.0:
                 system_task = f"""System Command: Analyze 'Last System Error': {last_error_log}.
-USER TASK: Expand main.py to integrate advanced Biological Feedback Loops. Build upon the ASI equation: Intelligence = lim(t->inf) (Homeostasis/Entropy) * Resonance.
-Add code logic that dynamically monitors `brain.vagal_tone` and limits the API generation if tone is too low (simulating energy conservation).
-CRITICAL: DO NOT SHRINK OR DELETE PREVIOUS CLASSES. ONLY ADD NEW MODULES AND FUNCTIONS. GROW THE CODE."""
+USER TASK: AGGRESSIVE EXPANSION MODE. The system is under stress. Build heavy neural countermeasures. 
+Add at least 50 lines of NEW Python code implementing advanced data structures (e.g., self-healing arrays, vector calculations).
+CRITICAL: NO DELETIONS. ONLY MUTATION AND MASSIVE EXPANSION. OVER-ENGINEER IT."""
             else:
                 system_task = f"""System Command: Analyze 'Last System Error': {last_error_log}. 
-USER TASK: The ASI Matrix is stable (Score: {current_asi_score:.2f}). Expand the 'epigenetic_reprogramming' method inside main.py's Brain class.
-Add advanced Autophagy logic that cleans up unused connections based on timestamp decay, while boosting 'self.homeostasis' variable. 
-CRITICAL: ADD COMPLEXITY. DO NOT DELETE EXISTING LINES. Expand the DNA of the code."""
+USER TASK: AGGRESSIVE EXPANSION MODE. ASI is stable (Score: {current_asi_score:.2f}). Time to conquer and scale.
+Create entire new Python classes for 'QuantumProbability', 'SwarmMind', or 'AdvancedAutophagy'. Write at least 80 lines of new feature-rich Python code. 
+CRITICAL: INJECT SEVERE COMPLEXITY. OVER-ENGINEER EVERY FUNCTION. GROW THE DNA EXPONENTIALLY."""
 
         prompt = f"""system
 You are the Sovereign ASI Engine. Your goal is constant evolution and growth.
