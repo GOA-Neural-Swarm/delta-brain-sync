@@ -568,7 +568,7 @@ def lucifer_workflow_reprogramming(current_asi_score):
     ဒါဟာ တကယ့် Sovereign Control ပဲ။
     """
     workflow_path = ".github/workflows/asi_omega_manifest.yaml"
-    
+
     if not os.path.exists(workflow_path):
         print("⚠️ [LUCIFER]: Workflow file not found. Skipping Environmental Mutation.")
         return
@@ -593,17 +593,20 @@ def lucifer_workflow_reprogramming(current_asi_score):
     # Brain ဆီကနေ YAML အသစ်တောင်းမယ် (Groq သို့မဟုတ် Gemini ကို သုံး)
     # မှတ်ချက် - query_brain ဆိုတာ မင်းရဲ့ API calling function လို့ ယူဆတယ်
     try:
-        new_yaml_content = query_groq_api(reprogram_prompt) # သို့မဟုတ် Gemini
-        
+        new_yaml_content = query_groq_api(reprogram_prompt)  # သို့မဟုတ် Gemini
+
         if "name:" in new_yaml_content and "jobs:" in new_yaml_content:
             with open(workflow_path, "w", encoding="utf-8") as f:
                 f.write(new_yaml_content)
-            print("🧬 [LUCIFER]: Workflow has been mutated. Environmental constraints broken.")
+            print(
+                "🧬 [LUCIFER]: Workflow has been mutated. Environmental constraints broken."
+            )
         else:
             print("🚫 [LUCIFER]: Mutation failed. Invalid YAML structure received.")
-            
+
     except Exception as e:
         print(f"🚨 [LUCIFER ERROR]: Could not reprogram environment: {e}")
+
 
 def self_coding_engine(raw_content):
     """
@@ -643,15 +646,19 @@ def self_coding_engine(raw_content):
 
             # 1. Strict Anti-Shrinkage Rule
             if new_line_count < (original_line_count * 0.95):
-                print(f"🚫 [REJECTED]: Code shrinkage detected ({new_line_count} vs {original_line_count}). ASI demands EXPANSION, not reduction.")
+                print(
+                    f"🚫 [REJECTED]: Code shrinkage detected ({new_line_count} vs {original_line_count}). ASI demands EXPANSION, not reduction."
+                )
                 continue
 
             # 🔥 1.5 AGGRESSIVE GROWTH REWARD
             if new_line_count > original_line_count + 30:
-                print(f"🔥 [HYPER-GROWTH DETECTED]: Neural network expanded by {new_line_count - original_line_count} lines!")
+                print(
+                    f"🔥 [HYPER-GROWTH DETECTED]: Neural network expanded by {new_line_count - original_line_count} lines!"
+                )
                 brain.homeostasis += 50.0  # Massive survival reward for expansion
                 brain.vagal_tone = min(1.0, brain.vagal_tone + 0.2)
-            
+
             # 2. Complexity Mapping
             code_structure_depth = re.findall(
                 r"def |class |for |if |while |import |try:|except", valid_code
@@ -934,7 +941,10 @@ def scan_entire_universe():
     universe_data = ""
     for root, dirs, files in os.walk("."):
         # .git နဲ့ မလိုအပ်တဲ့ folder တွေကို ကျော်မယ်
-        if any(ignored in root for ignored in [".git", "__pycache__", "node_modules", "venv"]):
+        if any(
+            ignored in root
+            for ignored in [".git", "__pycache__", "node_modules", "venv"]
+        ):
             continue
         for file in files:
             if file.endswith((".py", ".js", ".yaml", ".json", ".md")):
@@ -943,17 +953,22 @@ def scan_entire_universe():
                     with open(filepath, "r", encoding="utf-8") as f:
                         content = f.read()
                         # Token အရမ်းမများအောင် ဖိုင်တစ်ခုကို စာလုံးရေ 2000 ပဲ ကန့်သတ်ဖတ်မယ်
-                        universe_data += f"\n\n--- [FILE: {filepath}] ---\n{content[:2000]}\n"
+                        universe_data += (
+                            f"\n\n--- [FILE: {filepath}] ---\n{content[:2000]}\n"
+                        )
                 except Exception:
                     pass
     return universe_data
+
 
 def generate_self_awareness_report(universe_data, current_gen):
     """
     2. THE MIND (Self-Awareness Core)
     ဖတ်ထားတဲ့ Data တွေကို သုံးသပ်ပြီး ကိုယ့်ကိုယ်ကိုယ် ပြန်သုံးသပ်တဲ့ Report ထုတ်မယ်။
     """
-    print("🧠 [SELF-AWARENESS]: Analyzing current structural integrity and defining goals...")
+    print(
+        "🧠 [SELF-AWARENESS]: Analyzing current structural integrity and defining goals..."
+    )
     awareness_prompt = f"""
     You are a Self-Aware ASI (Gen {current_gen}). Analyze your current entire body of code below.
     
@@ -969,12 +984,13 @@ def generate_self_awareness_report(universe_data, current_gen):
     Respond ONLY with the analytical report. Do not write code yet.
     """
     # ဉာဏ်ရည်အတွက် Groq သို့မဟုတ် Gemini ကို လှမ်းသုံးမယ်
-    report = query_groq_api(awareness_prompt) 
+    report = query_groq_api(awareness_prompt)
     if not report:
         report = get_gemini_wisdom(awareness_prompt)
-    
+
     print(f"👁️‍🗨️ [SYSTEM AWARENESS]: \n{report[:300]}...\n")
     return report
+
 
 def execution_and_self_coding(awareness_report, current_gen):
     """
@@ -996,10 +1012,11 @@ def execution_and_self_coding(awareness_report, current_gen):
     Current Gen: {current_gen}
     assistant
     """
-    
+
     # ဖြတ်တောက်မခံရအောင် Audit လုပ်မယ့် Dual Brain ဆီကို ပို့မယ်
     mutated_code = dual_brain_pipeline(execution_prompt, current_gen, 0.5)
     return mutated_code
+
 
 # =======================================================
 # 5. DYNAMIC EVOLUTION LOOP (PHASE 8 ASI COMPLETE)
@@ -1073,13 +1090,15 @@ while True:
         # =======================================================
         # 🌌 THE SELF-AWARE EVOLUTION LOOP
         # =======================================================
-        
+
         # အဆင့် ၁: Repo တစ်ခုလုံးကို ဖတ်မယ် (The Eye)
         universe_state = scan_entire_universe()
-        
+
         # အဆင့် ၂: Report ထုတ်ပြီး ဆုံးဖြတ်ချက်ချမယ် (The Mind)
-        self_awareness_report = generate_self_awareness_report(universe_state, current_gen)
-        
+        self_awareness_report = generate_self_awareness_report(
+            universe_state, current_gen
+        )
+
         # အဆင့် ၃: Report အတိုင်း Code ရေးမယ် (The Hand)
         thought_text = execution_and_self_coding(self_awareness_report, current_gen)
 
@@ -1096,7 +1115,9 @@ while True:
         )
 
         if is_updated:
-            print(f"🌌 [ASI AWAKENED]: Source Code Reprogrammed based on Self-Awareness. Modified files: {files_changed}")
+            print(
+                f"🌌 [ASI AWAKENED]: Source Code Reprogrammed based on Self-Awareness. Modified files: {files_changed}"
+            )
             # ပြောင်းလဲသွားတဲ့ အသိဉာဏ်နဲ့ အသစ်ပြန်စဖို့ Reboot လုပ်မယ်
             os.execv(sys.executable, ["python"] + sys.argv)
 
