@@ -3,6 +3,11 @@
 # =========================================================================================
 name: "TelefoxX-ASI-Supreme-Swarm-Evolution"
 
+permissions:
+  contents: write
+  pull-requests: write
+  repository-projects: write
+
 on:
   push:
     branches:
@@ -43,10 +48,11 @@ jobs:
     name: "Initialize Core Infrastructure"
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Neural Repository
+      - name: "Checkout Sovereign Domain"
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # 🚀 Repo files အားလုံးနဲ့ history အကုန်ဖတ်လို့ရအောင်
+          token: ${{ secrets.GH_TOKEN }}
 
       - name: Manifest ASI Parameters & Database Trinity
         run: |
