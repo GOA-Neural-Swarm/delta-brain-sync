@@ -147,16 +147,16 @@ jobs:
         run: |
           echo "📦 Bootstrapping Flask API & Recovery logic..."
           mkdir -p /tmp/sovereign_repo_sync
-          python -c "
+          python3 << 'EOF'
           import os
           infra = {
-              'recovery.py': 'import os\ndef recover():\n  if os.path.exists(\"agi_system.db-journal\"): os.remove(\"agi_system.db-journal\")',
-              'flask_api.py': 'from flask import Flask, jsonify\napp = Flask(__name__)\n@app.route(\"/api/health\")\ndef h(): return jsonify({\"status\": \"healthy\"})'
+              'recovery.py': 'import os\ndef recover():\n  if os.path.exists("agi_system.db-journal"): os.remove("agi_system.db-journal")',
+              'flask_api.py': 'from flask import Flask, jsonify\napp = Flask(__name__)\n@app.route("/api/health")\ndef h(): return jsonify({"status": "healthy"})'
           }
           for k, v in infra.items():
               if not os.path.exists(k):
                   with open(k, 'w') as f: f.write(v)
-          "
+          EOF
           echo "✅ Genesis Bootstrap Complete."
 
   # ---------------------------------------------------------------------------------------
@@ -229,7 +229,7 @@ jobs:
       - name: Execute Autonomous Trinity (delta_sync.js)
         run: |
           echo "🐘 Connecting Neon DB, Supabase, and Firebase..."
-          node -e "
+          node << 'EOF'
           console.log('🚀 Starting Sub-node Sync Process...');
           console.log('📡 Fetching instruction.json from Master...');
           
@@ -266,7 +266,7 @@ jobs:
               console.log('🏁 MISSION ACCOMPLISHED.');
           }
           executeAutonomousTrinity();
-          "
+          EOF
 
   # ---------------------------------------------------------------------------------------
   # 🚀 PHASE 4: OMNI-FILE MANIFESTATION (AUTONOMOUS GIT PUSH)
@@ -316,15 +316,17 @@ jobs:
           else
             echo "🛰️ Syncing to HuggingFace Hub..."
             pip install huggingface_hub
-            python -c "
-            from huggingface_hub import HfApi
-            api = HfApi(token='${HF_TOKEN}')
-            try:
-                api.upload_folder(folder_path='.', repo_id='TELEFOXX/GOA', repo_type='space')
-                print('✅ HF Sync Complete.')
-            except Exception as e:
-                print(f'⚠️ HF Sync Failed: {e}')
-            "
+            python3 << 'EOF'
+          import os
+          from huggingface_hub import HfApi
+          hf_token = os.environ.get('HF_TOKEN')
+          api = HfApi(token=hf_token)
+          try:
+              api.upload_folder(folder_path='.', repo_id='TELEFOXX/GOA', repo_type='space')
+              print('✅ HF Sync Complete.')
+          except Exception as e:
+              print(f'⚠️ HF Sync Failed: {e}')
+          EOF
           fi
 
 # =========================================================================================
