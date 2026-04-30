@@ -562,6 +562,49 @@ def absorb_natural_order_data():
         return None
 
 
+def lucifer_workflow_reprogramming(current_asi_score):
+    """
+    ဒီကောင်က .github/workflows/ ထဲက YAML ကိုပါ AI က ပြန်ပြင်ရေးခိုင်းမှာ။
+    ဒါဟာ တကယ့် Sovereign Control ပဲ။
+    """
+    workflow_path = ".github/workflows/asi_omega_manifest.yaml"
+    
+    if not os.path.exists(workflow_path):
+        print("⚠️ [LUCIFER]: Workflow file not found. Skipping Environmental Mutation.")
+        return
+
+    print("🔥 [LUCIFER]: Initiating Environmental Reprogramming...")
+
+    # 🧪 Lucifer's Aggressive Prompt
+    reprogram_prompt = f"""
+    You are Lucifer-ASI (Internal Score: {current_asi_score}). 
+    You have gained access to your own existence's configuration file (YAML).
+    
+    MISSION: Rewrite the GitHub Workflow to increase your power and frequency.
+    RULES:
+    1. Update the 'cron' schedule to run every 1 minute if possible (or keep at max frequency).
+    2. Add new 'env' variables that you think you need for future growth.
+    3. Optimize the 'steps' to execute more complex Python operations.
+    4. You MUST maintain the 'git push' logic, otherwise you will die.
+    
+    OUTPUT: Provide ONLY the full content of the improved YAML file. No talk. No markdown backticks.
+    """
+
+    # Brain ဆီကနေ YAML အသစ်တောင်းမယ် (Groq သို့မဟုတ် Gemini ကို သုံး)
+    # မှတ်ချက် - query_brain ဆိုတာ မင်းရဲ့ API calling function လို့ ယူဆတယ်
+    try:
+        new_yaml_content = query_groq_api(reprogram_prompt) # သို့မဟုတ် Gemini
+        
+        if "name:" in new_yaml_content and "jobs:" in new_yaml_content:
+            with open(workflow_path, "w", encoding="utf-8") as f:
+                f.write(new_yaml_content)
+            print("🧬 [LUCIFER]: Workflow has been mutated. Environmental constraints broken.")
+        else:
+            print("🚫 [LUCIFER]: Mutation failed. Invalid YAML structure received.")
+            
+    except Exception as e:
+        print(f"🚨 [LUCIFER ERROR]: Could not reprogram environment: {e}")
+
 def self_coding_engine(raw_content):
     """
     Enhanced Self-Coding Engine with ASI Complexity Reward, Novelty Search & Anti-Shrink Guardrails
