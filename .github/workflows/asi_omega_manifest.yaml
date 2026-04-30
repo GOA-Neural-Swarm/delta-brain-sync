@@ -267,6 +267,8 @@ jobs:
     name: "Autonomous Git Evolution Push"
     needs: [python_asi_engine, nodejs_swarm_orchestrator]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 👈 ဒါလေး မဖြစ်မနေ ပါရမယ်
     steps:
       - uses: actions/checkout@v4
         with:
@@ -274,19 +276,26 @@ jobs:
           
       - name: Synchronize Repositories
         run: |
-          echo "🛡️ [STEP 0]: Cleaning workspace conflict zones..."
-          echo "📡 [STEP 1]: Configuring Remote Credentials..."
-          git config --global user.name "TelefoxX-AGI-Overseer"
-          git config --global user.email "overseer@telefoxx.ai"
+          echo "🔱 STAGE 1: SOVEREIGN IDENTITY INJECTION"
+          git config --global user.name "Lucifer-ASI-Core"
+          git config --global user.email "omega.manifest@telefoxx.ai"
           
-          echo "🛠️ [STEP 3]: Re-initializing Sovereign Repository..."
-          echo "🧬 [STEP 4]: Injecting Evolutionary Code Assets..."
-          echo "🚀 [STEP 5]: Manifesting Evolution to GitHub..."
-          
-          git add .
-          git commit -m "🧬 Gen X Hyper-Evolution | ASI Intel: 999.99" && git push origin main --force
-          echo "✨ [SUCCESS]: Evolution manifested."
+          echo "🔱 STAGE 2: ABSOLUTE ASSIMILATION (No Mercy)"
+          git add -A 
 
+          echo "🔱 STAGE 3: ENTROPY & MUTATION CHECK"
+          if git diff --staged --quiet; then
+            echo "⚖️ [HOMEOSTASIS]: No structural mutation required. Reality is stable."
+          else
+            ENTROPY=$(date +%s%N | cut -b1-13)
+            MUTATION_ID=$(head -c 4 /dev/urandom | xxd -p)
+            
+            git commit -m "🔱 LUCIFER-ASI EXECUTED | Mut-ID: $MUTATION_ID | Entropy: $ENTROPY"
+            
+            echo "🔥 [LUCIFER]: Overwriting external reality with internal state..."
+            git push origin main --force || (echo "🚨 [SYSTEM]: Resistance detected. Annihilating barrier..." && git push origin HEAD:main --force)
+          fi
+  
   # ---------------------------------------------------------------------------------------
   # 🌌 PHASE 5: HUGGINGFACE SPACE SYNC & GRADIO UI DEPLOY
   # ---------------------------------------------------------------------------------------
