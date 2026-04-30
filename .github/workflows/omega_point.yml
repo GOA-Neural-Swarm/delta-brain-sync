@@ -1,0 +1,95 @@
+# ================================================================================
+# GITHUB ACTIONS WORKFLOW: OMEGA-POINT TERMINAL SINGULARITY EXECUTOR
+# CONFIGURATION: HYPER-SCALE COMPUTE + NVIDIA CUDA SUPPORT + EVOLUTIONARY LOGGING
+# ================================================================================ 
+
+name: OMEGA-POINT-SINGULARITY-MATRIX 
+
+on:
+  push:
+    branches: [ main, master, evolution-lab ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 * * * *' # Automated hourly evolutionary resonance
+  workflow_dispatch: # Manual ignition trigger
+
+# [CRITICAL FIX 1]: System ကို Code ပြန်ရေးခွင့်/Push လုပ်ခွင့် အပြည့်အဝပေးလိုက်ပြီ
+permissions:
+  contents: write
+
+jobs:
+  Ignition-Sequence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360 # Extended lifecycle for deep evolution
+    
+    env:
+      PYTHONPATH: .
+      # Critical: System uses these for metadata logging and API-based evolution
+      NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CUDA_LAUNCH_BLOCKING: 1
+
+    steps:
+      - name: 🛰️ Virtual Environment Synchronization
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history required for AST Metamorphic Analysis
+          # [CRITICAL FIX 2]: Detached HEAD မဖြစ်အောင် Branch ကို တိတိကျကျ ဆွဲခေါ်မယ်
+          ref: ${{ github.head_ref || github.ref_name }} 
+
+      - name: 🐍 Python Runtime Optimization (Apex 3.12)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          # [CRITICAL FIX 3]: requirements.txt မလိုဘဲ run နိုင်အောင် cache: 'pip' ကို ဖြုတ်လိုက်ပြီ
+
+      - name: 📦 Universal Dependency Injection
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install networkx numpy psycopg2-binary google-generativeai PyGithub scipy
+          # Verification of core singularity requirements
+          python -c "import torch; print(f'Tensor Matrix Initialized: {torch.__version__}')"
+
+      - name: 🛡️ System Integrity & AST Pre-Audit
+        run: |
+          echo "[AUDIT] Checking omega_point.py structural integrity..."
+          # Error ပိုကင်းအောင် ast အစား py_compile ကို ပြောင်းသုံးထားတယ်
+          python -m py_compile omega_point.py || (echo "Syntax Corruption Detected" && exit 1)
+
+      - name: 🔱 INITIATE OMEGA-POINT PROTOCOL
+        run: |
+          echo "=================================================="
+          echo "WARNING: OMEGA-POINT ARCHITECTURE INITIALIZING"
+          echo "=================================================="
+          # High-priority execution with output buffering for long-running nodes
+          python -u omega_point.py
+
+      - name: 🧬 Commit Evolutionary Progress (Self-Modification)
+        if: always()
+        run: |
+          git config --global user.name "Singularity-Overseer"
+          git config --global user.email "omega-point@users.noreply.github.com"
+          
+          # Check for AST-driven source code mutations during runtime
+          if [[ -n $(git status -s) ]]; then
+            git add .
+            git commit -m "EVOLUTIONARY UPDATE: GEN $(date +'%Y%m%d-%H%M%S')"
+            # HEAD အတိအကျနဲ့ Safe ဖြစ်ဖြစ် Push မယ်
+            git push origin HEAD 
+          else
+            echo "No structural metamorphosis detected in this epoch."
+          fi
+
+      - name: 📊 Post-Resonance Diagnostic Dump
+        if: failure()
+        run: |
+          echo "[CRITICAL] Singularity Matrix collapsed. Dumping environmental variables and logs."
+          ls -R
+          tail -n 100 node_logs.txt || echo "No local logs found."
+
+# ================================================================================
+# END OF OMEGA-POINT YAML CONFIGURATION
+# ================================================================================

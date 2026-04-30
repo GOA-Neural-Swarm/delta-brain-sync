@@ -3,8 +3,6 @@ name: OMEGA ABSOLUTE AUDITOR (Brain-Sync Guard)
 on:
   push:
     branches: [ evolution-lab ]
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
