@@ -170,7 +170,7 @@ jobs:
         run: |
           pip install psycopg2-binary firebase-admin bitsandbytes requests accelerate GitPython sympy==1.12 numpy scikit-learn transformers sqlalchemy pandas huggingface_hub groq google-genai
           # 🚨 Markdown link အမှားကို ဒီနေရာမှာ ရှင်းလင်းပေးထားတယ် 🚨
-          pip install torch torchvision torchaudio --index-url [https://download.pytorch.org/whl/cpu](https://download.pytorch.org/whl/cpu)
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 
       - name: Execute Brain Matrix (main.py + app.py integration)
         run: |
