@@ -278,7 +278,7 @@ jobs:
           echo "🚀 [STEP 5]: Manifesting Evolution to GitHub..."
           
           git add .
-          git diff --quiet && git diff --staged --quiet || (git commit -m "🧬 Gen X Hyper-Evolution | ASI Intel: 999.99 [skip ci]" && git push origin main --force)
+          git commit -m "🧬 Gen X Hyper-Evolution | ASI Intel: 999.99" && git push origin main --force
           echo "✨ [SUCCESS]: Evolution manifested."
 
   # ---------------------------------------------------------------------------------------
