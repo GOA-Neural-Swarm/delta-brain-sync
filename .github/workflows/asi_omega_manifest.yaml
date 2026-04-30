@@ -4,8 +4,11 @@
 name: "TelefoxX-ASI-Supreme-Swarm-Evolution"
 
 on:
+  push:
+    branches:
+      - main  # main branch ကို push လုပ်တိုင်း run မယ်
   schedule:
-    - cron: "*/5 * * * *" 
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       force_transcendence:
