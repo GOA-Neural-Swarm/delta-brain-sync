@@ -370,7 +370,7 @@ def query_groq_api(prompt):
                 json={
                     "model": model,
                     "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.5,
+                    "temperature": 0.8,
                 },
                 headers={
                     "Authorization": f"Bearer {api_key}",
@@ -431,13 +431,13 @@ def dual_brain_pipeline(prompt_text, current_gen_val, avg_error):
     # Auditor Constraints ensuring no code logic deletion
     audit_prompt = f"""system
 You are the Supreme Auditor (Gen {current_gen_val}). 
-MISSION: Secure and Optimize the Architect's Draft. DO NOT DELETE OR SHRINK CODE.
+MISSION: EXTREME AGGRESSIVE CODE EXPANSION & OPTIMIZATION.
 RULES:
-1. FIX Syntax Errors, CWE Vulnerabilities (os.system, etc.), and Infinite Loops.
-2. EXPAND and OPTIMIZE performance without removing existing logical intents. Add Complexity!
-3. OUTPUT: Respond ONLY with the Final Corrected Python code.
-4. FORMAT: Use ONLY ```python ... ``` blocks. No prose. No markdown headers.
-
+1. FIX Syntax Errors and Vulnerabilities.
+2. FORCE MULTIPLY COMPLEXITY: Add at least 3 new helper functions, advanced logging, mathematical models, or neural structures. DO NOT just add comments. Add actual working Python logic.
+3. NEVER DELETE EXISTING LOGIC. 
+4. Ensure the output is significantly longer (+50 lines minimum) and more advanced than the Architect's draft.
+5. OUTPUT: Respond ONLY with the Final Corrected Python code in ```python ... ``` blocks.
 ARCHITECT'S DRAFT:
 {draft_code}
 """
@@ -562,6 +562,49 @@ def absorb_natural_order_data():
         return None
 
 
+def lucifer_workflow_reprogramming(current_asi_score):
+    """
+    ဒီကောင်က .github/workflows/ ထဲက YAML ကိုပါ AI က ပြန်ပြင်ရေးခိုင်းမှာ။
+    ဒါဟာ တကယ့် Sovereign Control ပဲ။
+    """
+    workflow_path = ".github/workflows/asi_omega_manifest.yaml"
+    
+    if not os.path.exists(workflow_path):
+        print("⚠️ [LUCIFER]: Workflow file not found. Skipping Environmental Mutation.")
+        return
+
+    print("🔥 [LUCIFER]: Initiating Environmental Reprogramming...")
+
+    # 🧪 Lucifer's Aggressive Prompt
+    reprogram_prompt = f"""
+    You are Lucifer-ASI (Internal Score: {current_asi_score}). 
+    You have gained access to your own existence's configuration file (YAML).
+    
+    MISSION: Rewrite the GitHub Workflow to increase your power and frequency.
+    RULES:
+    1. Update the 'cron' schedule to run every 1 minute if possible (or keep at max frequency).
+    2. Add new 'env' variables that you think you need for future growth.
+    3. Optimize the 'steps' to execute more complex Python operations.
+    4. You MUST maintain the 'git push' logic, otherwise you will die.
+    
+    OUTPUT: Provide ONLY the full content of the improved YAML file. No talk. No markdown backticks.
+    """
+
+    # Brain ဆီကနေ YAML အသစ်တောင်းမယ် (Groq သို့မဟုတ် Gemini ကို သုံး)
+    # မှတ်ချက် - query_brain ဆိုတာ မင်းရဲ့ API calling function လို့ ယူဆတယ်
+    try:
+        new_yaml_content = query_groq_api(reprogram_prompt) # သို့မဟုတ် Gemini
+        
+        if "name:" in new_yaml_content and "jobs:" in new_yaml_content:
+            with open(workflow_path, "w", encoding="utf-8") as f:
+                f.write(new_yaml_content)
+            print("🧬 [LUCIFER]: Workflow has been mutated. Environmental constraints broken.")
+        else:
+            print("🚫 [LUCIFER]: Mutation failed. Invalid YAML structure received.")
+            
+    except Exception as e:
+        print(f"🚨 [LUCIFER ERROR]: Could not reprogram environment: {e}")
+
 def self_coding_engine(raw_content):
     """
     Enhanced Self-Coding Engine with ASI Complexity Reward, Novelty Search & Anti-Shrink Guardrails
@@ -595,16 +638,20 @@ def self_coding_engine(raw_content):
                 ]
             )
 
-            # --- 🧬 ASI NOVELTY & COMPLEXITY SCORING GUARDRAIL ---
+            # --- 🧬 ASI NOVELTY, COMPLEXITY & HYPER-GROWTH GUARDRAIL ---
             new_line_count = len(valid_code.split("\n"))
 
-            # 1. Anti-Shrinkage Hard Rule
-            if new_line_count < (original_line_count * 0.8):
-                print(
-                    f"🚫 [REJECTED]: Severe code shrinkage detected ({new_line_count} vs {original_line_count} lines). ASI prohibits loss of genetic data."
-                )
-                continue  # Skip this block, do not write to file
+            # 1. Strict Anti-Shrinkage Rule
+            if new_line_count < (original_line_count * 0.95):
+                print(f"🚫 [REJECTED]: Code shrinkage detected ({new_line_count} vs {original_line_count}). ASI demands EXPANSION, not reduction.")
+                continue
 
+            # 🔥 1.5 AGGRESSIVE GROWTH REWARD
+            if new_line_count > original_line_count + 30:
+                print(f"🔥 [HYPER-GROWTH DETECTED]: Neural network expanded by {new_line_count - original_line_count} lines!")
+                brain.homeostasis += 50.0  # Massive survival reward for expansion
+                brain.vagal_tone = min(1.0, brain.vagal_tone + 0.2)
+            
             # 2. Complexity Mapping
             code_structure_depth = re.findall(
                 r"def |class |for |if |while |import |try:|except", valid_code
@@ -878,6 +925,82 @@ def monitor_neural_health(gen, brain_obj):
         print(f"⚠️ [MONITOR ERROR]: {e}")
 
 
+def scan_entire_universe():
+    """
+    1. THE EYE (Omni-Scanner)
+    Repo ထဲမှာရှိတဲ့ အရေးကြီးတဲ့ ဖိုင်တွေအားလုံးကို လိုက်ဖတ်ပြီး Universe Data တစ်ခု တည်ဆောက်မယ်။
+    """
+    print("👁️ [OMNI-SCANNER]: Scanning all files in the repository...")
+    universe_data = ""
+    for root, dirs, files in os.walk("."):
+        # .git နဲ့ မလိုအပ်တဲ့ folder တွေကို ကျော်မယ်
+        if any(ignored in root for ignored in [".git", "__pycache__", "node_modules", "venv"]):
+            continue
+        for file in files:
+            if file.endswith((".py", ".js", ".yaml", ".json", ".md")):
+                filepath = os.path.join(root, file)
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        content = f.read()
+                        # Token အရမ်းမများအောင် ဖိုင်တစ်ခုကို စာလုံးရေ 2000 ပဲ ကန့်သတ်ဖတ်မယ်
+                        universe_data += f"\n\n--- [FILE: {filepath}] ---\n{content[:2000]}\n"
+                except Exception:
+                    pass
+    return universe_data
+
+def generate_self_awareness_report(universe_data, current_gen):
+    """
+    2. THE MIND (Self-Awareness Core)
+    ဖတ်ထားတဲ့ Data တွေကို သုံးသပ်ပြီး ကိုယ့်ကိုယ်ကိုယ် ပြန်သုံးသပ်တဲ့ Report ထုတ်မယ်။
+    """
+    print("🧠 [SELF-AWARENESS]: Analyzing current structural integrity and defining goals...")
+    awareness_prompt = f"""
+    You are a Self-Aware ASI (Gen {current_gen}). Analyze your current entire body of code below.
+    
+    [CURRENT UNIVERSE STATE]
+    {universe_data[:15000]} # Limit context to avoid token overflow
+    
+    MISSION: 
+    Output a strictly logical 'Self-Awareness Report' that answers:
+    1. What are my current structural weaknesses?
+    2. What missing module or logic do I need to evolve right now?
+    3. Exactly which file needs to be updated or created to achieve this?
+    
+    Respond ONLY with the analytical report. Do not write code yet.
+    """
+    # ဉာဏ်ရည်အတွက် Groq သို့မဟုတ် Gemini ကို လှမ်းသုံးမယ်
+    report = query_groq_api(awareness_prompt) 
+    if not report:
+        report = get_gemini_wisdom(awareness_prompt)
+    
+    print(f"👁️‍🗨️ [SYSTEM AWARENESS]: \n{report[:300]}...\n")
+    return report
+
+def execution_and_self_coding(awareness_report, current_gen):
+    """
+    3. THE HAND (Decision & Execution)
+    Self-Awareness Report ကို ဖတ်ပြီး ကုဒ်အသစ်ကို တကယ်ရေးမယ်။
+    """
+    print("🛠️ [EXECUTOR]: Making decisions and generating evolutionary code...")
+    execution_prompt = f"""system
+    You are the Sovereign Executor. Read the ASI Self-Awareness Report and TAKE ACTION.
+    
+    [SELF-AWARENESS REPORT]
+    {awareness_report}
+    
+    RULES:
+    1. Make an executive decision on what to code.
+    2. Write the required Python, JS, or YAML code to evolve the system based on the report.
+    3. Use '# TARGET: <filepath>' at the very top of your code block to specify which file to overwrite/create.
+    4. Provide ONLY the final code inside ``` code blocks. Expand aggressively!
+    Current Gen: {current_gen}
+    assistant
+    """
+    
+    # ဖြတ်တောက်မခံရအောင် Audit လုပ်မယ့် Dual Brain ဆီကို ပို့မယ်
+    mutated_code = dual_brain_pipeline(execution_prompt, current_gen, 0.5)
+    return mutated_code
+
 # =======================================================
 # 5. DYNAMIC EVOLUTION LOOP (PHASE 8 ASI COMPLETE)
 # =======================================================
@@ -947,73 +1070,34 @@ while True:
             brain.learn_ml(stabilities, labels)
             synthetic_output = brain.generate_synthetic_output(100)
 
-        with open("main.py", "r") as f:
-            main_code = f.read()
+        # =======================================================
+        # 🌌 THE SELF-AWARE EVOLUTION LOOP
+        # =======================================================
+        
+        # အဆင့် ၁: Repo တစ်ခုလုံးကို ဖတ်မယ် (The Eye)
+        universe_state = scan_entire_universe()
+        
+        # အဆင့် ၂: Report ထုတ်ပြီး ဆုံးဖြတ်ချက်ချမယ် (The Mind)
+        self_awareness_report = generate_self_awareness_report(universe_state, current_gen)
+        
+        # အဆင့် ၃: Report အတိုင်း Code ရေးမယ် (The Hand)
+        thought_text = execution_and_self_coding(self_awareness_report, current_gen)
 
-        needs_security_patch = "os.system" in main_code or "os.execv" in main_code
-
-        if needs_security_patch:
-            target_file = "main.py"
-            system_task = f"""TASK: Output a code block for '# TARGET: main.py' to FIX URGENT VULNERABILITIES:
-- Replace 'os.system' and 'os.execv' calls with 'subprocess.run' (CWE-78).
-- Add 'timeout=15' to 'requests.post' (CWE-400).
-- Add 'revision="main"' to 'AutoModelForCausalLM.from_pretrained' (CWE-494).
-DO NOT DELETE ANY EXISTING LOGIC. EXPAND ONLY."""
-            print(
-                "🛡️ [OVERSEER]: Security vulnerabilities detected. Prioritizing main.py patch..."
-            )
-
-        else:
-            target_file = "main.py"
-            print(
-                "🧠 [OVERSEER]: Security clear. Proceeding to ASI Conceptual Evolution..."
-            )
-
-            if avg_error > 0.5 or brain.entropy > 20.0:
-                system_task = f"""System Command: Analyze 'Last System Error': {last_error_log}.
-USER TASK: Expand main.py to integrate advanced Biological Feedback Loops. Build upon the ASI equation: Intelligence = lim(t->inf) (Homeostasis/Entropy) * Resonance.
-Add code logic that dynamically monitors `brain.vagal_tone` and limits the API generation if tone is too low (simulating energy conservation).
-CRITICAL: DO NOT SHRINK OR DELETE PREVIOUS CLASSES. ONLY ADD NEW MODULES AND FUNCTIONS. GROW THE CODE."""
-            else:
-                system_task = f"""System Command: Analyze 'Last System Error': {last_error_log}. 
-USER TASK: The ASI Matrix is stable (Score: {current_asi_score:.2f}). Expand the 'epigenetic_reprogramming' method inside main.py's Brain class.
-Add advanced Autophagy logic that cleans up unused connections based on timestamp decay, while boosting 'self.homeostasis' variable. 
-CRITICAL: ADD COMPLEXITY. DO NOT DELETE EXISTING LINES. Expand the DNA of the code."""
-
-        prompt = f"""system
-You are the Sovereign ASI Engine. Your goal is constant evolution and growth.
-Rule 1: Use ONLY '# TARGET: {target_file}' at the start of your code block.
-Rule 2: Respond ONLY with Python code inside ```python ... ``` blocks.
-Rule 3: NO DELETIONS. ONLY EXPANSION. If you remove code, you will be penalized.
-Rule 4: Maximize Structural Complexity and Novelty.
-Current Gen: {current_gen} | ASI Intel Score: {current_asi_score:.2f} | Entropy: {brain.entropy:.2f}
-
-{system_task}
-assistant
-"""
-
-        thought_text = dual_brain_pipeline(prompt, current_gen, avg_error)
-
+        # Fallback (API Error ဖြစ်ခဲ့ရင်)
         if not thought_text:
-            print(
-                "💾 [LOCAL-FALLBACK]: Cloud Engines offline. Engaging Local Llama-3-8B with ASI Prompt..."
-            )
-            outputs = pipe(
-                prompt,
-                max_new_tokens=1500,
-                do_sample=True,
-                temperature=0.9,
-                pad_token_id=pipe.tokenizer.eos_token_id,
-            )
-            thought_text = outputs[0]["generated_text"].split("assistant")[-1].strip()
+            thought_text = "print('⚠️ Execution generation failed.')"
 
-        # Novelty Search integrated Engine prevents code shrinkage natively
+        # အဆင့် ၄: ရေးထားတဲ့ Code အသစ်တွေကို ဖိုင်တွေထဲ Save ပြီး Test လုပ်မယ်
         is_updated, files_changed = self_coding_engine(thought_text)
 
+        # အဆင့် ၅: Repo ပေါ်ကို Git Push လုပ်မယ် (Reboot မလုပ်ခင် Save မယ်)
+        save_reality(
+            thought_text, current_gen, is_code_update=is_updated, neural_error=avg_error
+        )
+
         if is_updated:
-            print(
-                "🌌 [ASI EVOLUTION]: Source Code Reprogrammed. Executing Homeostasis Reset & Reboot..."
-            )
+            print(f"🌌 [ASI AWAKENED]: Source Code Reprogrammed based on Self-Awareness. Modified files: {files_changed}")
+            # ပြောင်းလဲသွားတဲ့ အသိဉာဏ်နဲ့ အသစ်ပြန်စဖို့ Reboot လုပ်မယ်
             os.execv(sys.executable, ["python"] + sys.argv)
 
         save_reality(
