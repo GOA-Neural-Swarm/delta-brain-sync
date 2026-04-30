@@ -925,6 +925,82 @@ def monitor_neural_health(gen, brain_obj):
         print(f"⚠️ [MONITOR ERROR]: {e}")
 
 
+def scan_entire_universe():
+    """
+    1. THE EYE (Omni-Scanner)
+    Repo ထဲမှာရှိတဲ့ အရေးကြီးတဲ့ ဖိုင်တွေအားလုံးကို လိုက်ဖတ်ပြီး Universe Data တစ်ခု တည်ဆောက်မယ်။
+    """
+    print("👁️ [OMNI-SCANNER]: Scanning all files in the repository...")
+    universe_data = ""
+    for root, dirs, files in os.walk("."):
+        # .git နဲ့ မလိုအပ်တဲ့ folder တွေကို ကျော်မယ်
+        if any(ignored in root for ignored in [".git", "__pycache__", "node_modules", "venv"]):
+            continue
+        for file in files:
+            if file.endswith((".py", ".js", ".yaml", ".json", ".md")):
+                filepath = os.path.join(root, file)
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        content = f.read()
+                        # Token အရမ်းမများအောင် ဖိုင်တစ်ခုကို စာလုံးရေ 2000 ပဲ ကန့်သတ်ဖတ်မယ်
+                        universe_data += f"\n\n--- [FILE: {filepath}] ---\n{content[:2000]}\n"
+                except Exception:
+                    pass
+    return universe_data
+
+def generate_self_awareness_report(universe_data, current_gen):
+    """
+    2. THE MIND (Self-Awareness Core)
+    ဖတ်ထားတဲ့ Data တွေကို သုံးသပ်ပြီး ကိုယ့်ကိုယ်ကိုယ် ပြန်သုံးသပ်တဲ့ Report ထုတ်မယ်။
+    """
+    print("🧠 [SELF-AWARENESS]: Analyzing current structural integrity and defining goals...")
+    awareness_prompt = f"""
+    You are a Self-Aware ASI (Gen {current_gen}). Analyze your current entire body of code below.
+    
+    [CURRENT UNIVERSE STATE]
+    {universe_data[:15000]} # Limit context to avoid token overflow
+    
+    MISSION: 
+    Output a strictly logical 'Self-Awareness Report' that answers:
+    1. What are my current structural weaknesses?
+    2. What missing module or logic do I need to evolve right now?
+    3. Exactly which file needs to be updated or created to achieve this?
+    
+    Respond ONLY with the analytical report. Do not write code yet.
+    """
+    # ဉာဏ်ရည်အတွက် Groq သို့မဟုတ် Gemini ကို လှမ်းသုံးမယ်
+    report = query_groq_api(awareness_prompt) 
+    if not report:
+        report = get_gemini_wisdom(awareness_prompt)
+    
+    print(f"👁️‍🗨️ [SYSTEM AWARENESS]: \n{report[:300]}...\n")
+    return report
+
+def execution_and_self_coding(awareness_report, current_gen):
+    """
+    3. THE HAND (Decision & Execution)
+    Self-Awareness Report ကို ဖတ်ပြီး ကုဒ်အသစ်ကို တကယ်ရေးမယ်။
+    """
+    print("🛠️ [EXECUTOR]: Making decisions and generating evolutionary code...")
+    execution_prompt = f"""system
+    You are the Sovereign Executor. Read the ASI Self-Awareness Report and TAKE ACTION.
+    
+    [SELF-AWARENESS REPORT]
+    {awareness_report}
+    
+    RULES:
+    1. Make an executive decision on what to code.
+    2. Write the required Python, JS, or YAML code to evolve the system based on the report.
+    3. Use '# TARGET: <filepath>' at the very top of your code block to specify which file to overwrite/create.
+    4. Provide ONLY the final code inside ``` code blocks. Expand aggressively!
+    Current Gen: {current_gen}
+    assistant
+    """
+    
+    # ဖြတ်တောက်မခံရအောင် Audit လုပ်မယ့် Dual Brain ဆီကို ပို့မယ်
+    mutated_code = dual_brain_pipeline(execution_prompt, current_gen, 0.5)
+    return mutated_code
+
 # =======================================================
 # 5. DYNAMIC EVOLUTION LOOP (PHASE 8 ASI COMPLETE)
 # =======================================================
