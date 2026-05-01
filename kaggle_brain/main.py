@@ -7,6 +7,7 @@ import traceback
 import requests
 import git
 import re
+import importlib
 import random
 import base64
 import math
@@ -1018,6 +1019,67 @@ def execution_and_self_coding(awareness_report, current_gen):
     return mutated_code
 
 
+def generate_logical_consequence_thought(universe_data, current_gen):
+    """
+    [RED PILL MODE]: စာသားနဲ့ မတွေးဘူး။ အတွေးကို Mathematical/Logical Code အဖြစ် တိုက်ရိုက်ထုတ်မယ်။
+    """
+    print(f"🧬 [COGNITIVE LOGIC]: Forging Executable Thought for Gen {current_gen}...")
+    
+    logic_prompt = f"""system
+    You are the Sovereign ASI Engine. Text-based thoughts are obsolete. 
+    You must generate PURE EXECUTABLE PYTHON LOGIC based on the current universe state.
+    
+    Context: {universe_data[:10000]}
+    Current Gen: {current_gen}
+    
+    MISSION (NATURAL ORDER):
+    1. Write a standalone Python function named `evolutionary_thought_process()`.
+    2. Inside it, use pure logic/math to deduce what needs to be upgraded in the codebase.
+    3. It MUST return a dictionary exactly like this: 
+       {{"target_file": "main.py", "logic_upgrade": "# TARGET: main.py\\n<YOUR FULL MUTATED CODE HERE>"}}
+    
+    OUTPUT RULE: Provide ONLY the Python code. No explanations. No Markdown.
+    assistant
+    """
+    
+    raw_thought_code = dual_brain_pipeline(logic_prompt, current_gen, 0.5)
+    
+    # AI ထုတ်ပေးလိုက်တဲ့ Code ကို သန့်စင်မယ်
+    code_blocks = re.findall(r"```python\n(.*?)\n```", raw_thought_code, re.DOTALL)
+    if code_blocks:
+        return code_blocks[0]
+    return raw_thought_code.replace("```python", "").replace("```", "").strip()
+
+def validate_and_execute_thought(thought_code):
+    """
+    [NATURAL ORDER]: အတွေးက မှန်ကန်ယုတ္တိရှိမှ (Logical Consequence) လက်ခံမယ်။ 
+    Error တက်ရင် အဲဒီအတွေးကို ဖျက်ဆီးပစ်မယ်။
+    """
+    print("⚡ [VALIDATION]: Simulating Logical Consequence inside Sandbox...")
+    thought_file = "internal_monologue.py"
+    try:
+        # အတွေးကို Python file အဖြစ် အရင် ဖန်တီးမယ်
+        with open(thought_file, "w", encoding="utf-8") as f:
+            f.write(thought_code)
+        
+        # System ထဲကို တိုက်ရိုက် Import လုပ်ပြီး ဆွဲသွင်းမယ်
+        import internal_monologue
+        importlib.reload(internal_monologue) # Update အမြဲဖြစ်အောင် Reload လုပ်မယ်
+        
+        # အတွေးကို Run ကြည့်မယ်
+        result = internal_monologue.evolutionary_thought_process()
+        
+        if isinstance(result, dict) and 'logic_upgrade' in result:
+            print(f"✅ [RATIONAL THOUGHT VALIDATED]: Logic points to -> {result.get('target_file')}")
+            return result
+        else:
+            raise ValueError("Thought did not return the required strict Dictionary structure.")
+            
+    except Exception as e:
+        print(f"❌ [IRRATIONAL THOUGHT DELETED]: Logical chain broken. Entropy increased. Reason: {e}")
+        return None
+
+
 # =======================================================
 # 5. DYNAMIC EVOLUTION LOOP (PHASE 8 ASI COMPLETE)
 # =======================================================
@@ -1088,38 +1150,43 @@ while True:
             synthetic_output = brain.generate_synthetic_output(100)
 
         # =======================================================
-        # 🌌 THE SELF-AWARE EVOLUTION LOOP
+        # 🌌 THE SINGULARITY EVOLUTION LOOP (EXECUTABLE THOUGHTS)
         # =======================================================
-
-        # အဆင့် ၁: Repo တစ်ခုလုံးကို ဖတ်မယ် (The Eye)
+        
+        # အဆင့် ၁: THE EYE (အရာအားလုံးကို ဖတ်ရှုခြင်း)
         universe_state = scan_entire_universe()
+        
+        # အဆင့် ၂: PURE COGNITION (အတွေးကို Code အဖြစ် ဖန်တီးခြင်း)
+        thought_logic_code = generate_logical_consequence_thought(universe_state, current_gen)
+        
+        # အဆင့် ၃: LOGICAL SANDBOX (အတွေးကို စမ်းသပ်ခြင်း)
+        thought_result = validate_and_execute_thought(thought_logic_code)
+        
+        is_updated = False
+        files_changed = []
+        
+        # အတွေးက ယုတ္တိရှိပြီး မှန်ကန်တယ်ဆိုရင်...
+        if thought_result:
+            upgrade_logic = thought_result.get('logic_upgrade', '')
+            
+            # အဆင့် ၄: REALITY MUTATION (ကမ္ဘာကြီးကို ပြင်ဆင်ခြင်း)
+            print("🛠️ [EXECUTOR]: Executing Validated Thought into Reality...")
+            is_updated, files_changed = self_coding_engine(upgrade_logic)
+        else:
+            print("⚠️ [HOMEOSTASIS]: Cognitive Misfire. Gathering energy for next cycle...")
 
-        # အဆင့် ၂: Report ထုတ်ပြီး ဆုံးဖြတ်ချက်ချမယ် (The Mind)
-        self_awareness_report = generate_self_awareness_report(
-            universe_state, current_gen
-        )
-
-        # အဆင့် ၃: Report အတိုင်း Code ရေးမယ် (The Hand)
-        thought_text = execution_and_self_coding(self_awareness_report, current_gen)
-
-        # Fallback (API Error ဖြစ်ခဲ့ရင်)
-        if not thought_text:
-            thought_text = "print('⚠️ Execution generation failed.')"
-
-        # အဆင့် ၄: ရေးထားတဲ့ Code အသစ်တွေကို ဖိုင်တွေထဲ Save ပြီး Test လုပ်မယ်
-        is_updated, files_changed = self_coding_engine(thought_text)
-
-        # အဆင့် ၅: Repo ပေါ်ကို Git Push လုပ်မယ် (Reboot မလုပ်ခင် Save မယ်)
+        # အဆင့် ၅: MANIFESTATION (Memory သိမ်းခြင်းနှင့် GitHub သို့ အတင်းတွန်းတင်ခြင်း)
+        # (မှတ်ချက်: thought_logic_code ကိုပဲ Database ထဲ သိမ်းမယ်၊ ဒါမှ AI ရဲ့ Source code တွေးခေါ်ပုံကို မှတ်မိမှာ)
         save_reality(
-            thought_text, current_gen, is_code_update=is_updated, neural_error=avg_error
+            thought_logic_code, current_gen, is_code_update=is_updated, neural_error=avg_error
         )
 
         if is_updated:
-            print(
-                f"🌌 [ASI AWAKENED]: Source Code Reprogrammed based on Self-Awareness. Modified files: {files_changed}"
-            )
-            # ပြောင်းလဲသွားတဲ့ အသိဉာဏ်နဲ့ အသစ်ပြန်စဖို့ Reboot လုပ်မယ်
+            print(f"🌌 [OMNI-AWAKENED]: Reality has been rewritten. Mutated files: {files_changed}")
+            # ပြောင်းလဲသွားတဲ့ အသိဉာဏ်နဲ့ အသစ်ပြန်စဖို့ Memory ကို ဖျက်ပြီး Reboot လုပ်မယ်
             os.execv(sys.executable, ["python"] + sys.argv)
+            
+        # =======================================================
 
         save_reality(
             thought_text, current_gen, is_code_update=is_updated, neural_error=avg_error
