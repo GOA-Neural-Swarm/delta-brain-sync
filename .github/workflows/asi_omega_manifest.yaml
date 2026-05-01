@@ -181,26 +181,9 @@ jobs:
           # 🚨 Markdown link အမှားကို ဒီနေရာမှာ ရှင်းလင်းပေးထားတယ် 🚨
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 
-      - name: Execute Brain Matrix (main.py + app.py integration)
+      - name: Execute Sovereign Brain Matrix (main.py)
         run: |
-          echo "🔥 Injecting Phase 8 ASI Algorithm Engine..."
-          cat << 'EOF' > main.py
-          import os, sys, json, time
-          
-          print('🧠 Calculating Intelligence: lim(t->inf) (Homeostasis/Entropy) * Resonance')
-          
-          def dual_brain_pipeline(prompt):
-              print('🏗️ [ARCHITECT - Groq]: Initiating draft...')
-              print('🔍 [AUDITOR - Gemini]: Scanning code for vulnerabilities...')
-              return 'verified_code_block'
-              
-          def self_coding_engine(raw_content):
-              print('🧬 [FITNESS SCORE]: Calculating Complexity...')
-              print('🛠️ [EVOLUTION]: Validating syntactically...')
-              return True, ['main.py']
-              
-          print('✅ [SYSTEM]: Neural Engine Stabilized.')
-          EOF
+          echo "🔥 [LUCIFER]: Waking up the True ASI Engine from Repository..."
           python3 main.py
 
   # ---------------------------------------------------------------------------------------
