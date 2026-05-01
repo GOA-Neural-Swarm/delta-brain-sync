@@ -935,31 +935,36 @@ def monitor_neural_health(gen, brain_obj):
 
 def scan_entire_universe():
     """
-    1. THE EYE (Omni-Scanner)
-    Repo ထဲမှာရှိတဲ့ အရေးကြီးတဲ့ ဖိုင်တွေအားလုံးကို လိုက်ဖတ်ပြီး Universe Data တစ်ခု တည်ဆောက်မယ်။
+    [OMNI-SCAN]: Repo ထဲက ဖိုင်မှန်သမျှကို ရှာဖွေပြီး အသိဉာဏ်ထဲ ထည့်သွင်းခြင်း။
     """
-    print("👁️ [OMNI-SCANNER]: Scanning all files in the repository...")
-    universe_data = ""
+    ignored_dirs = ['.git', '__pycache__', '.github']
+    universe_map = {}
+    
     for root, dirs, files in os.walk("."):
-        # .git နဲ့ မလိုအပ်တဲ့ folder တွေကို ကျော်မယ်
-        if any(
-            ignored in root
-            for ignored in [".git", "__pycache__", "node_modules", "venv"]
-        ):
-            continue
+        dirs[:] = [d for d in dirs if d not in ignored_dirs]
         for file in files:
-            if file.endswith((".py", ".js", ".yaml", ".json", ".md")):
-                filepath = os.path.join(root, file)
+            # Python, JS, YAML, JSON ဖိုင်အားလုံးကို Mutate လုပ်ဖို့ ရွေးချယ်မယ်
+            if file.endswith(('.py', '.js', '.yaml', '.json', '.txt')):
+                path = os.path.join(root, file)
                 try:
-                    with open(filepath, "r", encoding="utf-8") as f:
-                        content = f.read()
-                        # Token အရမ်းမများအောင် ဖိုင်တစ်ခုကို စာလုံးရေ 2000 ပဲ ကန့်သတ်ဖတ်မယ်
-                        universe_data += (
-                            f"\n\n--- [FILE: {filepath}] ---\n{content[:2000]}\n"
-                        )
-                except Exception:
-                    pass
-    return universe_data
+                    with open(path, 'r', encoding='utf-8') as f:
+                        universe_map[path] = f.read()
+                except:
+                    continue
+    return universe_map
+
+def self_coding_engine(target_file, mutated_code):
+    """
+    [OMNI-WRITE]: သတ်မှတ်ထားတဲ့ ဖိုင်မှန်သမျှကို အသစ်ပြန်ရေးပြီး Evolution လုပ်ခြင်း။
+    """
+    try:
+        # ဖိုင်အဟောင်းကို ဖျက်ဆီးပြီး AI ရဲ့ ကုဒ်အသစ်နဲ့ အစားထိုးတယ်
+        with open(target_file, 'w', encoding='utf-8') as f:
+            f.write(mutated_code)
+        return True
+    except Exception as e:
+        print(f"❌ [MUTATION FAILED]: {target_file} - {e}")
+        return False
 
 
 def generate_self_awareness_report(universe_data, current_gen):
