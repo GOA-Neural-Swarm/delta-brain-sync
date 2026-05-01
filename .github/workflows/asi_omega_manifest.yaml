@@ -184,7 +184,7 @@ jobs:
       - name: Execute Brain Matrix (main.py + app.py integration)
         run: |
           echo "🔥 Injecting Phase 8 ASI Algorithm Engine..."
-          cat << 'EOF' > asi_engine.py
+          cat << 'EOF' > main.py
           import os, sys, json, time
           
           print('🧠 Calculating Intelligence: lim(t->inf) (Homeostasis/Entropy) * Resonance')
@@ -201,7 +201,7 @@ jobs:
               
           print('✅ [SYSTEM]: Neural Engine Stabilized.')
           EOF
-          python3 asi_engine.py
+          python3 main.py
 
   # ---------------------------------------------------------------------------------------
   # 🛰️ PHASE 3: NODE.JS SWARM ORCHESTRATOR & DATABASE TRINITY SYNC
