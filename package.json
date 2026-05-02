@@ -10,7 +10,7 @@
     "@octokit/rest": "^20.1.2",
     "@supabase/supabase-js": "^2.105.1",
     "axios": "^1.15.2",
-    "bullmq": "^5.76.4",
+    "bullmq": "^5.76.5",
     "dotenv": "^17.4.2",
     "firebase-admin": "^12.7.0",
     "ioredis": "^5.10.1",
