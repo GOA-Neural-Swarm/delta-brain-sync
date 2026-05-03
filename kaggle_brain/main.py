@@ -16,7 +16,7 @@ from datetime import datetime, UTC
 from functools import lru_cache
 
 
-# 1. Sovereign Requirements Setup (FIXED: Added version constraints to resolve huggingface-hub conflict)
+# 1. Sovereign Requirements Setup
 def install_requirements():
     """Installs necessary libraries and fixes dependency version conflicts."""
     libs = [
@@ -29,12 +29,27 @@ def install_requirements():
         "sympy==1.12",
         "numpy",
         "scikit-learn",
-        "google-generativeai",
+        "google-genai",  # Switched from google-generativeai
         "huggingface-hub>=0.24.0,<1.0.0",
         "transformers",
         "PyGithub",
+        "torch",
+        "torchvision",  # Ensure torchvision is aligned with torch
     ]
     try:
+        # Force upgrade torch and torchvision to resolve the 'torchvision::nms' error
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--upgrade",
+                "torch",
+                "torchvision",
+                "--quiet",
+            ]
+        )
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
         )
@@ -48,9 +63,10 @@ install_requirements()
 # Now import heavy modules after installation
 import numpy as np
 import torch
+import torchvision  # Import immediately after torch to register ops
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
-import google.generativeai as genai
+from google import genai  # New SDK import
 from transformers import (
     pipeline,
     AutoModelForCausalLM,
@@ -70,10 +86,9 @@ except ImportError:
     user_secrets = None
 
 # Environment Variables
-raw_db_url = os.getenv("NEON_DB_URL") or os.getenv("DATABASE_URL")
-if user_secrets:
-    raw_db_url = user_secrets.get_secret("NEON_DB_URL") or raw_db_url
-
+raw_db_url = os.getenv("NEON_DB_URL") or (
+    user_secrets.get_secret("NEON_DB_URL") if user_secrets else None
+)
 DB_URL = (
     raw_db_url.replace("postgres://", "postgresql://", 1)
     if raw_db_url and raw_db_url.startswith("postgres://")
@@ -85,12 +100,6 @@ FIREBASE_URL = os.getenv("FIREBASE_DB_URL") or (
 )
 FB_JSON_STR = os.getenv("FIREBASE_SERVICE_ACCOUNT") or (
     user_secrets.get_secret("FIREBASE_SERVICE_ACCOUNT") if user_secrets else None
-)
-SUPABASE_URL = os.getenv("SUPABASE_URL") or (
-    user_secrets.get_secret("SUPABASE_URL") if user_secrets else None
-)
-SUPABASE_KEY = os.getenv("SUPABASE_KEY") or (
-    user_secrets.get_secret("SUPABASE_KEY") if user_secrets else None
 )
 GH_TOKEN = os.getenv("GH_TOKEN") or (
     user_secrets.get_secret("GH_TOKEN") if user_secrets else None
@@ -105,11 +114,12 @@ REPO_PATH = (
     else "/tmp/sovereign_repo_sync"
 )
 
-# --- 🔱 GEMINI CONFIGURATION ---
+# --- 🔱 GEMINI CONFIGURATION (Updated to google-genai) ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or (
     user_secrets.get_secret("GEMINI_API_KEY") if user_secrets else None
 )
 gemini_client = None
+
 if GEMINI_API_KEY:
     try:
         gemini_client = genai.Client(api_key=GEMINI_API_KEY)
@@ -117,7 +127,6 @@ if GEMINI_API_KEY:
     except Exception as e:
         print(f"⚠️ [GEMINI]: Initialization failed: {e}")
 else:
-    gemini_model = None
     print("⚠️ [GEMINI]: API Key missing.")
 
 # --- 🔱 FIREBASE INITIALIZATION ---
@@ -197,7 +206,7 @@ class Brain:
             self.svm.fit(X_scaled, y)
             self.is_trained = True
             self.homeostasis += 5.0
-        except Exception as e:
+        except:
             self.entropy += 2.0
 
     def execute_natural_absorption(
@@ -214,16 +223,6 @@ class Brain:
             self.memory * (self.qt45_growth_factor + factor), 0.0, 1.0
         )
         self.entropy = max(0.01, self.entropy - factor)
-
-    def generate_synthetic_output(self, length=100):
-        if not self.memory_vault:
-            return "NO_DATA"
-        base_seq = random.choice(list(self.memory_vault.values()))["seq"]
-        output = list(base_seq[:length])
-        for i in range(len(output)):
-            if random.random() > 0.95:
-                output[i] = random.choice("ACGT")
-        return "".join(output)
 
 
 brain = Brain()
@@ -260,10 +259,15 @@ def query_groq_api(prompt):
 
 def get_gemini_wisdom(prompt_text):
     try:
-        if not gemini_model:
+        if not gemini_client:
             return None
-        return gemini_model.generate_content(prompt_text).text
-    except:
+        # Updated for google-genai SDK
+        response = gemini_client.models.generate_content(
+            model="gemini-2.0-flash", contents=prompt_text
+        )
+        return response.text
+    except Exception as e:
+        print(f"Gemini Error: {e}")
         return None
 
 
