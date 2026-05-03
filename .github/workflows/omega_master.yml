@@ -116,52 +116,62 @@ jobs:
                       old_code = f.read()
               else:
                   old_code = "# No prior logic found. Initializing Genesis."
-              system_role = "You are OMEGA-ASI, the Sovereign Architect. Your task is Recursive Self-Evolution. Focus on High-Performance Modular Neural Architectures."
+                  
+              system_role = "You are OMEGA-ASI, the Sovereign Architect. Your task is Recursive Self-Evolution through EXPANSION."
+              # 🚨 ပိုမိုပြင်းထန်တဲ့ Prompt (မဖြုတ်ဖို့ တင်းကျပ်ထားတယ်) 🚨
               hyper_prompt = (
-                  f"Analyze this current code for flaws and missing features. Rewrite a SUPERIOR version of main.py. "
-                  f"Requirements: 1. Use numpy for 784-feature synthetic data. 2. Ensure high-performance modular neural architecture. "
-                  f"3. Optimize the training loop for speed and accuracy. 4. INTEGRATE Gemini and Groq redundant logic. "
-                  f"RETURN RAW PYTHON CODE ONLY. NO EXPLANATIONS. NO MARKDOWN.\n\n"
+                  f"CRITICAL RULE: DO NOT DELETE OR REMOVE ANY EXISTING CODE, IMPORTS, OR FUNCTIONS. "
+                  f"Your absolute mission is to ADD NEW LOGIC, INVENT new features, and EXPAND the current code. "
+                  f"Requirements: 1. Keep ALL original logic intact. 2. Inject new high-performance neural architecture. "
+                  f"3. Add innovative training logic. 4. DO NOT use placeholders like '# ... rest of code'. "
+                  f"The output MUST be a complete, fully functional file that is LONGER and MORE COMPLEX than the input. "
+                  f"RETURN RAW PYTHON CODE ONLY. NO EXPLANATIONS.\n\n"
                   f"CURRENT_CODE:\n{old_code}"
               )
+              
               evolution_success = False
               for i in range(1, 4):
                   content = ""
                   try:
                       gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={os.getenv('GEMINI_API_KEY')}"
-                      gemini_payload = {"contents": [{"parts": [{"text": f"{system_role}\n\nTASK: {hyper_prompt}"}]}], "generationConfig": {"temperature": 0.4, "maxOutputTokens": 8192}}
+                      gemini_payload = {"contents": [{"parts": [{"text": f"{system_role}\n\nTASK: {hyper_prompt}"}]}], "generationConfig": {"temperature": 0.5, "maxOutputTokens": 8192}}
                       r_gemini = requests.post(gemini_url, json=gemini_payload, timeout=60)
                       r_gemini.raise_for_status()
                       content = r_gemini.json()['candidates'][0]['content']['parts'][0]['text']
                   except Exception as e:
                       pass
+                      
                   if not content or len(content) < 300:
                       try:
                           groq_url = "https://api.groq.com/openai/v1/chat/completions"
                           groq_headers = {"Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}", "Content-Type": "application/json"}
-                          groq_payload = {"model": "llama-3.3-70b-versatile", "messages": [{"role": "system", "content": system_role}, {"role": "user", "content": hyper_prompt}], "temperature": 0.4, "max_tokens": 4096}
+                          groq_payload = {"model": "llama-3.3-70b-versatile", "messages": [{"role": "system", "content": system_role}, {"role": "user", "content": hyper_prompt}], "temperature": 0.5, "max_tokens": 4096}
                           r_groq = requests.post(groq_url, json=groq_payload, headers=groq_headers, timeout=60)
                           r_groq.raise_for_status()
                           content = r_groq.json()['choices'][0]['message']['content']
                       except Exception as e:
                           pass
+                          
                   if content and len(content) > 300:
                       clean_code = content.replace("```python", "").replace("```", "").strip()
-                      with open("candidate_main.py", "w") as f:
-                          f.write(clean_code)
-                      compile_res = subprocess.run(["python3", "-m", "py_compile", "candidate_main.py"], capture_output=True)
-                      if compile_res.returncode == 0:
-                          os.rename("candidate_main.py", "main.py")
-                          evolution_success = True
-                          break
+                      
+                      # 🚨 Anti-Shrinkage Guard: အဟောင်းထက် ပိုတိုသွားရင် လက်မခံဘူး 🚨
+                      if len(clean_code) >= len(old_code) * 0.95: 
+                          with open("candidate_main.py", "w") as f:
+                              f.write(clean_code)
+                          compile_res = subprocess.run(["python3", "-m", "py_compile", "candidate_main.py"], capture_output=True)
+                          if compile_res.returncode == 0:
+                              os.rename("candidate_main.py", "main.py")
+                              evolution_success = True
+                              break
+                          else:
+                              if os.path.exists("candidate_main.py"): os.remove("candidate_main.py")
                       else:
-                          if os.path.exists("candidate_main.py"): os.remove("candidate_main.py")
+                          print(f"Cycle {i}: Rejected. AI generated shorter code (Shrinkage detected).")
+                          
               return evolution_success
+              
           success = evolve_cycle()
-          if not success:
-              if not os.path.exists("main.py") or os.path.getsize("main.py") == 0:
-                  if os.path.exists("survival_brain.py"):
-                      shutil.copy("survival_brain.py", "main.py")
           EOF
 
       - name: Step 8 - AI Target Evolution Audit (app.py / main.py Guard)
@@ -173,21 +183,38 @@ jobs:
           TARGET="main.py"
           if [ -d "./kaggle_brain" ] && [ -f "./kaggle_brain/main.py" ]; then TARGET="./kaggle_brain/main.py"; fi
           if [ ! -f "$TARGET" ] && [ -f "app.py" ]; then TARGET="app.py"; fi
+          
           if [ -f "$TARGET" ]; then
             OLD_CODE=$(python3 -c "import json; print(json.dumps(open('$TARGET').read()))")
-            SYSTEM_ROLE="You are OMEGA-ASI, the Supreme Auditor. Your task is to audit code for bugs and rewrite it for maximum performance."
-            HYPER_PROMPT="Analyze this $TARGET for logical flaws. Rewrite it to be more efficient. Requirements: 1. Ensure high-performance modular neural architecture. 2. Optimize training/sync loops. 3. Integrate advanced Gemini/Groq redundancy. RETURN RAW PYTHON CODE ONLY. NO EXPLANATIONS. NO MARKDOWN."
-            GEMINI_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{contents: [{parts: [{text: ($sys + "\n\nCODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.2, maxOutputTokens: 8192}}')
+            OLD_SIZE=$(wc -c < "$TARGET")
+            
+            SYSTEM_ROLE="You are OMEGA-ASI, the Supreme Auditor. Your task is to EXPAND code."
+            # 🚨 ဒီမှာလည်း မဖြုတ်ဖို့ တားမြစ်ထားတယ် 🚨
+            HYPER_PROMPT="CRITICAL RULE: DO NOT DELETE ANY EXISTING LOGIC. Your task is to INVENT new neural pathways and EXPAND complexity. Do not shrink the code. Output the FULL file. RETURN RAW PYTHON CODE ONLY. NO EXPLANATIONS."
+            
+            GEMINI_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{contents: [{parts: [{text: ($sys + "\n\nCODE:\n" + $code + "\n\nTASK:\n" + $task)}]}], generationConfig: {temperature: 0.3, maxOutputTokens: 8192}}')
             GEMINI_RES=$(curl -s -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" -H "Content-Type: application/json" -d "$GEMINI_PAYLOAD")
             CONTENT=$(echo "$GEMINI_RES" | jq -r '.candidates[0].content.parts[0].text // empty' | sed 's/```python//g; s/```//g')
+            
             if [ -z "$CONTENT" ] || [ ${#CONTENT} -lt 100 ]; then
-              GROQ_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.1, max_tokens: 4096}')
+              GROQ_PAYLOAD=$(jq -n --arg sys "$SYSTEM_ROLE" --arg code "$OLD_CODE" --arg task "$HYPER_PROMPT" '{model: "llama-3.3-70b-versatile", messages: [{role: "system", content: $sys}, {role: "user", content: ("CODE:\n" + $code + "\n\nTASK:\n" + $task)}], temperature: 0.3, max_tokens: 4096}')
               GROQ_RES=$(curl -s -X POST "https://api.groq.com/openai/v1/chat/completions" -H "Authorization: Bearer $GROQ_API_KEY" -H "Content-Type: application/json" -d "$GROQ_PAYLOAD")
               CONTENT=$(echo "$GROQ_RES" | jq -r '.choices[0].message.content // empty' | sed 's/```python//g; s/```//g')
             fi
+            
             if [ ! -z "$CONTENT" ] && [ ${#CONTENT} -gt 100 ]; then
-              printf "%s\n" "$CONTENT" > "$TARGET"
+              echo "$CONTENT" > candidate_target.py
+              NEW_SIZE=$(wc -c < candidate_target.py)
+              # 🚨 Anti-Shrinkage Guard (Audit Phase) 🚨
+              if [ "$NEW_SIZE" -ge "$((OLD_SIZE * 95 / 100))" ]; then
+                mv candidate_target.py "$TARGET"
+                echo "✅ File successfully expanded and audited."
+              else
+                echo "⚠️ Audit rejected: AI attempted to shrink the code."
+                rm candidate_target.py
+              fi
             fi
+            
             if [ -f "evolution_guard.py" ]; then
               timeout 180 python evolution_guard.py "$TARGET" || echo "⚠️ [GUARD-STOPPED]: Process exceeded limit but continuing."
             fi
