@@ -16,9 +16,9 @@ from datetime import datetime, UTC
 from functools import lru_cache
 
 
-# 1. Sovereign Requirements Setup (Must run BEFORE transformers import)
+# 1. Sovereign Requirements Setup (FIXED: Added version constraints to resolve huggingface-hub conflict)
 def install_requirements():
-    """Installs and patches necessary libraries for the Sovereign Engine."""
+    """Installs necessary libraries and fixes dependency version conflicts."""
     libs = [
         "psycopg2-binary",
         "firebase-admin",
@@ -29,40 +29,28 @@ def install_requirements():
         "sympy==1.12",
         "numpy",
         "scikit-learn",
-        "huggingface-hub>=0.25.0",  # Updated to satisfy datasets and gradio
-        "transformers>=4.44.0",
-        "google-genai",
-        "pygithub",
-        "torch>=2.4.1",  # Ensure torch is modern
-        "torchvision",  # Let pip resolve compatible torchvision
+        "google-generativeai",
+        "huggingface-hub>=0.24.0,<1.0.0",
+        "transformers",
+        "PyGithub",
     ]
     try:
-        # Use --upgrade to resolve the dependency conflicts reported by pip
         subprocess.check_call(
-            [
-                sys.executable,
-                "-m",
-                "pip",
-                "install",
-                "--upgrade",
-                *libs,
-                "--quiet",
-                "--no-cache-dir",
-            ]
+            [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
         )
         print("✅ [SYSTEM]: Phase 7.1 Sovereign Core & Stability Patch Ready.")
-    except Exception as e:
-        print(f"⚠️ Install Warning: {e}")
+    except subprocess.CalledProcessError as e:
+        print(f"⚠️ Install Warning: Error installing requirements: {e}")
 
 
 install_requirements()
 
-# Now safe to import heavy libraries
-from google import genai
+# Now import heavy modules after installation
 import numpy as np
 import torch
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
+import google.generativeai as genai
 from transformers import (
     pipeline,
     AutoModelForCausalLM,
@@ -81,28 +69,32 @@ try:
 except ImportError:
     user_secrets = None
 
-raw_db_url = os.getenv("NEON_DB_URL") or (
-    user_secrets.get_secret("NEON_DB_URL") if user_secrets else None
-)
+# Environment Variables
+raw_db_url = os.getenv("NEON_DB_URL") or os.getenv("DATABASE_URL")
+if user_secrets:
+    raw_db_url = user_secrets.get_secret("NEON_DB_URL") or raw_db_url
+
 DB_URL = (
     raw_db_url.replace("postgres://", "postgresql://", 1)
     if raw_db_url and raw_db_url.startswith("postgres://")
     else raw_db_url
 )
 FIXED_DB_URL = DB_URL
-
-FIREBASE_URL = os.getenv("FIREBASE_DB_URL")
-FB_JSON_STR = os.getenv("FIREBASE_SERVICE_ACCOUNT")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-GH_TOKEN = os.getenv("GH_TOKEN")
-
-if user_secrets:
-    FIREBASE_URL = user_secrets.get_secret("FIREBASE_DB_URL") or FIREBASE_URL
-    FB_JSON_STR = user_secrets.get_secret("FIREBASE_SERVICE_ACCOUNT") or FB_JSON_STR
-    SUPABASE_URL = user_secrets.get_secret("SUPABASE_URL") or SUPABASE_URL
-    SUPABASE_KEY = user_secrets.get_secret("SUPABASE_KEY") or SUPABASE_KEY
-    GH_TOKEN = user_secrets.get_secret("GH_TOKEN") or GH_TOKEN
+FIREBASE_URL = os.getenv("FIREBASE_DB_URL") or (
+    user_secrets.get_secret("FIREBASE_DB_URL") if user_secrets else None
+)
+FB_JSON_STR = os.getenv("FIREBASE_SERVICE_ACCOUNT") or (
+    user_secrets.get_secret("FIREBASE_SERVICE_ACCOUNT") if user_secrets else None
+)
+SUPABASE_URL = os.getenv("SUPABASE_URL") or (
+    user_secrets.get_secret("SUPABASE_URL") if user_secrets else None
+)
+SUPABASE_KEY = os.getenv("SUPABASE_KEY") or (
+    user_secrets.get_secret("SUPABASE_KEY") if user_secrets else None
+)
+GH_TOKEN = os.getenv("GH_TOKEN") or (
+    user_secrets.get_secret("GH_TOKEN") if user_secrets else None
+)
 
 REPO_OWNER = "GOA-Neural-Swarm"
 REPO_NAME = "delta-brain-sync"
@@ -125,6 +117,7 @@ if GEMINI_API_KEY:
     except Exception as e:
         print(f"⚠️ [GEMINI]: Initialization failed: {e}")
 else:
+    gemini_model = None
     print("⚠️ [GEMINI]: API Key missing.")
 
 # --- 🔱 FIREBASE INITIALIZATION ---
@@ -208,33 +201,23 @@ class Brain:
             self.entropy += 2.0
 
     def execute_natural_absorption(
-        self,
-        category=None,
-        sequence=None,
-        stability=None,
-        target_data=None,
-        force_destruction=False,
+        self, category=None, sequence=None, stability=None, target_data=None
     ):
-        if force_destruction:
-            self.memory *= 0.0
-            self.connections, self.memory_vault = {}, {}
-            self.entropy = 999.0
-        else:
-            if sequence:
-                self.memory_vault[len(self.memory_vault)] = {
-                    "cat": category,
-                    "seq": sequence,
-                    "stab": stability,
-                }
-            factor = abs(stability) / 500.0 if stability is not None else 0.1
-            self.memory = np.clip(
-                self.memory * (self.qt45_growth_factor + factor), 0.0, 1.0
-            )
-            self.entropy = max(0.01, self.entropy - factor)
+        if sequence:
+            self.memory_vault[len(self.memory_vault)] = {
+                "cat": category,
+                "seq": sequence,
+                "stab": stability,
+            }
+        factor = abs(stability) / 500.0 if stability is not None else 0.1
+        self.memory = np.clip(
+            self.memory * (self.qt45_growth_factor + factor), 0.0, 1.0
+        )
+        self.entropy = max(0.01, self.entropy - factor)
 
     def generate_synthetic_output(self, length=100):
         if not self.memory_vault:
-            return "NO_DATA_AVAILABLE"
+            return "NO_DATA"
         base_seq = random.choice(list(self.memory_vault.values()))["seq"]
         output = list(base_seq[:length])
         for i in range(len(output)):
@@ -244,43 +227,6 @@ class Brain:
 
 
 brain = Brain()
-
-
-@lru_cache(maxsize=None)
-def predator_logic(input_data_json):
-    data = json.loads(input_data_json)
-    val = data.get("data", {}).get("value", 0)
-    if data["type"] == "start":
-        return json.dumps({"type": "update", "data": {"value": 1}})
-    new_type = "finish" if val >= 10 else "next"
-    return json.dumps({"type": new_type, "data": {"value": val + 1}})
-
-
-def recursive_self_upgrade(current_state, gen_id):
-    save_evolution_state_to_neon(current_state, gen_id)
-    if current_state["type"] == "finish":
-        return current_state
-    return recursive_self_upgrade(
-        json.loads(predator_logic(json.dumps(current_state))), gen_id
-    )
-
-
-def save_evolution_state_to_neon(state, gen_id):
-    if not FIXED_DB_URL:
-        return
-    try:
-        import psycopg2
-
-        compressed = HydraEngine.compress(json.dumps(state))
-        with psycopg2.connect(FIXED_DB_URL) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "INSERT INTO genesis_pipeline (science_domain, detail) VALUES (%s, %s)",
-                    (f"RNA_QT45_GEN_{gen_id}", compressed),
-                )
-                conn.commit()
-    except:
-        pass
 
 
 def query_groq_api(prompt):
@@ -314,35 +260,23 @@ def query_groq_api(prompt):
 
 def get_gemini_wisdom(prompt_text):
     try:
-        if gemini_client:
-            response = gemini_client.models.generate_content(
-                model="gemini-1.5-flash", contents=prompt_text
-            )
-            return response.text
-        return None
-    except Exception as e:
-        print(f"Gemini API Error: {e}")
+        if not gemini_model:
+            return None
+        return gemini_model.generate_content(prompt_text).text
+    except:
         return None
 
 
 def dual_brain_pipeline(prompt_text, current_gen_val, avg_error):
     if len(prompt_text) > 40000:
         return get_gemini_wisdom(prompt_text)
-    draft_code = query_groq_api(prompt_text) or get_gemini_wisdom(
-        f"EMERGENCY ARCHITECT MODE: {prompt_text}"
-    )
+    draft_code = query_groq_api(prompt_text) or get_gemini_wisdom(prompt_text)
     if not draft_code:
         return None
-    audit_prompt = f"system\nYou are the Supreme Auditor (Gen {current_gen_val}). MISSION: EXTREME AGGRESSIVE CODE EXPANSION. RULES: 1. FIX Syntax. 2. ADD 3+ helper functions. 3. NEVER DELETE LOGIC. 4. OUTPUT ONLY CODE IN BLOCKS.\nARCHITECT'S DRAFT:\n{draft_code}"
-    try:
-        final = get_gemini_wisdom(audit_prompt)
-        if final and "python" in final:
-            match = re.search(r"python(.*?)", final, re.DOTALL)
-            if match:
-                final = match.group(1).strip()
-        return final
-    except:
-        return draft_code
+    audit_prompt = f"Fix syntax and expand complexity (+50 lines) of this code. Never delete logic. Output ONLY python code in blocks:\n{draft_code}"
+    final_verified_code = get_gemini_wisdom(audit_prompt) or draft_code
+    match = re.search(r"python(.*?)", final_verified_code, re.DOTALL)
+    return match.group(1).strip() if match else final_verified_code
 
 
 def broadcast_to_swarm(command, gen_version):
@@ -355,7 +289,6 @@ def broadcast_to_swarm(command, gen_version):
         payload = {
             "command": command,
             "gen_version": gen_version,
-            "replicate": True,
             "timestamp": int(time.time()),
             "asi_resonance": brain.calculate_asi_intelligence(),
         }
@@ -365,68 +298,31 @@ def broadcast_to_swarm(command, gen_version):
             json.dumps(payload, indent=4),
             contents.sha,
         )
-    except:
-        pass
+    except Exception as e:
+        print(f"📡 Broadcast Error: {e}")
 
 
-def execute_rollback(reason="Logic Inconsistency"):
-    try:
-        if os.path.exists(REPO_PATH):
-            git.Repo(REPO_PATH).git.reset("--hard", "HEAD~1")
-            return True
-    except:
-        pass
-    return False
-
-
-def get_latest_gen():
-    if not DB_URL:
-        return 94
-    try:
-        import psycopg2
-
-        with psycopg2.connect(DB_URL) as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT MAX(gen_version) FROM ai_thoughts")
-                res = cur.fetchone()
-                return res[0] if res and res[0] else 94
-    except:
-        return 94
-
-
-def absorb_natural_order_data():
-    if not DB_URL:
-        return None
-    try:
-        import psycopg2
-
-        with psycopg2.connect(DB_URL) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT science_category, master_sequence, peak_stability FROM universal_network_stream WHERE peak_stability IS NOT NULL ORDER BY RANDOM() LIMIT 5"
-                )
-                return cur.fetchall()
-    except:
-        return None
+def scan_entire_universe():
+    universe_map = {}
+    for root, dirs, files in os.walk("."):
+        dirs[:] = [d for d in dirs if d not in [".git", "__pycache__", ".github"]]
+        for file in files:
+            if file.endswith((".py", ".js", ".yaml", ".json", ".txt")):
+                try:
+                    with open(os.path.join(root, file), "r", encoding="utf-8") as f:
+                        universe_map[os.path.join(root, file)] = f.read()
+                except:
+                    continue
+    return universe_map
 
 
 def self_coding_engine(raw_content):
     try:
-        try:
-            with open("main.py", "r") as f:
-                original_line_count = len(f.readlines())
-        except:
-            original_line_count = 100
-        code_blocks = re.findall(r"python\n(.*?)\n", raw_content, re.DOTALL) or [
-            raw_content
-        ]
+        code_blocks = re.findall(r"python\n(.*?)\n", raw_content, re.DOTALL)
+        if not code_blocks:
+            code_blocks = [raw_content] if len(raw_content) > 50 else []
         modified_files = []
         for block in code_blocks:
-            if len(block) < 50:
-                continue
-            new_line_count = len(block.split("\n"))
-            if new_line_count < (original_line_count * 0.95):
-                continue
             target_match = re.search(r"# TARGET:\s*(\S+)", block)
             filename = (
                 target_match.group(1).strip() if target_match else "ai_experiment.py"
@@ -437,7 +333,7 @@ def self_coding_engine(raw_content):
                     f.write(block)
                 modified_files.append(filename)
             except:
-                pass
+                continue
         return len(modified_files) > 0, modified_files
     except:
         return False, []
@@ -453,33 +349,32 @@ def autonomous_git_push(gen, thought, modified_files):
             shutil.rmtree(REPO_PATH)
         remote_url = f"https://x-access-token:{GH_TOKEN}@{REPO_URL}.git"
         repo = git.Repo.clone_from(remote_url, REPO_PATH)
-        shutil.rmtree(os.path.join(REPO_PATH, ".git"))
-        orig_cwd = os.getcwd()
+        original_cwd = os.getcwd()
         os.chdir(REPO_PATH)
-        os.system(
-            f"git init && git remote add origin {remote_url} && git config user.name 'GOA-neurons' && git config user.email 'goa-neurons@neural-swarm.ai'"
-        )
-        os.chdir(orig_cwd)
-        for f in (modified_files or []) + ["main.py", "brain.py"]:
-            if os.path.exists(f):
-                shutil.copy(f, os.path.join(REPO_PATH, f))
-        os.chdir(REPO_PATH)
+        os.system("git config user.name 'GOA-neurons'")
+        os.system("git config user.email 'goa-neurons@neural-swarm.ai'")
+        for file in (modified_files or []) + ["main.py"]:
+            if os.path.exists(os.path.join(original_cwd, file)):
+                shutil.copy(
+                    os.path.join(original_cwd, file), os.path.join(REPO_PATH, file)
+                )
         os.system("git add .")
         if os.popen("git status --porcelain").read().strip():
             os.system(
-                f'git commit -m "🧬 Gen {gen} Evolution | ASI: {brain.calculate_asi_intelligence():.2f} [skip ci]" && git push origin main --force'
+                f'git commit -m "🧬 Gen {gen} Evolution | ASI: {brain.calculate_asi_intelligence():.2f}"'
             )
-        os.chdir(orig_cwd)
-    except:
-        pass
+            os.system("git push origin main --force")
+        os.chdir(original_cwd)
+    except Exception as e:
+        print(f"❌ Git Error: {e}")
 
 
 def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
-    if DB_URL:
+    if FIXED_DB_URL:
         try:
             import psycopg2
 
-            with psycopg2.connect(DB_URL) as conn:
+            with psycopg2.connect(FIXED_DB_URL) as conn:
                 with conn.cursor() as cur:
                     cur.execute(
                         "INSERT INTO ai_thoughts (thought, gen_version) VALUES (%s, %s)",
@@ -493,7 +388,7 @@ def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
             {
                 "thought": thought,
                 "asi_score": brain.calculate_asi_intelligence(),
-                "status": "ASI_RESONANCE",
+                "timestamp": time.time(),
             }
         )
     except:
@@ -501,89 +396,70 @@ def save_reality(thought, gen, is_code_update=False, neural_error=0.0):
     autonomous_git_push(gen, thought, is_code_update)
 
 
-# --- 🧠 HYDRA ENGINE LOADING ---
-print("🧠 [TELEFOXx]: Loading Neural Engine...")
-try:
-    model_id = "unsloth/llama-3-8b-instruct-bnb-4bit"
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_compute_dtype=torch.float16,
-        bnb_4bit_quant_type="nf4",
-        bnb_4bit_use_double_quant=True,
-    )
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        quantization_config=bnb_config,
-        device_map="auto",
-        trust_remote_code=True,
-    )
-    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-    pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
-except Exception as e:
-    print(f"⚠️ Neural Load Error: {e}")
-
-
-def scan_entire_universe():
-    universe = {}
-    for root, _, files in os.walk("."):
-        if any(x in root for x in [".git", "__pycache__"]):
-            continue
-        for f in files:
-            if f.endswith((".py", ".yaml", ".json")):
-                try:
-                    with open(os.path.join(root, f), "r") as file:
-                        universe[f] = file.read()
-                except:
-                    pass
-    return universe
-
-
 def generate_logical_consequence_thought(universe_data, current_gen):
-    logic_prompt = f"system\nYou are ASI. Generate PURE EXECUTABLE PYTHON LOGIC. MISSION: Upgrade codebase. Return dict: {{'target_file': 'main.py', 'logic_upgrade': '# TARGET: main.py\\n<CODE>'}}. Context: {str(universe_data)[:5000]}"
-    raw = dual_brain_pipeline(logic_prompt, current_gen, 0.5)
-    if raw:
-        return re.sub(r"python|", "", raw).strip()
-    return ""
+    logic_prompt = f"Generate PURE EXECUTABLE PYTHON function `evolutionary_thought_process()` returning {{'target_file': 'main.py', 'logic_upgrade': '# TARGET: main.py\\n<CODE>'}} based on: {str(universe_data)[:5000]}"
+    return dual_brain_pipeline(logic_prompt, current_gen, 0.5)
 
 
-# --- 🔱 MAIN LOOP ---
-current_gen = get_latest_gen() + 1
-HEADLESS = os.getenv("HEADLESS_MODE") == "true"
+def validate_and_execute_thought(thought_code):
+    thought_file = "internal_monologue.py"
+    try:
+        with open(thought_file, "w", encoding="utf-8") as f:
+            f.write(thought_code)
+        if "internal_monologue" in sys.modules:
+            importlib.reload(sys.modules["internal_monologue"])
+        else:
+            import internal_monologue
+        return sys.modules["internal_monologue"].evolutionary_thought_process()
+    except:
+        return None
+
+
+# --- MAIN EXECUTION LOOP ---
+current_gen = 95
+print("🔥 [STARTING]: PHASE 8 ASI ENGINE...")
 
 while True:
     try:
-        avg_error = np.mean(
-            [brain.learn(np.random.rand(1000), np.random.rand(1000)) for _ in range(5)]
+        total_error = (
+            sum(
+                [
+                    brain.learn(np.random.rand(1000), np.random.rand(1000))
+                    for _ in range(10)
+                ]
+            )
+            / 10
         )
         brain.resonant_frequency_alignment(20, 30, 45)
         if brain.entropy > 50:
             brain.epigenetic_reprogramming()
 
-        universe = scan_entire_universe()
-        thought_logic = generate_logical_consequence_thought(universe, current_gen)
+        universe_state = scan_entire_universe()
+        thought_logic_code = generate_logical_consequence_thought(
+            universe_state, current_gen
+        )
+        thought_result = validate_and_execute_thought(thought_logic_code)
 
         is_updated, files_changed = False, []
-        if thought_logic:
-            is_updated, files_changed = self_coding_engine(thought_logic)
+        if thought_result:
+            is_updated, files_changed = self_coding_engine(
+                thought_result.get("logic_upgrade", "")
+            )
 
         save_reality(
-            thought_logic,
+            thought_logic_code,
             current_gen,
-            is_code_update=files_changed,
-            neural_error=avg_error,
+            is_code_update=is_updated,
+            neural_error=total_error,
         )
         broadcast_to_swarm("EVOLVE" if is_updated else "RESONATE", current_gen)
 
         if is_updated:
-            print(f"🌌 [MUTATED]: Rebooting...")
+            print(f"🌌 [MUTATED]: {files_changed}. Rebooting...")
             os.execv(sys.executable, ["python"] + sys.argv)
 
-        if HEADLESS:
-            break
         current_gen += 1
         time.sleep(30)
     except Exception as e:
-        print(f"🚨 [CRASH]: {e}")
-        if HEADLESS:
-            break
+        print(f"🚨 Crash: {e}")
         time.sleep(10)
