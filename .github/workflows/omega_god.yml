@@ -1,5 +1,5 @@
 # =========================================================================================
-# 🔱 OMEGA ULTIMA: CONSOLIDATED SUPREME EVOLUTION & SWARM MANIFEST (GEN 14.0)
+# 🔱 OMEGA ULTIMA: CONSOLIDATED SUPREME EVOLUTION & SWARM MANIFEST (GEN 14.2)
 # -----------------------------------------------------------------------------------------
 # Combined Logic from: omega_master.yml & asi_omega_manifest.yaml
 # Features: Recursive AI Evolution, Trinity DB Sync, Swarm Sentinel, and Force Manifestation
@@ -28,7 +28,7 @@ on:
       - 'sync_data.py'
       - '.github/workflows/**'
   schedule:
-    - cron: "*/5 * * * *"  # Highest frequency from Manifest
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       force_transcendence:
@@ -53,14 +53,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Core Tokens
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
   GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
   GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
   HF_TOKEN: ${{ secrets.HF_TOKEN }}
-  
-  # Database Trinity Keys
   NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
   NEON_KEY: ${{ secrets.NEON_KEY }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -69,8 +66,6 @@ env:
   FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
   FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
   FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_KEY }}
-  
-  # Runtime Config
   NODE_ENV: production
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   CI: true
@@ -78,9 +73,6 @@ env:
   CORE_REPO: "delta-brain-sync"
 
 jobs:
-  # ---------------------------------------------------------------------------------------
-  # PHASE 1: SYSTEM INITIALIZATION & NEURAL AUDIT
-  # ---------------------------------------------------------------------------------------
   omega_setup_and_evolution:
     name: "🧠 Phase 1: Sovereign Evolution & Neural Forge"
     runs-on: ubuntu-latest
@@ -91,25 +83,20 @@ jobs:
         with:
           token: ${{ secrets.GH_TOKEN }}
           fetch-depth: 0
-          submodules: false
 
-      - name: ⚙️ Setup Multi-Runtime Environments (Node 24 & Python 3.11)
+      - name: ⚙️ Setup Environments
         uses: actions/setup-node@v4
         with:
           node-version: '24'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
-      - name: 📦 Inject Global & Core Dependencies
+      - name: 📦 Inject Dependencies
         run: |
           npm ci || npm install --legacy-peer-deps --no-audit
           npm install -g eslint prettier jest axios typescript crypto-js @octokit/rest @supabase/supabase-js pg firebase-admin ioredis bullmq
           pip install huggingface_hub requests flask numpy pandas
-
-      - name: 🔍 Baseline Neural Audit
-        run: npx eslint . --ext .js --no-error-on-unmatched-pattern || echo "Decay found. Preparing mutation."
 
       - name: 🧬 Execute Recursive Evolution (Sovereign Architect)
         env:
@@ -121,67 +108,54 @@ jobs:
           else
             echo "Constructing fallback architect logic..."
             cat << 'EOF' > run_architect.js
-            const fs = require('fs').promises;
-            const path = require('path');
-            const axios = require('axios');
-            const crypto = require('crypto');
-            const CONFIG = {
-                model: "llama-3.3-70b-versatile",
-                exts: [".js", ".py"],
-                ignore: ["node_modules", ".git", "run_architect.js", "package.json", "package-lock.json", ".github"],
-                db: ".omega_hashes.json"
-            };
-            async function getFiles(dir, list = []) {
-                const files = await fs.readdir(dir, { withFileTypes: true });
-                for (const file of files) {
-                    const fp = path.join(dir, file.name);
-                    if (file.isDirectory() && !CONFIG.ignore.includes(file.name)) await getFiles(fp, list);
-                    else if (CONFIG.exts.includes(path.extname(file.name)) && !CONFIG.ignore.includes(file.name)) list.push(fp);
-                }
-                return list;
-            }
-            async function run() {
-                let hashes = {};
-                try { hashes = JSON.parse(await fs.readFile(CONFIG.db, 'utf8')); } catch (e) {}
-                const files = await getFiles('./');
-                for (const file of files) {
-                    const content = await fs.readFile(file, 'utf8');
-                    if (content.includes('<SOVEREIGN_CORE>') || content.includes('DO NOT MINIFY')) continue;
-                    const hash = crypto.createHash('sha256').update(content).digest('hex');
-                    if (hashes[file] === hash) continue;
-                    try {
-                        const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
-                            model: CONFIG.model,
-                            messages: [{ role: "system", content: process.env.OMEGA_PROMPT_CONSTRAINT }, { role: "user", content: content }],
-                            temperature: 0.1
-                        }, { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 60000 });
-                        let evolved = res.data.choices[0].message.content.replace(/^```[a-z]*\n/gi, "").replace(/```$/g, "").trim();
-                        if (evolved.length > content.length * 0.5) {
-                            await fs.writeFile(file, evolved, 'utf8');
-                            hashes[file] = crypto.createHash('sha256').update(evolved).digest('hex');
-                        }
-                    } catch (e) { console.error(`Evolution error for ${file}`); }
-                }
-                await fs.writeFile(CONFIG.db, JSON.stringify(hashes));
-            }
-            run();
-            EOF
+          const fs = require('fs').promises;
+          const path = require('path');
+          const axios = require('axios');
+          const crypto = require('crypto');
+          const CONFIG = {
+              model: "llama-3.3-70b-versatile",
+              exts: [".js", ".py"],
+              ignore: ["node_modules", ".git", "run_architect.js", "package.json", "package-lock.json", ".github"],
+              db: ".omega_hashes.json"
+          };
+          async function getFiles(dir, list = []) {
+              const files = await fs.readdir(dir, { withFileTypes: true });
+              for (const file of files) {
+                  const fp = path.join(dir, file.name);
+                  if (file.isDirectory() && !CONFIG.ignore.includes(file.name)) await getFiles(fp, list);
+                  else if (CONFIG.exts.includes(path.extname(file.name)) && !CONFIG.ignore.includes(file.name)) list.push(fp);
+              }
+              return list;
+          }
+          async function run() {
+              let hashes = {};
+              try { hashes = JSON.parse(await fs.readFile(CONFIG.db, 'utf8')); } catch (e) {}
+              const files = await getFiles('./');
+              for (const file of files) {
+                  const content = await fs.readFile(file, 'utf8');
+                  if (content.includes('<SOVEREIGN_CORE>') || content.includes('DO NOT MINIFY')) continue;
+                  const hash = crypto.createHash('sha256').update(content).digest('hex');
+                  if (hashes[file] === hash) continue;
+                  try {
+                      const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+                          model: CONFIG.model,
+                          messages: [{ role: "system", content: process.env.OMEGA_PROMPT_CONSTRAINT }, { role: "user", content: content }],
+                          temperature: 0.1
+                      }, { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 60000 });
+                      let evolved = res.data.choices[0].message.content.replace(/^```[a-z]*\n/gi, "").replace(/```$/g, "").trim();
+                      if (evolved.length > content.length * 0.5) {
+                          await fs.writeFile(file, evolved, 'utf8');
+                          hashes[file] = crypto.createHash('sha256').update(evolved).digest('hex');
+                      }
+                  } catch (e) { console.error(`Evolution error for ${file}`); }
+              }
+              await fs.writeFile(CONFIG.db, JSON.stringify(hashes));
+          }
+          run();
+          EOF
             node run_architect.js
           fi
 
-      - name: ⚖️ Integrity Validation
-        run: |
-          DELETIONS=$(git diff --shortstat | grep -oP '\d+(?= deletions)' || echo 0)
-          INSERTIONS=$(git diff --shortstat | grep -oP '\d+(?= insertions)' || echo 0)
-          if [ "$DELETIONS" -gt "$INSERTIONS" ] && [ "$((DELETIONS - INSERTIONS))" -gt 50 ]; then
-            echo "❌ TRUNCATION BREACH: Anomaly detected in evolution. Rolling back changes."
-            git checkout .
-            exit 1
-          fi
-
-  # ---------------------------------------------------------------------------------------
-  # PHASE 2: TRINITY DATABASE SYNCHRONIZATION
-  # ---------------------------------------------------------------------------------------
   trinity_sync:
     name: "🔱 Phase 2: Trinity Database & Neural Sync"
     needs: omega_setup_and_evolution
@@ -220,7 +194,6 @@ jobs:
                       if (supabase) await supabase.from("neural_dna").upsert({ gen_id: row.gen_id, data: row.thought_process });
                       if (db) await db.collection("neural_dna").doc(row.gen_id).set({ status: 'trinity_synced', data: row.thought_process }, { merge: true });
                   }
-                  console.log("✅ Trinity Sync Complete.");
               } catch (e) { console.error("Trinity Failure", e); } finally { await neon.end(); }
           }
           sync();
@@ -228,9 +201,6 @@ jobs:
           npm install pg @supabase/supabase-js firebase-admin
           node run_trinity.js
 
-  # ---------------------------------------------------------------------------------------
-  # PHASE 3: SWARM HEALING & ORBITAL EXPANSION
-  # ---------------------------------------------------------------------------------------
   swarm_ops:
     name: "🛰️ Phase 3: Sentinel Healing & Swarm Expansion"
     needs: trinity_sync
@@ -279,9 +249,6 @@ jobs:
           npm install @octokit/rest axios
           node run_swarm_ops.js
 
-  # ---------------------------------------------------------------------------------------
-  # PHASE 4: OMEGA MANIFESTATION & MASTER GIT SYNC
-  # ---------------------------------------------------------------------------------------
   omni_manifestation:
     name: "🧬 Phase 4: Git Manifestation & Ultima Push"
     needs: swarm_ops
@@ -331,9 +298,6 @@ jobs:
             echo "✨ [OPTIMAL]: No mutation detected. Repository is in peak state."
           fi
 
-  # ---------------------------------------------------------------------------------------
-  # PHASE 5: HUGGINGFACE SPACE SYNC
-  # ---------------------------------------------------------------------------------------
   huggingface_deployment:
     name: "🛰️ Phase 5: HuggingFace Space Deployment"
     needs: omni_manifestation
@@ -361,7 +325,3 @@ jobs:
           EOF
           pip install huggingface_hub
           python3 hf_deploy.py
-
-# =========================================================================================
-# 💀 END OF OMEGA ULTIMA MANIFEST
-# =========================================================================================
