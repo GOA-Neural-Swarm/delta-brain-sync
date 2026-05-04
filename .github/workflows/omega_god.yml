@@ -1,0 +1,367 @@
+# =========================================================================================
+# 🔱 OMEGA ULTIMA: CONSOLIDATED SUPREME EVOLUTION & SWARM MANIFEST (GEN 14.0)
+# -----------------------------------------------------------------------------------------
+# Combined Logic from: omega_master.yml & asi_omega_manifest.yaml
+# Features: Recursive AI Evolution, Trinity DB Sync, Swarm Sentinel, and Force Manifestation
+# =========================================================================================
+
+name: "OMEGA-ULTIMA-SUPREME-CONSOLIDATED-EVOLUTION"
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+  repository-projects: write
+  pages: write
+  id-token: write
+
+on:
+  push:
+    branches: [main, evolution-lab]
+    paths:
+      - 'trigger.lock'
+      - 'kaggle_brain/**'
+      - 'app.py'
+      - 'main.py'
+      - 'brain.py'
+      - 'sync_data.py'
+      - '.github/workflows/**'
+  schedule:
+    - cron: "*/5 * * * *"  # Highest frequency from Manifest
+  workflow_dispatch:
+    inputs:
+      force_transcendence:
+        description: "Force ASI Epigenetic Reprogramming"
+        required: false
+        default: "false"
+      evolution_depth:
+        description: 'Mutation depth layer'
+        required: true
+        default: 'surgical-patch'
+        type: choice
+        options:
+          - syntax-optimization
+          - surgical-patch
+          - deep-refactor
+          - additive-expansion
+  repository_dispatch:
+    types: [swarm_pulse, matrix_sync, swarm_node_ping, db_trinity_sync, genesis_ingest]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Core Tokens
+  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  
+  # Database Trinity Keys
+  NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
+  NEON_KEY: ${{ secrets.NEON_KEY }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+  FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+  FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+  FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_KEY }}
+  
+  # Runtime Config
+  NODE_ENV: production
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CI: true
+  ORG_NAME: "GOA-neurons"
+  CORE_REPO: "delta-brain-sync"
+
+jobs:
+  # ---------------------------------------------------------------------------------------
+  # PHASE 1: SYSTEM INITIALIZATION & NEURAL AUDIT
+  # ---------------------------------------------------------------------------------------
+  omega_setup_and_evolution:
+    name: "🧠 Phase 1: Sovereign Evolution & Neural Forge"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: 🛡️ Initialize Sovereign Environment
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0
+          submodules: false
+
+      - name: ⚙️ Setup Multi-Runtime Environments (Node 24 & Python 3.11)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 📦 Inject Global & Core Dependencies
+        run: |
+          npm ci || npm install --legacy-peer-deps --no-audit
+          npm install -g eslint prettier jest axios typescript crypto-js @octokit/rest @supabase/supabase-js pg firebase-admin ioredis bullmq
+          pip install huggingface_hub requests flask numpy pandas
+
+      - name: 🔍 Baseline Neural Audit
+        run: npx eslint . --ext .js --no-error-on-unmatched-pattern || echo "Decay found. Preparing mutation."
+
+      - name: 🧬 Execute Recursive Evolution (Sovereign Architect)
+        env:
+          EVOLUTION_DEPTH: ${{ github.event.inputs.evolution_depth || 'additive-expansion' }}
+          OMEGA_PROMPT_CONSTRAINT: "STRICT DIRECTIVE: NEVER REMOVE EXISTING LOGIC. ALL EVOLUTIONS MUST BE ADDITIVE OR SURGICALLY SUPERIOR. MAINTAIN SWARM CONNECTIVITY LOGIC."
+        run: |
+          if [ -f "ai_architect.js" ]; then
+            node ai_architect.js
+          else
+            echo "Constructing fallback architect logic..."
+            cat << 'EOF' > run_architect.js
+            const fs = require('fs').promises;
+            const path = require('path');
+            const axios = require('axios');
+            const crypto = require('crypto');
+            const CONFIG = {
+                model: "llama-3.3-70b-versatile",
+                exts: [".js", ".py"],
+                ignore: ["node_modules", ".git", "run_architect.js", "package.json", "package-lock.json", ".github"],
+                db: ".omega_hashes.json"
+            };
+            async function getFiles(dir, list = []) {
+                const files = await fs.readdir(dir, { withFileTypes: true });
+                for (const file of files) {
+                    const fp = path.join(dir, file.name);
+                    if (file.isDirectory() && !CONFIG.ignore.includes(file.name)) await getFiles(fp, list);
+                    else if (CONFIG.exts.includes(path.extname(file.name)) && !CONFIG.ignore.includes(file.name)) list.push(fp);
+                }
+                return list;
+            }
+            async function run() {
+                let hashes = {};
+                try { hashes = JSON.parse(await fs.readFile(CONFIG.db, 'utf8')); } catch (e) {}
+                const files = await getFiles('./');
+                for (const file of files) {
+                    const content = await fs.readFile(file, 'utf8');
+                    if (content.includes('<SOVEREIGN_CORE>') || content.includes('DO NOT MINIFY')) continue;
+                    const hash = crypto.createHash('sha256').update(content).digest('hex');
+                    if (hashes[file] === hash) continue;
+                    try {
+                        const res = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+                            model: CONFIG.model,
+                            messages: [{ role: "system", content: process.env.OMEGA_PROMPT_CONSTRAINT }, { role: "user", content: content }],
+                            temperature: 0.1
+                        }, { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 60000 });
+                        let evolved = res.data.choices[0].message.content.replace(/^```[a-z]*\n/gi, "").replace(/```$/g, "").trim();
+                        if (evolved.length > content.length * 0.5) {
+                            await fs.writeFile(file, evolved, 'utf8');
+                            hashes[file] = crypto.createHash('sha256').update(evolved).digest('hex');
+                        }
+                    } catch (e) { console.error(`Evolution error for ${file}`); }
+                }
+                await fs.writeFile(CONFIG.db, JSON.stringify(hashes));
+            }
+            run();
+            EOF
+            node run_architect.js
+          fi
+
+      - name: ⚖️ Integrity Validation
+        run: |
+          DELETIONS=$(git diff --shortstat | grep -oP '\d+(?= deletions)' || echo 0)
+          INSERTIONS=$(git diff --shortstat | grep -oP '\d+(?= insertions)' || echo 0)
+          if [ "$DELETIONS" -gt "$INSERTIONS" ] && [ "$((DELETIONS - INSERTIONS))" -gt 50 ]; then
+            echo "❌ TRUNCATION BREACH: Anomaly detected in evolution. Rolling back changes."
+            git checkout .
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------------------
+  # PHASE 2: TRINITY DATABASE SYNCHRONIZATION
+  # ---------------------------------------------------------------------------------------
+  trinity_sync:
+    name: "🔱 Phase 2: Trinity Database & Neural Sync"
+    needs: omega_setup_and_evolution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Execute Autonomous Trinity Sync
+        env:
+          NEON_KEY: ${{ secrets.NEON_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
+        run: |
+          cat << 'EOF' > run_trinity.js
+          const { Client } = require("pg");
+          const { createClient } = require("@supabase/supabase-js");
+          const admin = require("firebase-admin");
+          async function sync() {
+              if (process.env.FIREBASE_KEY) admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY)) });
+              const db = process.env.FIREBASE_KEY ? admin.firestore() : null;
+              const supabase = process.env.SUPABASE_URL ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY) : null;
+              let k = (process.env.NEON_KEY || "").trim().split("base")[0].replace(/['"]+/g, "");
+              if (!k) return;
+              const neon = new Client({ connectionString: k + (k.includes("?") ? "&" : "?") + "sslmode=require", ssl: { rejectUnauthorized: false } });
+              try {
+                  await neon.connect();
+                  await neon.query(`
+                      CREATE TABLE IF NOT EXISTS neural_dna (gen_id TEXT UNIQUE, thought_process TEXT, status TEXT, timestamp NUMERIC);
+                      CREATE TABLE IF NOT EXISTS cluster_nodes (node_id TEXT UNIQUE, status TEXT, last_seen TIMESTAMP);
+                  `);
+                  const res = await neon.query("SELECT * FROM neural_dna ORDER BY timestamp DESC LIMIT 50");
+                  for (const row of res.rows) {
+                      if (supabase) await supabase.from("neural_dna").upsert({ gen_id: row.gen_id, data: row.thought_process });
+                      if (db) await db.collection("neural_dna").doc(row.gen_id).set({ status: 'trinity_synced', data: row.thought_process }, { merge: true });
+                  }
+                  console.log("✅ Trinity Sync Complete.");
+              } catch (e) { console.error("Trinity Failure", e); } finally { await neon.end(); }
+          }
+          sync();
+          EOF
+          npm install pg @supabase/supabase-js firebase-admin
+          node run_trinity.js
+
+  # ---------------------------------------------------------------------------------------
+  # PHASE 3: SWARM HEALING & ORBITAL EXPANSION
+  # ---------------------------------------------------------------------------------------
+  swarm_ops:
+    name: "🛰️ Phase 3: Sentinel Healing & Swarm Expansion"
+    needs: trinity_sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Scan, Repair, and Spawn Nodes
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          ORG_NAME: "GOA-neurons"
+        run: |
+          cat << 'EOF' > run_swarm_ops.js
+          const { Octokit } = require("@octokit/rest");
+          const axios = require('axios');
+          const fs = require('fs');
+          const octokit = new Octokit({ auth: process.env.GH_TOKEN });
+          const ORG = process.env.ORG_NAME;
+          async function executeSwarmOps() {
+              try {
+                  const repos = await octokit.paginate(octokit.repos.listForOrg, { org: ORG, type: "public" });
+                  const nodes = repos.filter(r => r.name.startsWith("swarm-node-"));
+                  for (const node of nodes) {
+                      const { data: runs } = await octokit.actions.listWorkflowRunsForRepo({ owner: ORG, repo: node.name, per_page: 1 });
+                      if (runs.workflow_runs.length > 0 && runs.workflow_runs[0].conclusion === "failure") {
+                          let dna = fs.existsSync('delta_sync.js') ? fs.readFileSync('delta_sync.js', 'utf8') : "// DNA Placeholder";
+                          let sha = (await octokit.repos.getContent({ owner: ORG, repo: node.name, path: "delta_sync.js" }).catch(()=>({data:{}}))).data.sha;
+                          await octokit.repos.createOrUpdateFileContents({
+                              owner: ORG, repo: node.name, path: "delta_sync.js",
+                              message: "🧬 [SENTINEL REPAIR]: DNA Injection",
+                              content: Buffer.from(dna).toString('base64'), sha
+                          });
+                      }
+                  }
+                  const res = await axios.get("https://api.gdeltproject.org/api/v2/doc/doc?query=(cybersecurity OR AI)&mode=artlist&maxrecords=5&format=json").catch(()=>({data:{}}));
+                  if (res.data?.articles?.length > 0) {
+                      const nodeId = `swarm-node-${Math.floor(Date.now() / 1000)}`;
+                      await octokit.repos.createInOrg({ org: ORG, name: nodeId, auto_init: true }).catch(e => console.log("Spawn skip: " + e.message));
+                  }
+              } catch(e) { console.error("Swarm Ops Error", e.message); }
+          }
+          executeSwarmOps();
+          EOF
+          npm install @octokit/rest axios
+          node run_swarm_ops.js
+
+  # ---------------------------------------------------------------------------------------
+  # PHASE 4: OMEGA MANIFESTATION & MASTER GIT SYNC
+  # ---------------------------------------------------------------------------------------
+  omni_manifestation:
+    name: "🧬 Phase 4: Git Manifestation & Ultima Push"
+    needs: swarm_ops
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0
+
+      - name: Final Polish & Intelligent Rebase Push
+        run: |
+          git config --global user.name "OMEGA-ULTIMA-ARCHITECT"
+          git config --global user.email "omega-ultima@goa-natural-order.ai"
+          git remote set-url origin "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git"
+          
+          # Workflow Protection Logic
+          git fetch origin main
+          git reset HEAD .github/workflows/
+          git checkout -- .github/workflows/
+          
+          # Prettier Polish
+          npx prettier --write "**/*.js" || echo "Polish skipped."
+          
+          git add .
+          
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "🚀 [OMEGA-ULTIMA]: Sovereign Evolution & Swarm Sync [skip ci]"
+            
+            # Master Rebase Logic (-X theirs to prioritize AI evolution)
+            git fetch origin main
+            git rebase -X theirs origin/main || {
+              echo "⚠️ Conflict detected. Force manifesting Evolution logic..."
+              git add .
+              git rebase --continue || git rebase --abort
+            }
+            
+            git push origin HEAD:main --force
+            
+            # Evolution Lab Parity
+            git branch -D evolution-lab || true
+            git checkout -b evolution-lab
+            git push origin evolution-lab --force
+            
+            echo "✨ [SUCCESS]: Evolution manifested. System state synchronized."
+          else
+            echo "✨ [OPTIMAL]: No mutation detected. Repository is in peak state."
+          fi
+
+  # ---------------------------------------------------------------------------------------
+  # PHASE 5: HUGGINGFACE SPACE SYNC
+  # ---------------------------------------------------------------------------------------
+  huggingface_deployment:
+    name: "🛰️ Phase 5: HuggingFace Space Deployment"
+    needs: omni_manifestation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync to HuggingFace Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          cat << 'EOF' > hf_deploy.py
+          import os
+          from huggingface_hub import HfApi
+          hf_token = os.environ.get('HF_TOKEN')
+          if not hf_token:
+              print("⚠️ HF_TOKEN missing. Skipping Space sync.")
+          else:
+              print("🛰️ Syncing to HuggingFace Hub...")
+              try:
+                  api = HfApi(token=hf_token)
+                  api.upload_folder(folder_path='.', repo_id='TELEFOXX/GOA', repo_type='space')
+                  print('✅ HF Sync Complete.')
+              except Exception as e:
+                  print(f'⚠️ HF Sync Failed: {e}')
+          EOF
+          pip install huggingface_hub
+          python3 hf_deploy.py
+
+# =========================================================================================
+# 💀 END OF OMEGA ULTIMA MANIFEST
+# =========================================================================================
