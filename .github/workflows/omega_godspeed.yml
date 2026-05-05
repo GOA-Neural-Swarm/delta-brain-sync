@@ -2,7 +2,7 @@ name: "OMEGA-ULTIMA-SUPREME: TRANSCENDENT-EVOLUTION"
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch:
   repository_dispatch:
     types: [hyper_sync, philosophy_audit]
