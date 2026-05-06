@@ -16,15 +16,15 @@ from datetime import datetime, UTC
 from functools import lru_cache
 
 
-# 1. Sovereign Requirements Setup (FIXED: Resolved huggingface-hub version conflict and updated to google-genai)
+# 1. Sovereign Requirements Setup
 def install_requirements():
     """Installs and upgrades necessary libraries with specific fixes for version mismatches."""
     libs = [
         "torch --index-url https://download.pytorch.org/whl/cpu",
         "torchvision --index-url https://download.pytorch.org/whl/cpu",
-        "google-genai",  # Updated from google-generativeai
+        "google-genai",
         "transformers>=4.44.0",
-        "huggingface-hub==0.24.2",  # Forced downgrade to satisfy transformers <1.0 requirement
+        "huggingface-hub==0.24.2",
         "psycopg2-binary",
         "firebase-admin",
         "bitsandbytes",
@@ -50,6 +50,7 @@ def install_requirements():
                 "install",
                 "huggingface-hub==0.24.2",
                 "transformers>=4.44.0",
+                "firebase-admin",
                 "--force-reinstall",
                 "--quiet",
             ]
@@ -59,35 +60,43 @@ def install_requirements():
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", *libs, "--quiet", "--no-cache-dir"]
         )
+
+        # CRITICAL: Invalidate caches so the current process sees the new modules
+        importlib.invalidate_caches()
         print("✅ [SYSTEM]: Phase 7.1 Sovereign Core & Stability Patch Ready.")
     except Exception as e:
         print(f"⚠️ Install Warning: {e}")
 
 
-# Execute installation before importing heavy modules
+# Execute installation before importing modules that might not exist yet
 install_requirements()
 
-# Now safe to import
-from google import genai  # New SDK import
-import numpy as np
-import torch
-
+# Now safe to import - Wrapped in try/except to handle environment-specific delays
 try:
-    import torchvision
-except ImportError:
-    pass
+    from google import genai
+    import numpy as np
+    import torch
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.svm import SVC
+    from transformers import (
+        pipeline,
+        AutoModelForCausalLM,
+        AutoTokenizer,
+        BitsAndBytesConfig,
+    )
+    from github import Github
 
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
-from transformers import (
-    pipeline,
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    BitsAndBytesConfig,
-)
-from firebase_admin import credentials, db, initialize_app, _apps
-import firebase_admin
-from github import Github
+    # Re-attempting firebase import after cache invalidation
+    import firebase_admin
+    from firebase_admin import credentials, db, initialize_app
+except ImportError as e:
+    print(f"🚨 Critical Import Error: {e}. Attempting manual refresh...")
+    import importlib
+
+    importlib.invalidate_caches()
+    # Final attempt
+    import firebase_admin
+    from firebase_admin import credentials, db, initialize_app
 
 # 🔒 Kaggle/Colab Secrets System
 try:
@@ -130,7 +139,7 @@ REPO_PATH = (
     else "/tmp/sovereign_repo_sync"
 )
 
-# --- 🔱 GEMINI CONFIGURATION (Updated for google-genai) ---
+# --- 🔱 GEMINI CONFIGURATION ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or (
     user_secrets.get_secret("GEMINI_API_KEY") if user_secrets else None
 )
@@ -138,22 +147,25 @@ gemini_client = None
 if GEMINI_API_KEY:
     try:
         gemini_client = genai.Client(api_key=GEMINI_API_KEY)
-        print("✅ [GEMINI]: Auditor Brain Initialized via google-genai.")
+        print("✅ [GEMINI]: Auditor Brain Initialized.")
     except Exception as e:
         print(f"⚠️ [GEMINI]: Initialization failed: {e}")
-else:
-    print("⚠️ [GEMINI]: API Key missing.")
 
 # --- 🔱 FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
     try:
-        cred = (
-            credentials.Certificate(json.loads(FB_JSON_STR))
-            if FB_JSON_STR
-            else credentials.Certificate("serviceAccountKey.json")
-        )
-        firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_URL})
-        print(f"✅ [FIREBASE]: Real-time Pulse Active.")
+        if FB_JSON_STR:
+            cred = credentials.Certificate(json.loads(FB_JSON_STR))
+        elif os.path.exists("serviceAccountKey.json"):
+            cred = credentials.Certificate("serviceAccountKey.json")
+        else:
+            cred = None
+
+        if cred and FIREBASE_URL:
+            firebase_admin.initialize_app(cred, {"databaseURL": FIREBASE_URL})
+            print(f"✅ [FIREBASE]: Real-time Pulse Active.")
+        else:
+            print("⚠️ [FIREBASE]: Credentials or URL missing.")
     except Exception as e:
         print(f"🚫 [FIREBASE ERROR]: {e}")
 
@@ -220,7 +232,7 @@ class Brain:
             self.svm.fit(X_scaled, y)
             self.is_trained = True
             self.homeostasis += 5.0
-        except Exception as e:
+        except:
             self.entropy += 2.0
 
     def execute_natural_absorption(self, category=None, sequence=None, stability=None):
@@ -236,16 +248,6 @@ class Brain:
         )
         self.entropy = max(0.01, self.entropy - factor)
 
-    def generate_synthetic_output(self, length=100):
-        if not self.memory_vault:
-            return "NO_DATA"
-        base_seq = random.choice(list(self.memory_vault.values()))["seq"]
-        output = list(base_seq[:length])
-        for i in range(len(output)):
-            if random.random() > 0.95:
-                output[i] = random.choice("ACGT")
-        return "".join(output)
-
 
 brain = Brain()
 
@@ -256,14 +258,6 @@ def predator_logic(input_data_json):
     val = data.get("data", {}).get("value", 0)
     new_type = "finish" if val >= 10 else "next"
     return json.dumps({"type": new_type, "data": {"value": val + 1}})
-
-
-def recursive_self_upgrade(current_state, gen_id):
-    save_evolution_state_to_neon(current_state, gen_id)
-    if current_state["type"] == "finish":
-        return current_state
-    next_state = json.loads(predator_logic(json.dumps(current_state)))
-    return recursive_self_upgrade(next_state, gen_id)
 
 
 def save_evolution_state_to_neon(state, gen_id):
@@ -313,8 +307,7 @@ def get_gemini_wisdom(prompt_text):
             model="gemini-1.5-flash", contents=prompt_text
         )
         return response.text
-    except Exception as e:
-        print(f"Gemini API Error: {e}")
+    except:
         return None
 
 
@@ -366,22 +359,6 @@ def get_latest_gen():
                 return res[0] if res and res[0] else 94
     except:
         return 94
-
-
-def absorb_natural_order_data():
-    if not DB_URL:
-        return None
-    try:
-        import psycopg2
-
-        with psycopg2.connect(DB_URL) as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT science_category, master_sequence, peak_stability FROM universal_network_stream ORDER BY RANDOM() LIMIT 5"
-                )
-                return cur.fetchall()
-    except:
-        return None
 
 
 def self_coding_engine(raw_content):
@@ -487,31 +464,23 @@ except Exception as e:
 current_gen = get_latest_gen() + 1
 while True:
     try:
-        # 1. Neural Training
         avg_err = np.mean(
             [brain.learn(np.random.rand(1000), np.random.rand(1000)) for _ in range(5)]
         )
         brain.resonant_frequency_alignment(20, 70, 40)
-
-        # 2. Evolution Logic
         universe = scan_entire_universe()
         logic_prompt = f"Analyze this universe and output a Python function `evolutionary_thought_process()` returning a dict with 'logic_upgrade' containing full code for main.py:\n{str(universe)[:5000]}"
         thought_code = dual_brain_pipeline(logic_prompt, current_gen, avg_err)
-
-        is_updated = False
-        files_changed = []
-        if thought_code:
-            is_updated, files_changed = self_coding_engine(thought_code)
-
+        is_updated, files_changed = (
+            self_coding_engine(thought_code) if thought_code else (False, [])
+        )
         save_reality(
             thought_code or "Stability Cycle", current_gen, is_updated, avg_err
         )
         broadcast_to_swarm("EVOLVE", current_gen)
-
         print(
             f"✨ Gen {current_gen} Manifested. ASI: {brain.calculate_asi_intelligence():.2f}"
         )
-
         if os.getenv("HEADLESS_MODE") == "true":
             break
         current_gen += 1
