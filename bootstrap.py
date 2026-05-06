@@ -21,22 +21,26 @@ infra = {
     ],
 }
 
+
 # Function to create a file with given content
 def create_file(filename, content):
     if not os.path.exists(filename):
         with open(filename, "w") as f:
             f.write("\n".join(content))
 
+
 # Function to install dependencies from a file
 def install_dependencies(filename):
     if os.path.exists(filename):
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", filename])
+
 
 # Initialize infrastructure
 for k, v in infra.items():
     create_file(k, v)
 
 install_dependencies("requirements.txt")
+
 
 # Function to update infrastructure
 def update_infra(new_infra):
@@ -46,6 +50,7 @@ def update_infra(new_infra):
         else:
             infra[k] = v
         create_file(k, v)
+
 
 # Example usage:
 new_infra = {
@@ -79,10 +84,12 @@ updated_file = {
 }
 update_infra(updated_file)
 
+
 # Remove a file
 def remove_file(filename):
     if os.path.exists(filename):
         os.remove(filename)
+
 
 remove_infra = {
     "recovery.py": [],

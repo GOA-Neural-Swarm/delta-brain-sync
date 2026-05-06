@@ -8,7 +8,7 @@ class EvolvedApp:
     def __init__(self):
         """
         Initialize the EvolvedApp instance.
-        
+
         Attributes:
         classifier (EvolvingClassifier): The evolving classifier instance.
         logger (LoggingUtility): The logging utility instance.
@@ -25,10 +25,10 @@ class EvolvedApp:
     def handle_inference(self, feature_vector):
         """
         Handle inference for the given feature vector.
-        
+
         Args:
         feature_vector (list): The input feature vector.
-        
+
         Returns:
         prediction: The predicted output.
         """
@@ -36,23 +36,23 @@ class EvolvedApp:
         if not self.validator.validate(feature_vector):
             self.logger.log_error("Invalid input data")
             return None
-        
+
         # Extract features
         feature_vector = self.extractor.extract(feature_vector)
-        
+
         # Monitor service performance
         self.monitor.start_timer()
-        
+
         # Perform inference
         prediction = self.classifier.predict(feature_vector)
-        
+
         # Log inference result
         self.logger.log_info(f"Inference result: {prediction}")
-        
+
         # Monitor service performance
         self.monitor.stop_timer()
         self.monitor.log_performance()
-        
+
         return prediction
 
     def evolve_services(self):
@@ -61,15 +61,15 @@ class EvolvedApp:
         """
         # Fetch new data
         new_data = self.extractor.fetch_new_data()
-        
+
         # Validate new data
         if not self.validator.validate(new_data):
             self.logger.log_error("Invalid new data")
             return
-        
+
         # Update classifier
         self.classifier.update(new_data)
-        
+
         # Log evolution result
         self.logger.log_info("Services evolved successfully")
 
