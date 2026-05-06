@@ -28,7 +28,7 @@ on:
       - 'sync_data.py'
       - '.github/workflows/**'
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       force_transcendence:
