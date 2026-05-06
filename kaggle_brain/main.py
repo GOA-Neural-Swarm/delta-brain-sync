@@ -16,15 +16,15 @@ from datetime import datetime, UTC
 from functools import lru_cache
 
 
-# 1. Sovereign Requirements Setup (FIXED: Added torch/torchvision synchronization)
+# 1. Sovereign Requirements Setup (FIXED: Resolved huggingface-hub version conflict and updated to google-genai)
 def install_requirements():
-    """Installs and upgrades necessary libraries with specific fixes for torchvision/torch mismatch."""
+    """Installs and upgrades necessary libraries with specific fixes for version mismatches."""
     libs = [
-        "torch --index-url https://download.pytorch.org/whl/cpu",  # Ensure base torch is present
-        "torchvision --index-url https://download.pytorch.org/whl/cpu",  # Sync torchvision
-        "google-generativeai",
+        "torch --index-url https://download.pytorch.org/whl/cpu",
+        "torchvision --index-url https://download.pytorch.org/whl/cpu",
+        "google-genai",  # Updated from google-generativeai
         "transformers>=4.44.0",
-        "huggingface-hub>=0.24.0,<1.0",
+        "huggingface-hub==0.24.2",  # Forced downgrade to satisfy transformers <1.0 requirement
         "psycopg2-binary",
         "firebase-admin",
         "bitsandbytes",
@@ -36,22 +36,22 @@ def install_requirements():
         "pygithub",
     ]
     try:
-        # Force upgrade of pip first
+        # Force upgrade of pip
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", "--upgrade", "pip", "--quiet"]
         )
 
-        # Install torch and torchvision first to ensure they match before other heavy libs
+        # Install specific versions to resolve the ImportError before other heavy libs
         subprocess.check_call(
             [
                 sys.executable,
                 "-m",
                 "pip",
                 "install",
-                "torch",
-                "torchvision",
+                "huggingface-hub==0.24.2",
+                "transformers>=4.44.0",
+                "--force-reinstall",
                 "--quiet",
-                "--no-cache-dir",
             ]
         )
 
@@ -68,11 +68,10 @@ def install_requirements():
 install_requirements()
 
 # Now safe to import
-import google.generativeai as genai
+from google import genai  # New SDK import
 import numpy as np
 import torch
 
-# Explicitly check torchvision to prevent the nms error from crashing the main loop later
 try:
     import torchvision
 except ImportError:
@@ -131,14 +130,17 @@ REPO_PATH = (
     else "/tmp/sovereign_repo_sync"
 )
 
-# --- 🔱 GEMINI CONFIGURATION ---
+# --- 🔱 GEMINI CONFIGURATION (Updated for google-genai) ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or (
     user_secrets.get_secret("GEMINI_API_KEY") if user_secrets else None
 )
+gemini_client = None
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-    print("✅ [GEMINI]: Auditor Brain Initialized.")
+    try:
+        gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+        print("✅ [GEMINI]: Auditor Brain Initialized via google-genai.")
+    except Exception as e:
+        print(f"⚠️ [GEMINI]: Initialization failed: {e}")
 else:
     print("⚠️ [GEMINI]: API Key missing.")
 
@@ -305,10 +307,14 @@ def query_groq_api(prompt):
 
 def get_gemini_wisdom(prompt_text):
     try:
-        if not GEMINI_API_KEY:
+        if not gemini_client:
             return None
-        return gemini_model.generate_content(prompt_text).text
-    except:
+        response = gemini_client.models.generate_content(
+            model="gemini-1.5-flash", contents=prompt_text
+        )
+        return response.text
+    except Exception as e:
+        print(f"Gemini API Error: {e}")
         return None
 
 
