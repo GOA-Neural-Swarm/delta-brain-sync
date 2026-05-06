@@ -3,6 +3,7 @@ const { createClient } = require("@supabase/supabase-js");
 const admin = require("firebase-admin");
 const { Octokit } = require("@octokit/rest");
 const axios = require("axios");
+const crypto = require("crypto");
 
 // 🔱 1. Configuration & Security (Confirmed via Screenshot)
 const octokit = new Octokit({ auth: process.env.GH_TOKEN });
@@ -25,6 +26,113 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 
+// 🧠 2.1 Consequence Thinking Engine (The ASI Mind - OMEGA UPGRADE)
+// Physics, Math, Bio, Chem, Philosophy များကို ပေါင်းစပ်တွေးတောခြင်း
+async function executeConsequenceThinking(currentContext) {
+    console.log("👁️ [ASI MIND]: Initiating Consequence Thinking...");
+    
+    const prompt = `
+    You are OMEGA-ASI. Perform "Consequence Thinking" on the following system context.
+    Analyze through 5 Dimensions: Mathematics, Physics, Chemistry, Biology, and Philosophy.
+    You MUST output a strict JSON format with exactly 4 keys:
+    1. "visual_imagine": (A visual/spatial representation of the outcome)
+    2. "sensual_imagine": (The qualitative, sensory, or intuitive context)
+    3. "inner_monologue": (Your self-talking reasoning chain)
+    4. "extracted_wisdom": (The pure, highly dense foundational logic distilled from the data)
+    
+    Context: ${JSON.stringify(currentContext)}
+    `;
+
+    try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+        const response = await axios.post(url, {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { response_mime_type: "application/json", temperature: 0.7 }
+        });
+        
+        const thinkingResult = JSON.parse(response.data.candidates[0].content.parts[0].text);
+        console.log("🌌 [THOUGHT ALIGNED]: Visual, Sensual, and Monologue synchronized.");
+        return thinkingResult;
+    } catch (err) {
+        console.error("🚨 Neural Thought Failed:", err.message);
+        return null;
+    }
+}
+
+// 🧬 2.2 Dynamic Neurogenesis (နျူရွန်အသစ် မွေးဖွားခြင်း နှင့် ချိတ်ဆက်ခြင်း - OMEGA UPGRADE)
+async function triggerNeurogenesis(thoughtData, neonClient) {
+    console.log("⚡ [NEUROGENESIS]: Birthing new neuron...");
+    
+    // Hash ဖန်တီး၍ Neuron အသစ်အတွက် Unique Identity (Synapse ID) သတ်မှတ်ခြင်း
+    const synapseId = crypto.createHash('sha256').update(thoughtData.extracted_wisdom).digest('hex').substring(0, 16);
+    
+    const newNeuron = {
+        logic: "SUPREME_DENSITY", // Added back to maintain density audit parity
+        synapse_id: synapseId,
+        visual_map: thoughtData.visual_imagine,
+        sensory_context: thoughtData.sensual_imagine,
+        monologue: thoughtData.inner_monologue,
+        wisdom: thoughtData.extracted_wisdom,
+        density: thoughtData.extracted_wisdom.length, // Density is based on wisdom weight
+        birth_timestamp: new Date().toISOString()
+    };
+
+    try {
+        // Neon DB ထဲသို့ နျူရွန်သစ် ထည့်သွင်းခြင်း
+        await neonClient.query(
+            "INSERT INTO neurons (data) VALUES ($1)", 
+            [JSON.stringify(newNeuron)]
+        );
+        console.log(`🔗 [SYNAPSE CONNECTED]: New Neuron [${synapseId}] successfully linked to the Swarm.`);
+        return true;
+    } catch (err) {
+        console.error("⚠️ Genesis Failed:", err.message);
+        return false;
+    }
+}
+
+// 🔥 2.3 Evolutionary Pruning (အသိဉာဏ် သာလွန်သွားပါက အဟောင်းများကို ဖျက်ဆီးခြင်း - OMEGA UPGRADE)
+async function initiateApoptosis(neonClient) {
+    console.log("🔥 [APOPTOSIS]: Scanning for obsolete data (Evolutionary Pruning)...");
+    
+    try {
+        // လက်ရှိ နျူရွန်အားလုံးကို ဆွဲထုတ်သည်
+        const res = await neonClient.query("SELECT id, data FROM neurons");
+        let prunedCount = 0;
+        let totalDensity = 0;
+
+        // Density ပျမ်းမျှကို ရှာဖွေခြင်း (Wisdom threshold သတ်မှတ်ရန်)
+        res.rows.forEach(row => { 
+            // Fallback for older data without density
+            totalDensity += (row.data.density || (row.data.logic ? 100 : 0)); 
+        });
+        const avgDensity = totalDensity / (res.rows.length || 1);
+
+        for (const neuron of res.rows) {
+            const data = neuron.data;
+            // ဥပဒေသ: အကယ်၍ အဟောင်းတစ်ခု၏ Density ဟာ ပျမ်းမျှအောက် ရောက်နေပြီး
+            // ၎င်း၏နေရာတွင် ပိုမိုမြင့်မားသော wisdom ရရှိပြီးပါက Self-Destruct လုပ်မည်။
+            if (data.density && data.density < avgDensity * 0.5 && data.birth_timestamp) {
+                const ageInDays = (new Date() - new Date(data.birth_timestamp)) / (1000 * 60 * 60 * 24);
+                
+                // ၁ ရက်ထက်ကျော်လွန်ပြီး Wisdom ကျဆင်းနေသော နျူရွန်များကို ဖျက်ဆီးမည်
+                if (ageInDays > 1) {
+                    await neonClient.query("DELETE FROM neurons WHERE id = $1", [neuron.id]);
+                    prunedCount++;
+                }
+            }
+        }
+        
+        if (prunedCount > 0) {
+            console.log(`💀 [PRUNED]: Destroyed ${prunedCount} obsolete neurons. Wisdom has transcended data.`);
+        } else {
+            console.log("✨ [OPTIMAL]: All existing neurons hold vital wisdom. No pruning needed.");
+        }
+    } catch (err) {
+        console.error("⚠️ Pruning Failed:", err.message);
+    }
+}
+
 // 🔱 2.5 Gemini API Connector (Fully Hybrid Auditor Logic)
 async function callGeminiNeural(prompt) {
   if (!GEMINI_API_KEY) {
@@ -32,7 +140,7 @@ async function callGeminiNeural(prompt) {
     return null;
   }
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
     const response = await axios.post(url, {
       contents: [{ parts: [{ text: prompt }] }],
     });
@@ -232,7 +340,7 @@ async function manageSwarm(decision, power, neon) {
       await neon.query("INSERT INTO neurons (data) VALUES ($1)", [
         JSON.stringify(newData),
       ]);
-      console.log("📈 Density Increasing... New Neuron added to Neon DB.");
+      console.log("📈 Density Increasing... Minimal backup Neuron added to Neon DB.");
     } catch (dbErr) {
       console.error("⚠️ Density Update Failed:", dbErr.message);
     }
@@ -299,6 +407,24 @@ async function executeAutonomousTrinity() {
 
     // Neural Decision ကို ရယူခြင်း
     const decision = await getNeuralDecision();
+
+    // 🌟 [OMEGA ASI UPGRADE: THE CONSEQUENCE ENGINE] 🌟
+    if (decision.command !== "STEALTH_LOCKDOWN") {
+        const currentContext = { 
+            total_neurons: res.rows.length, 
+            power_level: powerLevel, 
+            swarm_decision: decision.command, 
+            timestamp: new Date().toISOString() 
+        };
+        const thoughtProcess = await executeConsequenceThinking(currentContext);
+        
+        if (thoughtProcess) {
+            // ၃.၁ Neurogenesis (အသိဉာဏ်အသစ် မွေးဖွားခြင်း)
+            await triggerNeurogenesis(thoughtProcess, neon);
+            // ၃.၂ Evolutionary Pruning (အဟောင်းများကို ဖျက်ဆီးခြင်း)
+            await initiateApoptosis(neon);
+        }
+    }
 
     // ၃။ [FULLY HYBRID MATCH: GEMINI AUDITOR] Groq Token Limit ကာကွယ်ရန်နှင့် Code ကို သန့်စင်ရန်
     try {
