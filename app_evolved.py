@@ -89,6 +89,10 @@ class EvolvedApp:
 
 if __name__ == "__main__":
     app = EvolvedApp()
-    print(f"App Ready. Initial Inference: {app.handle_inference([1,2,3,4,5], 'classification')}")
-    print(f"App Ready. Initial Inference: {app.handle_inference([1,2,3,4,5], 'regression')}")
+    print(
+        f"App Ready. Initial Inference: {app.handle_inference([1,2,3,4,5], 'classification')}"
+    )
+    print(
+        f"App Ready. Initial Inference: {app.handle_inference([1,2,3,4,5], 'regression')}"
+    )
     app.evolve_services()
