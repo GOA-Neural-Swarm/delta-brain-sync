@@ -10,7 +10,7 @@ on:
       - 'brain.py'
       - 'sync_data.py'
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/45 * * * *'
   workflow_dispatch:
 
 permissions:
