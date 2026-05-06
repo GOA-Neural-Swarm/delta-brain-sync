@@ -1,5 +1,6 @@
 import os
 
+
 class HyperDimensionalLogger:
     def __init__(self):
         self.log_file = "hyper_dimensional_log.txt"
@@ -30,6 +31,7 @@ class HyperDimensionalLogger:
             return True
         return False
 
+
 def main():
     logger = HyperDimensionalLogger()
     print(logger.exists("/"))
@@ -37,6 +39,7 @@ def main():
     print(logger.utilitarian_metric)
     logger.evolutionary_additive("New additive message")
     print(logger.utilitarian_metric)
+
 
 if __name__ == "__main__":
     main()

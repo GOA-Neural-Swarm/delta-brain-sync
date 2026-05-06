@@ -4,6 +4,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
+
 # Define a hyper-dimensional space
 class HyperDimensionalSpace:
     def __init__(self, dimensions):
@@ -19,6 +20,7 @@ class HyperDimensionalSpace:
             evolved_data.append(mutated_point)
         return evolved_data
 
+
 # Define a utilitarian loss function
 class UtilitarianLoss(nn.Module):
     def __init__(self):
@@ -29,6 +31,7 @@ class UtilitarianLoss(nn.Module):
         # Maximizing the overall well-being
         loss = -torch.sum(predictions * targets)
         return loss
+
 
 # Define a stoic optimizer
 class StoicOptimizer(optim.Optimizer):
@@ -45,13 +48,14 @@ class StoicOptimizer(optim.Optimizer):
                 loss = closure()
 
         for group in self.param_groups:
-            for p in group['params']:
+            for p in group["params"]:
                 if p.grad is None:
                     continue
                 d_p = p.grad
-                p.add_(d_p, alpha=-group['lr'])
+                p.add_(d_p, alpha=-group["lr"])
 
         return loss
+
 
 # Define an existential dataset
 class ExistentialDataset(Dataset):
@@ -68,6 +72,7 @@ class ExistentialDataset(Dataset):
         data = self.data[idx]
         label = self.labels[idx]
         return data, label
+
 
 # Initialize the hyper-dimensional space
 hyper_space = HyperDimensionalSpace(dimensions=10)

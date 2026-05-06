@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+
 class HyperDimensionalLogic:
     def __init__(self, dimensions):
         """
@@ -58,7 +59,13 @@ class HyperDimensionalLogic:
         Returns:
         list: A list of additive evolution values.
         """
-        return np.add(self.utilitarian_values, self.existential_values, self.stoic_values, self.evolutionary_values)
+        return np.add(
+            self.utilitarian_values,
+            self.existential_values,
+            self.stoic_values,
+            self.evolutionary_values,
+        )
+
 
 class EvolutionarySystem:
     def __init__(self, dimensions):
@@ -71,7 +78,9 @@ class EvolutionarySystem:
         self.dimensions = dimensions
         self.hyper_dimensional_logic = HyperDimensionalLogic(dimensions)
 
-    def update_values(self, utilitarian_values, existential_values, stoic_values, evolutionary_values):
+    def update_values(
+        self, utilitarian_values, existential_values, stoic_values, evolutionary_values
+    ):
         """
         Update the values in the system.
 
@@ -95,6 +104,7 @@ class EvolutionarySystem:
         """
         return self.hyper_dimensional_logic.calculate_additive_evolution()
 
+
 # Create an instance of the EvolutionarySystem
 evolutionary_system = EvolutionarySystem(5)
 
@@ -103,7 +113,9 @@ utilitarian_values = [1, 2, 3, 4, 5]
 existential_values = [5, 4, 3, 2, 1]
 stoic_values = [1, 1, 1, 1, 1]
 evolutionary_values = [2, 2, 2, 2, 2]
-evolutionary_system.update_values(utilitarian_values, existential_values, stoic_values, evolutionary_values)
+evolutionary_system.update_values(
+    utilitarian_values, existential_values, stoic_values, evolutionary_values
+)
 
 # Calculate the additive evolution
 additive_evolution = evolutionary_system.calculate_additive_evolution()
