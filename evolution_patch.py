@@ -1,6 +1,5 @@
 import os
 
-
 class HyperDimensionalLogger:
     def __init__(self):
         self.log_file = "hyper_dimensional_log.txt"
@@ -90,7 +89,6 @@ class HyperDimensionalLogger:
     def get_evolutionary_history(self):
         return self.evolutionary_history
 
-
 def main():
     logger = HyperDimensionalLogger()
     print(logger.exists("/"))
@@ -105,7 +103,6 @@ def main():
     logger.evolutionary_update("New message to update", "Updated message")
     print(logger.utilitarian_metric)
     print(logger.get_evolutionary_history())
-
 
 if __name__ == "__main__":
     main()
