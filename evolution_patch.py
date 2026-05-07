@@ -6,13 +6,19 @@ class HyperDimensionalLogger:
         self.log_file = "hyper_dimensional_log.txt"
         self.utilitarian_metric = 0
         self.existential_state = {}
+        self.evolutionary_history = []
 
     def log(self, message):
         if self.stoic_filter(message):
             with open(self.log_file, "a") as file:
                 file.write(message + "\n")
             self.utilitarian_metric += 1
-            self.existential_state[message] = True
+            self_existential = self.existential_state
+            self_existential[message] = True
+            self.existential_state = self_existential
+            evolutionary_history = self.evolutionary_history
+            evolutionary_history.append({"action": "log", "message": message})
+            self.evolutionary_history = evolutionary_history
         return self.utilitarian_metric
 
     def exists(self, path):
@@ -31,7 +37,12 @@ class HyperDimensionalLogger:
                 file.write(new_message + "\n")
                 file.writelines(existing_lines)
             self.utilitarian_metric += 1
-            self.existential_state[new_message] = True
+            self_existential = self.existential_state
+            self_existential[new_message] = True
+            self.existential_state = self_existential
+            evolutionary_history = self.evolutionary_history
+            evolutionary_history.append({"action": "additive", "message": new_message})
+            self.evolutionary_history = evolutionary_history
             return True
         return False
 
@@ -43,8 +54,13 @@ class HyperDimensionalLogger:
                 for line in existing_lines:
                     if line.strip() != message:
                         file.write(line)
-            del self.existential_state[message]
+            self_existential = self.existential_state
+            del self_existential[message]
+            self.existential_state = self_existential
             self.utilitarian_metric -= 1
+            evolutionary_history = self.evolutionary_history
+            evolutionary_history.append({"action": "delete", "message": message})
+            self.evolutionary_history = evolutionary_history
             return True
         return False
 
@@ -59,12 +75,20 @@ class HyperDimensionalLogger:
                             file.write(new_message + "\n")
                         else:
                             file.write(line)
-                del self.existential_state[old_message]
-                self.existential_state[new_message] = True
+                self_existential = self.existential_state
+                del self_existential[old_message]
+                self_existential[new_message] = True
+                self.existential_state = self_existential
+                evolutionary_history = self.evolutionary_history
+                evolutionary_history.append({"action": "update", "old_message": old_message, "new_message": new_message})
+                self.evolutionary_history = evolutionary_history
                 return True
             else:
                 return False
         return False
+
+    def get_evolutionary_history(self):
+        return self.evolutionary_history
 
 
 def main():
@@ -80,6 +104,7 @@ def main():
     logger.evolutionary_additive("New message to update")
     logger.evolutionary_update("New message to update", "Updated message")
     print(logger.utilitarian_metric)
+    print(logger.get_evolutionary_history())
 
 
 if __name__ == "__main__":
