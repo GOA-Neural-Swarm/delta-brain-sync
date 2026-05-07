@@ -4,7 +4,6 @@ from util_module import LoggingUtility, ServiceMonitor
 from data_module import DataValidator, FeatureExtractor, NewDataGenerator
 from typing import List, Union
 
-
 class EvolvedApp:
     def __init__(self):
         """

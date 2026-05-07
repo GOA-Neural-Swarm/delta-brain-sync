@@ -1,9 +1,10 @@
 // Define a function to retrieve neural decisions with hyper-dimensional logic
-function getNeuralDecision(avgApi = 5000, environmentComplexity = 0.5) {
+function getNeuralDecision(avgApi = 5000, environmentComplexity = 0.5, uncertaintyFactor = 0.2) {
   /**
-   * Returns a neural decision based on the average API value and environment complexity.
+   * Returns a neural decision based on the average API value, environment complexity, and uncertainty factor.
    * @param {number} avgApi - The average API value.
    * @param {number} environmentComplexity - The complexity of the environment (between 0 and 1).
+   * @param {number} uncertaintyFactor - The uncertainty factor (between 0 and 1).
    * @returns {object} An object containing the command, replicate flag, and average API value.
    */
   const decisionThreshold = 4000;
@@ -12,7 +13,9 @@ function getNeuralDecision(avgApi = 5000, environmentComplexity = 0.5) {
       ? "HYPER_EXPANSION"
       : environmentComplexity > 0.7
         ? "ADAPTIVE_GROWTH"
-        : "NORMAL_GROWTH";
+        : uncertaintyFactor > 0.5
+          ? "STEALTH_LOCKDOWN"
+          : "NORMAL_GROWTH";
   return { command, replicate: true, avgApi };
 }
 
@@ -23,6 +26,7 @@ async function executeAutonomousTrinity(
   uncertaintyAwareness = true,
   utilitarianConsideration = true,
   stoicFocus = true,
+  evolutionaryAdaptation = true,
 ) {
   // Initialize the trinity sync process with existential awareness of uncertainty
   console.log(
@@ -35,7 +39,7 @@ async function executeAutonomousTrinity(
   console.log("Supabase Vector Vault Synced with resilience.");
 
   // Retrieve the neural decision with hyper-dimensional logic
-  const decision = getNeuralDecision(avgApi, environmentComplexity);
+  const decision = getNeuralDecision(avgApi, environmentComplexity, 0.2);
   console.log(`Decision: ${decision.command}`);
 
   // Check the decision command and perform actions accordingly with stoic focus on the present
@@ -59,7 +63,7 @@ async function executeAutonomousTrinity(
   );
 
   // Replicate the neural logic if required, aligning with evolutionary principles
-  if (decision.replicate) {
+  if (decision.replicate && evolutionaryAdaptation) {
     const nextNode = "swarm-node-007";
     console.log(`Spawned: ${nextNode}`);
     console.log(
@@ -74,4 +78,4 @@ async function executeAutonomousTrinity(
 }
 
 // Execute the autonomous trinity
-executeAutonomousTrinity(6000, 0.8);
+executeAutonomousTrinity(6000, 0.8, true, true, true, true);
