@@ -13,12 +13,12 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 
 def get_ai_correction(error_log, original_code):
-    print("🧠 [GUARD]: AI is analyzing the error...")
+    print(" [GUARD]: AI is analyzing the error...")
 
     prompt = f"Fix this Python error:\n{error_log}\n\nCode:\n{original_code}\n\nReturn ONLY the clean code."
 
     # --- ATTEMPT 1: GEMINI (Primary) ---
-    print("📡 [GUARD-GEMINI]: Requesting correction...")
+    print("[GUARD-GEMINI]: Requesting correction...")
     gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
     gemini_payload = {
         "contents": [{"parts": [{"text": prompt}]}],
@@ -32,12 +32,12 @@ def get_ai_correction(error_log, original_code):
             content = data["candidates"][0]["content"]["parts"][0]["text"]
             return re.sub(r"```python\n|```", "", content).strip()
         else:
-            print(f"⚠️ [GEMINI-FAIL]: Status {res.status_code}. Switching to Groq...")
+            print(f"[GEMINI-FAIL]: Status {res.status_code}. Switching to Groq...")
     except Exception as e:
-        print(f"⚠️ [GEMINI-ERROR]: {e}. Switching to Groq...")
+        print(f"[GEMINI-ERROR]: {e}. Switching to Groq...")
 
     # --- ATTEMPT 2: GROQ (Fallback) ---
-    print("📡 [GUARD-GROQ]: Requesting fallback correction...")
+    print("[GUARD-GROQ]: Requesting fallback correction...")
     groq_url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -56,29 +56,25 @@ def get_ai_correction(error_log, original_code):
         data = response.json()
 
         if "error" in data and "rate_limit_exceeded" in str(data):
-            print("⏳ [RATE-LIMIT]: Sleeping for 20 seconds...")
+            print("[RATE-LIMIT]: Sleeping for 20 seconds...")
             time.sleep(20)
             return get_ai_correction(error_log, original_code)
 
-        # API Error ရှိမရှိ စစ်ဆေးခြင်း
         if "choices" in data:
             content = data["choices"][0]["message"]["content"]
             return re.sub(r"```python\n|```", "", content).strip()
         else:
-            print(f"❌ [GUARD]: API Error Response: {data}")
-            # API Error တက်ရင် Original code ကိုပဲ ပြန်ပေးပြီး Exit လုပ်မယ် (Loop မပတ်အောင်)
+            print(f"[GUARD]: API Error Response: {data}")
             return original_code
 
     except Exception as e:
-        print(f"❌ [GUARD]: Request failed: {e}")
+        print(f"[GUARD]: Request failed: {e}")
         return original_code
 
 
 def run_guard(target_script):
-    print(f"🛡️ [GUARD]: Launching {target_script} in Observation Mode...")
+    print(f"[GUARD]: Launching {target_script} in Observation Mode...")
 
-    # Background မှာ process ကို run မယ် (စောင့်မနေတော့ဘူး)
-    # logic coupled with real-time log observation
     process = subprocess.Popen(
         ["python3", target_script],
         stdout=subprocess.PIPE,
@@ -89,15 +85,13 @@ def run_guard(target_script):
     start_time = time.time()
     error_output = ""
 
-    # ပထမ ၆၀ စက္ကန့်အတွင်းမှာ process ကို အနီးကပ် စောင့်ကြည့်မယ်
     while time.time() - start_time < 60:
-        # Error ထွက်လာသလား စစ်မယ်
         line = process.stderr.readline()
         if line:
-            print(f"⚠️ [LOG]: {line.strip()}")
+            print(f"[LOG]: {line.strip()}")
             error_output += line
             if "Traceback" in line or "Error" in line:
-                print("❌ [GUARD]: Critical Error detected! Terminating and fixing...")
+                print("[GUARD]: Critical Error detected! Terminating and fixing...")
                 process.terminate()
 
                 with open(target_script, "r") as f:
@@ -107,36 +101,28 @@ def run_guard(target_script):
                 with open(target_script, "w") as f:
                     f.write(corrected)
 
-                print("✅ [GUARD]: System evolved. Restarting Guard Cycle...")
-                return run_guard(target_script)  # ပြန်စမယ်
+                print("[GUARD]: System evolved. Restarting Guard Cycle...")
+                return run_guard(target_script)
 
-        # အကယ်၍ process က ပိတ်သွားပြီး error ရှိနေရင်
         if process.poll() is not None and process.poll() != 0:
             remaining_error = process.stderr.read()
-            print(f"❌ [GUARD]: Process died with error: {remaining_error}")
+            print(f"[GUARD]: Process died with error: {remaining_error}")
 
             with open(target_script, "r") as f:
                 original_code = f.read()
 
-            # Get corrected code from AI and retry
             corrected_code = get_ai_correction(remaining_error, original_code)
             with open(target_script, "w") as f:
                 f.write(corrected_code)
-            print("✅ [GUARD]: Correction applied. Rebooting system...")
+            print("[GUARD]: Correction applied. Rebooting system...")
             return run_guard(target_script)
 
         time.sleep(1)
 
-    # ၆၀ စက္ကန့်အတွင်း Error မတက်ဘဲ အသက်ရှင်နေရင် Healthy လို့ သတ်မှတ်မယ်
-    print(
-        "🌐 [GUARD]: System is stable and sovereign. Handing over to background process."
-    )
-    # GitHub Action ကို အောင်မြင်စွာ ပိတ်ခိုင်းလိုက်ပေမယ့် background မှာ app.py က ဆက် run နေမှာမဟုတ်ဘူး၊
-    # ဒါပေမဲ့ evolution cycle ပြီးမြောက်ဖို့အတွက် ဒီအဆင့်ဟာ အရေးကြီးဆုံးဖြစ်ပါတယ်။
+    print("[GUARD]: System is stable and sovereign. Handing over to background process.")
     sys.exit(0)
 
 
 if __name__ == "__main__":
-    # Get target script from command line, default to main.py
     target = sys.argv[1] if len(sys.argv) > 1 else "main.py"
     run_guard(target)

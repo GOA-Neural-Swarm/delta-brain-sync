@@ -98,7 +98,16 @@ class SovereignAuditor:
                 self.report["conflicts"].append(f"Conflict found in {target_lib}")
 
                 # တကယ့် Repair လုပ်မည့်အဆင့်
-                # subprocess.run([sys.executable, "-m", "pip", "install", f"{target_lib}=={version}", "--quiet"])
+                subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "pip",
+                        "install",
+                        f"{target_lib}=={version}",
+                        "--quiet",
+                    ]
+                )
                 return "REPAIRED"
             else:
                 print(f"✅ {target_lib} environment is stable.")

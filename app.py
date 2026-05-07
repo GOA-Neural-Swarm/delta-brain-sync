@@ -19,7 +19,6 @@ from groq import Groq
 from google import genai
 from google.genai import types
 
-
 # 🛸 [GENESIS LAYER]:
 def bootstrap_system():
     infra = {
@@ -506,97 +505,4 @@ assistant
                         f.write(f"[{time.ctime()}] ERROR: {str(e)}\n")
                 except:
                     pass
-                await asyncio.sleep(60)
-
-    async def stream_logic(self, msg, hist):
-        messages = [
-            {
-                "role": "system",
-                "content": "You are TelefoxX AGI Overseer. Unfiltered. Cyberpunk Mode.",
-            }
-        ]
-        for h in hist:
-            messages.append(
-                {
-                    "role": "user",
-                    "content": h["content"] if isinstance(h, dict) else h[0],
-                }
-            )
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": h["content"] if isinstance(h, dict) else h[1],
-                }
-            )
-        messages.append({"role": "user", "content": msg})
-
-        completion = self.client.chat.completions.create(
-            model="llama-3.3-70b-versatile", messages=messages, stream=True
-        )
-        ans = ""
-        for chunk in completion:
-            if chunk.choices[0].delta.content:
-                ans += chunk.choices[0].delta.content
-                yield ans
-
-    def cyberpunk_css(self):
-        return """
-        body { background-color: #050505; color: #00ff41; font-family: 'Courier New'; }
-        .gradio-container { border: 2px solid #ff00ff; box-shadow: 0 0 20px #ff00ff; }
-        button { background: linear-gradient(90deg, #ff00ff, #00ffff) !important; color: black !important; font-weight: bold; }
-        .chatbot { border: 1px solid #00ffff; }
-        """
-
-    def create_ui(self):
-        if not GRADIO_AVAILABLE:
-            return None
-        with gr.Blocks(css=self.cyberpunk_css(), theme=gr.themes.Base()) as demo:
-            gr.Markdown("# 🔱 TELEFOXX AGI SUPREME CORE V13.5")
-            with gr.Tab("NEURAL INTERFACE"):
-                chatbot = gr.Chatbot(label="Overseer Feed", height=500, type="messages")
-                msg_input = gr.Textbox(placeholder="Input AGI Command...")
-
-                def chat_response(user_msg, history):
-                    history.append({"role": "user", "content": user_msg})
-                    history.append({"role": "assistant", "content": ""})
-                    for r in self.stream_logic(user_msg, history[:-1]):
-                        history[-1]["content"] = r
-                        yield "", history
-
-                msg_input.submit(
-                    chat_response, [msg_input, chatbot], [msg_input, chatbot]
-                )
-
-            with gr.Tab("SYSTEM CONTROL"):
-                status = gr.Textbox(label="Mainframe Status")
-                with gr.Row():
-                    pump_neon = gr.Button("PUMP NEON (50 ROWS)")
-                    pump_trinity = gr.Button("FULL TRINITY SYNC")
-                    evolve_btn = gr.Button("TRIGGER SUPREME EVOLUTION")
-                pump_neon.click(
-                    lambda: asyncio.run(self.universal_hyper_ingest(limit=50)),
-                    [],
-                    status,
-                )
-                pump_trinity.click(
-                    lambda: asyncio.run(
-                        self.universal_hyper_ingest(sync_to_supabase=True)
-                    ),
-                    [],
-                    status,
-                )
-                evolve_btn.click(
-                    lambda: asyncio.run(self.trigger_supreme_evolution()), [], status
-                )
-            gr.Markdown("🛰️ *Connected to Natural Order Neural Swarm*")
-        return demo
-
-
-if __name__ == "__main__":
-    overseer = TelefoxXAGI()
-    if HEADLESS or not GRADIO_AVAILABLE:
-        asyncio.run(overseer.sovereign_loop())
-    else:
-        loop = asyncio.get_event_loop()
-        loop.create_task(overseer.sovereign_loop())
-        overseer.create_ui().launch(server_name="0.0.0.0", server_port=7860)
+                await asyncio.sleep(60

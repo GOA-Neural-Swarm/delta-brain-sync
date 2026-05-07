@@ -37,62 +37,71 @@ class EvolvedApp:
         Returns:
         prediction: The predicted output.
         """
-        # Validate input data
-        if not self.validator.validate(feature_vector):
-            self.logger.log_error("Invalid input data")
+        try:
+            # Validate input data
+            if not self.validator.validate(feature_vector):
+                self.logger.log_error("Invalid input data")
+                return None
+
+            # Extract features
+            feature_vector = self.extractor.extract(feature_vector)
+
+            # Monitor service performance
+            self.monitor.start_timer()
+
+            if inference_type == "classification":
+                # Perform inference using classifier
+                prediction = self.classifier.predict(feature_vector)
+            elif inference_type == "regression":
+                # Perform inference using regressor
+                prediction = self.regressor.predict(feature_vector)
+            else:
+                self.logger.log_error("Invalid inference type")
+                return None
+
+            # Log inference result
+            self.logger.log_info(f"Inference result: {prediction}")
+
+            # Monitor service performance
+            self.monitor.stop_timer()
+            self.monitor.log_performance()
+
+            return prediction
+        except Exception as e:
+            self.logger.log_error(f"Error occurred: {str(e)}")
             return None
-
-        # Extract features
-        feature_vector = self.extractor.extract(feature_vector)
-
-        # Monitor service performance
-        self.monitor.start_timer()
-
-        if inference_type == "classification":
-            # Perform inference using classifier
-            prediction = self.classifier.predict(feature_vector)
-        elif inference_type == "regression":
-            # Perform inference using regressor
-            prediction = self.regressor.predict(feature_vector)
-        else:
-            self.logger.log_error("Invalid inference type")
-            return None
-
-        # Log inference result
-        self.logger.log_info(f"Inference result: {prediction}")
-
-        # Monitor service performance
-        self.monitor.stop_timer()
-        self.monitor.log_performance()
-
-        return prediction
 
     def evolve_services(self):
         """
         Evolve services by retraining the classifier and regressor with new data.
         """
-        # Fetch new data
-        new_data = self.new_data_generator.generate_new_data()
+        try:
+            # Fetch new data
+            new_data = self.new_data_generator.generate_new_data()
 
-        # Validate new data
-        if not self.validator.validate(new_data):
-            self.logger.log_error("Invalid new data")
-            return
+            # Validate new data
+            if not self.validator.validate(new_data):
+                self.logger.log_error("Invalid new data")
+                return
 
-        # Update classifier and regressor
-        self.classifier.update(new_data)
-        self.regressor.update(new_data)
+            # Update classifier and regressor
+            self.classifier.update(new_data)
+            self.regressor.update(new_data)
 
-        # Log evolution result
-        self.logger.log_info("Services evolved successfully")
+            # Log evolution result
+            self.logger.log_info("Services evolved successfully")
+        except Exception as e:
+            self.logger.log_error(f"Error occurred: {str(e)}")
+
+    def start_app(self):
+        """
+        Start the EvolvedApp instance.
+        """
+        print(f"App Ready. Initial Inference: {self.handle_inference([1,2,3,4,5], 'classification')}")
+        print(f"App Ready. Initial Inference: {self.handle_inference([1,2,3,4,5], 'regression')}")
+        self.evolve_services()
 
 
 if __name__ == "__main__":
     app = EvolvedApp()
-    print(
-        f"App Ready. Initial Inference: {app.handle_inference([1,2,3,4,5], 'classification')}"
-    )
-    print(
-        f"App Ready. Initial Inference: {app.handle_inference([1,2,3,4,5], 'regression')}"
-    )
-    app.evolve_services()
+    app.start_app()
