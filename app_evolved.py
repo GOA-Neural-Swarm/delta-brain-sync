@@ -83,7 +83,9 @@ class EvolvedApp:
         try:
             for _ in range(num_iterations):
                 # Fetch new data
-                new_data = self.new_data_generator.generate_new_data(new_data_batch_size)
+                new_data = self.new_data_generator.generate_new_data(
+                    new_data_batch_size
+                )
 
                 # Validate new data
                 if not self.validator.validate(new_data):
@@ -95,7 +97,9 @@ class EvolvedApp:
                 self.regressor.update(new_data)
 
                 # Log evolution result
-                self.logger.log_info(f"Services evolved successfully (Iteration {_+1}/{num_iterations})")
+                self.logger.log_info(
+                    f"Services evolved successfully (Iteration {_+1}/{num_iterations})"
+                )
         except Exception as e:
             self.logger.log_error(f"Error occurred: {str(e)}")
 
