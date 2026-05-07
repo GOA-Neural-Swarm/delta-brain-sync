@@ -503,6 +503,13 @@ assistant
                 try:
                     with open("brain_history.txt", "a", encoding="utf-8") as f:
                         f.write(f"[{time.ctime()}] ERROR: {str(e)}\n")
-                except:
+                except Exception as e:
+                print(f"⚠️ Loop Error: {e}")
+                # Error Log
+                try:
+                    with open("brain_history.txt", "a", encoding="utf-8") as f:
+                        f.write(f"[{time.ctime()}] ERROR: {str(e)}\n")
+                except Exception as inner_e:
+                    print(f"❌ Critical Logging Error: {inner_e}")
                     pass
                 await asyncio.sleep(60
