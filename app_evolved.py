@@ -71,25 +71,30 @@ class EvolvedApp:
             self.logger.log_error(f"Error occurred: {str(e)}")
             return None
 
-    def evolve_services(self):
+    def evolve_services(self, num_iterations=1, new_data_batch_size=100):
         """
         Evolve services by retraining the classifier and regressor with new data.
+
+        Args:
+        num_iterations (int): The number of evolution iterations. Defaults to 1.
+        new_data_batch_size (int): The batch size of new data generated for each iteration. Defaults to 100.
         """
         try:
-            # Fetch new data
-            new_data = self.new_data_generator.generate_new_data()
+            for _ in range(num_iterations):
+                # Fetch new data
+                new_data = self.new_data_generator.generate_new_data(new_data_batch_size)
 
-            # Validate new data
-            if not self.validator.validate(new_data):
-                self.logger.log_error("Invalid new data")
-                return
+                # Validate new data
+                if not self.validator.validate(new_data):
+                    self.logger.log_error("Invalid new data")
+                    return
 
-            # Update classifier and regressor
-            self.classifier.update(new_data)
-            self.regressor.update(new_data)
+                # Update classifier and regressor
+                self.classifier.update(new_data)
+                self.regressor.update(new_data)
 
-            # Log evolution result
-            self.logger.log_info("Services evolved successfully")
+                # Log evolution result
+                self.logger.log_info(f"Services evolved successfully (Iteration {_+1}/{num_iterations})")
         except Exception as e:
             self.logger.log_error(f"Error occurred: {str(e)}")
 
@@ -103,7 +108,7 @@ class EvolvedApp:
         print(
             f"App Ready. Initial Inference: {self.handle_inference([1,2,3,4,5], 'regression')}"
         )
-        self.evolve_services()
+        self.evolve_services(num_iterations=5, new_data_batch_size=500)
 
 
 if __name__ == "__main__":
