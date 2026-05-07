@@ -13,6 +13,7 @@ class HyperDimensionalLogger:
                 file.write(message + "\n")
             self.utilitarian_metric += 1
             self.existential_state[message] = True
+        return self.utilitarian_metric
 
     def exists(self, path):
         return os.path.exists(path)
