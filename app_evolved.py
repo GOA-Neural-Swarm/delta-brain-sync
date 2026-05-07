@@ -2,6 +2,7 @@
 from evolved_module import EvolvingClassifier, EvolvingRegressor
 from util_module import LoggingUtility, ServiceMonitor
 from data_module import DataValidator, FeatureExtractor, NewDataGenerator
+from typing import List, Union
 
 
 class EvolvedApp:
@@ -26,7 +27,7 @@ class EvolvedApp:
         self.extractor = FeatureExtractor()
         self.new_data_generator = NewDataGenerator()
 
-    def handle_inference(self, feature_vector, inference_type):
+    def handle_inference(self, feature_vector: List[float], inference_type: str) -> Union[float, int, None]:
         """
         Handle inference for the given feature vector.
 
@@ -71,7 +72,7 @@ class EvolvedApp:
             self.logger.log_error(f"Error occurred: {str(e)}")
             return None
 
-    def evolve_services(self, num_iterations=1, new_data_batch_size=100):
+    def evolve_services(self, num_iterations: int = 1, new_data_batch_size: int = 100) -> None:
         """
         Evolve services by retraining the classifier and regressor with new data.
 
@@ -98,7 +99,7 @@ class EvolvedApp:
         except Exception as e:
             self.logger.log_error(f"Error occurred: {str(e)}")
 
-    def start_app(self):
+    def start_app(self) -> None:
         """
         Start the EvolvedApp instance.
         """
