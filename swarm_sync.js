@@ -12,19 +12,25 @@ function getNeuralDecision(avgApi = 5000, environmentComplexity = 0.5) {
 }
 
 // Define the autonomous trinity execution function with utilitarian, existential, stoic, and evolutionary philosophy
-async function executeAutonomousTrinity() {
+async function executeAutonomousTrinity(avgApi = 5000, environmentComplexity = 0.5, uncertaintyAwareness = true, utilitarianConsideration = true, stoicFocus = true) {
   // Initialize the trinity sync process with existential awareness of uncertainty
-  console.log("Neon DB Connected. Starting Trinity Sync with awareness of environmental complexity...");
+  console.log("Neon DB Connected. Starting Trinity Sync with awareness of environmental complexity and uncertainty...");
+  if (uncertaintyAwareness) {
+    console.log("Uncertainty awareness is ON. Proceeding with caution...");
+  }
   console.log("Firebase Updated with adaptability in mind.");
   console.log("Supabase Vector Vault Synced with resilience.");
 
   // Retrieve the neural decision with hyper-dimensional logic
-  const decision = getNeuralDecision(6000, 0.8);
+  const decision = getNeuralDecision(avgApi, environmentComplexity);
   console.log(`Decision: ${decision.command}`);
 
   // Check the decision command and perform actions accordingly with stoic focus on the present
-  if (decision.command !== "STEALTH_LOCKDOWN") {
+  if (stoicFocus && decision.command !== "STEALTH_LOCKDOWN") {
     console.log("Density Increasing... New Neuron added to Neon DB with utilitarian consideration of overall utility.");
+    if (utilitarianConsideration) {
+      console.log("Maximizing overall utility and efficiency in the process...");
+    }
   }
 
   // Perform the Gemini neural check with evolutionary adaptation
@@ -43,4 +49,4 @@ async function executeAutonomousTrinity() {
 }
 
 // Execute the autonomous trinity
-executeAutonomousTrinity();
+executeAutonomousTrinity(6000, 0.8);
