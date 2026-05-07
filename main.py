@@ -142,6 +142,39 @@ class Mod:
         self.eb.b(db)
 
 
+class Gemini:
+    def __init__(self, mod):
+        self.mod = mod
+        self.cache = {}
+
+    def f(self, x):
+        if id(x) in self.cache:
+            return self.cache[id(x)]
+        else:
+            out = self.mod.f(x)
+            self.cache[id(x)] = out
+            return out
+
+    def b(self, dy):
+        return self.mod.b(dy)
+
+
+class Groq:
+    def __init__(self, mod):
+        self.mod = mod
+        self.count = 0
+
+    def f(self, x):
+        self.count += 1
+        return self.mod.f(x)
+
+    def b(self, dy):
+        if self.count % 2 == 0:
+            return self.mod.b(dy)
+        else:
+            return dy
+
+
 class Br:
     def __init__(self):
         self.en, self.ho, self.re, self.ti, self.hi, self.m, self.lr = (
@@ -150,7 +183,7 @@ class Br:
             432.0,
             1,
             [],
-            Mod(784, 128, 10),
+            Gemini(Groq(Mod(784, 128, 10))),
             1e-3,
         )
 
@@ -162,7 +195,7 @@ class Br:
         dl = pr.copy()
         dl[np.arange(len(y)), y] -= 1
         self.m.b(dl / len(y))
-        for p in self.m.ps:
+        for p in self.m.mod.mod.ps:
             p.d -= self.lr * np.clip(p.g, -1, 1)
             p.g.fill(0)
         self.ho += max(0, 1 - loss)
@@ -176,7 +209,7 @@ class Br:
             else:
                 self.ho += 2
         if np.random.random() < 0.1:
-            for p in self.m.ps:
+            for p in self.m.mod.mod.ps:
                 p.d += np.random.normal(0, 1e-3, p.d.shape).astype("f4")
         return loss
 

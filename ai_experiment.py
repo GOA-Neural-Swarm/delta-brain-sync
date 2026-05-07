@@ -4,6 +4,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
+
 class HyperDimensionalSpace:
     def __init__(self, dimensions):
         self.dimensions = dimensions
@@ -98,7 +99,7 @@ class EvolutionaryTrainer:
                 loss.backward()
                 self.optimizer.step()
 
-                print(f'Epoch {epoch+1}, Loss: {loss.item()}')
+                print(f"Epoch {epoch+1}, Loss: {loss.item()}")
 
 
 if __name__ == "__main__":
@@ -112,5 +113,7 @@ if __name__ == "__main__":
     labels = np.random.rand(100, 10)
     existential_dataset = ExistentialDataset(data=data, labels=labels)
 
-    trainer = EvolutionaryTrainer(model, stoic_optimizer, utilitarian_loss, hyper_space, existential_dataset)
+    trainer = EvolutionaryTrainer(
+        model, stoic_optimizer, utilitarian_loss, hyper_space, existential_dataset
+    )
     trainer.train(epochs=10)
