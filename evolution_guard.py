@@ -119,7 +119,9 @@ def run_guard(target_script):
 
         time.sleep(1)
 
-    print("[GUARD]: System is stable and sovereign. Handing over to background process.")
+    print(
+        "[GUARD]: System is stable and sovereign. Handing over to background process."
+    )
     sys.exit(0)
 
 

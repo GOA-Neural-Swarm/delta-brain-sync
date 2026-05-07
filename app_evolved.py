@@ -97,8 +97,12 @@ class EvolvedApp:
         """
         Start the EvolvedApp instance.
         """
-        print(f"App Ready. Initial Inference: {self.handle_inference([1,2,3,4,5], 'classification')}")
-        print(f"App Ready. Initial Inference: {self.handle_inference([1,2,3,4,5], 'regression')}")
+        print(
+            f"App Ready. Initial Inference: {self.handle_inference([1,2,3,4,5], 'classification')}"
+        )
+        print(
+            f"App Ready. Initial Inference: {self.handle_inference([1,2,3,4,5], 'regression')}"
+        )
         self.evolve_services()
 
 
