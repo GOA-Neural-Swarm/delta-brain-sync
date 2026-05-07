@@ -4,44 +4,33 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
-
-# Define a hyper-dimensional space
 class HyperDimensionalSpace:
     def __init__(self, dimensions):
         self.dimensions = dimensions
 
     def evolve(self, data):
-        # Apply evolutionary principles to the data
-        # Using a simple evolutionary strategy for demonstration
         evolved_data = []
         for point in data:
-            # Mutation
             mutated_point = point + np.random.normal(0, 0.1, size=self.dimensions)
             evolved_data.append(mutated_point)
         return evolved_data
 
 
-# Define a utilitarian loss function
 class UtilitarianLoss(nn.Module):
     def __init__(self):
         super(UtilitarianLoss, self).__init__()
 
     def forward(self, predictions, targets):
-        # Calculate the loss based on the utilitarian principle
-        # Maximizing the overall well-being
         loss = -torch.sum(predictions * targets)
         return loss
 
 
-# Define a stoic optimizer
 class StoicOptimizer(optim.Optimizer):
     def __init__(self, params, lr):
         defaults = dict(lr=lr)
         super(StoicOptimizer, self).__init__(params, defaults)
 
     def step(self, closure=None):
-        # Update the parameters based on the stoic principle
-        # Focusing on the present moment
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -57,7 +46,6 @@ class StoicOptimizer(optim.Optimizer):
         return loss
 
 
-# Define an existential dataset
 class ExistentialDataset(Dataset):
     def __init__(self, data, labels):
         self.data = data
@@ -67,20 +55,11 @@ class ExistentialDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        # Return the data and labels based on the existential principle
-        # Embracing the uncertainty of life
         data = self.data[idx]
         label = self.labels[idx]
         return data, label
 
 
-# Initialize the hyper-dimensional space
-hyper_space = HyperDimensionalSpace(dimensions=10)
-
-# Initialize the utilitarian loss function
-utilitarian_loss = UtilitarianLoss()
-
-# Initialize the model
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
@@ -92,40 +71,46 @@ class Model(nn.Module):
         x = self.fc2(x)
         return x
 
-model = Model()
 
-# Initialize the stoic optimizer
-stoic_optimizer = StoicOptimizer(params=model.parameters(), lr=0.01)
+class EvolutionaryTrainer:
+    def __init__(self, model, optimizer, loss_fn, hyper_space, dataset):
+        self.model = model
+        self.optimizer = optimizer
+        self.loss_fn = loss_fn
+        self.hyper_space = hyper_space
+        self.dataset = dataset
 
-# Initialize the existential dataset
-np.random.seed(0)
-data = np.random.rand(100, 10)
-labels = np.random.rand(100, 10)
-existential_dataset = ExistentialDataset(data=data, labels=labels)
+    def train(self, epochs):
+        data_loader = DataLoader(self.dataset, batch_size=10, shuffle=True)
+        for epoch in range(epochs):
+            for batch in data_loader:
+                inputs, labels = batch
+                inputs = torch.from_numpy(inputs).float()
+                labels = torch.from_numpy(labels).float()
 
-# Create a data loader for the existential dataset
-existential_data_loader = DataLoader(existential_dataset, batch_size=10, shuffle=True)
+                evolved_inputs = self.hyper_space.evolve(inputs.detach().numpy())
+                evolved_inputs = torch.from_numpy(np.array(evolved_inputs)).float()
 
-# Train the model using the stoic optimizer and utilitarian loss function
-for epoch in range(10):
-    for batch in existential_data_loader:
-        inputs, labels = batch
-        inputs = torch.from_numpy(inputs).float()
-        labels = torch.from_numpy(labels).float()
+                outputs = self.model(evolved_inputs)
+                loss = self.loss_fn(outputs, labels)
 
-        # Evolve the inputs using the hyper-dimensional space
-        evolved_inputs = hyper_space.evolve(inputs.detach().numpy())
-        evolved_inputs = torch.from_numpy(np.array(evolved_inputs)).float()
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
 
-        # Forward pass
-        outputs = model(evolved_inputs)
-        loss = utilitarian_loss(outputs, labels)
+                print(f'Epoch {epoch+1}, Loss: {loss.item()}')
 
-        # Backward pass
-        stoic_optimizer.zero_grad()
-        loss.backward()
 
-        # Update the model parameters
-        stoic_optimizer.step()
+if __name__ == "__main__":
+    hyper_space = HyperDimensionalSpace(dimensions=10)
+    utilitarian_loss = UtilitarianLoss()
+    model = Model()
+    stoic_optimizer = StoicOptimizer(params=model.parameters(), lr=0.01)
 
-        print(f'Epoch {epoch+1}, Loss: {loss.item()}')
+    np.random.seed(0)
+    data = np.random.rand(100, 10)
+    labels = np.random.rand(100, 10)
+    existential_dataset = ExistentialDataset(data=data, labels=labels)
+
+    trainer = EvolutionaryTrainer(model, stoic_optimizer, utilitarian_loss, hyper_space, existential_dataset)
+    trainer.train(epochs=10)
