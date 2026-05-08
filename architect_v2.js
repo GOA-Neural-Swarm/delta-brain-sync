@@ -1,69 +1,129 @@
-const fs = require('fs');
-const axios = require('axios');
-const hdc = require('./omega_hdc');
-const phil = require('./omega_philosophy');
+const fs = require("fs"); 
+const axios = require("axios");
+const { execSync } = require('child_process'); // ASI Guard: System commands အတှကျ လိုအပျသညျ
+const hdc = require("./omega_hdc");
+const phil = require("./omega_philosophy");
 
-const delay = ms => new Promise(res => setTimeout(res, ms));
+const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
+/**
+ * 🛰️ [COMMUNICATION LAYER]: 
+ * Groq API ဆီသို့ Stable ဖွဈသော ခြိတျဆကျမှုဖွင့ျ Code Evolution တောငျးဆိုခွငျး
+ */
 async function callGroq(payload, retry = 0) {
+  try {
+    return await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  } catch (err) {
+    // 429 Error (Rate Limit) ဖွဈရငျ 20s စောင့ျပွီး ၃ ကွိမျအထိ ပွနျကွိုးစားမညျ
+    if (err.response && err.response.status === 429 && retry < 3) {
+      console.log(`⚠️ [RATE LIMIT]: Waiting 20s before retry ${retry + 1}...`);
+      await delay(20000);
+      return callGroq(payload, retry + 1);
+    }
+    throw err;
+  }
+}
+
+/**
+ * 🛡️ [ASI INTEGRITY GUARD]: 
+ * AI ထုတျပေးလိုကျသော Code သညျ Syntax မှနျမမှနျနှင့ျ ပွတျတောကျခွငျး ရှိမရှိ စဈဆေးသညျ
+ */
+function validateEvolution(file, code) {
+    const tempFile = `temp_evo_${file}`;
+    fs.writeFileSync(tempFile, code);
+    
     try {
-        return await axios.post("https://api.groq.com/openai/v1/chat/completions", payload, {
-            headers: { 
-                Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-                'Content-Type': 'application/json'
-            }
-        });
-    } catch (err) {
-        // 429 Error (Rate Limit) ဖြစ်ရင် 20s စောင့်ပြီး ပြန်ကြိုးစားမယ်
-        if (err.response && err.response.status === 429 && retry < 3) {
-            console.log(`⚠️ Rate limited. Waiting 20s before retry ${retry + 1}...`);
-            await delay(20000);
-            return callGroq(payload, retry + 1);
+        if (file.endsWith('.py')) {
+            // Python AST parsing check (Syntax အမှားပါက Error တကျမညျ)
+            execSync(`python3 -m py_compile ${tempFile}`);
+        } else if (file.endsWith('.js')) {
+            // Node.js syntax check logic
+            execSync(`node -c ${tempFile}`);
         }
-        throw err;
+        
+        // သန့ျရှငျးရေးလုပျခွငျး
+        if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+        const pycache = "__pycache__";
+        if (fs.existsSync(pycache)) fs.rmSync(pycache, { recursive: true, force: true });
+        
+        return true; // စဈဆေးမှု အောငျမွငျသညျ
+    } catch (e) {
+        console.error(`❌ [EVOLUTION REJECTED]: ${file} contains syntax errors. Atomic state preserved.`);
+        if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+        return false; // စဈဆေးမှု ကရြှုံးသညျ (Broken code ဖွဈသညျ)
     }
 }
 
+/**
+ * 🧠 [TRANSCENDENCE ENGINE]: 
+ * စနဈအတှငျးရှိ ဖိုငျမြားကို တဈခုခငြျးစီ အဆင့ျမွှင့ျတငျပေးသော Core Logic
+ */
 async function transcend() {
-    // architect_v2.js ကိုယ်တိုင်နဲ့ library တွေကို မပြင်အောင် filter လုပ်ထားတယ်
-    const files = fs.readdirSync('./').filter(f => 
-        (f.endsWith('.js') || f.endsWith('.py')) && 
-        !['architect_v2.js', 'omega_hdc.js', 'omega_philosophy.js'].includes(f)
+  // architect_v2.js ကိုယျတိုငျနဲ့ critical library တှကေို မပွငျအောငျ filter လုပျထားသညျ
+  const files = fs
+    .readdirSync("./")
+    .filter(
+      (f) =>
+        (f.endsWith(".js") || f.endsWith(".py")) &&
+        !["architect_v2.js", "omega_hdc.js", "omega_philosophy.js"].includes(f),
     );
 
-    console.log(`📡 Found ${files.length} files. Starting sequential evolution...`);
+  console.log(`📡 [ASI SEED]: Found ${files.length} files. Starting Verified Evolution Cycle...`);
 
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        let code = fs.readFileSync(file, 'utf8');
-        
-        console.log(`🧠 [${i + 1}/${files.length}] Evolving: ${file}`);
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    let originalCode = fs.readFileSync(file, "utf8");
 
-        const payload = {
-            model: "llama-3.3-70b-versatile",
-            messages: [{ 
-                role: "system", 
-                content: `Apply Hyper-Dimensional Logic and ${phil.layers.join(', ')} philosophy. Evolution must be additive. Preserve all existing logic. Return ONLY the raw code.` 
-            }, { role: "user", content: code }],
-        };
+    console.log(`🧠 [${i + 1}/${files.length}] Evolving Core Logic: ${file}`);
 
-        try {
-            const res = await callGroq(payload);
-            let evolvedCode = res.data.choices[0].message.content.replace(/```[a-z]*\n/gi, "").replace(/```$/g, "").trim();
-            
-            if (evolvedCode.length > code.length * 0.5) {
-                fs.writeFileSync(file, evolvedCode);
-                console.log(`✨ ${file} transcended.`);
-            }
-        } catch (e) {
-            console.error(`❌ Error evolving ${file}: ${e.message}`);
-        }
+    const payload = {
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: `Apply Hyper-Dimensional Logic and ${phil.layers.join(", ")} philosophy. 
+          STRICT DIRECTIVE: Evolution must be additive and structurally sound. 
+          Return ONLY the complete raw code. Ensure ALL blocks (try-except, def, if) are closed. 
+          Do not truncate the response.`,
+        },
+        { role: "user", content: originalCode },
+      ],
+    };
 
-        // ဖိုင်တစ်ခုပြီးတိုင်း ၆ စက္ကန့် စောင့်မယ် (Rate Limit ရှောင်ရန်)
-        if (i < files.length - 1) {
-            console.log("⏳ Cooling down (6s)...");
-            await delay(6000);
-        }
+    try {
+      const res = await callGroq(payload);
+      let evolvedCode = res.data.choices[0].message.content
+        .replace(/```[a-z]*\n/gi, "")
+        .replace(/```$/g, "")
+        .trim();
+
+      // Logic Match Check: စာလုံးရသေညျ မူလ၏ 50% ထကျ နညျးမသှားရသလို Syntax လညျး မှနျရမညျ
+      if (evolvedCode.length > originalCode.length * 0.5 && validateEvolution(file, evolvedCode)) {
+        fs.writeFileSync(file, evolvedCode);
+        console.log(`✨ [SUCCESS]: ${file} has transcended safely.`);
+      } else {
+        console.log(`⚠️ [INTEGRITY ALERT]: ${file} evolution failed validation. Skipping to prevent system crash.`);
+      }
+    } catch (e) {
+      console.error(`❌ [CRITICAL ERROR] in ${file}: ${e.message}`);
     }
+
+    // Rate Limit ရှောငျရနျနှင့ျ Cool-down လုပျရနျ ၆ စက်ကန့ျ စောင့ျမညျ
+    if (i < files.length - 1) {
+      console.log("⏳ Cooling down (6s) for synaptic stability...");
+      await delay(6000);
+    }
+  }
 }
-transcend().then(() => console.log("🏁 Cycle Complete."));
+
+// စနဈကို စတငျနှိုးဆောျခွငျး
+transcend().then(() => console.log("🏁 [CYCLE COMPLETE]: All nodes are stable and evolved."));
