@@ -1,4 +1,4 @@
-const fs = require("fs");
+const fs = require("fs"); 
 const axios = require("axios");
 const { execSync } = require('child_process'); // ASI Guard: System commands အတွက် လိုအပ်သည်
 const hdc = require("./omega_hdc");
