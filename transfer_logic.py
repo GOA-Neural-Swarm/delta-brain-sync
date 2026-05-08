@@ -16,6 +16,7 @@ headers = {
     "User-Agent": "Swarm-Node-Transfer",
 }
 
+
 def get_nodes() -> List[str]:
     """
     Retrieve a list of 'swarm-node-' repositories from the source entity
@@ -36,6 +37,7 @@ def get_nodes() -> List[str]:
         # Handle API errors
         print(f"API Error: {res.status_code} - {res.text}")
         return []
+
 
 def transfer_repo(repo: str) -> None:
     """
@@ -58,6 +60,7 @@ def transfer_repo(repo: str) -> None:
         error_msg = response.json().get("message", "Unknown Error")
         print(f"Failed {repo}: {error_msg}")
 
+
 def transfer_repos(repos: List[str]) -> None:
     """
     Transfer a list of repositories to the target organization
@@ -69,6 +72,7 @@ def transfer_repos(repos: List[str]) -> None:
         transfer_repo(repo)
         # Pause for 1 second to avoid rate limiting
         time.sleep(1)
+
 
 def main() -> None:
     # Get the list of 'swarm-node-' repositories
@@ -84,6 +88,7 @@ def main() -> None:
     else:
         # Log no repositories found
         print(f"No 'swarm-node-' repositories found in {SOURCE_ENTITY}.")
+
 
 if __name__ == "__main__":
     main()
