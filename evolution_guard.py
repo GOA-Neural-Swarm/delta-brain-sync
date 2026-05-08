@@ -13,6 +13,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 
 def get_ai_correction(error_log, original_code):
+    """Retrieve AI correction for the given error log and original code."""
     print(" [GUARD]: AI is analyzing the error...")
 
     prompt = f"Fix this Python error:\n{error_log}\n\nCode:\n{original_code}\n\nReturn ONLY the clean code."
@@ -79,6 +80,7 @@ def get_ai_correction(error_log, original_code):
 
 
 def run_guard(target_script):
+    """Run the guard process for the given target script."""
     print(f"[GUARD]: Launching {target_script} in Observation Mode...")
 
     process = subprocess.Popen(

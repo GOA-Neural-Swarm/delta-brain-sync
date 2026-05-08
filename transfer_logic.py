@@ -14,6 +14,7 @@ headers = {
 }
 
 def get_nodes():
+    """Retrieve a list of 'swarm-node-' repositories from the source entity"""
     url = f"https://api.github.com/users/{SOURCE_ENTITY}/repos?per_page=100"
     res = requests.get(url, headers=headers)
 
@@ -26,6 +27,7 @@ def get_nodes():
         return []
 
 def transfer_repo(repo):
+    """Transfer a repository to the target organization"""
     url = f"https://api.github.com/repos/{SOURCE_ENTITY}/{repo}/transfer"
     payload = {"new_owner": TARGET_ORG}
 
