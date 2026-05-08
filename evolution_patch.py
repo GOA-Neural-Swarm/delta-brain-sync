@@ -34,7 +34,9 @@ class HyperDimensionalLogger:
                 file.writelines(existing_lines)
             self.utilitarian_metric += 1
             self.existential_state[new_message] = True
-            self.evolutionary_history.append({"action": "additive", "message": new_message})
+            self.evolutionary_history.append(
+                {"action": "additive", "message": new_message}
+            )
             return True
         return False
 

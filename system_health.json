@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-05-08T18:02:09.529099",
+    "timestamp": "2026-05-08T21:13:24.759676",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1010-azure",
@@ -73,7 +73,6 @@
         "diffusers": "0.32.2",
         "numpy": "2.4.3",
         "tzdata": "2026.2",
-        "propcache": "0.4.1",
         "fonttools": "4.62.1",
         "dill": "0.4.1",
         "mccabe": "0.7.0",
@@ -91,6 +90,7 @@
         "markdown-it-py": "4.2.0",
         "requests": "2.33.1",
         "smmap": "5.0.3",
+        "propcache": "0.5.2",
         "flake8": "7.3.0",
         "pydantic_core": "2.41.4",
         "mdurl": "0.1.2",
@@ -167,8 +167,8 @@
     },
     "conflicts": [],
     "hardware": {
-        "ram_total_gb": 15.62,
-        "ram_available_gb": 14.58,
+        "ram_total_gb": 15.61,
+        "ram_available_gb": 14.56,
         "gpu_available": false
     }
 }

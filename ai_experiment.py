@@ -109,14 +109,19 @@ class EvolutionaryTrainer:
 
 class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
     def __init__(self, model, optimizer, loss_fn, hyper_space, dataset, alpha=0.1):
-        super(AdditiveEvolutionaryTrainer, self).__init__(model, optimizer, loss_fn, hyper_space, dataset)
+        super(AdditiveEvolutionaryTrainer, self).__init__(
+            model, optimizer, loss_fn, hyper_space, dataset
+        )
         self.alpha = alpha
         self.preserved_model = EvolutionaryModel()
         self.preserved_model.load_state_dict(model.state_dict())
 
     def evolve(self):
         for key in self.preserved_model.state_dict():
-            self.model.state_dict()[key].data += self.alpha * (self.preserved_model.state_dict()[key].data - self.model.state_dict()[key].data)
+            self.model.state_dict()[key].data += self.alpha * (
+                self.preserved_model.state_dict()[key].data
+                - self.model.state_dict()[key].data
+            )
 
     def train(self, epochs):
         data_loader = DataLoader(self.dataset, batch_size=10, shuffle=True)

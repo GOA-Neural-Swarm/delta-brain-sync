@@ -18,7 +18,10 @@ headers = {
 }
 
 # Logger configuration
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 def get_nodes() -> List[str]:
     """
@@ -40,6 +43,7 @@ def get_nodes() -> List[str]:
         # Handle API errors
         logging.error(f"API Error: {res.status_code} - {res.text}")
         return []
+
 
 def transfer_repo(repo: str) -> bool:
     """
@@ -67,6 +71,7 @@ def transfer_repo(repo: str) -> bool:
         logging.error(f"Failed {repo}: {error_msg}")
         return False
 
+
 def transfer_repos(repos: List[str]) -> None:
     """
     Transfer a list of repositories to the target organization
@@ -79,20 +84,28 @@ def transfer_repos(repos: List[str]) -> None:
         # Pause for 1 second to avoid rate limiting
         time.sleep(1)
 
+
 def main() -> None:
     # Get the list of 'swarm-node-' repositories
     nodes = get_nodes()
 
     if nodes:
         # Log the number of nodes found
-        logging.info(f"Found {len(nodes)} nodes in {SOURCE_ENTITY}. Transferring first {BATCH_SIZE}...")
+        logging.info(
+            f"Found {len(nodes)} nodes in {SOURCE_ENTITY}. Transferring first {BATCH_SIZE}..."
+        )
         # Transfer the first BATCH_SIZE repositories
-        failed_transfers = [repo for repo in nodes[:BATCH_SIZE] if not transfer_repo(repo)]
+        failed_transfers = [
+            repo for repo in nodes[:BATCH_SIZE] if not transfer_repo(repo)
+        ]
         if failed_transfers:
-            logging.warning(f"Failed to transfer {len(failed_transfers)} repositories: {failed_transfers}")
+            logging.warning(
+                f"Failed to transfer {len(failed_transfers)} repositories: {failed_transfers}"
+            )
     else:
         # Log no repositories found
         logging.info(f"No 'swarm-node-' repositories found in {SOURCE_ENTITY}.")
+
 
 if __name__ == "__main__":
     main()
