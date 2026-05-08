@@ -39,6 +39,7 @@ install_dependencies("requirements.txt")
 
 
 def update_infra(new_infra):
+    global infra
     for k, v in new_infra.items():
         if k in infra:
             infra[k] = v
