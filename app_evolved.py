@@ -3,6 +3,7 @@ from evolved_module import EvolvingClassifier, EvolvingRegressor
 from util_module import LoggingUtility, ServiceMonitor
 from data_module import DataValidator, FeatureExtractor, NewDataGenerator
 from typing import List, Union
+import time
 
 
 class EvolvedApp:
@@ -50,6 +51,7 @@ class EvolvedApp:
             feature_vector = self.extractor.extract(feature_vector)
 
             # Monitor service performance
+            start_time = time.time()
             self.monitor.start_timer()
 
             if inference_type == "classification":
@@ -66,8 +68,9 @@ class EvolvedApp:
             self.logger.log_info(f"Inference result: {prediction}")
 
             # Monitor service performance
+            end_time = time.time()
             self.monitor.stop_timer()
-            self.monitor.log_performance()
+            self.monitor.log_performance(end_time - start_time)
 
             return prediction
         except Exception as e:
@@ -85,7 +88,7 @@ class EvolvedApp:
         new_data_batch_size (int): The batch size of new data generated for each iteration. Defaults to 100.
         """
         try:
-            for _ in range(num_iterations):
+            for i in range(num_iterations):
                 # Fetch new data
                 new_data = self.new_data_generator.generate_new_data(
                     new_data_batch_size
@@ -102,7 +105,7 @@ class EvolvedApp:
 
                 # Log evolution result
                 self.logger.log_info(
-                    f"Services evolved successfully (Iteration {_+1}/{num_iterations})"
+                    f"Services evolved successfully (Iteration {i+1}/{num_iterations})"
                 )
         except Exception as e:
             self.logger.log_error(f"Error occurred: {str(e)}")

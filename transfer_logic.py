@@ -12,6 +12,7 @@ BATCH_SIZE = 15
 headers = {
     "Authorization": f"token {GITHUB_TOKEN}",
     "Accept": "application/vnd.github.v3+json",
+    "User-Agent": "Swarm-Node-Transfer"
 }
 
 
@@ -23,7 +24,11 @@ def get_nodes():
         list: A list of repository names
     """
     url = f"https://api.github.com/users/{SOURCE_ENTITY}/repos?per_page=100"
-    res = requests.get(url, headers=headers)
+    params = {
+        "type": "all",
+        "state": "all"
+    }
+    res = requests.get(url, headers=headers, params=params)
 
     if res.status_code == 200:
         repo_list = res.json()
@@ -45,7 +50,7 @@ def transfer_repo(repo):
     """
     url = f"https://api.github.com/repos/{SOURCE_ENTITY}/{repo}/transfer"
     # Set the new owner for the repository
-    payload = {"new_owner": TARGET_ORG}
+    payload = {"new_owner": TARGET_ORG, "team_ids": []}
 
     response = requests.post(url, headers=headers, json=payload)
 

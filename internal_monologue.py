@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class HyperDimensionalLogic:
     def __init__(self, dimensions):
         self.dimensions = dimensions
