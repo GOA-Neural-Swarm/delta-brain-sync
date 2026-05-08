@@ -85,6 +85,27 @@ def transfer_repos(repos: List[str]) -> None:
         time.sleep(1)
 
 
+def process_repos_in_batches(repos: List[str], batch_size: int) -> None:
+    """
+    Process a list of repositories in batches
+
+    Args:
+        repos (List[str]): A list of repository names
+        batch_size (int): The size of each batch
+    """
+    failed_transfers = []
+    for i in range(0, len(repos), batch_size):
+        batch = repos[i : i + batch_size]
+        failed_batch_transfers = [repo for repo in batch if not transfer_repo(repo)]
+        failed_transfers.extend(failed_batch_transfers)
+        # Pause for 1 second to avoid rate limiting
+        time.sleep(1)
+    if failed_transfers:
+        logging.warning(
+            f"Failed to transfer {len(failed_transfers)} repositories: {failed_transfers}"
+        )
+
+
 def main() -> None:
     # Get the list of 'swarm-node-' repositories
     nodes = get_nodes()
@@ -92,16 +113,10 @@ def main() -> None:
     if nodes:
         # Log the number of nodes found
         logging.info(
-            f"Found {len(nodes)} nodes in {SOURCE_ENTITY}. Transferring first {BATCH_SIZE}..."
+            f"Found {len(nodes)} nodes in {SOURCE_ENTITY}. Transferring in batches of {BATCH_SIZE}..."
         )
-        # Transfer the first BATCH_SIZE repositories
-        failed_transfers = [
-            repo for repo in nodes[:BATCH_SIZE] if not transfer_repo(repo)
-        ]
-        if failed_transfers:
-            logging.warning(
-                f"Failed to transfer {len(failed_transfers)} repositories: {failed_transfers}"
-            )
+        # Process the repositories in batches
+        process_repos_in_batches(nodes, BATCH_SIZE)
     else:
         # Log no repositories found
         logging.info(f"No 'swarm-node-' repositories found in {SOURCE_ENTITY}.")
