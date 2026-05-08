@@ -107,6 +107,39 @@ class EvolutionaryTrainer:
                 print(f"Epoch {epoch+1}, Loss: {loss.item()}")
 
 
+class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
+    def __init__(self, model, optimizer, loss_fn, hyper_space, dataset, alpha=0.1):
+        super(AdditiveEvolutionaryTrainer, self).__init__(model, optimizer, loss_fn, hyper_space, dataset)
+        self.alpha = alpha
+        self.preserved_model = EvolutionaryModel()
+        self.preserved_model.load_state_dict(model.state_dict())
+
+    def evolve(self):
+        for key in self.preserved_model.state_dict():
+            self.model.state_dict()[key].data += self.alpha * (self.preserved_model.state_dict()[key].data - self.model.state_dict()[key].data)
+
+    def train(self, epochs):
+        data_loader = DataLoader(self.dataset, batch_size=10, shuffle=True)
+        for epoch in range(epochs):
+            self.evolve()
+            for batch in data_loader:
+                inputs, labels = batch
+                inputs = torch.from_numpy(inputs).float()
+                labels = torch.from_numpy(labels).float()
+
+                evolved_inputs = self.hyper_space.evolve(inputs.detach().numpy())
+                evolved_inputs = torch.from_numpy(np.array(evolved_inputs)).float()
+
+                outputs = self.model(evolved_inputs)
+                loss = self.loss_fn(outputs, labels)
+
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+
+                print(f"Epoch {epoch+1}, Loss: {loss.item()}")
+
+
 if __name__ == "__main__":
     hyper_space = HyperDimensionalSpace(dimensions=10)
     utilitarian_loss = UtilitarianLoss()
@@ -118,7 +151,7 @@ if __name__ == "__main__":
     labels = np.random.rand(100, 10)
     existential_dataset = ExistentialDataset(data=data, labels=labels)
 
-    trainer = EvolutionaryTrainer(
+    trainer = AdditiveEvolutionaryTrainer(
         evolutionary_model,
         stoic_optimizer,
         utilitarian_loss,
