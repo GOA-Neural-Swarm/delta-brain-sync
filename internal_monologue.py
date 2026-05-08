@@ -56,13 +56,18 @@ class EvolutionarySystem:
         return self.hyper_dimensional_logic.calculate_additive_evolution()
 
 
-evolutionary_system = EvolutionarySystem(5)
-utilitarian_values = [1, 2, 3, 4, 5]
-existential_values = [5, 4, 3, 2, 1]
-stoic_values = [1, 1, 1, 1, 1]
-evolutionary_values = [2, 2, 2, 2, 2]
-evolutionary_system.update_values(
-    utilitarian_values, existential_values, stoic_values, evolutionary_values
-)
-additive_evolution = evolutionary_system.calculate_additive_evolution()
-print(additive_evolution)
+def main():
+    evolutionary_system = EvolutionarySystem(5)
+    utilitarian_values = [1, 2, 3, 4, 5]
+    existential_values = [5, 4, 3, 2, 1]
+    stoic_values = [1, 1, 1, 1, 1]
+    evolutionary_values = [2, 2, 2, 2, 2]
+    evolutionary_system.update_values(
+        utilitarian_values, existential_values, stoic_values, evolutionary_values
+    )
+    additive_evolution = evolutionary_system.calculate_additive_evolution()
+    print(additive_evolution)
+
+
+if __name__ == "__main__":
+    main()

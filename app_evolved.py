@@ -27,6 +27,7 @@ class EvolvedApp:
         self.validator = DataValidator()
         self.extractor = FeatureExtractor()
         self.new_data_generator = NewDataGenerator()
+        self.utilitarian_tracker = {'classifier_update_count': 0, 'regressor_update_count': 0}
 
     def handle_inference(
         self, feature_vector: List[float], inference_type: str
@@ -72,6 +73,17 @@ class EvolvedApp:
             self.monitor.stop_timer()
             self.monitor.log_performance(end_time - start_time)
 
+            # Existential logic: track the number of inferences made
+            if inference_type == "classification":
+                self.utilitarian_tracker['classifier_update_count'] += 1
+            elif inference_type == "regression":
+                self.utilitarian_tracker['regressor_update_count'] += 1
+
+            # Stoic logic: evaluate the performance of the services
+            if self.utilitarian_tracker['classifier_update_count'] > 100 or self.utilitarian_tracker['regressor_update_count'] > 100:
+                self.logger.log_info(f"Services have made over 100 inferences. Evaluating performance...")
+                self.monitor.evaluate_performance()
+
             return prediction
         except Exception as e:
             self.logger.log_error(f"Error occurred: {str(e)}")
@@ -107,6 +119,10 @@ class EvolvedApp:
                 self.logger.log_info(
                     f"Services evolved successfully (Iteration {i+1}/{num_iterations})"
                 )
+
+                # Evolutionary logic: track the number of updates made to the services
+                self.utilitarian_tracker['classifier_update_count'] += 1
+                self.utilitarian_tracker['regressor_update_count'] += 1
         except Exception as e:
             self.logger.log_error(f"Error occurred: {str(e)}")
 
