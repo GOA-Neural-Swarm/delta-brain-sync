@@ -42,10 +42,10 @@ def update_infra(new_infra):
     global infra
     for k, v in new_infra.items():
         if k in infra:
-            infra[k] = v
+            infra[k] = infra[k] + v
         else:
             infra[k] = v
-        create_file(k, v)
+        create_file(k, infra[k])
 
 
 new_infra = {
@@ -59,7 +59,6 @@ update_infra(new_infra)
 
 new_dependencies = {
     "requirements.txt": [
-        "flask",
         "numpy",
     ],
 }
