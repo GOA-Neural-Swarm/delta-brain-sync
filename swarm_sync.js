@@ -1,5 +1,9 @@
 // Define a function to retrieve neural decisions with hyper-dimensional logic
-function getNeuralDecision(avgApi = 5000, environmentComplexity = 0.5, uncertaintyFactor = 0.2) {
+function getNeuralDecision(
+  avgApi = 5000,
+  environmentComplexity = 0.5,
+  uncertaintyFactor = 0.2,
+) {
   /**
    * Returns a neural decision based on the average API value, environment complexity, and uncertainty factor.
    * @param {number} avgApi - The average API value.
