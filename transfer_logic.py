@@ -2,6 +2,7 @@ import requests
 import os
 import time
 from typing import List
+import logging
 
 # Environment Variables
 GITHUB_TOKEN = os.getenv("GH_TOKEN")
@@ -16,6 +17,8 @@ headers = {
     "User-Agent": "Swarm-Node-Transfer",
 }
 
+# Logger configuration
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def get_nodes() -> List[str]:
     """
@@ -35,16 +38,18 @@ def get_nodes() -> List[str]:
         return found
     else:
         # Handle API errors
-        print(f"API Error: {res.status_code} - {res.text}")
+        logging.error(f"API Error: {res.status_code} - {res.text}")
         return []
 
-
-def transfer_repo(repo: str) -> None:
+def transfer_repo(repo: str) -> bool:
     """
     Transfer a repository to the target organization
 
     Args:
         repo (str): The name of the repository to transfer
+
+    Returns:
+        bool: Transfer status
     """
     url = f"https://api.github.com/repos/{SOURCE_ENTITY}/{repo}/transfer"
     # Set the new owner for the repository
@@ -54,12 +59,13 @@ def transfer_repo(repo: str) -> None:
 
     if response.status_code == 202:
         # Log successful transfer
-        print(f"Transferred: {repo}")
+        logging.info(f"Transferred: {repo}")
+        return True
     else:
         # Log transfer failure
         error_msg = response.json().get("message", "Unknown Error")
-        print(f"Failed {repo}: {error_msg}")
-
+        logging.error(f"Failed {repo}: {error_msg}")
+        return False
 
 def transfer_repos(repos: List[str]) -> None:
     """
@@ -73,22 +79,20 @@ def transfer_repos(repos: List[str]) -> None:
         # Pause for 1 second to avoid rate limiting
         time.sleep(1)
 
-
 def main() -> None:
     # Get the list of 'swarm-node-' repositories
     nodes = get_nodes()
 
     if nodes:
         # Log the number of nodes found
-        print(
-            f"Found {len(nodes)} nodes in {SOURCE_ENTITY}. Transferring first {BATCH_SIZE}..."
-        )
+        logging.info(f"Found {len(nodes)} nodes in {SOURCE_ENTITY}. Transferring first {BATCH_SIZE}...")
         # Transfer the first BATCH_SIZE repositories
-        transfer_repos(nodes[:BATCH_SIZE])
+        failed_transfers = [repo for repo in nodes[:BATCH_SIZE] if not transfer_repo(repo)]
+        if failed_transfers:
+            logging.warning(f"Failed to transfer {len(failed_transfers)} repositories: {failed_transfers}")
     else:
         # Log no repositories found
-        print(f"No 'swarm-node-' repositories found in {SOURCE_ENTITY}.")
-
+        logging.info(f"No 'swarm-node-' repositories found in {SOURCE_ENTITY}.")
 
 if __name__ == "__main__":
     main()
