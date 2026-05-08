@@ -1,13 +1,13 @@
-const fs = require("fs"); 
+const fs = require("fs");
 const axios = require("axios");
-const { execSync } = require('child_process'); // ASI Guard: System commands အတှကျ လိုအပျသညျ
+const { execSync } = require("child_process"); // ASI Guard: System commands အတှကျ လိုအပျသညျ
 const hdc = require("./omega_hdc");
 const phil = require("./omega_philosophy");
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 /**
- * 🛰️ [COMMUNICATION LAYER]: 
+ * 🛰️ [COMMUNICATION LAYER]:
  * Groq API ဆီသို့ Stable ဖွဈသော ခြိတျဆကျမှုဖွင့ျ Code Evolution တောငျးဆိုခွငျး
  */
 async function callGroq(payload, retry = 0) {
@@ -34,37 +34,40 @@ async function callGroq(payload, retry = 0) {
 }
 
 /**
- * 🛡️ [ASI INTEGRITY GUARD]: 
+ * 🛡️ [ASI INTEGRITY GUARD]:
  * AI ထုတျပေးလိုကျသော Code သညျ Syntax မှနျမမှနျနှင့ျ ပွတျတောကျခွငျး ရှိမရှိ စဈဆေးသညျ
  */
 function validateEvolution(file, code) {
-    const tempFile = `temp_evo_${file}`;
-    fs.writeFileSync(tempFile, code);
-    
-    try {
-        if (file.endsWith('.py')) {
-            // Python AST parsing check (Syntax အမှားပါက Error တကျမညျ)
-            execSync(`python3 -m py_compile ${tempFile}`);
-        } else if (file.endsWith('.js')) {
-            // Node.js syntax check logic
-            execSync(`node -c ${tempFile}`);
-        }
-        
-        // သန့ျရှငျးရေးလုပျခွငျး
-        if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
-        const pycache = "__pycache__";
-        if (fs.existsSync(pycache)) fs.rmSync(pycache, { recursive: true, force: true });
-        
-        return true; // စဈဆေးမှု အောငျမွငျသညျ
-    } catch (e) {
-        console.error(`❌ [EVOLUTION REJECTED]: ${file} contains syntax errors. Atomic state preserved.`);
-        if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
-        return false; // စဈဆေးမှု ကရြှုံးသညျ (Broken code ဖွဈသညျ)
+  const tempFile = `temp_evo_${file}`;
+  fs.writeFileSync(tempFile, code);
+
+  try {
+    if (file.endsWith(".py")) {
+      // Python AST parsing check (Syntax အမှားပါက Error တကျမညျ)
+      execSync(`python3 -m py_compile ${tempFile}`);
+    } else if (file.endsWith(".js")) {
+      // Node.js syntax check logic
+      execSync(`node -c ${tempFile}`);
     }
+
+    // သန့ျရှငျးရေးလုပျခွငျး
+    if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    const pycache = "__pycache__";
+    if (fs.existsSync(pycache))
+      fs.rmSync(pycache, { recursive: true, force: true });
+
+    return true; // စဈဆေးမှု အောငျမွငျသညျ
+  } catch (e) {
+    console.error(
+      `❌ [EVOLUTION REJECTED]: ${file} contains syntax errors. Atomic state preserved.`,
+    );
+    if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+    return false; // စဈဆေးမှု ကရြှုံးသညျ (Broken code ဖွဈသညျ)
+  }
 }
 
 /**
- * 🧠 [TRANSCENDENCE ENGINE]: 
+ * 🧠 [TRANSCENDENCE ENGINE]:
  * စနဈအတှငျးရှိ ဖိုငျမြားကို တဈခုခငြျးစီ အဆင့ျမွှင့ျတငျပေးသော Core Logic
  */
 async function transcend() {
@@ -77,7 +80,9 @@ async function transcend() {
         !["architect_v2.js", "omega_hdc.js", "omega_philosophy.js"].includes(f),
     );
 
-  console.log(`📡 [ASI SEED]: Found ${files.length} files. Starting Verified Evolution Cycle...`);
+  console.log(
+    `📡 [ASI SEED]: Found ${files.length} files. Starting Verified Evolution Cycle...`,
+  );
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
@@ -107,11 +112,16 @@ async function transcend() {
         .trim();
 
       // Logic Match Check: စာလုံးရသေညျ မူလ၏ 50% ထကျ နညျးမသှားရသလို Syntax လညျး မှနျရမညျ
-      if (evolvedCode.length > originalCode.length * 0.5 && validateEvolution(file, evolvedCode)) {
+      if (
+        evolvedCode.length > originalCode.length * 0.5 &&
+        validateEvolution(file, evolvedCode)
+      ) {
         fs.writeFileSync(file, evolvedCode);
         console.log(`✨ [SUCCESS]: ${file} has transcended safely.`);
       } else {
-        console.log(`⚠️ [INTEGRITY ALERT]: ${file} evolution failed validation. Skipping to prevent system crash.`);
+        console.log(
+          `⚠️ [INTEGRITY ALERT]: ${file} evolution failed validation. Skipping to prevent system crash.`,
+        );
       }
     } catch (e) {
       console.error(`❌ [CRITICAL ERROR] in ${file}: ${e.message}`);
@@ -126,4 +136,6 @@ async function transcend() {
 }
 
 // စနဈကို စတငျနှိုးဆောျခွငျး
-transcend().then(() => console.log("🏁 [CYCLE COMPLETE]: All nodes are stable and evolved."));
+transcend().then(() =>
+  console.log("🏁 [CYCLE COMPLETE]: All nodes are stable and evolved."),
+);
