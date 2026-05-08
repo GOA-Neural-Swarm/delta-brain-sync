@@ -12,7 +12,7 @@ BATCH_SIZE = 15
 headers = {
     "Authorization": f"token {GITHUB_TOKEN}",
     "Accept": "application/vnd.github.v3+json",
-    "User-Agent": "Swarm-Node-Transfer"
+    "User-Agent": "Swarm-Node-Transfer",
 }
 
 
@@ -24,10 +24,7 @@ def get_nodes():
         list: A list of repository names
     """
     url = f"https://api.github.com/users/{SOURCE_ENTITY}/repos?per_page=100"
-    params = {
-        "type": "all",
-        "state": "all"
-    }
+    params = {"type": "all", "state": "all"}
     res = requests.get(url, headers=headers, params=params)
 
     if res.status_code == 200:
