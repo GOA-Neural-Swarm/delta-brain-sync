@@ -33,7 +33,9 @@ def get_ai_correction(error_log, original_code):
     }
 
     try:
-        res = requests.post(gemini_url, headers=headers, json=gemini_payload, timeout=30)
+        res = requests.post(
+            gemini_url, headers=headers, json=gemini_payload, timeout=30
+        )
         data = res.json()
         if res.status_code == 200 and "completions" in data:
             content = data["completions"][0]["text"]

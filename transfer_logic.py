@@ -14,6 +14,7 @@ headers = {
     "Accept": "application/vnd.github.v3+json",
 }
 
+
 def get_nodes():
     """
     Retrieve a list of 'swarm-node-' repositories from the source entity
@@ -33,6 +34,7 @@ def get_nodes():
         # Handle API errors
         print(f"API Error: {res.status_code} - {res.text}")
         return []
+
 
 def transfer_repo(repo):
     """
@@ -55,13 +57,16 @@ def transfer_repo(repo):
         error_msg = response.json().get("message", "Unknown Error")
         print(f"Failed {repo}: {error_msg}")
 
+
 def main():
     # Get the list of 'swarm-node-' repositories
     nodes = get_nodes()
 
     if nodes:
         # Log the number of nodes found
-        print(f"Found {len(nodes)} nodes in {SOURCE_ENTITY}. Transferring first {BATCH_SIZE}...")
+        print(
+            f"Found {len(nodes)} nodes in {SOURCE_ENTITY}. Transferring first {BATCH_SIZE}..."
+        )
         # Transfer the first BATCH_SIZE repositories
         for repo in nodes[:BATCH_SIZE]:
             transfer_repo(repo)
@@ -70,6 +75,7 @@ def main():
     else:
         # Log no repositories found
         print(f"No 'swarm-node-' repositories found in {SOURCE_ENTITY}.")
+
 
 if __name__ == "__main__":
     main()

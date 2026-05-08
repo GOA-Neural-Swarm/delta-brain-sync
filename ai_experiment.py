@@ -119,6 +119,10 @@ if __name__ == "__main__":
     existential_dataset = ExistentialDataset(data=data, labels=labels)
 
     trainer = EvolutionaryTrainer(
-        evolutionary_model, stoic_optimizer, utilitarian_loss, hyper_space, existential_dataset
+        evolutionary_model,
+        stoic_optimizer,
+        utilitarian_loss,
+        hyper_space,
+        existential_dataset,
     )
     trainer.train(epochs=10)

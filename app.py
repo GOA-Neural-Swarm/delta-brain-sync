@@ -82,7 +82,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 REPO_PATH = "./repo_sync"
 
 # --- GEMINI CONFIGURATION (Primary Architect - V2 SDK) ---
-from google import genai  # 
+from google import genai  #
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 client = None
@@ -103,7 +103,7 @@ def generate_brain_evolution(prompt_text):
     if not client:
         return None
 
-    # gemini-2.0-flash 
+    # gemini-2.0-flash
     response = client.models.generate_content(
         model="gemini-2.0-flash", contents=prompt_text
     )
