@@ -1,6 +1,7 @@
 import requests
 import os
 import time
+from typing import List
 
 # Environment Variables
 GITHUB_TOKEN = os.getenv("GH_TOKEN")
@@ -15,13 +16,12 @@ headers = {
     "User-Agent": "Swarm-Node-Transfer",
 }
 
-
-def get_nodes():
+def get_nodes() -> List[str]:
     """
     Retrieve a list of 'swarm-node-' repositories from the source entity
 
     Returns:
-        list: A list of repository names
+        List[str]: A list of repository names
     """
     url = f"https://api.github.com/users/{SOURCE_ENTITY}/repos?per_page=100"
     params = {"type": "all", "state": "all"}
@@ -37,8 +37,7 @@ def get_nodes():
         print(f"API Error: {res.status_code} - {res.text}")
         return []
 
-
-def transfer_repo(repo):
+def transfer_repo(repo: str) -> None:
     """
     Transfer a repository to the target organization
 
@@ -59,8 +58,19 @@ def transfer_repo(repo):
         error_msg = response.json().get("message", "Unknown Error")
         print(f"Failed {repo}: {error_msg}")
 
+def transfer_repos(repos: List[str]) -> None:
+    """
+    Transfer a list of repositories to the target organization
 
-def main():
+    Args:
+        repos (List[str]): A list of repository names to transfer
+    """
+    for repo in repos:
+        transfer_repo(repo)
+        # Pause for 1 second to avoid rate limiting
+        time.sleep(1)
+
+def main() -> None:
     # Get the list of 'swarm-node-' repositories
     nodes = get_nodes()
 
@@ -70,14 +80,10 @@ def main():
             f"Found {len(nodes)} nodes in {SOURCE_ENTITY}. Transferring first {BATCH_SIZE}..."
         )
         # Transfer the first BATCH_SIZE repositories
-        for repo in nodes[:BATCH_SIZE]:
-            transfer_repo(repo)
-            # Pause for 1 second to avoid rate limiting
-            time.sleep(1)
+        transfer_repos(nodes[:BATCH_SIZE])
     else:
         # Log no repositories found
         print(f"No 'swarm-node-' repositories found in {SOURCE_ENTITY}.")
-
 
 if __name__ == "__main__":
     main()
