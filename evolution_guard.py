@@ -19,17 +19,23 @@ def get_ai_correction(error_log, original_code):
 
     # --- ATTEMPT 1: GEMINI (Primary) ---
     print("[GUARD-GEMINI]: Requesting correction...")
-    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
+    gemini_url = f"https://api.ai21.com/studio/v1/assistants/gemini/complete"
     gemini_payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.2},
+        "prompt": prompt,
+        "maxTokens": 2048,
+        "temperature": 0.2,
+    }
+
+    headers = {
+        "Authorization": f"Bearer {GEMINI_API_KEY}",
+        "Content-Type": "application/json",
     }
 
     try:
-        res = requests.post(gemini_url, json=gemini_payload, timeout=30)
+        res = requests.post(gemini_url, headers=headers, json=gemini_payload, timeout=30)
         data = res.json()
-        if res.status_code == 200 and "candidates" in data:
-            content = data["candidates"][0]["content"]["parts"][0]["text"]
+        if res.status_code == 200 and "completions" in data:
+            content = data["completions"][0]["text"]
             return re.sub(r"```python\n|```", "", content).strip()
         else:
             print(f"[GEMINI-FAIL]: Status {res.status_code}. Switching to Groq...")

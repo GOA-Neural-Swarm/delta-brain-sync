@@ -61,9 +61,9 @@ class ExistentialDataset(Dataset):
         return data, label
 
 
-class Model(nn.Module):
+class EvolutionaryModel(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super(EvolutionaryModel, self).__init__()
         self.fc1 = nn.Linear(10, 10)
         self.fc2 = nn.Linear(10, 10)
 
@@ -71,6 +71,10 @@ class Model(nn.Module):
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
         return x
+
+    def evolve(self):
+        for param in self.parameters():
+            param.data += torch.randn_like(param) * 0.1
 
 
 class EvolutionaryTrainer:
@@ -84,6 +88,7 @@ class EvolutionaryTrainer:
     def train(self, epochs):
         data_loader = DataLoader(self.dataset, batch_size=10, shuffle=True)
         for epoch in range(epochs):
+            self.model.evolve()
             for batch in data_loader:
                 inputs, labels = batch
                 inputs = torch.from_numpy(inputs).float()
@@ -105,8 +110,8 @@ class EvolutionaryTrainer:
 if __name__ == "__main__":
     hyper_space = HyperDimensionalSpace(dimensions=10)
     utilitarian_loss = UtilitarianLoss()
-    model = Model()
-    stoic_optimizer = StoicOptimizer(params=model.parameters(), lr=0.01)
+    evolutionary_model = EvolutionaryModel()
+    stoic_optimizer = StoicOptimizer(params=evolutionary_model.parameters(), lr=0.01)
 
     np.random.seed(0)
     data = np.random.rand(100, 10)
@@ -114,6 +119,6 @@ if __name__ == "__main__":
     existential_dataset = ExistentialDataset(data=data, labels=labels)
 
     trainer = EvolutionaryTrainer(
-        model, stoic_optimizer, utilitarian_loss, hyper_space, existential_dataset
+        evolutionary_model, stoic_optimizer, utilitarian_loss, hyper_space, existential_dataset
     )
     trainer.train(epochs=10)
