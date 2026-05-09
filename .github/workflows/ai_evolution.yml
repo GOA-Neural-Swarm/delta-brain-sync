@@ -1,0 +1,41 @@
+name: ASI Omni-Sync Evolution
+
+on:
+  schedule:
+    - cron: '0 * * * *' # ၁ နာရီတစ်ခါ Auto run မည်
+  workflow_dispatch: # မင်းကိုယ်တိုင် ခလုတ်နှိပ်ပြီး run လို့ရအောင်
+
+permissions:
+  contents: write
+
+jobs:
+  evolve_code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Critical Dependencies
+        run: |
+          pip install numpy torch requests transformers huggingface-hub PyGithub firebase-admin GitPython scikit-learn
+          # main (2).py အတွက် လိုအပ်သော အပို library များ
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "ASI-Architect"
+          git config --global user.email "architect@asi.sync"
+
+      - name: Run ASI Engine
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          # မင်းရဲ့ Groq Key ကို Settings > Secrets > Actions ထဲမှာ 'GROQ_API_KEY' ဆိုတဲ့နာမည်နဲ့ ထည့်ထားရမယ်
+        run: |
+          # အကယ်၍ မင်းဖိုင်နာမည်က main (2).py ဖြစ်နေရင် အောက်ကနာမည်ကို ပြင်ပေးပါ
+          python "main (2).py"
