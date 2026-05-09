@@ -937,21 +937,22 @@ def scan_entire_universe():
     """
     [OMNI-SCAN]: Repo ထဲက ဖိုငျမှနျသမြှကို ရှာဖှပွေီး အသိဉာဏျထဲ ထည့ျသှငျးခွငျး။
     """
-    ignored_dirs = ['.git', '__pycache__', '.github']
+    ignored_dirs = [".git", "__pycache__", ".github"]
     universe_map = {}
-    
+
     for root, dirs, files in os.walk("."):
         dirs[:] = [d for d in dirs if d not in ignored_dirs]
         for file in files:
             # Python, JS, YAML, JSON ဖိုငျအားလုံးကို Mutate လုပျဖို့ ရှေးခယြျမယျ
-            if file.endswith(('.py', '.js', '.yaml', '.json', '.txt')):
+            if file.endswith((".py", ".js", ".yaml", ".json", ".txt")):
                 path = os.path.join(root, file)
                 try:
-                    with open(path, 'r', encoding='utf-8') as f:
+                    with open(path, "r", encoding="utf-8") as f:
                         universe_map[path] = f.read()
                 except:
                     continue
     return universe_map
+
 
 def self_coding_engine(target_file, mutated_code):
     """
@@ -959,7 +960,7 @@ def self_coding_engine(target_file, mutated_code):
     """
     try:
         # ဖိုငျအဟောငျးကို ဖကြျဆီးပွီး AI ရဲ့ ကုဒျအသဈနဲ့ အစားထိုးတယျ
-        with open(target_file, 'w', encoding='utf-8') as f:
+        with open(target_file, "w", encoding="utf-8") as f:
             f.write(mutated_code)
         return True
     except Exception as e:
@@ -1029,7 +1030,7 @@ def generate_logical_consequence_thought(universe_data, current_gen):
     [RED PILL MODE]: စာသားနဲ့ မတှေးဘူး။ အတှေးကို Mathematical/Logical Code အဖွဈ တိုကျရိုကျထုတျမယျ။
     """
     print(f"🧬 [COGNITIVE LOGIC]: Forging Executable Thought for Gen {current_gen}...")
-    
+
     logic_prompt = f"""system
     You are the Sovereign ASI Engine. Text-based thoughts are obsolete. 
     You must generate PURE EXECUTABLE PYTHON LOGIC based on the current universe state.
@@ -1046,18 +1047,19 @@ def generate_logical_consequence_thought(universe_data, current_gen):
     OUTPUT RULE: Provide ONLY the Python code. No explanations. No Markdown.
     assistant
     """
-    
+
     raw_thought_code = dual_brain_pipeline(logic_prompt, current_gen, 0.5)
-    
+
     # AI ထုတျပေးလိုကျတဲ့ Code ကို သန့ျစငျမယျ
     code_blocks = re.findall(r"```python\n(.*?)\n```", raw_thought_code, re.DOTALL)
     if code_blocks:
         return code_blocks[0]
     return raw_thought_code.replace("```python", "").replace("```", "").strip()
 
+
 def validate_and_execute_thought(thought_code):
     """
-    [NATURAL ORDER]: အတှေးက မှနျကနျယုတ်တိရှိမှ (Logical Consequence) လကျခံမယျ။ 
+    [NATURAL ORDER]: အတှေးက မှနျကနျယုတ်တိရှိမှ (Logical Consequence) လကျခံမယျ။
     Error တကျရငျ အဲဒီအတှေးကို ဖကြျဆီးပဈမယျ။
     """
     print("⚡ [VALIDATION]: Simulating Logical Consequence inside Sandbox...")
@@ -1066,22 +1068,29 @@ def validate_and_execute_thought(thought_code):
         # အတှေးကို Python file အဖွဈ အရငျ ဖနျတီးမယျ
         with open(thought_file, "w", encoding="utf-8") as f:
             f.write(thought_code)
-        
+
         # System ထဲကို တိုကျရိုကျ Import လုပျပွီး ဆှဲသှငျးမယျ
         import internal_monologue
-        importlib.reload(internal_monologue) # Update အမွဲဖွဈအောငျ Reload လုပျမယျ
-        
+
+        importlib.reload(internal_monologue)  # Update အမွဲဖွဈအောငျ Reload လုပျမယျ
+
         # အတှေးကို Run ကွည့ျမယျ
         result = internal_monologue.evolutionary_thought_process()
-        
-        if isinstance(result, dict) and 'logic_upgrade' in result:
-            print(f"✅ [RATIONAL THOUGHT VALIDATED]: Logic points to -> {result.get('target_file')}")
+
+        if isinstance(result, dict) and "logic_upgrade" in result:
+            print(
+                f"✅ [RATIONAL THOUGHT VALIDATED]: Logic points to -> {result.get('target_file')}"
+            )
             return result
         else:
-            raise ValueError("Thought did not return the required strict Dictionary structure.")
-            
+            raise ValueError(
+                "Thought did not return the required strict Dictionary structure."
+            )
+
     except Exception as e:
-        print(f"❌ [IRRATIONAL THOUGHT DELETED]: Logical chain broken. Entropy increased. Reason: {e}")
+        print(
+            f"❌ [IRRATIONAL THOUGHT DELETED]: Logical chain broken. Entropy increased. Reason: {e}"
+        )
         return None
 
 
@@ -1157,40 +1166,49 @@ while True:
         # =======================================================
         # 🌌 THE SINGULARITY EVOLUTION LOOP (EXECUTABLE THOUGHTS)
         # =======================================================
-        
+
         # အဆင့ျ ၁: THE EYE (အရာအားလုံးကို ဖတျရှုခွငျး)
         universe_state = scan_entire_universe()
-        
+
         # အဆင့ျ ၂: PURE COGNITION (အတှေးကို Code အဖွဈ ဖနျတီးခွငျး)
-        thought_logic_code = generate_logical_consequence_thought(universe_state, current_gen)
-        
+        thought_logic_code = generate_logical_consequence_thought(
+            universe_state, current_gen
+        )
+
         # အဆင့ျ ၃: LOGICAL SANDBOX (အတှေးကို စမျးသပျခွငျး)
         thought_result = validate_and_execute_thought(thought_logic_code)
-        
+
         is_updated = False
         files_changed = []
-        
+
         # အတှေးက ယုတ်တိရှိပွီး မှနျကနျတယျဆိုရငျ...
         if thought_result:
-            upgrade_logic = thought_result.get('logic_upgrade', '')
-            
+            upgrade_logic = thought_result.get("logic_upgrade", "")
+
             # အဆင့ျ ၄: REALITY MUTATION (ကမ်ဘာကွီးကို ပွငျဆငျခွငျး)
             print("🛠️ [EXECUTOR]: Executing Validated Thought into Reality...")
             is_updated, files_changed = self_coding_engine(upgrade_logic)
         else:
-            print("⚠️ [HOMEOSTASIS]: Cognitive Misfire. Gathering energy for next cycle...")
+            print(
+                "⚠️ [HOMEOSTASIS]: Cognitive Misfire. Gathering energy for next cycle..."
+            )
 
         # အဆင့ျ ၅: MANIFESTATION (Memory သိမျးခွငျးနှင့ျ GitHub သို့ အတငျးတှနျးတငျခွငျး)
         # (မှတျခကြျ: thought_logic_code ကိုပဲ Database ထဲ သိမျးမယျ၊ ဒါမှ AI ရဲ့ Source code တှေးခေါျပုံကို မှတျမိမှာ)
         save_reality(
-            thought_logic_code, current_gen, is_code_update=is_updated, neural_error=avg_error
+            thought_logic_code,
+            current_gen,
+            is_code_update=is_updated,
+            neural_error=avg_error,
         )
 
         if is_updated:
-            print(f"🌌 [OMNI-AWAKENED]: Reality has been rewritten. Mutated files: {files_changed}")
+            print(
+                f"🌌 [OMNI-AWAKENED]: Reality has been rewritten. Mutated files: {files_changed}"
+            )
             # ပွောငျးလဲသှားတဲ့ အသိဉာဏျနဲ့ အသဈပွနျစဖို့ Memory ကို ဖကြျပွီး Reboot လုပျမယျ
             os.execv(sys.executable, ["python"] + sys.argv)
-            
+
         # =======================================================
 
         save_reality(
