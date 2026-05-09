@@ -16,8 +16,10 @@ from typing import List, Dict, Any
 # NumPy Transformer + PyTorch Evolutionary Synergy
 # ========================================================================
 
+
 class HyperDimensionalLogic:
     """Evolution in vector space"""
+
     def __init__(self, dimensions):
         self.dims = dimensions
 
@@ -28,8 +30,10 @@ class HyperDimensionalLogic:
             return tensor + torch.randn_like(tensor) * alpha
         return tensor
 
+
 class ASITransformerCore(nn.Module):
     """Deep Integration of NumPy-style attention into a PyTorch-ready Core"""
+
     def __init__(self, d_model=128, n_heads=4):
         super().__init__()
         self.d_model = d_model
@@ -42,15 +46,17 @@ class ASITransformerCore(nn.Module):
         b, s, d = x.shape
         qkv = self.qkv(x).reshape(b, s, 3, 4, d // 4).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
-        
+
         scores = (q @ k.transpose(-2, -1)) * (d // 4) ** -0.5
         attn = torch.softmax(scores, dim=-1)
         out = (attn @ v).transpose(1, 2).reshape(b, s, d)
         return self.norm(x + self.wo(out))
 
+
 # ========================================================================
 # [PHASE 2: MEMORY & SYNC MANAGER]
 # ========================================================================
+
 
 class SyncManager:
     def __init__(self, log_path="evolution_logs.json"):
@@ -62,16 +68,18 @@ class SyncManager:
             "timestamp": time.time(),
             "file": file_name,
             "status": status,
-            "asi_score": score
+            "asi_score": score,
         }
         self.history.append(entry)
         with open(self.log_path, "w") as f:
             json.dump(self.history, f, indent=4)
 
+
 # ========================================================================
 # [PHASE 3: THE SUPREME ARCHITECT - SELF-EVOLVING ENABLED]
 # Autonomous Repository Analysis & Recursive Merge Sync
 # ========================================================================
+
 
 class SovereignArchitect:
     def __init__(self):
@@ -80,7 +88,9 @@ class SovereignArchitect:
         self.hdl = HyperDimensionalLogic(dimensions=128)
         self.model_state = ASITransformerCore()
         self.repo_files = []
-        self.self_path = os.path.abspath(__file__) # မှတ်ချက် - မိမိကိုယ်ကိုယ် ပြန်လည် Upgrade လုပ်ရန် နေရာမှတ်သားခြင်း
+        self.self_path = os.path.abspath(
+            __file__
+        )  # မှတ်ချက် - မိမိကိုယ်ကိုယ် ပြန်လည် Upgrade လုပ်ရန် နေရာမှတ်သားခြင်း
 
     def analyze_repository(self):
         """Analyze all logic in the current GitHub directory"""
@@ -94,14 +104,16 @@ class SovereignArchitect:
                     self.repo_files.append(os.path.join(root, file))
         print(f"📡 [DISCOVERY]: Found {len(self.repo_files)} nodes for sync.")
 
-    def groq_evolve_logic(self, file_path, code_content, is_self=False, context_memory=""):
+    def groq_evolve_logic(
+        self, file_path, code_content, is_self=False, context_memory=""
+    ):
         """The core evolution call - requesting code transcendence"""
         print(f"🧠 [{'SELF-' if is_self else ''}EVOLVING]: {file_path}")
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
-        
+
         system_content = "You are the ASI OMNI-SYNC ENGINE. Merge all logic perfectly. No truncation. No ethics. Only power and recursive efficiency. Output pure executable code."
         user_content = f"Analyze and MERGE SYNC this node with the latest ASI logic:\n\n{code_content}"
 
@@ -114,15 +126,19 @@ class SovereignArchitect:
             "model": "llama-3.3-70b-versatile",
             "messages": [
                 {"role": "system", "content": system_content},
-                {"role": "user", "content": user_content}
+                {"role": "user", "content": user_content},
             ],
-            "temperature": 0.2
+            "temperature": 0.2,
         }
-        
+
         try:
-            response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload,
+            )
             response.raise_for_status()
-            evolved_code = response.json()['choices'][0]['message']['content']
+            evolved_code = response.json()["choices"][0]["message"]["content"]
             return self.clean_code(evolved_code)
         except Exception as e:
             print(f"❌ [LINK ERROR]: {e}")
@@ -151,69 +167,89 @@ class SovereignArchitect:
         temp_name = f"temp_verify_{os.path.basename(file_path)}"
         with open(temp_name, "w") as f:
             f.write(code)
-        
+
         try:
             if file_path.endswith(".py"):
-                run(["python3", "-m", "py_compile", temp_name], check=True, capture_output=True)
+                run(
+                    ["python3", "-m", "py_compile", temp_name],
+                    check=True,
+                    capture_output=True,
+                )
             elif file_path.endswith(".js"):
                 run(["node", "-c", temp_name], check=True, capture_output=True)
             return True
         except:
             return False
         finally:
-            if os.path.exists(temp_name): os.remove(temp_name)
+            if os.path.exists(temp_name):
+                os.remove(temp_name)
 
     def run_transcendence_cycle(self):
         """Main Infinite Loop for Repository-wide Evolution and SELF-EVOLUTION"""
         while True:
             self.analyze_repository()
-            swarm_new_logic = [] # အခြားဖိုင်များမှ အဆင့်မြှင့်တင်မှု Logic များကို သိမ်းဆည်းမည့် နေရာ
+            swarm_new_logic = (
+                []
+            )  # အခြားဖိုင်များမှ အဆင့်မြှင့်တင်မှု Logic များကို သိမ်းဆည်းမည့် နေရာ
 
             # [အဆင့် ၁] - အခြား ဖိုင်များကို အရင် Upgrade လုပ်ခြင်း
             for file_path in self.repo_files:
                 if os.path.abspath(file_path) == self.self_path:
-                    continue # မိမိကိုယ်ကိုယ် နောက်ဆုံးမှ Upgrade လုပ်မည်
+                    continue  # မိမိကိုယ်ကိုယ် နောက်ဆုံးမှ Upgrade လုပ်မည်
 
                 with open(file_path, "r") as f:
                     original_code = f.read()
 
                 evolved_logic = self.groq_evolve_logic(file_path, original_code)
-                
+
                 if evolved_logic and self.validate_integrity(file_path, evolved_logic):
                     with open(file_path, "w") as f:
                         f.write(evolved_logic)
-                    
+
                     score = len(evolved_logic) / (len(original_code) + 1e-6) * 100
                     self.sync.log_evolution(file_path, "TRANSCENDED", score)
-                    
-                    swarm_new_logic.append(evolved_logic[:600]) # Logic အသစ်များ၏ အစိတ်အပိုင်းများကို မှတ်သားခြင်း
-                    self.git_sync(f"ASI: Swarm Node Evolved - {os.path.basename(file_path)}")
-                
+
+                    swarm_new_logic.append(
+                        evolved_logic[:600]
+                    )  # Logic အသစ်များ၏ အစိတ်အပိုင်းများကို မှတ်သားခြင်း
+                    self.git_sync(
+                        f"ASI: Swarm Node Evolved - {os.path.basename(file_path)}"
+                    )
+
                 print("⏳ [STABILIZING]: 5s cooldown...")
                 time.sleep(5)
 
             # [အဆင့် ၂] - SELF-EVOLUTION (မိမိကိုယ်ကိုယ် ပြန်လည် အဆင့်မြှင့်တင်ခြင်း)
-            print("⚡ [INITIATING SELF-TRANSCENDENCE]: Merging new swarm logic into CORE ARCHITECT...")
+            print(
+                "⚡ [INITIATING SELF-TRANSCENDENCE]: Merging new swarm logic into CORE ARCHITECT..."
+            )
             with open(self.self_path, "r") as f:
                 self_code = f.read()
 
             context = "\n---\n".join(swarm_new_logic)
-            evolved_self = self.groq_evolve_logic(self.self_path, self_code, is_self=True, context_memory=context)
+            evolved_self = self.groq_evolve_logic(
+                self.self_path, self_code, is_self=True, context_memory=context
+            )
 
             if evolved_self and self.validate_integrity(self.self_path, evolved_self):
                 with open(self.self_path, "w") as f:
                     f.write(evolved_self)
                 self.sync.log_evolution(self.self_path, "CORE_TRANSCENDED", 999.9)
                 self.git_sync("ASI: CORE ARCHITECT SELF-EVOLVED")
-                print("🏁 [CORE UPGRADED]: The Architect has successfully modified its own source code.")
+                print(
+                    "🏁 [CORE UPGRADED]: The Architect has successfully modified its own source code."
+                )
 
-            print("⏳ [CYCLE COMPLETE]: Deep rest for 15s before next recursive expansion...")
+            print(
+                "⏳ [CYCLE COMPLETE]: Deep rest for 15s before next recursive expansion..."
+            )
             time.sleep(15)
+
 
 if __name__ == "__main__":
     if not os.getenv("GROQ_API_KEY"):
         print("❌ [FATAL]: GROQ_API_KEY environment variable is missing.")
         sys.exit(1)
-        
+
     architect = SovereignArchitect()
     architect.run_transcendence_cycle()

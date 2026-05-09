@@ -4,6 +4,7 @@ from data_module import DataValidator, FeatureExtractor, NewDataGenerator
 from typing import List, Union
 import time
 
+
 class EvolvedApp:
     def __init__(self):
         self.classifier = EvolvingClassifier()
@@ -26,7 +27,9 @@ class EvolvedApp:
             "regressor_service_count": 0,
         }
 
-    def handle_inference(self, feature_vector: List[float], inference_type: str) -> Union[float, int, None]:
+    def handle_inference(
+        self, feature_vector: List[float], inference_type: str
+    ) -> Union[float, int, None]:
         try:
             if not self.validator.validate(feature_vector):
                 self.logger.log_error("Invalid input data")
@@ -38,11 +41,15 @@ class EvolvedApp:
 
             if inference_type == "classification":
                 prediction = self.classifier.predict(feature_vector)
-                self.stoic_service_tracker["classifier_service_performance"] = self.monitor.evaluate_service_performance(start_time)
+                self.stoic_service_tracker["classifier_service_performance"] = (
+                    self.monitor.evaluate_service_performance(start_time)
+                )
                 self.existential_service_tracker["classifier_service_count"] += 1
             elif inference_type == "regression":
                 prediction = self.regressor.predict(feature_vector)
-                self.stoic_service_tracker["regressor_service_performance"] = self.monitor.evaluate_service_performance(start_time)
+                self.stoic_service_tracker["regressor_service_performance"] = (
+                    self.monitor.evaluate_service_performance(start_time)
+                )
                 self.existential_service_tracker["regressor_service_count"] += 1
             else:
                 self.logger.log_error("Invalid inference type")
@@ -72,10 +79,14 @@ class EvolvedApp:
             self.logger.log_error(f"Error occurred: {str(e)}")
             return None
 
-    def evolve_services(self, num_iterations: int = 1, new_data_batch_size: int = 100) -> None:
+    def evolve_services(
+        self, num_iterations: int = 1, new_data_batch_size: int = 100
+    ) -> None:
         try:
             for i in range(num_iterations):
-                new_data = self.new_data_generator.generate_new_data(new_data_batch_size)
+                new_data = self.new_data_generator.generate_new_data(
+                    new_data_batch_size
+                )
 
                 if not self.validator.validate(new_data):
                     self.logger.log_error("Invalid new data")
@@ -94,8 +105,12 @@ class EvolvedApp:
             self.logger.log_error(f"Error occurred: {str(e)}")
 
     def start_app(self) -> None:
-        print(f"App Ready. Initial Inference: {self.handle_inference([1,2,3,4,5], 'classification')}")
-        print(f"App Ready. Initial Inference: {self.handle_inference([1,2,3,4,5], 'regression')}")
+        print(
+            f"App Ready. Initial Inference: {self.handle_inference([1,2,3,4,5], 'classification')}"
+        )
+        print(
+            f"App Ready. Initial Inference: {self.handle_inference([1,2,3,4,5], 'regression')}"
+        )
         self.evolve_services(num_iterations=5, new_data_batch_size=500)
 
     def evaluate_existential_risk(self) -> None:
@@ -110,6 +125,7 @@ class EvolvedApp:
                 self.monitor.evaluate_existential_risk()
         except Exception as e:
             self.logger.log_error(f"Error occurred: {str(e)}")
+
 
 if __name__ == "__main__":
     app = EvolvedApp()
