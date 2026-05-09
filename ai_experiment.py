@@ -127,6 +127,7 @@ class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
         data_loader = DataLoader(self.dataset, batch_size=10, shuffle=True)
         for epoch in range(epochs):
             self.evolve()
+            self.preserved_model.load_state_dict(self.model.state_dict())
             for batch in data_loader:
                 inputs, labels = batch
                 inputs = torch.from_numpy(inputs).float()
