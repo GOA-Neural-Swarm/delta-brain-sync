@@ -96,7 +96,11 @@ async function executeAdditiveEvolution() {
     const uncertaintyFactor = Math.min(1, 0.2 + i * 0.05);
 
     // Retrieve the neural decision with updated parameters
-    const decision = getNeuralDecision(5000, environmentComplexity, uncertaintyFactor);
+    const decision = getNeuralDecision(
+      5000,
+      environmentComplexity,
+      uncertaintyFactor,
+    );
 
     // Update the neural logic with the new decision
     console.log(`Updated Decision: ${decision.command}`);
