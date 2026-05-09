@@ -21,6 +21,10 @@ class EvolvedApp:
             "classifier_service_performance": 0.0,
             "regressor_service_performance": 0.0,
         }
+        self.existential_service_tracker = {
+            "classifier_service_count": 0,
+            "regressor_service_count": 0,
+        }
 
     def handle_inference(self, feature_vector: List[float], inference_type: str) -> Union[float, int, None]:
         try:
@@ -35,9 +39,11 @@ class EvolvedApp:
             if inference_type == "classification":
                 prediction = self.classifier.predict(feature_vector)
                 self.stoic_service_tracker["classifier_service_performance"] = self.monitor.evaluate_service_performance(start_time)
+                self.existential_service_tracker["classifier_service_count"] += 1
             elif inference_type == "regression":
                 prediction = self.regressor.predict(feature_vector)
                 self.stoic_service_tracker["regressor_service_performance"] = self.monitor.evaluate_service_performance(start_time)
+                self.existential_service_tracker["regressor_service_count"] += 1
             else:
                 self.logger.log_error("Invalid inference type")
                 return None
@@ -92,6 +98,20 @@ class EvolvedApp:
         print(f"App Ready. Initial Inference: {self.handle_inference([1,2,3,4,5], 'regression')}")
         self.evolve_services(num_iterations=5, new_data_batch_size=500)
 
+    def evaluate_existential_risk(self) -> None:
+        try:
+            if (
+                self.existential_service_tracker["classifier_service_count"] > 1000
+                or self.existential_service_tracker["regressor_service_count"] > 1000
+            ):
+                self.logger.log_info(
+                    f"Services have made over 1000 inferences. Evaluating existential risk..."
+                )
+                self.monitor.evaluate_existential_risk()
+        except Exception as e:
+            self.logger.log_error(f"Error occurred: {str(e)}")
+
 if __name__ == "__main__":
     app = EvolvedApp()
     app.start_app()
+    app.evaluate_existential_risk()
