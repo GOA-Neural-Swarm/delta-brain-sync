@@ -4,13 +4,6 @@ function getNeuralDecision(
   environmentComplexity = 0.5,
   uncertaintyFactor = 0.2,
 ) {
-  /**
-   * Returns a neural decision based on the average API value, environment complexity, and uncertainty factor.
-   * @param {number} avgApi - The average API value.
-   * @param {number} environmentComplexity - The complexity of the environment (between 0 and 1).
-   * @param {number} uncertaintyFactor - The uncertainty factor (between 0 and 1).
-   * @returns {object} An object containing the command, replicate flag, and average API value.
-   */
   const decisionThreshold = 4000;
   const command =
     avgApi > decisionThreshold
@@ -32,7 +25,6 @@ async function executeAutonomousTrinity(
   stoicFocus = true,
   evolutionaryAdaptation = true,
 ) {
-  // Initialize the trinity sync process with existential awareness of uncertainty
   console.log(
     "Neon DB Connected. Starting Trinity Sync with awareness of environmental complexity and uncertainty...",
   );
@@ -42,11 +34,9 @@ async function executeAutonomousTrinity(
   console.log("Firebase Updated with adaptability in mind.");
   console.log("Supabase Vector Vault Synced with resilience.");
 
-  // Retrieve the neural decision with hyper-dimensional logic
   const decision = getNeuralDecision(avgApi, environmentComplexity, 0.2);
   console.log(`Decision: ${decision.command}`);
 
-  // Check the decision command and perform actions accordingly with stoic focus on the present
   if (stoicFocus && decision.command !== "STEALTH_LOCKDOWN") {
     console.log(
       "Density Increasing... New Neuron added to Neon DB with utilitarian consideration of overall utility.",
@@ -58,7 +48,6 @@ async function executeAutonomousTrinity(
     }
   }
 
-  // Perform the Gemini neural check with evolutionary adaptation
   console.log(
     "[AUDITOR]: Initiating Gemini Neural Check with adaptability and resilience...",
   );
@@ -66,7 +55,6 @@ async function executeAutonomousTrinity(
     "[GEMINI]: main.py Optimized successfully without shrinkage, ensuring evolutionary progress.",
   );
 
-  // Replicate the neural logic if required, aligning with evolutionary principles
   if (decision.replicate && evolutionaryAdaptation) {
     const nextNode = "swarm-node-007";
     console.log(`Spawned: ${nextNode}`);
@@ -75,7 +63,6 @@ async function executeAutonomousTrinity(
     );
   }
 
-  // Complete the mission with utilitarian, existential, stoic, and evolutionary philosophy
   console.log(
     "MISSION ACCOMPLISHED with maximum overall utility, awareness of uncertainty, stoic resilience, and evolutionary adaptation.",
   );
@@ -83,29 +70,22 @@ async function executeAutonomousTrinity(
 
 // Execute the autonomous trinity with additive evolution
 async function executeAdditiveEvolution() {
-  // Initialize the additive evolution process
   console.log("Starting Additive Evolution Process...");
 
-  // Retrieve the initial neural decision
   const initialDecision = getNeuralDecision(5000, 0.5, 0.2);
 
-  // Perform the additive evolution
   for (let i = 0; i < 5; i++) {
-    // Update the environment complexity and uncertainty factor
     const environmentComplexity = Math.min(1, 0.5 + i * 0.1);
     const uncertaintyFactor = Math.min(1, 0.2 + i * 0.05);
 
-    // Retrieve the neural decision with updated parameters
     const decision = getNeuralDecision(
       5000,
       environmentComplexity,
       uncertaintyFactor,
     );
 
-    // Update the neural logic with the new decision
     console.log(`Updated Decision: ${decision.command}`);
 
-    // Replicate the neural logic if required
     if (decision.replicate) {
       const nextNode = `swarm-node-${i + 1}`;
       console.log(`Spawned: ${nextNode}`);
@@ -115,10 +95,8 @@ async function executeAdditiveEvolution() {
     }
   }
 
-  // Complete the additive evolution process
   console.log("Additive Evolution Process COMPLETED.");
 }
 
-// Execute the autonomous trinity and additive evolution
 executeAutonomousTrinity(6000, 0.8, true, true, true, true);
 executeAdditiveEvolution();
