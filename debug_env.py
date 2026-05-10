@@ -12,7 +12,6 @@ from datetime import datetime
 LOG_FILE = "env_audit.log"
 REQUIRED_CORE = ["numpy", "websockets", "omega_point", "psutil"]
 
-
 class SovereignAuditor:
     def __init__(self):
         self.report = {
@@ -29,8 +28,7 @@ class SovereignAuditor:
         )
 
     def check_system_integrity(self):
-        """အဆင့် ၁: Operating System နှင့် Python Version စစ်ဆေးခြင်း"""
-        print("🔍 [1/4] Auditing Core System...")
+        print(" [1/4] Auditing Core System...")
         self.report["system"] = {
             "os": platform.system(),
             "os_release": platform.release(),
@@ -40,8 +38,7 @@ class SovereignAuditor:
         }
 
     def check_hardware_resources(self):
-        """အဆင့် ၂: AI Run ရန် Hardware လုံလောက်မှု ရှိမရှိ စစ်ဆေးခြင်း (GPU/RAM)"""
-        print("🚀 [2/4] Analyzing Hardware Capabilities...")
+        print(" [2/4] Analyzing Hardware Capabilities...")
         try:
             import psutil
 
@@ -55,7 +52,6 @@ class SovereignAuditor:
                 "ram"
             ] = "psutil not installed (Hardware audit limited)"
 
-        # GPU Check (NVIDIA)
         try:
             gpu_check = subprocess.run(["nvidia-smi"], capture_output=True, text=True)
             self.report["hardware"]["gpu_available"] = gpu_check.returncode == 0
@@ -63,18 +59,15 @@ class SovereignAuditor:
             self.report["hardware"]["gpu_available"] = False
 
     def audit_packages(self):
-        """အဆင့် ၃: Package များအားလုံးကို Scan ဖတ်ပြီး Conflict ရှာဖွေခြင်း"""
-        print("📦 [3/4] Scanning Installed Neural Pathways (Packages)...")
+        print(" [3/4] Scanning Installed Neural Pathways (Packages)...")
         dists = importlib.metadata.distributions()
         for d in dists:
             self.report["packages"][d.metadata["Name"]] = d.version
 
     def resolve_conflicts(self, target_lib="websockets", version="12.0"):
-        """အဆင့် ၄: Conflict များကို အလိုအလျောက် ဖြေရှင်းခြင်း (Auto-Repair)"""
-        print(f"🛠️ [4/4] Verifying Dependency Integrity for '{target_lib}'...")
+        print(f" [4/4] Verifying Dependency Integrity for '{target_lib}'...")
 
         try:
-            # Dry-run simulate
             result = subprocess.run(
                 [
                     sys.executable,
@@ -93,11 +86,10 @@ class SovereignAuditor:
                 or "Conflict" in result.stderr
             ):
                 print(
-                    f"⚠️ Conflict Detected for {target_lib}. Initiating Auto-Repair..."
+                    f" Conflict Detected for {target_lib}. Initiating Auto-Repair..."
                 )
                 self.report["conflicts"].append(f"Conflict found in {target_lib}")
 
-                # တကယ့် Repair လုပ်မည့်အဆင့်
                 subprocess.run(
                     [
                         sys.executable,
@@ -110,7 +102,7 @@ class SovereignAuditor:
                 )
                 return "REPAIRED"
             else:
-                print(f"✅ {target_lib} environment is stable.")
+                print(f" {target_lib} environment is stable.")
                 return "STABLE"
 
         except Exception as e:
@@ -118,13 +110,11 @@ class SovereignAuditor:
             return "ERROR"
 
     def generate_final_report(self):
-        """ရလာဒ်များကို JSON အနေဖြင့် သိမ်းဆည်းခြင်း (AI Brain ဖတ်ရန်)"""
         report_file = "system_health.json"
         with open(report_file, "w") as f:
             json.dump(self.report, f, indent=4)
-        print(f"\n✅ Audit Complete. Intelligence Report saved to: {report_file}")
+        print(f"\n Audit Complete. Intelligence Report saved to: {report_file}")
 
-        # Summary Table
         print("\n--- HEALTH SUMMARY ---")
         print(f"OS: {self.report['system']['os']}")
         print(f"RAM: {self.report['hardware'].get('ram_total_gb', 'N/A')} GB")

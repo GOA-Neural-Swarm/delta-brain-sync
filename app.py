@@ -539,5 +539,4 @@ assistant
                 ans += chunk.choices[0].delta.content
                 yield ans
 
-    def cyber(self):
-        pass
+    def cyber(self

@@ -11,11 +11,6 @@ try:
 except ImportError:
     pass
 
-# ========================================================================
-# [=== OMEGA EVOLUTION ZONE START ===]
-# AI (Swarm)  သည် ဤအပိုင်းအတွင်းရှိ Code များကိုသာ Auto-Upgrade ပြုလုပ်ရမည်။
-# ========================================================================
-
 
 class Linear:
     def __init__(self, i, o, s=None):
@@ -43,11 +38,6 @@ class OMEGA_ASI:
 
     def params(self):
         return [self.l1, self.l2]
-
-
-# ========================================================================
-# [=== OMEGA EVOLUTION ZONE END ===]
-# ========================================================================
 
 
 class NeuralBrain:
@@ -144,7 +134,7 @@ class SyncManager:
 
 class SovereignArchitect:
     def __init__(self):
-        self.version = "1.0.0"
+        self.version = "1.1.0"
         self.gen = 1
         self.brain = NeuralBrain(generation=self.gen)
         self.sync_manager = SyncManager()
