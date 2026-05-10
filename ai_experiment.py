@@ -146,7 +146,7 @@ def main():
     stoic_optimizer = StoicOptimizer(params=evolutionary_model.parameters(), lr=0.01)
 
     np.random.seed(0)
-    data = np.random.rand(100, 10)
+    data = np.random.rand(100, 20)
     labels = np.random.rand(100, 10)
     existential_dataset = ExistentialDataset(data=data, labels=labels)
 
