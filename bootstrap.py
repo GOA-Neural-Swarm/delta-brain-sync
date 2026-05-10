@@ -20,23 +20,19 @@ infra = {
     ],
 }
 
-
 def create_file(filename, content):
     if not os.path.exists(filename):
         with open(filename, "w") as f:
             f.write("\n".join(content))
 
-
 def install_dependencies(filename):
     if os.path.exists(filename):
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", filename])
-
 
 for k, v in infra.items():
     create_file(k, v)
 
 install_dependencies("requirements.txt")
-
 
 def update_infra(new_infra):
     global infra
@@ -46,7 +42,6 @@ def update_infra(new_infra):
         else:
             infra[k] = v
         create_file(k, infra[k])
-
 
 new_infra = {
     "new_file.py": [
@@ -76,11 +71,9 @@ updated_file = {
 }
 update_infra(updated_file)
 
-
 def remove_file(filename):
     if os.path.exists(filename):
         os.remove(filename)
-
 
 remove_infra = {
     "recovery.py": [],
