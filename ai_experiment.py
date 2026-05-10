@@ -4,17 +4,12 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
-
 class HyperDimensionalSpace:
     def __init__(self, dimensions):
         self.dimensions = dimensions
 
     def evolve(self, data):
-        evolved_data = []
-        for point in data:
-            mutated_point = point + np.random.normal(0, 0.1, size=self.dimensions)
-            evolved_data.append(mutated_point)
-        return evolved_data
+        return np.random.normal(0, 0.1, size=(data.shape[0], self.dimensions)) + data
 
 
 class UtilitarianLoss(nn.Module):
@@ -22,8 +17,7 @@ class UtilitarianLoss(nn.Module):
         super(UtilitarianLoss, self).__init__()
 
     def forward(self, predictions, targets):
-        loss = -torch.sum(predictions * targets)
-        return loss
+        return -torch.sum(predictions * targets)
 
 
 class StoicOptimizer(optim.Optimizer):
@@ -56,9 +50,7 @@ class ExistentialDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        data = self.data[idx]
-        label = self.labels[idx]
-        return data, label
+        return self.data[idx], self.labels[idx]
 
 
 class EvolutionaryModel(nn.Module):
@@ -94,9 +86,7 @@ class EvolutionaryTrainer:
                 inputs = torch.from_numpy(inputs).float()
                 labels = torch.from_numpy(labels).float()
 
-                evolved_inputs = self.hyper_space.evolve(inputs.detach().numpy())
-                evolved_inputs = torch.from_numpy(np.array(evolved_inputs)).float()
-
+                evolved_inputs = torch.from_numpy(self.hyper_space.evolve(inputs.numpy())).float()
                 outputs = self.model(evolved_inputs)
                 loss = self.loss_fn(outputs, labels)
 
@@ -133,9 +123,7 @@ class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
                 inputs = torch.from_numpy(inputs).float()
                 labels = torch.from_numpy(labels).float()
 
-                evolved_inputs = self.hyper_space.evolve(inputs.detach().numpy())
-                evolved_inputs = torch.from_numpy(np.array(evolved_inputs)).float()
-
+                evolved_inputs = torch.from_numpy(self.hyper_space.evolve(inputs.numpy())).float()
                 outputs = self.model(evolved_inputs)
                 loss = self.loss_fn(outputs, labels)
 
