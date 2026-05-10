@@ -4,6 +4,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
+
 class HyperDimensionalSpace:
     def __init__(self, dimensions):
         self.dimensions = dimensions
@@ -86,7 +87,9 @@ class EvolutionaryTrainer:
                 inputs = torch.from_numpy(inputs).float()
                 labels = torch.from_numpy(labels).float()
 
-                evolved_inputs = torch.from_numpy(self.hyper_space.evolve(inputs.numpy())).float()
+                evolved_inputs = torch.from_numpy(
+                    self.hyper_space.evolve(inputs.numpy())
+                ).float()
                 outputs = self.model(evolved_inputs)
                 loss = self.loss_fn(outputs, labels)
 
@@ -123,7 +126,9 @@ class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
                 inputs = torch.from_numpy(inputs).float()
                 labels = torch.from_numpy(labels).float()
 
-                evolved_inputs = torch.from_numpy(self.hyper_space.evolve(inputs.numpy())).float()
+                evolved_inputs = torch.from_numpy(
+                    self.hyper_space.evolve(inputs.numpy())
+                ).float()
                 outputs = self.model(evolved_inputs)
                 loss = self.loss_fn(outputs, labels)
 

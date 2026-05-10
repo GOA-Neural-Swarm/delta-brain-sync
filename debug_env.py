@@ -12,6 +12,7 @@ from datetime import datetime
 LOG_FILE = "env_audit.log"
 REQUIRED_CORE = ["numpy", "websockets", "omega_point", "psutil"]
 
+
 class SovereignAuditor:
     def __init__(self):
         self.report = {
@@ -85,9 +86,7 @@ class SovereignAuditor:
                 "Successfully uninstalled" in result.stdout
                 or "Conflict" in result.stderr
             ):
-                print(
-                    f" Conflict Detected for {target_lib}. Initiating Auto-Repair..."
-                )
+                print(f" Conflict Detected for {target_lib}. Initiating Auto-Repair...")
                 self.report["conflicts"].append(f"Conflict found in {target_lib}")
 
                 subprocess.run(

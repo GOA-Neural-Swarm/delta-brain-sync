@@ -123,7 +123,9 @@ def retry_failed_transfers(failed_transfers: List[str], max_retries: int = 3) ->
         if not failed_transfers:
             break
     if failed_transfers:
-        logging.error(f"Failed to transfer {len(failed_transfers)} repositories after {max_retries} retries: {failed_transfers}")
+        logging.error(
+            f"Failed to transfer {len(failed_transfers)} repositories after {max_retries} retries: {failed_transfers}"
+        )
 
 
 def main() -> None:
