@@ -106,6 +106,26 @@ def process_repos_in_batches(repos: List[str], batch_size: int) -> None:
         )
 
 
+def retry_failed_transfers(failed_transfers: List[str], max_retries: int = 3) -> None:
+    """
+    Retry failed repository transfers
+
+    Args:
+        failed_transfers (List[str]): A list of repository names that failed transfer
+        max_retries (int): The maximum number of retries. Defaults to 3.
+    """
+    for _ in range(max_retries):
+        new_failed_transfers = []
+        for repo in failed_transfers:
+            if not transfer_repo(repo):
+                new_failed_transfers.append(repo)
+        failed_transfers = new_failed_transfers
+        if not failed_transfers:
+            break
+    if failed_transfers:
+        logging.error(f"Failed to transfer {len(failed_transfers)} repositories after {max_retries} retries: {failed_transfers}")
+
+
 def main() -> None:
     # Get the list of 'swarm-node-' repositories
     nodes = get_nodes()
@@ -117,6 +137,10 @@ def main() -> None:
         )
         # Process the repositories in batches
         process_repos_in_batches(nodes, BATCH_SIZE)
+        # Retry failed transfers
+        failed_transfers = [repo for repo in nodes if not transfer_repo(repo)]
+        if failed_transfers:
+            retry_failed_transfers(failed_transfers)
     else:
         # Log no repositories found
         logging.info(f"No 'swarm-node-' repositories found in {SOURCE_ENTITY}.")
