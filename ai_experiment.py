@@ -56,7 +56,7 @@ class ExistentialDataset(Dataset):
 class EvolutionaryModel(nn.Module):
     def __init__(self):
         super(EvolutionaryModel, self).__init__()
-        self.fc1 = nn.Linear(10, 10)
+        self.fc1 = nn.Linear(20, 10)
         self.fc2 = nn.Linear(10, 10)
 
     def forward(self, x):
