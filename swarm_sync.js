@@ -45,7 +45,9 @@ async function executeAutonomousTrinity(
 
   if (replicate && evolutionaryAdaptation) {
     const nextNode = "swarm-node-007";
-    console.log(`Injecting Neural Logic into ${nextNode} with evolutionary adaptation...`);
+    console.log(
+      `Injecting Neural Logic into ${nextNode} with evolutionary adaptation...`,
+    );
   }
 }
 
@@ -54,7 +56,11 @@ async function executeAdditiveEvolution() {
   for (let i = 0; i < 5; i++) {
     const environmentComplexity = Math.min(1, 0.5 + i * 0.1);
     const uncertaintyFactor = Math.min(1, 0.2 + i * 0.05);
-    const decision = getNeuralDecision(5000, environmentComplexity, uncertaintyFactor);
+    const decision = getNeuralDecision(
+      5000,
+      environmentComplexity,
+      uncertaintyFactor,
+    );
     const command = decision.command;
     const replicate = decision.replicate;
 
@@ -62,7 +68,9 @@ async function executeAdditiveEvolution() {
 
     if (replicate) {
       const nextNode = `swarm-node-${i + 1}`;
-      console.log(`Injecting Neural Logic into ${nextNode} with evolutionary adaptation...`);
+      console.log(
+        `Injecting Neural Logic into ${nextNode} with evolutionary adaptation...`,
+      );
     }
   }
 }
