@@ -153,7 +153,6 @@ def main():
         hyper_space,
         existential_dataset,
     )
-    trainer.evolve()
     trainer.train(epochs=10)
 
 
