@@ -135,6 +135,7 @@ class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
 
 
 def main():
+    torch.manual_seed(0)
     hyper_space = HyperDimensionalSpace(dimensions=10)
     utilitarian_loss = UtilitarianLoss()
     evolutionary_model = EvolutionaryModel()
