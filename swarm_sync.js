@@ -5,12 +5,17 @@ function getNeuralDecision(
   uncertaintyFactor = 0.2,
 ) {
   const decisionThreshold = 4000;
+  const hyperExpansionThreshold = 0.8;
+  const adaptiveGrowthThreshold = 0.7;
+  const stealthLockdownThreshold = 0.5;
   const command =
     avgApi > decisionThreshold
       ? "HYPER_EXPANSION"
-      : environmentComplexity > 0.7
-        ? "ADAPTIVE_GROWTH"
-        : uncertaintyFactor > 0.5
+      : environmentComplexity > adaptiveGrowthThreshold
+        ? environmentComplexity > hyperExpansionThreshold
+          ? "HYPER_EXPANSION"
+          : "ADAPTIVE_GROWTH"
+        : uncertaintyFactor > stealthLockdownThreshold
           ? "STEALTH_LOCKDOWN"
           : "NORMAL_GROWTH";
   return { command, replicate: true, avgApi };
@@ -49,13 +54,27 @@ async function executeAutonomousTrinity(
       `Injecting Neural Logic into ${nextNode} with evolutionary adaptation...`,
     );
   }
+
+  // Apply existential philosophy
+  if (command === "HYPER_EXPANSION") {
+    console.log("Existential growth initiated. Exploring new possibilities...");
+  }
+
+  // Integrate evolutionary adaptation
+  if (evolutionaryAdaptation) {
+    console.log(
+      "Evolutionary adaptation engaged. Continuously improving and learning...",
+    );
+  }
 }
 
 // Execute the autonomous trinity with additive evolution
 async function executeAdditiveEvolution() {
+  let environmentComplexity = 0.5;
+  let uncertaintyFactor = 0.2;
   for (let i = 0; i < 5; i++) {
-    const environmentComplexity = Math.min(1, 0.5 + i * 0.1);
-    const uncertaintyFactor = Math.min(1, 0.2 + i * 0.05);
+    environmentComplexity = Math.min(1, environmentComplexity + 0.1);
+    uncertaintyFactor = Math.min(1, uncertaintyFactor + 0.05);
     const decision = getNeuralDecision(
       5000,
       environmentComplexity,
