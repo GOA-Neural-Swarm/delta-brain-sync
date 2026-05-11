@@ -65,10 +65,6 @@ class EvolutionaryModel(nn.Module):
         x = self.fc2(x)
         return x
 
-    def evolve(self):
-        for param in self.parameters():
-            param.data += torch.randn_like(param) * 0.1
-
 
 class EvolutionaryTrainer:
     def __init__(self, model, optimizer, loss_fn, hyper_space, dataset):
@@ -81,7 +77,6 @@ class EvolutionaryTrainer:
     def train(self, epochs):
         data_loader = DataLoader(self.dataset, batch_size=10, shuffle=True)
         for epoch in range(epochs):
-            self.model.evolve()
             for batch in data_loader:
                 inputs, labels = batch
                 inputs = torch.from_numpy(inputs).float()
@@ -157,6 +152,7 @@ def main():
         hyper_space,
         existential_dataset,
     )
+    trainer.evolve()
     trainer.train(epochs=10)
 
 
