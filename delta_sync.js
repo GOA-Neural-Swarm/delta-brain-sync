@@ -397,13 +397,13 @@ async function executeAutonomousTrinity() {
   const neon = new Client({
     connectionString: process.env.NEON_DB_URL + "&sslmode=verify-full",
   });
-  
+
   // 🔱 Connection ပြတ်တောက်မှုကြောင့် Crash မဖြစ်အောင် ကာကွယ်ခြင်း
-neon.on('error', err => {
-    console.error('⚠️ [DATABASE ERROR]: Unexpected connection loss.', err);
-    process.exit(0); 
-});
-  
+  neon.on("error", (err) => {
+    console.error("⚠️ [DATABASE ERROR]: Unexpected connection loss.", err);
+    process.exit(0);
+  });
+
   const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY,
