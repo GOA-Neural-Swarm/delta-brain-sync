@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-05-12T13:28:59.258640",
+    "timestamp": "2026-05-12T16:10:13.266720",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1010-azure",
@@ -77,6 +77,7 @@
         "tqdm": "4.67.3",
         "setuptools": "79.0.1",
         "yarl": "1.23.0",
+        "google-genai": "2.1.0",
         "zipp": "3.23.1",
         "fastjsonschema": "2.21.2",
         "uvicorn": "0.46.0",
@@ -141,7 +142,6 @@
         "webencodings": "0.5.1",
         "starlette": "0.52.1",
         "google-api-python-client": "2.196.0",
-        "google-genai": "2.0.1",
         "fsspec": "2026.2.0",
         "Jinja2": "3.1.6",
         "idna": "3.14",
@@ -168,7 +168,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.58,
+        "ram_available_gb": 14.63,
         "gpu_available": false
     }
 }
