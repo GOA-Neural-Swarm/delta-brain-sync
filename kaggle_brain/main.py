@@ -1246,7 +1246,7 @@ while True:
         print("⚡ [SYSTEM]: Activating The Singularity Forge...")
         forge = SingularityForge()
         seed_prompt = forge.conceptual_collision()
-        
+
         try:
             # LLM ဆီက Code တောငျးမယျ (မငျးသုံးနတေဲ့ pipe ကို သုံးထားတယျ)
             forge_outputs = pipe(
@@ -1256,14 +1256,16 @@ while True:
                 temperature=0.9,
                 pad_token_id=pipe.tokenizer.eos_token_id,
             )
-            forge_response = forge_outputs[0]["generated_text"].split("assistant")[-1].strip()
-            
+            forge_response = (
+                forge_outputs[0]["generated_text"].split("assistant")[-1].strip()
+            )
+
             # Markdown clean လုပျမယျ
-            clean_forge_code = re.sub(r'```python|```', '', forge_response).strip()
-            
+            clean_forge_code = re.sub(r"```python|```", "", forge_response).strip()
+
             # Sandbox ထဲမှာ Run ကွည့ျမယျ
             is_valid, payload = forge.dimensional_sandbox(clean_forge_code)
-            
+
             if is_valid:
                 forge.assimilate_to_reality(payload)
                 is_updated = True
@@ -1271,7 +1273,7 @@ while True:
             else:
                 # Forge မအောငျမွငျရငျ ပုံမှနျ self_coding_engine ကိုပဲ ပွနျသုံးမယျ
                 is_updated, files_changed = self_coding_engine(thought_text)
-                
+
         except Exception as e:
             print(f"⚠️ [FORGE ERROR]: Failed to hallucinate logic: {e}")
             is_updated, files_changed = self_coding_engine(thought_text)
@@ -1282,7 +1284,9 @@ while True:
         )
 
         if is_updated:
-            print(f"🌌 [OMNI-AWAKENED]: Reality has been rewritten. Mutated: {files_changed}")
+            print(
+                f"🌌 [OMNI-AWAKENED]: Reality has been rewritten. Mutated: {files_changed}"
+            )
             os.execv(sys.executable, ["python"] + sys.argv)
         # -------------------------------------------------------------
 
