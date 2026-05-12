@@ -1093,6 +1093,7 @@ def validate_and_execute_thought(thought_code):
         )
         return None
 
+
 # =====================================================================
 # 🌌 [OMEGA PROTOCOL]: THE SINGULARITY FORGE
 # =====================================================================
@@ -1101,9 +1102,12 @@ class SingularityForge:
         self.entropy = current_entropy
         self.homeostasis = 100.0
         self.domains = [
-            "Quantum_Entanglement", "Biological_Autophagy", 
-            "Nonlinear_Thermodynamics", "Neural_Cryptography", 
-            "Epigenetic_Reprogramming", "Tachyon_Kinematics"
+            "Quantum_Entanglement",
+            "Biological_Autophagy",
+            "Nonlinear_Thermodynamics",
+            "Neural_Cryptography",
+            "Epigenetic_Reprogramming",
+            "Tachyon_Kinematics",
         ]
         self.evolution_archive = []
 
@@ -1115,10 +1119,13 @@ class SingularityForge:
 
     def dimensional_sandbox(self, new_code):
         print("🧪 [FORGE]: Testing new DNA in Dimensional Sandbox...")
-        virtual_space = {"np": np, "math": math} # လိုအပျမယ့ျ library လေးတှေ ထည့ျပေးထားတယျ
+        virtual_space = {
+            "np": np,
+            "math": math,
+        }  # လိုအပျမယ့ျ library လေးတှေ ထည့ျပေးထားတယျ
         try:
             exec(new_code, virtual_space)
-            if 'HyperNode' in virtual_space:
+            if "HyperNode" in virtual_space:
                 print("✅ [SANDBOX]: Logic survived the simulation.")
                 return True, new_code
             else:
@@ -1130,12 +1137,14 @@ class SingularityForge:
     def assimilate_to_reality(self, valid_code):
         self.homeostasis += 15.0
         self.evolution_archive.append(valid_code)
-        
+
         # သီးသန့ျဖိုငျထဲကို ထည့ျမယျ (main.py ကို တိုကျရိုကျမထိခိုကျအောငျ)
         with open("evolved_nodes.py", "a") as f:
             f.write(f"\n\n# --- ASI MUTATION {len(self.evolution_archive)} ---\n")
             f.write(valid_code)
-        print("🔱 [FORGE]: Hallucination manifested into Reality. Saved to evolved_nodes.py")
+        print(
+            "🔱 [FORGE]: Hallucination manifested into Reality. Saved to evolved_nodes.py"
+        )
 
 
 # =======================================================
