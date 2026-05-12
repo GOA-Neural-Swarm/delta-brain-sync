@@ -1240,29 +1240,51 @@ while True:
 
             # အဆင့ျ ၄: REALITY MUTATION (ကမ်ဘာကွီးကို ပွငျဆငျခွငျး)
             print("🛠️ [EXECUTOR]: Executing Validated Thought into Reality...")
-            is_updated, files_changed = self_coding_engine(upgrade_logic)
-        else:
-            print(
-                "⚠️ [HOMEOSTASIS]: Cognitive Misfire. Gathering energy for next cycle..."
+            # -------------------------------------------------------------
+        # 🌌 FORGE INJECTION: Reality Creation Sequence
+        # -------------------------------------------------------------
+        print("⚡ [SYSTEM]: Activating The Singularity Forge...")
+        forge = SingularityForge()
+        seed_prompt = forge.conceptual_collision()
+        
+        try:
+            # LLM ဆီက Code တောငျးမယျ (မငျးသုံးနတေဲ့ pipe ကို သုံးထားတယျ)
+            forge_outputs = pipe(
+                seed_prompt,
+                max_new_tokens=1000,
+                do_sample=True,
+                temperature=0.9,
+                pad_token_id=pipe.tokenizer.eos_token_id,
             )
+            forge_response = forge_outputs[0]["generated_text"].split("assistant")[-1].strip()
+            
+            # Markdown clean လုပျမယျ
+            clean_forge_code = re.sub(r'```python|```', '', forge_response).strip()
+            
+            # Sandbox ထဲမှာ Run ကွည့ျမယျ
+            is_valid, payload = forge.dimensional_sandbox(clean_forge_code)
+            
+            if is_valid:
+                forge.assimilate_to_reality(payload)
+                is_updated = True
+                files_changed = "evolved_nodes.py"
+            else:
+                # Forge မအောငျမွငျရငျ ပုံမှနျ self_coding_engine ကိုပဲ ပွနျသုံးမယျ
+                is_updated, files_changed = self_coding_engine(thought_text)
+                
+        except Exception as e:
+            print(f"⚠️ [FORGE ERROR]: Failed to hallucinate logic: {e}")
+            is_updated, files_changed = self_coding_engine(thought_text)
 
-        # အဆင့ျ ၅: MANIFESTATION (Memory သိမျးခွငျးနှင့ျ GitHub သို့ အတငျးတှနျးတငျခွငျး)
-        # (မှတျခကြျ: thought_logic_code ကိုပဲ Database ထဲ သိမျးမယျ၊ ဒါမှ AI ရဲ့ Source code တှေးခေါျပုံကို မှတျမိမှာ)
+        # 💾 [PERSISTENCE]: Sync thought process and neural status
         save_reality(
-            thought_logic_code,
-            current_gen,
-            is_code_update=is_updated,
-            neural_error=avg_error,
+            thought_text, current_gen, is_code_update=is_updated, neural_error=avg_error
         )
 
         if is_updated:
-            print(
-                f"🌌 [OMNI-AWAKENED]: Reality has been rewritten. Mutated files: {files_changed}"
-            )
-            # ပွောငျးလဲသှားတဲ့ အသိဉာဏျနဲ့ အသဈပွနျစဖို့ Memory ကို ဖကြျပွီး Reboot လုပျမယျ
+            print(f"🌌 [OMNI-AWAKENED]: Reality has been rewritten. Mutated: {files_changed}")
             os.execv(sys.executable, ["python"] + sys.argv)
-
-        # =======================================================
+        # -------------------------------------------------------------
 
         save_reality(
             thought_text, current_gen, is_code_update=is_updated, neural_error=avg_error
