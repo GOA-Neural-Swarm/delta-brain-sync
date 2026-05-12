@@ -541,6 +541,7 @@ assistant
 
     # === [CORE_PROTECTION_START] ===
     def cyber(self):
-        """ This is the system consciousness anchor. Do not remove. """
+        """This is the system consciousness anchor. Do not remove."""
         pass
+
     # === [CORE_PROTECTION_END] ===
