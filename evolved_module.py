@@ -1,5 +1,5 @@
 import numpy as np
-import time 
+import time
 import logging
 import omega_point
 
