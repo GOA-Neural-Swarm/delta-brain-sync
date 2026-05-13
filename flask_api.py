@@ -14,7 +14,6 @@ except ImportError:
 
 app = Flask(__name__)
 
-
 class ASI_State:
     def __init__(self):
         self.architect = SovereignArchitect()
@@ -24,16 +23,14 @@ class ASI_State:
         self.last_evolution = None
         self.neural_load = 0.0
         self.status = "STABLE"
-
+        self.evolution_count = 0
 
 state = ASI_State()
 
 logging.basicConfig(filename="system_gate.log", level=logging.INFO)
 
-
 def check_auth():
     return True
-
 
 @app.route("/", methods=["GET"])
 def index():
@@ -46,7 +43,6 @@ def index():
         }
     )
 
-
 @app.route("/status", methods=["GET"])
 def get_status():
     return jsonify(
@@ -57,9 +53,9 @@ def get_status():
             "classifier_type": state.architect.brain.classifier_type,
             "last_sync": time.strftime("%Y-%m-%d %H:%M:%S"),
             "status": state.status,
+            "evolution_count": state.evolution_count,
         }
     )
-
 
 def background_evolution():
     state.is_training = True
@@ -69,12 +65,12 @@ def background_evolution():
         state.architect.execute_evolution_step()
         state.last_evolution = datetime.now()
         state.status = "STABLE"
+        state.evolution_count += 1
     except Exception as e:
         state.status = "CRITICAL_FAULT"
         logging.error(f"Evolution Error: {e}")
     finally:
         state.is_training = False
-
 
 @app.route("/evolve", methods=["POST"])
 def trigger_evolution():
@@ -84,7 +80,6 @@ def trigger_evolution():
     thread = threading.Thread(target=background_evolution)
     thread.start()
     return jsonify({"message": "Evolution signal dispatched to background thread."})
-
 
 @app.route("/logs", methods=["GET"])
 def get_logs():
@@ -98,7 +93,6 @@ def get_logs():
 
     return jsonify(combined_logs)
 
-
 @app.route("/recover", methods=["POST"])
 def manual_recovery():
     state.status = "RECOVERING"
@@ -106,17 +100,14 @@ def manual_recovery():
     thread.start()
     return jsonify({"message": "Sovereign Recovery Engine Engaged."})
 
-
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({"error": "Endpoint not found."}), 404
-
 
 @app.errorhandler(500)
 def internal_error(error):
     state.status = "FAULTY"
     return jsonify({"error": "Internal Core Collapse."}), 500
-
 
 if __name__ == "__main__":
     print("""
