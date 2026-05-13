@@ -10,7 +10,8 @@ try:
     from brain import SovereignArchitect
     from recovery import SovereignRecovery
 except ImportError:
-    print(" Core components missing. Emergency recovery required.")
+    logging.critical("Core components missing. Emergency recovery required.")
+    print("Core components missing. Emergency recovery required.")
 
 app = Flask(__name__)
 
@@ -27,7 +28,7 @@ class ASI_State:
 
 state = ASI_State()
 
-logging.basicConfig(filename="system_gate.log", level=logging.INFO)
+logging.basicConfig(filename="system_gate.log", level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
 def check_auth():
     return True
@@ -61,11 +62,12 @@ def background_evolution():
     state.is_training = True
     state.status = "EVOLVING"
     try:
-        print(" [THREAD]: Neural Expansion Sequence Initiated...")
+        logging.info("Neural Expansion Sequence Initiated...")
         state.architect.execute_evolution_step()
         state.last_evolution = datetime.now()
         state.status = "STABLE"
         state.evolution_count += 1
+        logging.info("Evolution successful.")
     except Exception as e:
         state.status = "CRITICAL_FAULT"
         logging.error(f"Evolution Error: {e}")
@@ -99,6 +101,12 @@ def manual_recovery():
     thread = threading.Thread(target=state.recovery.run)
     thread.start()
     return jsonify({"message": "Sovereign Recovery Engine Engaged."})
+
+@app.route("/healthcheck", methods=["GET"])
+def healthcheck():
+    if state.status == "FAULTY" or state.status == "CRITICAL_FAULT":
+        return jsonify({"error": "System is not healthy."}), 503
+    return jsonify({"message": "System is healthy."})
 
 @app.errorhandler(404)
 def not_found(error):
