@@ -13,7 +13,7 @@ class HyperDimensionalSpace:
         if preserve_existing:
             return np.random.normal(0, 0.1, size=(data.shape[0], self.dimensions)) + data
         else:
-            return np.random.normal(0, 0.1, size=(data.shape[0], self.dimensions)) + data
+            return np.random.normal(0, 0.1, size=(data.shape[0], self.dimensions))
 
 
 class UtilitarianLoss(nn.Module):
