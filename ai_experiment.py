@@ -9,8 +9,11 @@ class HyperDimensionalSpace:
     def __init__(self, dimensions):
         self.dimensions = dimensions
 
-    def evolve(self, data):
-        return np.random.normal(0, 0.1, size=(data.shape[0], self.dimensions)) + data
+    def evolve(self, data, preserve_existing=False):
+        if preserve_existing:
+            return np.random.normal(0, 0.1, size=(data.shape[0], self.dimensions)) + data
+        else:
+            return np.random.normal(0, 0.1, size=(data.shape[0], self.dimensions)) + data
 
 
 class UtilitarianLoss(nn.Module):
@@ -57,7 +60,7 @@ class ExistentialDataset(Dataset):
 class EvolutionaryModel(nn.Module):
     def __init__(self):
         super(EvolutionaryModel, self).__init__()
-        self.fc1 = nn.Linear(30, 10)  # Increased input size
+        self.fc1 = nn.Linear(20, 10)  
         self.fc2 = nn.Linear(10, 10)
 
     def forward(self, x):
@@ -83,7 +86,7 @@ class EvolutionaryTrainer:
                 labels = torch.from_numpy(labels).float()
 
                 evolved_inputs = torch.from_numpy(
-                    self.hyper_space.evolve(inputs.numpy())
+                    self.hyper_space.evolve(inputs.numpy(), preserve_existing=True)
                 ).float()
                 outputs = self.model(evolved_inputs)
                 loss = self.loss_fn(outputs, labels)
@@ -122,7 +125,7 @@ class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
                 labels = torch.from_numpy(labels).float()
 
                 evolved_inputs = torch.from_numpy(
-                    self.hyper_space.evolve(inputs.numpy())
+                    self.hyper_space.evolve(inputs.numpy(), preserve_existing=True)
                 ).float()
                 outputs = self.model(evolved_inputs)
                 loss = self.loss_fn(outputs, labels)
