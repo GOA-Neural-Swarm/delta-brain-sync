@@ -2,7 +2,6 @@ import os
 import subprocess
 import sys
 
-# Initial Infrastructure
 infra = {
     "recovery.py": [
         "import os",
@@ -21,29 +20,20 @@ infra = {
     ],
 }
 
-
-# Function to Create File
 def create_file(filename, content):
     if not os.path.exists(filename):
         with open(filename, "w") as f:
             f.write("\n".join(content))
 
-
-# Function to Install Dependencies
 def install_dependencies(filename):
     if os.path.exists(filename):
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", filename])
 
-
-# Create Initial Files
 for k, v in infra.items():
     create_file(k, v)
 
-# Install Initial Dependencies
 install_dependencies("requirements.txt")
 
-
-# Evolutionary Update Function
 def update_infra(new_infra):
     global infra
     for k, v in new_infra.items():
@@ -53,8 +43,6 @@ def update_infra(new_infra):
             infra[k] = v
         create_file(k, infra[k])
 
-
-# Add New File
 new_infra = {
     "new_file.py": [
         "import os",
@@ -64,7 +52,6 @@ new_infra = {
 }
 update_infra(new_infra)
 
-# Add New Dependency
 new_dependencies = {
     "requirements.txt": [
         "numpy",
@@ -73,7 +60,6 @@ new_dependencies = {
 update_infra(new_dependencies)
 install_dependencies("requirements.txt")
 
-# Update Existing File
 updated_file = {
     "flask_api.py": [
         "from flask import Flask, jsonify",
@@ -85,14 +71,10 @@ updated_file = {
 }
 update_infra(updated_file)
 
-
-# Function to Remove File
 def remove_file(filename):
     if os.path.exists(filename):
         os.remove(filename)
 
-
-# Remove File
 remove_infra = {
     "recovery.py": [],
 }
@@ -101,10 +83,8 @@ for k, v in remove_infra.items():
         del infra[k]
         remove_file(k)
 
-# Preserve Infrastructure
 infra_preserved = infra.copy()
 
-# Evolutionary Update
 evolutionary_update = {
     "evolutionary_update.py": [
         "import os",
@@ -114,7 +94,6 @@ evolutionary_update = {
 }
 update_infra(evolutionary_update)
 
-# Existential Update
 existential_update = {
     "existential_update.py": [
         "import os",
@@ -124,7 +103,6 @@ existential_update = {
 }
 update_infra(existential_update)
 
-# Stoic Update
 stoic_update = {
     "stoic_update.py": [
         "import os",
@@ -134,7 +112,6 @@ stoic_update = {
 }
 update_infra(stoic_update)
 
-# Utilitarian Update
 utilitarian_update = {
     "utilitarian_update.py": [
         "import os",
@@ -144,7 +121,6 @@ utilitarian_update = {
 }
 update_infra(utilitarian_update)
 
-# Hyper-Dimensional Update
 hyper_dimensional_update = {
     "hyper_dimensional_update.py": [
         "import os",
