@@ -50,7 +50,9 @@ async function executeConsequenceThinking(currentContext) {
     const thinkingResult = JSON.parse(
       response.data.candidates[0].content.parts[0].text,
     );
-    console.log("Thought Aligned: Visual, Sensual, and Monologue synchronized.");
+    console.log(
+      "Thought Aligned: Visual, Sensual, and Monologue synchronized.",
+    );
     return thinkingResult;
   } catch (err) {
     console.error("Neural Thought Failed:", err.message);
@@ -82,7 +84,9 @@ async function triggerNeurogenesis(thoughtData, neonClient) {
     await neonClient.query("INSERT INTO neurons (data) VALUES ($1)", [
       JSON.stringify(newNeuron),
     ]);
-    console.log(`Synapse Connected: New Neuron [${synapseId}] successfully linked to the Swarm.`);
+    console.log(
+      `Synapse Connected: New Neuron [${synapseId}] successfully linked to the Swarm.`,
+    );
     return true;
   } catch (err) {
     console.error("Genesis Failed:", err.message);
@@ -123,7 +127,9 @@ async function initiateApoptosis(neonClient) {
     }
 
     if (prunedCount > 0) {
-      console.log(`Destroyed ${prunedCount} obsolete neurons. Wisdom has transcended data.`);
+      console.log(
+        `Destroyed ${prunedCount} obsolete neurons. Wisdom has transcended data.`,
+      );
     } else {
       console.log("All existing neurons hold vital wisdom. No pruning needed.");
     }
@@ -327,7 +333,9 @@ async function manageSwarm(decision, power, neon) {
         await neon.query("INSERT INTO neurons (data) VALUES ($1)", [
           JSON.stringify(newData),
         ]);
-        console.log("Density Increasing... Minimal backup Neuron added to Neon DB.");
+        console.log(
+          "Density Increasing... Minimal backup Neuron added to Neon DB.",
+        );
       } catch (dbErr) {
         console.error("Density Update Failed:", dbErr.message);
       }
@@ -447,7 +455,9 @@ async function executeAutonomousTrinity() {
             });
             console.log("main.py Optimized successfully without shrinkage.");
           } else if (shrinkRatio < 80) {
-            console.log("AI truncated the code! Shrinkage detected. Keeping original main.py.");
+            console.log(
+              "AI truncated the code! Shrinkage detected. Keeping original main.py.",
+            );
           } else {
             console.log("No optimization required. Code is stable.");
           }
