@@ -19,6 +19,7 @@ from groq import Groq
 from google import genai
 from google.genai import types
 
+
 # [GENESIS LAYER]:
 def bootstrap_system():
     infra = {
@@ -65,6 +66,7 @@ if __name__ == "__main__":
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(content.strip())
             print(f" [GENESIS]: {filename} created.")
+
 
 bootstrap_system()
 load_dotenv()

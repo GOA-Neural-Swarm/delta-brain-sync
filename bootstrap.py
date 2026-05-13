@@ -21,16 +21,19 @@ infra = {
     ],
 }
 
+
 # Function to Create File
 def create_file(filename, content):
     if not os.path.exists(filename):
         with open(filename, "w") as f:
             f.write("\n".join(content))
 
+
 # Function to Install Dependencies
 def install_dependencies(filename):
     if os.path.exists(filename):
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", filename])
+
 
 # Create Initial Files
 for k, v in infra.items():
@@ -38,6 +41,7 @@ for k, v in infra.items():
 
 # Install Initial Dependencies
 install_dependencies("requirements.txt")
+
 
 # Evolutionary Update Function
 def update_infra(new_infra):
@@ -48,6 +52,7 @@ def update_infra(new_infra):
         else:
             infra[k] = v
         create_file(k, infra[k])
+
 
 # Add New File
 new_infra = {
@@ -80,10 +85,12 @@ updated_file = {
 }
 update_infra(updated_file)
 
+
 # Function to Remove File
 def remove_file(filename):
     if os.path.exists(filename):
         os.remove(filename)
+
 
 # Remove File
 remove_infra = {

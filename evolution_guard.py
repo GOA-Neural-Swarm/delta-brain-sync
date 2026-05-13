@@ -11,6 +11,7 @@ import omega_point
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
+
 class Guard:
     """Main class for the guard system."""
 
@@ -154,6 +155,7 @@ class Guard:
             "[GUARD]: System is stable and sovereign. Handing over to background process."
         )
         sys.exit(0)
+
 
 if __name__ == "__main__":
     target = sys.argv[1] if len(sys.argv) > 1 else "main.py"

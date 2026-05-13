@@ -15,7 +15,7 @@ CORE_VERSIONS = {
     "numpy": "1.23.4",
     "websockets": "12.0",
     "omega_point": "0.1.0",
-    "psutil": "5.9.3"
+    "psutil": "5.9.3",
 }
 
 
@@ -109,7 +109,9 @@ class SovereignAuditor:
                     "Successfully uninstalled" in result.stdout
                     or "Conflict" in result.stderr
                 ):
-                    print(f" Conflict Detected for {package}. Initiating Auto-Repair...")
+                    print(
+                        f" Conflict Detected for {package}. Initiating Auto-Repair..."
+                    )
                     self.report["conflicts"].append(f"Conflict found in {package}")
 
                     subprocess.run(
@@ -136,7 +138,9 @@ class SovereignAuditor:
                 importlib.import_module(package)
                 package_version = importlib.metadata.version(package)
                 if package_version != CORE_VERSIONS[package]:
-                    print(f" Package {package} has outdated version: {package_version}. Updating to {CORE_VERSIONS[package]}...")
+                    print(
+                        f" Package {package} has outdated version: {package_version}. Updating to {CORE_VERSIONS[package]}..."
+                    )
                     subprocess.run(
                         [
                             sys.executable,

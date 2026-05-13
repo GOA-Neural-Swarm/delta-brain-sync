@@ -3,9 +3,7 @@ import time
 import logging
 import omega_point
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - [CORTEX] - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - [CORTEX] - %(message)s")
 
 
 class AdvancedAdamW:
