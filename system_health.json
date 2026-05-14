@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-05-14T18:06:01.936420",
+    "timestamp": "2026-05-14T20:22:16.209401",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1013-azure",
@@ -43,6 +43,7 @@
         "kiwisolver": "1.5.0",
         "pycodestyle": "2.14.0",
         "typing_extensions": "4.15.0",
+        "uvicorn": "0.47.0",
         "accelerate": "1.13.0",
         "packaging": "26.2",
         "fastjsonschema": "2.21.2",
@@ -85,10 +86,10 @@
         "pandas": "2.3.3",
         "hf-xet": "1.5.0",
         "frozenlist": "1.8.0",
-        "requests": "2.34.1",
         "tenacity": "9.1.4",
         "fonttools": "4.63.0",
         "google-generativeai": "0.8.6",
+        "requests": "2.34.2",
         "certifi": "2026.4.22",
         "mpmath": "1.3.0",
         "google-auth-httplib2": "0.4.0",
@@ -108,7 +109,6 @@
         "pillow": "10.4.0",
         "tokenizers": "0.21.4",
         "google-ai-generativelanguage": "0.6.15",
-        "uvicorn": "0.46.0",
         "gradio_client": "1.14.0",
         "grpcio": "1.80.0",
         "ffmpy": "1.0.0",
@@ -168,7 +168,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.6,
+        "ram_available_gb": 14.53,
         "gpu_available": false
     }
 }
