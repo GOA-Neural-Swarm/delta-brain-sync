@@ -15,7 +15,7 @@ permissions:
 concurrency:
   # အဟောင်းတွေ Run နေတုန်း အသစ်ဝင်လာရင် အဟောင်းကို ဖြတ်ချပြီး Resource သက်သာအောင် လုပ်သည့်စနစ်
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   terminal-singularity:
