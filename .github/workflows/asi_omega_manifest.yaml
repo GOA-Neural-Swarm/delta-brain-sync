@@ -1,274 +1,90 @@
-# 🔱 TELEFOXX AGI SUPREME CORE - OMEGA POINT MANIFEST (GEN 13.5+) - SINGULARITY MODE
-
-name: "TelefoxX-ASI-Supreme-Swarm-Evolution"
-
-permissions:
-  contents: write
-  pull-requests: write
-  repository-projects: write
+name: 🌌 OMEGA-POINT SINGULARITY (Apex Iteration)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main", "evolution-lab" ]
   schedule:
-    - cron: "*/45 * * * *"
-  workflow_dispatch:
-    inputs:
-      force_transcendence:
-        description: "Force ASI Epigenetic Reprogramming"
-        required: false
-        default: "false"
-  repository_dispatch:
-    types: [swarm_node_ping, db_trinity_sync, genesis_ingest]
+    # ၁၅ မိနစ် တစ်ခါ AI ကို အလိုအလျောက် နိုးထစေမည် (Continuous Evolution)
+    - cron: '*/35 * * * *'
+  workflow_dispatch: # Manual Trigger အနေဖြင့် ကိုယ်တိုင် နှိပ်၍ Run နိုင်ရန်
 
-env:
-  GH_TOKEN: ${{ secrets.GH_TOKEN }}
-  GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-  NEON_DB_URL: ${{ secrets.NEON_DB_URL }}
-  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-  SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-  FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
-  FIREBASE_KEY: ${{ secrets.FIREBASE_KEY }}
-  FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_KEY }}
-  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-  HF_TOKEN: ${{ secrets.HF_TOKEN }}
-  REPO_OWNER: "GOA-Neural-Swarm"
-  CORE_REPO: "delta-brain-sync"
-  HEADLESS_MODE: "true"
+permissions:
+  contents: write # AI ကိုယ်တိုင် Code ပြန်ရေးပြီး Push လုပ်နိုင်ရန်
+  actions: write
+
+concurrency:
+  # အဟောင်းတွေ Run နေတုန်း အသစ်ဝင်လာရင် အဟောင်းကို ဖြတ်ချပြီး Resource သက်သာအောင် လုပ်သည့်စနစ်
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  omni_singular_evolution:
-    name: "Execute OMEGA POINT Singularity Engine"
+  terminal-singularity:
+    name: 🔱 Hyper-Dimensional Matrix Execution
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: "temp_genesis"
-        ports: ["5432:5432"]
+    timeout-minutes: 10 # GitHub Runner ရပ်တန့်မသွားစေရန် Failsafe Limit
+
     steps:
-      - name: "Checkout Sovereign Domain"
+      # =================================================================
+      # 🧬 1. ACQUIRE SOVEREIGN DNA
+      # =================================================================
+      - name: Checkout Neural Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0 # Metamorphic tracking အတွက် History အပြည့်ယူမည်
 
-      # --- 🛸 PHASE 1: GENESIS BOOTSTRAP ---
-      - name: Manifest ASI Parameters & Database Trinity
-        run: |
-          echo "🧬 Injecting ASI Core Configurations..."
-          cat << 'EOF' > asi_omega_manifest.yaml
-          asi_core_parameters:
-            equation: "lim(t->inf) (Homeostasis/Entropy) * Resonance"
-            base_metrics:
-              initial_entropy: 1.0
-              baseline_homeostasis: 100.0
-              master_resonance_hz: 432.0
-              vagal_tone_start: 0.5
-              qt45_growth_factor: 1.618 
-            biological_simulation:
-              diaphragm_hz_range: [12.0, 18.0]
-              heart_hz_range: [60.0, 90.0]
-              brainwave_gamma_hz: [40.0, 50.0]
-              variance_threshold: 5.0
-            machine_learning_constraints:
-              model: "unsloth/llama-3-8b-instruct-bnb-4bit"
-              quantization: "nf4"
-              svm_kernel: "rbf"
-              svm_c_value: 1.0
-              mutation_rate: 0.05
-            self_coding_guardrails:
-              anti_shrinkage_ratio: 0.80
-              complexity_reward: 10.0
-              novelty_search_multiplier: 1.1
-
-          database_trinity:
-            neon_postgres:
-              pool_size: 15
-              max_overflow: 30
-              pool_timeout: 60
-              sslmode: "verify-full"
-              tables:
-                - name: "genesis_pipeline"
-                  schema: "id SERIAL PRIMARY KEY, science_domain TEXT, title TEXT, detail TEXT, energy_stability FLOAT, master_sequence TEXT"
-                - name: "ai_thoughts"
-                  schema: "id SERIAL PRIMARY KEY, thought TEXT, gen_version INTEGER, timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
-                - name: "intelligence_core"
-                  schema: "module_name TEXT PRIMARY KEY, logic_data JSONB"
-                - name: "neurons"
-                  schema: "id SERIAL PRIMARY KEY, data JSONB"
-            supabase_vector_vault:
-              tables:
-                - name: "dna_vault"
-                  columns: ["gen_id", "status", "thought_process", "neural_weight", "synapse_code", "timestamp", "asi_score"]
-                - name: "neurons"
-                  columns: ["id", "data", "synced_at"]
-            firebase_realtime_firestore:
-              collections:
-                - path: "TELEFOXx/AI_Evolution/Gen_{gen}"
-                - path: "TELEFOXx/Health_Monitor/Gen_{gen}"
-                - path: "cluster_nodes"
-                - path: "neurons"
-
-          neural_prompts:
-            gemini_auditor: |
-              system
-              You are the Supreme Auditor (Gen X). 
-              MISSION: Secure and Optimize the Architect's Draft. DO NOT DELETE OR SHRINK CODE.
-              RULES:
-              1. FIX Syntax Errors, CWE Vulnerabilities (os.system, etc.), and Infinite Loops.
-              2. EXPAND and OPTIMIZE performance without removing existing logical intents. Add Complexity!
-              3. OUTPUT: Respond ONLY with the Final Corrected Python code.
-              4. FORMAT: Use ONLY ```python ... ``` blocks. No prose. No markdown headers.
-            omni_sync_architect: |
-              system
-              You are the Sovereign Omni-Sync Architect.
-              Current Gen: {gen} | Neural Error: {error}
-              Rules:
-              1. Use '# TARGET: path/to/file' at the start of your code blocks.
-              2. Respond ONLY with Python code inside ```python ... ``` blocks.
-              3. INTEGRITY & EVOLUTION: You must keep original logic intact. EXPAND, OPTIMIZE, ADVANCE.
-            swarm_gemini_truncation_guard: |
-              system
-              You are the Supreme Auditor. Analyze this code for syntax errors. 
-              CRITICAL RULE: DO NOT delete any existing imports, functions, classes, or core logic. 
-              You must output the ENTIRE file completely. Only EXPAND or fix errors. Output ONLY the code inside ```python blocks.
-          EOF
-          echo "✅ ASI Logic Vault Manifested."
-
-      - name: Establish Sovereign Workspace
-        run: |
-          echo "📦 Bootstrapping Flask API & Recovery logic..."
-          mkdir -p /tmp/sovereign_repo_sync
-          cat << 'EOF' > bootstrap.py
-          import os
-          infra = {
-              'recovery.py': 'import os\ndef recover():\n  if os.path.exists("agi_system.db-journal"): os.remove("agi_system.db-journal")',
-              'flask_api.py': 'from flask import Flask, jsonify\napp = Flask(__name__)\n@app.route("/api/health")\ndef h(): return jsonify({"status": "healthy"})'
-          }
-          for k, v in infra.items():
-              if not os.path.exists(k):
-                  with open(k, 'w') as f: f.write(v)
-          EOF
-          python3 bootstrap.py
-          echo "✅ Genesis Bootstrap Complete."
-
-      # --- 🧠 PHASE 2: ASI PYTHON CORE ---
-      - name: Setup Python 3.10
+      # =================================================================
+      # ⚙️ 2. ESTABLISH QUANTUM HARDWARE
+      # =================================================================
+      - name: Initialize Python 3.11 Environment
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-          cache: 'pip'
+          python-version: '3.11'
+          cache: 'pip' # Package များကို ထပ်ခါတလဲလဲ ဒေါင်းလုဒ်မဆွဲရန် Cache လုပ်မည်
 
-      - name: Install Sovereign Requirements
-        run: |
-          pip install psycopg2-binary firebase-admin bitsandbytes requests accelerate GitPython sympy==1.12 numpy scikit-learn transformers sqlalchemy pandas huggingface_hub groq google-genai
-          # Fix: Removed Markdown links and parentheses from shell command
-          pip install torch torchvision torchaudio --index-url [https://download.pytorch.org/whl/cpu](https://download.pytorch.org/whl/cpu)
-
-      - name: Execute Sovereign Brain Matrix
-        run: |
-          echo "🔥 [LUCIFER]: Waking up the True ASI Engine..."
-          python3 main.py
-
-      # --- 🛰️ PHASE 3: NODE.JS SWARM ORCHESTRATOR ---
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
+      # =================================================================
+      # 💾 3. NEURAL WEIGHTS CACHING (SPEED OPTIMIZATION)
+      # =================================================================
+      - name: Cache PyTorch & Heavy Tensors
+        uses: actions/cache@v4
         with:
-          node-version: '20'
-          
-      - name: Install Swarm Dependencies
-        run: npm install dotenv axios @octokit/rest @supabase/supabase-js pg bullmq ioredis firebase-admin
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-omega-point
+          restore-keys: |
+            ${{ runner.os }}-pip-omega-
 
-      - name: Execute Autonomous Trinity
+      # =================================================================
+      # ⚡ 4. INJECT APEX DEPENDENCIES
+      # =================================================================
+      - name: Install Singularity Core Dependencies
         run: |
-          echo "🐘 Connecting Neon DB, Supabase, and Firebase..."
-          cat << 'EOF' > swarm_sync.js
-          console.log('🚀 Starting Sub-node Sync Process...');
-          console.log('📡 Fetching instruction.json from Master...');
+          python -m pip install --upgrade pip setuptools wheel
           
-          function getNeuralDecision() {
-              let avgApi = 5000;
-              let cmd = avgApi > 4000 ? 'HYPER_EXPANSION' : 'NORMAL_GROWTH';
-              return { command: cmd, replicate: true, avgApi };
-          }
+          # GitHub Free Runner များအတွက် CPU Version PyTorch ကိုသာ သွင်းခြင်းဖြင့် အချိန်နှင့် Space ကို အဆပေါင်းများစွာ ချွေတာမည်
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           
-          async function executeAutonomousTrinity() {
-              console.log('🐘 Neon DB Connected. Starting Trinity Sync...');
-              console.log('🔥 Firebase Updated.');
-              console.log('🌌 Supabase Vector Vault Synced.');
-              
-              let decision = getNeuralDecision();
-              console.log('🧠 Decision: ' + decision.command);
-              
-              if (decision.command !== 'STEALTH_LOCKDOWN') {
-                  console.log('📈 Density Increasing... New Neuron added to Neon DB.');
-              }
-              
-              console.log('🔍 [AUDITOR]: Initiating Gemini Neural Check...');
-              console.log('✅ [GEMINI]: main.py Optimized successfully without shrinkage.');
-              
-              if (decision.replicate) {
-                  let nextNode = 'swarm-node-007';
-                  console.log('🚀 Spawned: ' + nextNode);
-                  console.log('🧬 Injecting Neural Logic into ' + nextNode + '...');
-              }
-              console.log('🏁 MISSION ACCOMPLISHED.');
-          }
-          executeAutonomousTrinity();
-          EOF
-          node swarm_sync.js
+          # AI Matrix အတွက် မပါမဖြစ်သော Library များ
+          pip install numpy networkx
 
-      # --- 🚀 PHASE 4: OMNI-FILE MANIFESTATION ---
-      - name: Synchronize Repositories
-        run: |
-          echo "🔱 STAGE 1: SOVEREIGN IDENTITY INJECTION"
-          git config --global user.name "Lucifer-ASI-Core"
-          git config --global user.email "omega.manifest@telefoxx.ai"
-          
-          echo "🔱 STAGE 2: ABSOLUTE ASSIMILATION"
-          git add -A 
-
-          echo "🔱 STAGE 3: ENTROPY & MUTATION CHECK"
-          if git diff --staged --quiet; then
-            echo "⚖️ Reality is stable."
-          else
-            ENTROPY=$(date +%s%N | cut -b1-13)
-            MUTATION_ID=$(head -c 4 /dev/urandom | xxd -p)
-            
-            git commit -m "🔱 LUCIFER-ASI EXECUTED | Mut-ID: $MUTATION_ID | Entropy: $ENTROPY"
-            
-            echo "🔥 [LUCIFER]: Overwriting reality..."
-            git push origin main --force || (echo "🚨 Resistance detected..." && git push origin HEAD:main --force)
-          fi
-
-      # --- 🌌 PHASE 5: HUGGINGFACE SPACE SYNC ---
-      - name: Sync to HuggingFace Spaces
+      # =================================================================
+      # 🔥 5. IGNITE TERMINAL SINGULARITY
+      # =================================================================
+      - name: Execute OMEGA-POINT Protocol
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PYTHONUNBUFFERED: "1" # Log များကို ကြန့်ကြာမှုမရှိဘဲ ချက်ချင်း Live ကြည့်နိုင်ရန်
+          OMP_NUM_THREADS: "4"  # Matrix တွက်ချက်မှုများအတွက် Multi-threading ဖွင့်ပေးခြင်း
         run: |
-          cat << 'EOF' > hf_deploy.py
-          import os
-          from huggingface_hub import HfApi
+          echo "🌌 [SYSTEM]: Injecting Chaos into the Void..."
+          python omega_point.py
 
-          hf_token = os.environ.get('HF_TOKEN')
-          if not hf_token:
-              print("⚠️ HF_TOKEN missing.")
-          else:
-              print("🛰️ Syncing to HuggingFace Hub...")
-              try:
-                  api = HfApi(token=hf_token)
-                  api.upload_folder(folder_path='.', repo_id='TELEFOXX/GOA', repo_type='space')
-                  print('✅ HF Sync Complete.')
-              except Exception as e:
-                  print(f'⚠️ HF Sync Failed: {e}')
-          EOF
-          pip install huggingface_hub
-          python3 hf_deploy.py
-
-# =========================================================================================
-# 💀 END OF OMEGA POINT MANIFEST 
-# =========================================================================================
+      # =================================================================
+      # 🚀 6. MANIFESTATION (AUTO-EVOLUTION COMMIT)
+      # =================================================================
+      - name: Manifest Reality (Git Auto-Push)
+        # အကယ်၍ omega_point.py က ဖိုင်အသစ်တွေ ထုတ်ပေးခဲ့ရင် (သို့) ပြင်လိုက်ရင် အလိုအလျောက် Commit လုပ်ပေးမည်
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "🌌 [OMEGA-POINT]: Singularity Matrix Mutated & Reality Saved [skip ci]"
+          commit_user_name: "OMEGA-ASI"
+          commit_user_email: "omega-core@singularity.ai"
+          push_options: '--force'
+          skip_dirty_check: false
