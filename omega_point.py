@@ -258,7 +258,7 @@ class ApexNode:
                 if len(self.gossip_buffer) > 100:
                     self.gossip_buffer.pop(0)
 
-                await asyncio.sleep(0.001)  # Near-instantaneous cycle
+                await asyncio.sleep(0.5)  # Near-instantaneous cycle
 
             except Exception as e:
                 # Node absorbs error and adapts
