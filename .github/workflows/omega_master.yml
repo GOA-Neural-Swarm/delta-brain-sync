@@ -54,7 +54,7 @@ jobs:
 
       - name: Step 4 - Install Supreme Multi-Engine Dependencies
         run: |
-          npm install --no-audit --progress=false pg @supabase/supabase-js firebase-admin axios @octokit/rest
+          npm install --no-audit --progress=false pg @supabase/supabase-js firebase-admin axios @octokit/rest js-yaml
           python -m pip install --upgrade pip
           pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install --no-cache-dir transformers diffusers accelerate safetensors huggingface_hub==0.24.0 gradio==4.44.1 websockets==12.0
