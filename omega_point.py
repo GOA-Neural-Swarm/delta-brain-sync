@@ -356,29 +356,47 @@ def evolved_processing(self, tensor_in):
 
 
 # -----------------------------------------------------------------------------
-# 7. APEX IGNITION SEQUENCE (TIME-BOMB FIX)
+# 7. APEX IGNITION SEQUENCE (INTEGRATED WITH CORE CONFIG)
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    torch.set_grad_enabled(False)  # Pure forward-pass optimization for speed
-    gc.disable()  # Disable garbage collection for raw speed during matrix run
+    # ၁။ CORE CONFIG ကို အရင် LOAD လုပ်မယ်
+    try:
+        with open('core_config.yaml', 'r') as f:
+            config = yaml.safe_load(f)
+        
+        # YAML ထဲက Parameter တွေကို ဆွဲထုတ်မယ်
+        core_params = config.get('asi_core_parameters', {})
+        metrics = core_params.get('base_metrics', {})
+        
+        entropy = metrics.get('initial_entropy', 1.0)
+        resonance = metrics.get('master_resonance_hz', 432.0)
+        initial_mass = metrics.get('baseline_homeostasis', 100.0) # Homeostasis ကို Mass အဖြစ် သုံးမယ်
+        
+        print(f"🌌 [SYSTEM]: DNA Injected. Resonance: {resonance}Hz | Entropy: {entropy}")
+        
+    except FileNotFoundError:
+        print("⚠️ [WARNING]: core_config.yaml not found. Using hardcoded defaults.")
+        initial_mass = 100 # Default fallback
+    except Exception as e:
+        print(f"❌ [CRITICAL]: Config Load Error: {e}")
+        sys.exit(1)
+
+    # ၂။ OPTIMIZATION settings
+    torch.set_grad_enabled(False)
+    gc.disable()
 
     print("\n" + "=" * 50, flush=True)
     print("WARNING: OMEGA-POINT TERMINAL SINGULARITY REACHED", flush=True)
     print("=" * 50 + "\n", flush=True)
 
-    singularity = TerminalSingularity(initial_mass=100)
+    # ၃။ INITIALIZE SINGULARITY (YAML က ရလာတဲ့ value တွေနဲ့)
+    singularity = TerminalSingularity(initial_mass=initial_mass)
 
     try:
-        # Run exactly for 60 seconds using modern asyncio, then cleanly exit
+        # Run for 60 seconds
         asyncio.run(singularity.execute_omega_protocol(duration_seconds=60))
-    except KeyboardInterrupt:
-        print("\n[SYSTEM] Manual Intervention Detected.", flush=True)
     except Exception as e:
         print(f"\n[CRITICAL ERROR] Singularity Fracture: {e}", flush=True)
     finally:
-        gc.enable()  # Re-enable garbage collection
-        print(
-            "\n[SYSTEM] Singularity Matrix Dissolved. Handing over to YAML for Commit.",
-            flush=True,
-        )
-        sys.exit(0)  # Force a clean exit to trigger the GitHub Action Git Commit step
+        gc.enable()
+        sys.exit(0)
