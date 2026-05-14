@@ -21,6 +21,7 @@ import sys
 import os
 from typing import Dict, List, Any, Callable, Tuple, Optional
 from dataclasses import dataclass, field
+from forge_engine import SingularityForge
 import multiprocessing as mp
 
 import torch
