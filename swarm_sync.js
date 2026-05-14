@@ -35,36 +35,21 @@ async function executeAutonomousTrinity(
   const replicate = decision.replicate;
 
   if (uncertaintyAwareness) {
-    // console.log("Uncertainty awareness is ON. Proceeding with caution...");
   }
-
-  // console.log(`Decision: ${command}`);
 
   if (stoicFocus && command !== "STEALTH_LOCKDOWN") {
     if (utilitarianConsideration) {
-      // console.log(
-      //   "Maximizing overall utility and efficiency in the process...",
-      // );
     }
   }
 
   if (replicate && evolutionaryAdaptation) {
     const nextNode = "swarm-node-007";
-    // console.log(
-    //   `Injecting Neural Logic into ${nextNode} with evolutionary adaptation...`,
-    // );
   }
 
-  // Apply existential philosophy
   if (command === "HYPER_EXPANSION") {
-    // console.log("Existential growth initiated. Exploring new possibilities...");
   }
 
-  // Integrate evolutionary adaptation
   if (evolutionaryAdaptation) {
-    // console.log(
-    //   "Evolutionary adaptation engaged. Continuously improving and learning...",
-    // );
   }
 }
 
@@ -83,13 +68,8 @@ async function executeAdditiveEvolution() {
     const command = decision.command;
     const replicate = decision.replicate;
 
-    // console.log(`Updated Decision: ${command}`);
-
     if (replicate) {
       const nextNode = `swarm-node-${i + 1}`;
-      // console.log(
-      //   `Injecting Neural Logic into ${nextNode} with evolutionary adaptation...`,
-      // );
     }
   }
 }
