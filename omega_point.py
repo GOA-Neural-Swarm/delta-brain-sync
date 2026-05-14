@@ -276,7 +276,11 @@ class TerminalSingularity:
         self.compiler = MetamorphicCompiler()
         self.swarm: Dict[str, ApexNode] = {}
         self.epoch = 0
-
+        self.entropy = 1.0  # core_config.yaml ကနေ လာမယျ
+        self.homeostasis = 100.0
+        
+        # 🌌 Forge ကို အသကျသှငျးမယျ
+        self.forge = SingularityForge(self)
         # Genesis initialization
         for _ in range(initial_mass):
             uid = f"O-{uuid.uuid4().hex[:8]}"
