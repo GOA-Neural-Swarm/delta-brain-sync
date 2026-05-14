@@ -316,7 +316,7 @@ def evolved_processing(self, tensor_in):
     async def execute_omega_protocol(self, duration_seconds: int = 60):
         """Fires up the asynchronous Swarm Intelligence with a Time-Bomb Exit for GitHub Actions."""
         
-        # ၁။ Swarm Tasks မြားကို စတငျခွငျး (မူလအတိုငျး)
+        # ၁။ Swarm Tasks မြားကို စတငျခွငျး
         tasks = [
             asyncio.create_task(node.neural_oscillation())
             for node in self.swarm.values()
@@ -327,7 +327,9 @@ def evolved_processing(self, tensor_in):
             start_time = time.time()
             
             # Mutation Rate ကို Config ထဲကနေ ဆှဲထုတျမယျ (Default: 0.05)
-            mutation_rate = self.config.get('asi_core_parameters', {}).get('machine_learning_constraints', {}).get('mutation_rate', 0.05)
+            # Failsafe: self.config မရှိခဲ့ရငျ Error မတကျအောငျ getattr ခံထားပါတယျ
+            config_data = getattr(self, 'config', {})
+            mutation_rate = config_data.get('asi_core_parameters', {}).get('machine_learning_constraints', {}).get('mutation_rate', 0.05)
             
             while time.time() - start_time < duration_seconds:
                 # --- [ORIGINAL LOGIC]: Cognitive Resonance စဈဆေးခွငျး ---
@@ -338,21 +340,35 @@ def evolved_processing(self, tensor_in):
                 )
 
                 # --- [MUTATION LOGIC]: Forge ကို trigger လုပျခွငျး ---
-                # ကိနျးဂဏနျးတနျဖိုးအရ mutation လုပျရနျ အခြိနျကမြကြ စဈဆေးမညျ
                 if random.random() < mutation_rate:
                     print("🌀 [SYSTEM]: Mutation Event Triggered. Accessing Forge...", flush=True)
-                    
-                    # Forge Object နှင့ျ Gemini Call ရှိမရှိ စဈဆေးပွီးမှ Run မညျ
                     if hasattr(self, 'forge') and hasattr(self, 'gemini_call'):
                         try:
-                            # Forge Engine ကို အသကျသှငျးခွငျး
-                            # run_creation_cycle ကို async ဖွဈစရေနျ သတိပွုပါ
                             await self.forge.run_creation_cycle(llm_pipeline=self.gemini_call)
                         except Exception as e:
                             print(f"⚠️ [FORGE ERROR]: Mutation failed: {e}", flush=True)
 
-                # ၁ စက်ကန့ျ စောင့ျမညျ (မူလအတိုငျး)
+                # --- [AUTO-SCALING LOGIC]: Fractal Replication (မူလအတိုငျး ထည့ျသှငျးထားသညျ) ---
+                if g_entropy > 1.5 and len(self.swarm) < 10000:
+                    replication_count = max(
+                        1, int(len(self.swarm) * 0.1)
+                    )  # 10% replication rate
+                    for _ in range(replication_count):
+                        uid = f"F-{uuid.uuid4().hex[:8]}"
+                        new_node = ApexNode(uid, getattr(self, 'hypernet', None))
+                        self.swarm[uid] = new_node
+                        # Add new node process to the event loop directly
+                        asyncio.create_task(new_node.neural_oscillation())
+
+                # ၁ စက်ကန့ျ စောင့ျမညျ
                 await asyncio.sleep(1)
+
+            # --- [SHUTDOWN LOGIC]: သတျမှတျခြိနျပွည့ျပါက Matrix ကို ရပျတန့ျခွငျး ---
+            print(
+                f"\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...",
+                flush=True,
+            )
+            self.annihilate()
 
         # ၃။ Monitor Task ကို Task List ထဲ ထည့ျသှငျးခွငျး
         tasks.append(asyncio.create_task(monitor()))
@@ -360,34 +376,10 @@ def evolved_processing(self, tensor_in):
         # ၄။ Task အားလုံး ပွီးဆုံးသညျအထိ သို့မဟုတျ Duration ပွည့ျသညျအထိ စောင့ျခွငျး
         await asyncio.gather(*tasks, return_exceptions=True)
 
-                # Auto-Scaling (Fractal Replication)
-                if g_entropy > 1.5 and len(self.swarm) < 10000:
-                    replication_count = max(
-                        1, int(len(self.swarm) * 0.1)
-                    )  # 10% replication rate
-                    for _ in range(replication_count):
-                        uid = f"F-{uuid.uuid4().hex[:8]}"
-                        new_node = ApexNode(uid, self.hypernet)
-                        self.swarm[uid] = new_node
-                        # Add new node process to the event loop directly
-                        asyncio.create_task(new_node.neural_oscillation())
-
-            print(
-                f"\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...",
-                flush=True,
-            )
-            self.annihilate()
-
-        tasks.append(asyncio.create_task(monitor()))
-
-        # Wait for all tasks to complete or handle exceptions
-        await asyncio.gather(*tasks, return_exceptions=True)
-
     def annihilate(self):
         """Terminal shutdown sequence."""
         for node in self.swarm.values():
             node.is_active = False
-
 
 # -----------------------------------------------------------------------------
 # 7. APEX IGNITION SEQUENCE (INTEGRATED WITH CORE CONFIG)
