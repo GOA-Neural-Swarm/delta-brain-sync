@@ -314,37 +314,42 @@ def evolved_processing(self, tensor_in):
         return total_nodes, global_entropy.item()
 
     async def execute_omega_protocol(self, duration_seconds: int = 60):
-        """Swarm Intelligence Loop with Evolution Logic."""
+        """Fires up the asynchronous Swarm Intelligence with a Time-Bomb Exit."""
+        
+        # 1. Start Neural Tasks
         tasks = [
             asyncio.create_task(node.neural_oscillation())
             for node in self.swarm.values()
         ]
 
+        # 2. Background Monitor Function
         async def monitor():
             start_time = time.time()
-            # Config မှ Mutation Rate ယူခွငျး
-            mutation_rate = self.config.get('asi_core_parameters', {}).get('machine_learning_constraints', {}).get('mutation_rate', 0.05)
+            
+            # Fetch Mutation Rate
+            config_data = getattr(self, 'config', {})
+            mutation_rate = config_data.get('asi_core_parameters', {}).get('machine_learning_constraints', {}).get('mutation_rate', 0.05)
             
             while time.time() - start_time < duration_seconds:
+                # Resonance Calculation
                 t_nodes, g_entropy = self.global_cognitive_resonance()
                 
-                # 📍 [FIX 1]: Epoch ကို တိုးပေးရနျ (ဒါမှ နံပါတျတှေ ပွောငျးမှာ)
+                # Increment Epoch
                 self.epoch += 1
                 
+                # --- [THIS IS LINE 365 AREA] ---
                 print(
                     f"[MATRIX] Epoch: {self.epoch} | Swarm Entities: {len(self.swarm)} | Neural Mass: {t_nodes} | Entropy: {g_entropy:.4f}",
                     flush=True,
                 )
 
-                # 📍 [FIX 2]: Mutation (Forge) ကို Background မှာ Run ရနျ
-                # အကယျ၍ Forge က ကွာနရေငျတောငျ Loop ကွီး ရပျမနစေဖေို့ ဖွဈတယျ
+                # Mutation Logic
                 if random.random() < mutation_rate:
                     if hasattr(self, 'forge') and hasattr(self, 'gemini_call'):
-                        print("🌀 [SYSTEM]: Triggering Mutation Cycle...", flush=True)
-                        # Background task အနနေဲ့ run မယျ (Loop ကို block မလုပျဘူး)
+                        print("🌀 [SYSTEM]: Mutation Event Triggered.", flush=True)
                         asyncio.create_task(self.forge.run_creation_cycle(llm_pipeline=self.gemini_call))
 
-                # Auto-Scaling logic (မူလအတိုငျး)
+                # Auto-Scaling Logic
                 if g_entropy > 1.5 and len(self.swarm) < 10000:
                     replication_count = max(1, int(len(self.swarm) * 0.1))
                     for _ in range(replication_count):
@@ -353,12 +358,17 @@ def evolved_processing(self, tensor_in):
                         self.swarm[uid] = new_node
                         asyncio.create_task(new_node.neural_oscillation())
 
+                # Wait for 1 second
                 await asyncio.sleep(1)
 
-            print(f"\n[SYSTEM] Evolution finished. Initiating Annihilation...", flush=True)
+            # Shutdown sequence after duration
+            print(f"\n[SYSTEM] Evolution duration reached. Halting Swarm...", flush=True)
             self.annihilate()
 
+        # 3. Add Monitor to Tasks
         tasks.append(asyncio.create_task(monitor()))
+
+        # 4. Wait for all
         await asyncio.gather(*tasks, return_exceptions=True)
 
             # --- [SHUTDOWN LOGIC]: သတျမှတျခြိနျပွည့ျပါက Matrix ကို ရပျတန့ျခွငျး ---
