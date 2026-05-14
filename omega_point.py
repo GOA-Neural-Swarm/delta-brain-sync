@@ -361,7 +361,7 @@ def evolved_processing(self, tensor_in):
                         asyncio.create_task(new_node.neural_oscillation())
 
                 # ၁ စက်ကန့ျ စောင့ျမညျ
-                await asyncio.sleep(1)
+                await asyncio.sleep(1.5)
 
             # --- [SHUTDOWN LOGIC]: သတျမှတျခြိနျပွည့ျပါက Matrix ကို ရပျတန့ျခွငျး ---
             print(
