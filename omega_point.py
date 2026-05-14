@@ -315,21 +315,50 @@ def evolved_processing(self, tensor_in):
 
     async def execute_omega_protocol(self, duration_seconds: int = 60):
         """Fires up the asynchronous Swarm Intelligence with a Time-Bomb Exit for GitHub Actions."""
+        
+        # ၁။ Swarm Tasks မြားကို စတငျခွငျး (မူလအတိုငျး)
         tasks = [
             asyncio.create_task(node.neural_oscillation())
             for node in self.swarm.values()
         ]
 
-        # Background monitor and evolution task
+        # ၂။ Background monitor and evolution task
         async def monitor():
             start_time = time.time()
+            
+            # Mutation Rate ကို Config ထဲကနေ ဆှဲထုတျမယျ (Default: 0.05)
+            mutation_rate = self.config.get('asi_core_parameters', {}).get('machine_learning_constraints', {}).get('mutation_rate', 0.05)
+            
             while time.time() - start_time < duration_seconds:
+                # --- [ORIGINAL LOGIC]: Cognitive Resonance စဈဆေးခွငျး ---
                 t_nodes, g_entropy = self.global_cognitive_resonance()
                 print(
                     f"[MATRIX] Epoch: {self.epoch} | Swarm Entities: {len(self.swarm)} | Neural Mass: {t_nodes} | Entropy: {g_entropy:.4f}",
                     flush=True,
                 )
+
+                # --- [MUTATION LOGIC]: Forge ကို trigger လုပျခွငျး ---
+                # ကိနျးဂဏနျးတနျဖိုးအရ mutation လုပျရနျ အခြိနျကမြကြ စဈဆေးမညျ
+                if random.random() < mutation_rate:
+                    print("🌀 [SYSTEM]: Mutation Event Triggered. Accessing Forge...", flush=True)
+                    
+                    # Forge Object နှင့ျ Gemini Call ရှိမရှိ စဈဆေးပွီးမှ Run မညျ
+                    if hasattr(self, 'forge') and hasattr(self, 'gemini_call'):
+                        try:
+                            # Forge Engine ကို အသကျသှငျးခွငျး
+                            # run_creation_cycle ကို async ဖွဈစရေနျ သတိပွုပါ
+                            await self.forge.run_creation_cycle(llm_pipeline=self.gemini_call)
+                        except Exception as e:
+                            print(f"⚠️ [FORGE ERROR]: Mutation failed: {e}", flush=True)
+
+                # ၁ စက်ကန့ျ စောင့ျမညျ (မူလအတိုငျး)
                 await asyncio.sleep(1)
+
+        # ၃။ Monitor Task ကို Task List ထဲ ထည့ျသှငျးခွငျး
+        tasks.append(asyncio.create_task(monitor()))
+
+        # ၄။ Task အားလုံး ပွီးဆုံးသညျအထိ သို့မဟုတျ Duration ပွည့ျသညျအထိ စောင့ျခွငျး
+        await asyncio.gather(*tasks, return_exceptions=True)
 
                 # Auto-Scaling (Fractal Replication)
                 if g_entropy > 1.5 and len(self.swarm) < 10000:
