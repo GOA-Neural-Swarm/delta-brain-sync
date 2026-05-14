@@ -411,7 +411,7 @@ if __name__ == "__main__":
 
     except FileNotFoundError:
         print("⚠️ [WARNING]: core_config.yaml not found. Using hardcoded defaults.")
-        initial_mass = 50  # Default fallback
+        initial_mass = 10  # Default fallback
     except Exception as e:
         print(f"❌ [CRITICAL]: Config Load Error: {e}")
         sys.exit(1)
