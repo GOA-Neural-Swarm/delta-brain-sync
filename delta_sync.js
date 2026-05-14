@@ -5,10 +5,19 @@ const { Octokit } = require("@octokit/rest");
 const axios = require("axios");
 const crypto = require("crypto");
 
+const yaml = require('js-yaml');
+const fs = require('fs');
+
+
 const octokit = new Octokit({ auth: process.env.GH_TOKEN });
 const REPO_OWNER = "GOA-neurons";
 const CORE_REPO = "delta-brain-sync";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+const config = yaml.load(fs.readFileSync('core_config.yaml', 'utf8'));
+
+// AI Prompt တွေကို လှမ်းယူခြင်း
+const auditorPrompt = config.neural_prompts.gemini_auditor;
 
 if (!admin.apps.length) {
   try {
