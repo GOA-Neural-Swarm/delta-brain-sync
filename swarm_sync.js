@@ -35,21 +35,26 @@ async function executeAutonomousTrinity(
   const replicate = decision.replicate;
 
   if (uncertaintyAwareness) {
+    console.log("Uncertainty awareness activated");
   }
 
   if (stoicFocus && command !== "STEALTH_LOCKDOWN") {
     if (utilitarianConsideration) {
+      console.log("Utilitarian consideration applied");
     }
   }
 
   if (replicate && evolutionaryAdaptation) {
     const nextNode = "swarm-node-007";
+    console.log(`Replicating to node: ${nextNode}`);
   }
 
   if (command === "HYPER_EXPANSION") {
+    console.log("Hyper-expansion initiated");
   }
 
   if (evolutionaryAdaptation) {
+    console.log("Evolutionary adaptation enabled");
   }
 }
 
@@ -70,7 +75,14 @@ async function executeAdditiveEvolution() {
 
     if (replicate) {
       const nextNode = `swarm-node-${i + 1}`;
+      console.log(`Replicating to node: ${nextNode}`);
     }
+
+    console.log(`Iteration ${i + 1}:`);
+    console.log(`Environment complexity: ${environmentComplexity}`);
+    console.log(`Uncertainty factor: ${uncertaintyFactor}`);
+    console.log(`Command: ${command}`);
+    console.log();
   }
 }
 
