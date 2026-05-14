@@ -11,7 +11,9 @@ class HyperDimensionalSpace:
 
     def evolve(self, data, preserve_existing=False):
         if preserve_existing:
-            return np.random.normal(0, 0.1, size=(data.shape[0], self.dimensions)) + data
+            return (
+                np.random.normal(0, 0.1, size=(data.shape[0], self.dimensions)) + data
+            )
         else:
             return np.random.normal(0, 0.1, size=(data.shape[0], self.dimensions))
 
@@ -60,7 +62,7 @@ class ExistentialDataset(Dataset):
 class EvolutionaryModel(nn.Module):
     def __init__(self):
         super(EvolutionaryModel, self).__init__()
-        self.fc1 = nn.Linear(20, 10)  
+        self.fc1 = nn.Linear(20, 10)
         self.fc2 = nn.Linear(10, 10)
 
     def forward(self, x):

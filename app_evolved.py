@@ -33,7 +33,7 @@ class EvolvedApp:
         }
         self.evolved_state = {
             "last_evolution_time": time.time(),
-            "evolution_interval": 3600,  
+            "evolution_interval": 3600,
         }
 
     def handle_inference(

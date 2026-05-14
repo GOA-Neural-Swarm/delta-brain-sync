@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-05-13T13:56:48.080472",
+    "timestamp": "2026-05-14T01:36:25.480853",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1010-azure",
@@ -123,7 +123,6 @@
         "uritemplate": "4.2.0",
         "google-ai-generativelanguage": "0.6.15",
         "mypy": "2.1.0",
-        "requests": "2.34.0",
         "jupyter_core": "5.9.1",
         "huggingface_hub": "1.14.0",
         "google-api-core": "2.30.3",
@@ -158,6 +157,7 @@
         "google-genai": "2.2.0",
         "pyparsing": "3.3.2",
         "aiohappyeyeballs": "2.6.1",
+        "requests": "2.34.1",
         "pydub": "0.25.1",
         "bleach": "6.3.0",
         "xxhash": "3.7.0",
