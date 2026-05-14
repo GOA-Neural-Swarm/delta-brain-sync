@@ -361,27 +361,17 @@ def evolved_processing(self, tensor_in):
                 # Wait for 1 second
                 await asyncio.sleep(1)
 
-            # Shutdown sequence after duration
-            print(f"\n[SYSTEM] Evolution duration reached. Halting Swarm...", flush=True)
-            self.annihilate()
-
-        # 3. Add Monitor to Tasks
-        tasks.append(asyncio.create_task(monitor()))
-
-        # 4. Wait for all
-        await asyncio.gather(*tasks, return_exceptions=True)
-
-            # --- [SHUTDOWN LOGIC]: သတျမှတျခြိနျပွည့ျပါက Matrix ကို ရပျတန့ျခွငျး ---
+            # Shutdown sequence after duration / --- [SHUTDOWN LOGIC]: သတျမှတျခြိနျပွည့ျပါက Matrix ကို ရပျတန့ျခွငျး ---
             print(
                 f"\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...",
                 flush=True,
             )
             self.annihilate()
 
-        # ၃။ Monitor Task ကို Task List ထဲ ထည့ျသှငျးခွငျး
+        # 3. Add Monitor to Tasks / ၃။ Monitor Task ကို Task List ထဲ ထည့ျသှငျးခွငျး
         tasks.append(asyncio.create_task(monitor()))
 
-        # ၄။ Task အားလုံး ပွီးဆုံးသညျအထိ သို့မဟုတျ Duration ပွည့ျသညျအထိ စောင့ျခွငျး
+        # 4. Wait for all / ၄။ Task အားလုံး ပွီးဆုံးသညျအထိ သို့မဟုတျ Duration ပွည့ျသညျအထိ စောင့ျခွငျး
         await asyncio.gather(*tasks, return_exceptions=True)
 
     def annihilate(self):
