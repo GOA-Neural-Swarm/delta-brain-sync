@@ -279,7 +279,7 @@ class TerminalSingularity:
         self.epoch = 0
         self.entropy = 1.0  # core_config.yaml ကနေ လာမယျ
         self.homeostasis = 100.0
-        
+
         # 🌌 Forge ကို အသကျသှငျးမယျ
         self.forge = SingularityForge(self)
         # Genesis initialization
@@ -315,7 +315,7 @@ def evolved_processing(self, tensor_in):
 
     async def execute_omega_protocol(self, duration_seconds: int = 60):
         """Fires up the asynchronous Swarm Intelligence with a Time-Bomb Exit."""
-        
+
         # 1. Start Neural Tasks
         tasks = [
             asyncio.create_task(node.neural_oscillation())
@@ -325,18 +325,22 @@ def evolved_processing(self, tensor_in):
         # 2. Background Monitor Function
         async def monitor():
             start_time = time.time()
-            
+
             # Fetch Mutation Rate
-            config_data = getattr(self, 'config', {})
-            mutation_rate = config_data.get('asi_core_parameters', {}).get('machine_learning_constraints', {}).get('mutation_rate', 0.05)
-            
+            config_data = getattr(self, "config", {})
+            mutation_rate = (
+                config_data.get("asi_core_parameters", {})
+                .get("machine_learning_constraints", {})
+                .get("mutation_rate", 0.05)
+            )
+
             while time.time() - start_time < duration_seconds:
                 # Resonance Calculation
                 t_nodes, g_entropy = self.global_cognitive_resonance()
-                
+
                 # Increment Epoch
                 self.epoch += 1
-                
+
                 # --- [THIS IS LINE 365 AREA] ---
                 print(
                     f"[MATRIX] Epoch: {self.epoch} | Swarm Entities: {len(self.swarm)} | Neural Mass: {t_nodes} | Entropy: {g_entropy:.4f}",
@@ -345,16 +349,18 @@ def evolved_processing(self, tensor_in):
 
                 # Mutation Logic
                 if random.random() < mutation_rate:
-                    if hasattr(self, 'forge') and hasattr(self, 'gemini_call'):
+                    if hasattr(self, "forge") and hasattr(self, "gemini_call"):
                         print("🌀 [SYSTEM]: Mutation Event Triggered.", flush=True)
-                        asyncio.create_task(self.forge.run_creation_cycle(llm_pipeline=self.gemini_call))
+                        asyncio.create_task(
+                            self.forge.run_creation_cycle(llm_pipeline=self.gemini_call)
+                        )
 
                 # Auto-Scaling Logic
                 if g_entropy > 1.5 and len(self.swarm) < 10000:
                     replication_count = max(1, int(len(self.swarm) * 0.1))
                     for _ in range(replication_count):
                         uid = f"F-{uuid.uuid4().hex[:8]}"
-                        new_node = ApexNode(uid, getattr(self, 'hypernet', None))
+                        new_node = ApexNode(uid, getattr(self, "hypernet", None))
                         self.swarm[uid] = new_node
                         asyncio.create_task(new_node.neural_oscillation())
 
@@ -379,28 +385,33 @@ def evolved_processing(self, tensor_in):
         for node in self.swarm.values():
             node.is_active = False
 
+
 # -----------------------------------------------------------------------------
 # 7. APEX IGNITION SEQUENCE (INTEGRATED WITH CORE CONFIG)
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
     # ၁။ CORE CONFIG ကို အရင် LOAD လုပ်မယ်
     try:
-        with open('core_config.yaml', 'r') as f:
+        with open("core_config.yaml", "r") as f:
             config = yaml.safe_load(f)
-        
+
         # YAML ထဲက Parameter တွေကို ဆွဲထုတ်မယ်
-        core_params = config.get('asi_core_parameters', {})
-        metrics = core_params.get('base_metrics', {})
-        
-        entropy = metrics.get('initial_entropy', 1.0)
-        resonance = metrics.get('master_resonance_hz', 432.0)
-        initial_mass = metrics.get('baseline_homeostasis', 100.0) # Homeostasis ကို Mass အဖြစ် သုံးမယ်
-        
-        print(f"🌌 [SYSTEM]: DNA Injected. Resonance: {resonance}Hz | Entropy: {entropy}")
-        
+        core_params = config.get("asi_core_parameters", {})
+        metrics = core_params.get("base_metrics", {})
+
+        entropy = metrics.get("initial_entropy", 1.0)
+        resonance = metrics.get("master_resonance_hz", 432.0)
+        initial_mass = metrics.get(
+            "baseline_homeostasis", 100.0
+        )  # Homeostasis ကို Mass အဖြစ် သုံးမယ်
+
+        print(
+            f"🌌 [SYSTEM]: DNA Injected. Resonance: {resonance}Hz | Entropy: {entropy}"
+        )
+
     except FileNotFoundError:
         print("⚠️ [WARNING]: core_config.yaml not found. Using hardcoded defaults.")
-        initial_mass = 100 # Default fallback
+        initial_mass = 100  # Default fallback
     except Exception as e:
         print(f"❌ [CRITICAL]: Config Load Error: {e}")
         sys.exit(1)

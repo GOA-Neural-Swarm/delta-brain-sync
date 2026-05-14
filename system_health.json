@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-05-14T05:37:13.003605",
+    "timestamp": "2026-05-14T16:02:08.748936",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1010-azure",
@@ -71,7 +71,6 @@
         "librt": "0.11.0",
         "diffusers": "0.32.2",
         "tzdata": "2026.2",
-        "fonttools": "4.62.1",
         "idna": "3.15",
         "dill": "0.4.1",
         "python-multipart": "0.0.28",
@@ -90,6 +89,7 @@
         "markdown-it-py": "4.2.0",
         "smmap": "5.0.3",
         "propcache": "0.5.2",
+        "fonttools": "4.63.0",
         "flake8": "7.3.0",
         "pydantic_core": "2.41.4",
         "mdurl": "0.1.2",
@@ -128,9 +128,9 @@
         "google-api-core": "2.30.3",
         "regex": "2026.5.9",
         "multidict": "6.7.1",
-        "ruff": "0.15.12",
         "cycler": "0.12.1",
         "typer": "0.25.1",
+        "ruff": "0.15.13",
         "anyio": "4.13.0",
         "stevedore": "5.7.0",
         "nbformat": "5.10.4",
@@ -168,7 +168,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.57,
+        "ram_available_gb": 14.47,
         "gpu_available": false
     }
 }
