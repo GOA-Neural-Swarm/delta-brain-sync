@@ -55,7 +55,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install websockets==12.0 datasets pandas sqlalchemy psycopg2-binary requests groq sentence-transformers "gradio<6.0.0" python-dotenv huggingface_hub diffusers transformers accelerate bitsandbytes numpy scikit-learn firebase-admin gitpython safetensors Pillow kaggle google-generativeai
-          npm install pg @supabase/supabase-js firebase-admin axios
+          npm install pg @supabase/supabase-js firebase-admin axios js-yaml --quiet
           echo "PATH=$PATH:/home/runner/.local/bin" >> $GITHUB_ENV
 
       - name: Step 5 - Cross-Platform Data Synchronization (Trinity Sync)
