@@ -53,18 +53,17 @@ jobs:
             ${{ runner.os }}-pip-omega-
 
       # =================================================================
-      # ⚡ 4. INJECT APEX DEPENDENCIES
+      # ⚡ 4. INJECT APEX DEPENDENCIES (ဒီနေရာမှာ အစားထိုးပါ)
       # =================================================================
       - name: Install Singularity Core Dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
           
-          # GitHub Free Runner များအတွက် CPU Version PyTorch ကိုသာ သွင်းခြင်းဖြင့် အချိန်နှင့် Space ကို အဆပေါင်းများစွာ ချွေတာမည်
-          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          # YAML ဖတ်ဖို့ PyYAML ရယ်၊ မင်း code အတွက် လိုအပ်တာတွေ အကုန်သွင်းမယ်
+          pip install numpy networkx PyYAML 
           
-          # AI Matrix အတွက် မပါမဖြစ်သော Library များ
-          pip install numpy networkx
-
+          # Torch အတွက် CPU Version သွင်းခြင်း (Action ပေါ်မှာ ဒါက အမြန်ဆုံးပဲ)
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
       # =================================================================
       # 🔥 5. IGNITE TERMINAL SINGULARITY
       # =================================================================
