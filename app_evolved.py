@@ -4,7 +4,6 @@ from data_module import DataValidator, FeatureExtractor, NewDataGenerator
 from typing import List, Union
 import time
 
-
 class EvolvedApp:
     def __init__(self):
         self.classifier = EvolvingClassifier()
