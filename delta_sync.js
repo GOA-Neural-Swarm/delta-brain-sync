@@ -463,9 +463,7 @@ async function executeAutonomousTrinity() {
             });
             console.log("main.py Optimized successfully without shrinkage.");
           } else if (shrinkRatio < 80) {
-            console.log(
-              "AI truncated the code! Shrinkage detected. Keeping original main.py.",
-            );
+            console.log("AI truncated the code! Shrinkage detected. Keeping original main.py.");
           } else {
             console.log("No optimization required. Code is stable.");
           }
