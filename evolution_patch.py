@@ -7,6 +7,8 @@ class HyperDimensionalLogger:
         self.utilitarian_metric = 0
         self.existential_state = {}
         self.evolutionary_history = []
+        self.stoic_threshold = 5  # New attribute to implement stoic filter
+        self.evolutionary_update_count = 0  # New attribute to track updates
 
     def log(self, message):
         if self.stoic_filter(message):
@@ -23,6 +25,8 @@ class HyperDimensionalLogger:
     def stoic_filter(self, message):
         if "error" in message.lower():
             return False
+        if len(message) > self.stoic_threshold:
+            return False
         return True
 
     def evolutionary_additive(self, new_message):
@@ -33,7 +37,9 @@ class HyperDimensionalLogger:
                 file.write(new_message + "\n")
                 file.writelines(existing_lines)
             self.utilitarian_metric += 1
-            self.existential_state[new_message] = True
+            self_existential_state = self.existential_state.copy()
+            self_existential_state[new_message] = True
+            self.existential_state = self_existential_state
             self.evolutionary_history.append(
                 {"action": "additive", "message": new_message}
             )
@@ -57,16 +63,8 @@ class HyperDimensionalLogger:
     def evolutionary_update(self, old_message, new_message):
         if old_message in self.existential_state:
             if self.stoic_filter(new_message):
-                with open(self.log_file, "r") as file:
-                    existing_lines = file.readlines()
-                with open(self.log_file, "w") as file:
-                    for line in existing_lines:
-                        if line.strip() == old_message:
-                            file.write(new_message + "\n")
-                        else:
-                            file.write(line)
-                del self.existential_state[old_message]
-                self.existential_state[new_message] = True
+                self.evolutionary_delete(old_message)
+                self.evolutionary_additive(new_message)
                 self.evolutionary_history.append(
                     {
                         "action": "update",
@@ -74,9 +72,8 @@ class HyperDimensionalLogger:
                         "new_message": new_message,
                     }
                 )
+                self.evolutionary_update_count += 1  # Update count
                 return True
-            else:
-                return False
         return False
 
     def get_evolutionary_history(self):
@@ -97,6 +94,7 @@ def main():
     logger.evolutionary_update("New message to update", "Updated message")
     print(logger.utilitarian_metric)
     print(logger.get_evolutionary_history())
+    print(logger.evolutionary_history)
 
 
 if __name__ == "__main__":
