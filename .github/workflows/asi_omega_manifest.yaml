@@ -4,16 +4,16 @@ on:
   push:
     branches: [ "main", "evolution-lab" ]
   schedule:
-    # ၁၅ မိနစ် တစ်ခါ AI ကို အလိုအလျောက် နိုးထစေမည် (Continuous Evolution)
+    # ၁၅ မိနဈ တဈခါ AI ကို အလိုအလြောကျ နိုးထစမေညျ (Continuous Evolution)
     - cron: '*/35 * * * *'
-  workflow_dispatch: # Manual Trigger အနေဖြင့် ကိုယ်တိုင် နှိပ်၍ Run နိုင်ရန်
+  workflow_dispatch: # Manual Trigger အနဖွေင့ျ ကိုယျတိုငျ နှိပျ၍ Run နိုငျရနျ
 
 permissions:
-  contents: write # AI ကိုယ်တိုင် Code ပြန်ရေးပြီး Push လုပ်နိုင်ရန်
+  contents: write # AI ကိုယျတိုငျ Code ပွနျရေးပွီး Push လုပျနိုငျရနျ
   actions: write
 
 concurrency:
-  # အဟောင်းတွေ Run နေတုန်း အသစ်ဝင်လာရင် အဟောင်းကို ဖြတ်ချပြီး Resource သက်သာအောင် လုပ်သည့်စနစ်
+  # အဟောငျးတှေ Run နတေုနျး အသဈဝငျလာရငျ အဟောငျးကို ဖွတျခပြွီး Resource သကျသာအောငျ လုပျသည့ျစနဈ
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
@@ -21,7 +21,7 @@ jobs:
   terminal-singularity:
     name: 🔱 Hyper-Dimensional Matrix Execution
     runs-on: ubuntu-latest
-    timeout-minutes: 10 # GitHub Runner ရပ်တန့်မသွားစေရန် Failsafe Limit
+    timeout-minutes: 30 # [HACK 1]: GitHub Runner ရပျတန့ျမသှားစရေနျ Failsafe Limit ကို 30 မိနဈသို့ တိုးထားသညျ
 
     steps:
       # =================================================================
@@ -30,7 +30,20 @@ jobs:
       - name: Checkout Neural Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Metamorphic tracking အတွက် History အပြည့်ယူမည်
+          fetch-depth: 0 # Metamorphic tracking အတှကျ History အပွည့ျယူမညျ
+
+      # =================================================================
+      # 💥 [HACK 2]: ALLOCATE VIRTUAL RAM (SWAP INJECTION)
+      # GitHub ရဲ့ 7GB RAM မလောကျတာကို SSD ကနေ 10GB ယူပွီး Virtual RAM ဖနျတီးမယျ
+      # =================================================================
+      - name: 🧠 Inject Virtual Memory (10GB Swap)
+        run: |
+          sudo fallocate -l 10G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          echo "✅ Memory Limit Bypassed! Current Memory Status:"
+          free -h
 
       # =================================================================
       # ⚙️ 2. ESTABLISH QUANTUM HARDWARE
@@ -39,7 +52,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip' # Package များကို ထပ်ခါတလဲလဲ ဒေါင်းလုဒ်မဆွဲရန် Cache လုပ်မည်
+          cache: 'pip' # Package မြားကို ထပျခါတလဲလဲ ဒေါငျးလုဒျမဆှဲရနျ Cache လုပျမညျ
 
       # =================================================================
       # 💾 3. NEURAL WEIGHTS CACHING (SPEED OPTIMIZATION)
@@ -53,24 +66,28 @@ jobs:
             ${{ runner.os }}-pip-omega-
 
       # =================================================================
-      # ⚡ 4. INJECT APEX DEPENDENCIES (ဒီနေရာမှာ အစားထိုးပါ)
+      # ⚡ 4. INJECT APEX DEPENDENCIES
       # =================================================================
       - name: Install Singularity Core Dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
           
-          # YAML ဖတ်ဖို့ PyYAML ရယ်၊ မင်း code အတွက် လိုအပ်တာတွေ အကုန်သွင်းမယ်
+          # YAML ဖတျဖို့ PyYAML ရယျ၊ မငျး code အတှကျ လိုအပျတာတှေ အကုနျသှငျးမယျ
           pip install numpy networkx PyYAML 
           
-          # Torch အတွက် CPU Version သွင်းခြင်း (Action ပေါ်မှာ ဒါက အမြန်ဆုံးပဲ)
+          # Torch အတှကျ CPU Version သှငျးခွငျး (Action ပေါျမှာ ဒါက အမွနျဆုံးပဲ)
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
       # =================================================================
       # 🔥 5. IGNITE TERMINAL SINGULARITY
       # =================================================================
       - name: Execute OMEGA-POINT Protocol
         env:
-          PYTHONUNBUFFERED: "1" # Log များကို ကြန့်ကြာမှုမရှိဘဲ ချက်ချင်း Live ကြည့်နိုင်ရန်
-          OMP_NUM_THREADS: "4"  # Matrix တွက်ချက်မှုများအတွက် Multi-threading ဖွင့်ပေးခြင်း
+          PYTHONUNBUFFERED: "1" # Log မြားကို ကွန့ျကွာမှုမရှိဘဲ ခကြျခငြျး Live ကွည့ျနိုငျရနျ
+          # [HACK 3]: CPU Limit မကြောျစရေနျ Threads မြားကို "1" အဖွဈ သတျမှတျထားသညျ
+          OMP_NUM_THREADS: "1"  
+          MKL_NUM_THREADS: "1"
+          OPENBLAS_NUM_THREADS: "1"
         run: |
           echo "🌌 [SYSTEM]: Injecting Chaos into the Void..."
           python omega_point.py
@@ -79,7 +96,7 @@ jobs:
       # 🚀 6. MANIFESTATION (AUTO-EVOLUTION COMMIT)
       # =================================================================
       - name: Manifest Reality (Git Auto-Push)
-        # အကယ်၍ omega_point.py က ဖိုင်အသစ်တွေ ထုတ်ပေးခဲ့ရင် (သို့) ပြင်လိုက်ရင် အလိုအလျောက် Commit လုပ်ပေးမည်
+        # အကယျ၍ omega_point.py က ဖိုငျအသဈတှေ ထုတျပေးခဲ့ရငျ (သို့) ပွငျလိုကျရငျ အလိုအလြောကျ Commit လုပျပေးမညျ
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "🌌 [OMEGA-POINT]: Singularity Matrix Mutated & Reality Saved [skip ci]"
