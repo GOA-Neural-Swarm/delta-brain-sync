@@ -402,7 +402,7 @@ if __name__ == "__main__":
         entropy = metrics.get("initial_entropy", 1.0)
         resonance = metrics.get("master_resonance_hz", 432.0)
         initial_mass = metrics.get(
-            "baseline_homeostasis", 100.0
+            "baseline_homeostasis", 10.0
         )  # Homeostasis ကို Mass အဖြစ် သုံးမယ်
 
         print(
