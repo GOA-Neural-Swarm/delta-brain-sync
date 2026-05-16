@@ -7,8 +7,8 @@ class HyperDimensionalLogger:
         self.utilitarian_metric = 0
         self.existential_state = {}
         self.evolutionary_history = []
-        self.stoic_threshold = 5  
-        self.evolutionary_update_count = 0  
+        self.stoic_threshold = 5
+        self.evolutionary_update_count = 0
 
     def log(self, message):
         if self.stoic_filter(message):
@@ -70,7 +70,7 @@ class HyperDimensionalLogger:
                         "new_message": new_message,
                     }
                 )
-                self.evolutionary_update_count += 1  
+                self.evolutionary_update_count += 1
                 return True
         return False
 

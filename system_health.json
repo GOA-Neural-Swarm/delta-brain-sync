@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-05-15T15:53:45.548565",
+    "timestamp": "2026-05-16T01:28:07.461285",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1013-azure",
@@ -38,7 +38,6 @@
         "dill": "0.4.1",
         "groovy": "0.1.2",
         "huggingface_hub": "1.15.0",
-        "google-auth": "2.52.0",
         "numpy": "2.4.4",
         "charset-normalizer": "3.4.7",
         "kiwisolver": "1.5.0",
@@ -152,6 +151,7 @@
         "GitPython": "3.1.50",
         "safehttpx": "0.1.7",
         "proto-plus": "1.28.0",
+        "google-auth": "2.53.0",
         "fsspec": "2026.2.0",
         "ruff": "0.15.13",
         "pydantic": "2.12.3",
@@ -167,8 +167,8 @@
     },
     "conflicts": [],
     "hardware": {
-        "ram_total_gb": 15.62,
-        "ram_available_gb": 14.61,
+        "ram_total_gb": 15.61,
+        "ram_available_gb": 14.57,
         "gpu_available": false
     }
 }

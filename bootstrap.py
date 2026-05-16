@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 
+
 class Infrastructure:
     def __init__(self):
         self.infra = {
@@ -29,7 +30,9 @@ class Infrastructure:
 
     def install_dependencies(self, filename):
         if os.path.exists(filename):
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", filename])
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "-r", filename]
+            )
 
     def update_infra(self, new_infra):
         for k, v in new_infra.items():
@@ -60,6 +63,7 @@ class Infrastructure:
 
     def preserve_infra(self):
         return self.infra.copy()
+
 
 # Create initial infrastructure
 infra = Infrastructure()
