@@ -84,18 +84,28 @@ jobs:
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 
       # =================================================================
-      # 🔥 5. IGNITE TERMINAL SINGULARITY
+      # 🔥 5. IGNITE TERMINAL SINGULARITY (WITH AUTO-HACK)
       # =================================================================
       - name: Execute OMEGA-POINT Protocol
         env:
-          PYTHONUNBUFFERED: "1" # Log မြားကို ကွန့ျကွာမှုမရှိဘဲ ခကြျခငြျး Live ကွည့ျနိုငျရနျ
-          # [HACK 3]: CPU Limit မကြောျစရေနျ Threads မြားကို "1" အဖွဈ သတျမှတျထားသညျ
+          PYTHONUNBUFFERED: "1" 
           OMP_NUM_THREADS: "1"  
           MKL_NUM_THREADS: "1"
           OPENBLAS_NUM_THREADS: "1"
         run: |
+          echo "🪓 [HACK]: Forcibly patching omega_point.py to prevent Event Loop Starvation..."
+          
+          # [HACK 1]: CPU မသေအောင် 0.001 စက္ကန့်နားတာကို 1.0 စက္ကန့်လို့ ပြောင်းပစ်မယ်
+          sed -i 's/await asyncio.sleep(0.001)/await asyncio.sleep(1.0)/g' omega_point.py
+          
+          # [HACK 2]: AI Entities ၁၀၀ ဖြစ်နေတာကို Server နိုင်တဲ့ ၅ ခုလောက်ပဲ Run ခိုင်းမယ်
+          sed -i 's/initial_mass=int(initial_mass)/initial_mass=5/g' omega_point.py
+          
+          echo "✅ Matrix Python code forcibly patched! Starting Ignition..."
           echo "🌌 [SYSTEM]: Injecting Chaos into the Void..."
-          python omega_point.py
+          
+          # Buffer မခံဘဲ Live ပြခိုင်းမယ်
+          stdbuf -oL python omega_point.py
 
       # =================================================================
       # 🚀 6. MANIFESTATION (AUTO-EVOLUTION COMMIT)
