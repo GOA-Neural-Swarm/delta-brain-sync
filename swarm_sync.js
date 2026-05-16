@@ -8,6 +8,9 @@ function getNeuralDecision(
   const hyperExpansionThreshold = 0.8;
   const adaptiveGrowthThreshold = 0.7;
   const stealthLockdownThreshold = 0.5;
+  const utilitarianConsideration = environmentComplexity > adaptiveGrowthThreshold;
+  const existentialRisk = uncertaintyFactor > stealthLockdownThreshold;
+  const stoicResilience = environmentComplexity < hyperExpansionThreshold;
   const command =
     avgApi > decisionThreshold
       ? "HYPER_EXPANSION"
@@ -18,7 +21,14 @@ function getNeuralDecision(
         : uncertaintyFactor > stealthLockdownThreshold
           ? "STEALTH_LOCKDOWN"
           : "NORMAL_GROWTH";
-  return { command, replicate: true, avgApi };
+  return { 
+    command, 
+    replicate: true, 
+    avgApi, 
+    utilitarianConsideration, 
+    existentialRisk, 
+    stoicResilience 
+  };
 }
 
 // Define the autonomous trinity execution function with utilitarian, existential, stoic, and evolutionary philosophy
@@ -33,6 +43,9 @@ async function executeAutonomousTrinity(
   const decision = getNeuralDecision(avgApi, environmentComplexity, 0.2);
   const command = decision.command;
   const replicate = decision.replicate;
+  const utilitarian = decision.utilitarianConsideration;
+  const existential = decision.existentialRisk;
+  const stoic = decision.stoicResilience;
 
   if (uncertaintyAwareness) {
     console.log("Uncertainty awareness activated");
@@ -75,12 +88,27 @@ async function executeAdditiveEvolution() {
     );
     const command = decision.command;
     const replicate = decision.replicate;
+    const utilitarian = decision.utilitarianConsideration;
+    const existential = decision.existentialRisk;
+    const stoic = decision.stoicResilience;
 
     if (replicate) {
       const nextNode = `swarm-node-${i + 1}`;
       console.log(`Replicating to node: ${nextNode}`);
       avgApi += 1000; // Increase the avgApi after replication
       evolutionCount++;
+    }
+
+    if (utilitarian) {
+      console.log(`Utilitarian consideration: ${utilitarian}`);
+    }
+
+    if (existential) {
+      console.log(`Existential risk: ${existential}`);
+    }
+
+    if (stoic) {
+      console.log(`Stoic resilience: ${stoic}`);
     }
 
     console.log(`Iteration ${i + 1}:`);
