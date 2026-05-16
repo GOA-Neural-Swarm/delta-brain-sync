@@ -19,6 +19,7 @@ import yaml
 import math
 import sys
 import os
+import random
 from typing import Dict, List, Any, Callable, Tuple, Optional
 from dataclasses import dataclass, field
 from forge_engine import SingularityForge
@@ -328,18 +329,19 @@ def evolved_processing(self, tensor_in):
 
             # Fetch Mutation Rate
             config_data = getattr(self, "config", {})
+            if not config_data and hasattr(self, "config"):
+                config_data = self.config
+
             mutation_rate = (
                 config_data.get("asi_core_parameters", {})
                 .get("machine_learning_constraints", {})
                 .get("mutation_rate", 0.05)
+                if isinstance(config_data, dict) else 0.05
             )
 
             while time.time() - start_time < duration_seconds:
                 # Resonance Calculation
                 t_nodes, g_entropy = self.global_cognitive_resonance()
-
-                # Increment Epoch
-                self.epoch += 1
 
                 # --- [THIS IS LINE 365 AREA] ---
                 print(
@@ -347,7 +349,7 @@ def evolved_processing(self, tensor_in):
                     flush=True,
                 )
 
-                # Mutation Logic
+                # Mutation Logic (random ကို အပေါ်မှာ import လုပ်ထားမှ အလုပ်လုပ်မည်)
                 if random.random() < mutation_rate:
                     if hasattr(self, "forge") and hasattr(self, "gemini_call"):
                         print("🌀 [SYSTEM]: Mutation Event Triggered.", flush=True)
@@ -360,12 +362,21 @@ def evolved_processing(self, tensor_in):
                     replication_count = max(1, int(len(self.swarm) * 0.1))
                     for _ in range(replication_count):
                         uid = f"F-{uuid.uuid4().hex[:8]}"
-                        new_node = ApexNode(uid, getattr(self, "hypernet", None))
+                        # Hypernet ကို စနစ်တကျ ရယူခြင်း
+                        hn = getattr(self, "hypernet", self.hypernet)
+                        new_node = ApexNode(uid, hn)
                         self.swarm[uid] = new_node
                         asyncio.create_task(new_node.neural_oscillation())
 
                 # Wait for 1 second
                 await asyncio.sleep(1)
+
+            # Shutdown sequence after duration
+            print(
+                f"\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...",
+                flush=True,
+            )
+            self.annihilate()
 
             # Shutdown sequence after duration / --- [SHUTDOWN LOGIC]: သတျမှတျခြိနျပွည့ျပါက Matrix ကို ရပျတန့ျခွငျး ---
             print(
