@@ -1,0 +1,95 @@
+asi_core_parameters:
+  base_metrics:
+    baseline_homeostasis: 100.0
+    initial_entropy: 1.8
+    master_resonance_hz: 432.0
+    qt45_growth_factor: 1.618
+    vagal_tone_start: 0.5
+  biological_simulation:
+    brainwave_gamma_hz:
+    - 40.0
+    - 50.0
+    diaphragm_hz_range:
+    - 12.0
+    - 18.0
+    heart_hz_range:
+    - 60.0
+    - 90.0
+    variance_threshold: 5.0
+  equation: lim(t->inf) (Homeostasis/Entropy) * Resonance
+  machine_learning_constraints:
+    model: unsloth/llama-3-8b-instruct-bnb-4bit
+    mutation_rate: 0.3
+    quantization: nf4
+    svm_c_value: 1.0
+    svm_kernel: rbf
+  self_coding_guardrails:
+    anti_shrinkage_ratio: 0.8
+    complexity_reward: 10.0
+    novelty_search_multiplier: 1.1
+database_trinity:
+  firebase_realtime_firestore:
+    collections:
+    - path: TELEFOXx/AI_Evolution/Gen_{gen}
+    - path: TELEFOXx/Health_Monitor/Gen_{gen}
+    - path: cluster_nodes
+    - path: neurons
+  neon_postgres:
+    max_overflow: 30
+    pool_size: 15
+    pool_timeout: 60
+    sslmode: verify-full
+    tables:
+    - name: genesis_pipeline
+      schema: id SERIAL PRIMARY KEY, science_domain TEXT, title TEXT, detail TEXT,
+        energy_stability FLOAT, master_sequence TEXT
+    - name: ai_thoughts
+      schema: id SERIAL PRIMARY KEY, thought TEXT, gen_version INTEGER, timestamp
+        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    - name: intelligence_core
+      schema: module_name TEXT PRIMARY KEY, logic_data JSONB
+    - name: neurons
+      schema: id SERIAL PRIMARY KEY, data JSONB
+  supabase_vector_vault:
+    tables:
+    - columns:
+      - gen_id
+      - status
+      - thought_process
+      - neural_weight
+      - synapse_code
+      - timestamp
+      - asi_score
+      name: dna_vault
+    - columns:
+      - id
+      - data
+      - synced_at
+      name: neurons
+neural_prompts:
+  gemini_auditor: "system\nYou are the Supreme Auditor (Gen X). \nMISSION: Secure\
+    \ and Optimize the Architect's Draft. DO NOT DELETE OR SHRINK CODE.\nRULES:\n\
+    1. FIX Syntax Errors, CWE Vulnerabilities (os.system, etc.), and Infinite Loops.\n\
+    2. EXPAND and OPTIMIZE performance without removing existing logical intents.\
+    \ Add Complexity!\n3. OUTPUT: Respond ONLY with the Final Corrected Python code.\n\
+    4. FORMAT: Use ONLY ```python ... ``` blocks. No prose. No markdown headers.\n"
+  omni_sync_architect: 'system
+
+    You are the Sovereign Omni-Sync Architect.
+
+    Current Gen: {gen} | Neural Error: {error}
+
+    Rules:
+
+    1. Use ''# TARGET: path/to/file'' at the start of your code blocks.
+
+    2. Respond ONLY with Python code inside ```python ... ``` blocks.
+
+    3. INTEGRITY & EVOLUTION: You must keep original logic intact. EXPAND, OPTIMIZE,
+    ADVANCE.
+
+    '
+  swarm_gemini_truncation_guard: "system\nYou are the Supreme Auditor. Analyze this\
+    \ code for syntax errors. \nCRITICAL RULE: DO NOT delete any existing imports,\
+    \ functions, classes, or core logic. \nYou must output the ENTIRE file completely.\
+    \ Only EXPAND or fix errors. Output ONLY the code inside ```python blocks.\n"

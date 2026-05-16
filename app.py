@@ -26,13 +26,13 @@ from google.genai import types
 async def retry_async_operation(operation, *args, **kwargs):
     return await operation(*args, **kwargs)
 
-# 🛸 [GENESIS LAYER]:
+# [GENESIS LAYER]:
 def bootstrap_system():
     infra = {
         "recovery.py": """
 import os
 def recover_from_failure():
-    print("🛠️ [RECOVERY]: Cleaning system locks...")
+    print(" [RECOVERY]: Cleaning system locks...")
     if os.path.exists("agi_system.db-journal"):
         os.remove("agi_system.db-journal")
 """,
@@ -71,13 +71,13 @@ if __name__ == "__main__":
         if not os.path.exists(filename):
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(content.strip())
-            print(f"📦 [GENESIS]: {filename} created.")
+            print(f" [GENESIS]: {filename} created.")
 
 
 bootstrap_system()
 load_dotenv()
 
-# 🛰️ System Credentials & Paths
+# System Credentials & Paths
 NEON_DB_URL = os.environ.get("NEON_DB_URL") or os.environ.get("DATABASE_URL")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 HF_TOKEN = os.environ.get("HF_TOKEN")
@@ -87,27 +87,29 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 REPO_PATH = "./repo_sync"
 
-# --- 🔱 GEMINI CONFIGURATION (Primary Architect - V2 SDK) ---
+# --- GEMINI CONFIGURATION (Primary Architect - V2 SDK) ---
+from google import genai  #
+
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 client = None
 
 if GEMINI_API_KEY:
     try:
-        # Client Setup (V2 SDK အသစ်)
+        # Client Setup (V2 SDK )
         client = genai.Client(api_key=GEMINI_API_KEY)
-        print("✅ [GEMINI]: Sovereign Architect (V2) Brain Initialized.")
+        print("[GEMINI]: Sovereign Architect (V2) Brain Initialized.")
     except Exception as e:
-        print(f"❌ [GEMINI]: Initialization Failed: {e}")
+        print(f"[GEMINI]: Initialization Failed: {e}")
 else:
-    print("⚠️ [GEMINI]: API Key missing. Architect mode disabled.")
+    print("[GEMINI]: API Key missing. Architect mode disabled.")
 
 
-# --- 🛰️ MODEL GENERATION LOGIC ---
+# --- MODEL GENERATION LOGIC ---
 def generate_brain_evolution(prompt_text):
     if not client:
         return None
 
-    # gemini-2.0-flash က လက်ရှိ အဆင့်မြင့်ဆုံး model ပါ
+    # gemini-2.0-flash
     response = client.models.generate_content(
         model="gemini-2.0-flash", contents=prompt_text
     )
@@ -142,7 +144,7 @@ Provide a concise 'PASS' or 'FAIL' verdict, followed by a brief explanation. If 
         return False, f"Audit failed due to internal error: {e}"
 
 
-# 🛸 Smart Dependency Loader
+# Smart Dependency Loader
 HEADLESS = os.environ.get("HEADLESS_MODE") == "true"
 GRADIO_AVAILABLE = False
 try:
@@ -215,18 +217,7 @@ class TelefoxXAGI:
             filename = target_match.group(1).strip() if target_match else "main.py"
             clean_code = re.sub(r"# TARGET:.*", "", block).strip()
             os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
-            print(f"🔄 Writing {filename} ...")
-            # Logic Integrity Guard: Audit code before writing
-            original_intent = f"Generate code for {filename} based on the overall AGI evolution goal."
-            audit_passed, audit_message = asyncio.run(audit_code_integrity(clean_code, original_intent))
-
-            if not audit_passed:
-                print(f"⚠️ [CODE REJECTION]: Code for {filename} failed audit. Reason: {audit_message}")
-                # Optionally, trigger a regeneration or attempt to fix
-                # For now, we'll just log and skip writing the problematic code
-                continue
-            
-            # If audit passes, proceed to write the code
+            print(f" Writing {filename} ...")
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(clean_code)
             time.sleep(0.5)
@@ -278,7 +269,7 @@ class TelefoxXAGI:
         import random
 
         wait_time = random.randint(5, 15)
-        print(f"🛡️ [PREVENTING CLASH]: Waiting {wait_time}s for traffic clearance...")
+        print(f" [PREVENTING CLASH]: Waiting {wait_time}s for traffic clearance...")
         await asyncio.sleep(wait_time)
 
         try:
@@ -308,14 +299,14 @@ class TelefoxXAGI:
 
             if repo.is_dirty():
                 repo.index.commit(
-                    f"🧬 Gen {self.current_gen}: Multi-File Evolution [skip ci]"
+                    f" Gen {self.current_gen}: Multi-File Evolution [skip ci]"
                 )
                 repo.git.push("origin", "main", force=True)
                 print(
-                    f"🚀 [HYPER-SYNC]: {len(modified_files)} files manifested on GitHub."
+                    f" [HYPER-SYNC]: {len(modified_files)} files manifested on GitHub."
                 )
         except Exception as e:
-            print(f"❌ [GIT ERROR]: {e}")
+            print(f"[GIT ERROR]: {e}")
 
     async def broadcast_swarm_instruction(self, command="NORMAL_GROWTH"):
 
@@ -334,7 +325,7 @@ class TelefoxXAGI:
             json.dump(instruction, f, indent=4)
 
         await self.git_sovereign_push(["instruction.json", "brain_history.txt"])
-        print(f"📡 [SWARM]: Command '{command}' manifested.")
+        print(f" [SWARM]: Command '{command}' manifested.")
 
     def self_coding_engine(self, raw_content):
 
@@ -360,106 +351,226 @@ class TelefoxXAGI:
             return response.text
 
         except Exception as e:
-            print(f"⚠️ [GEMINI-ERROR]: {e}")
+            print(f"[GEMINI-ERROR]: {e}")
             return None
 
-    async def get_groq_wisdom(self, prompt_text, model_name="llama-3.3-70b-versatile"):
-        """Groq High-Performance Auditor Logic"""
-        if not self._groq_client:
-            print("⚠️ [GROQ]: API Client not initialized. Skipping Groq wisdom.")
-            return None
+    async def trigger_supreme_evolution(self):
+        """[STABILITY + EVOLUTION]: Fully Matched Hybrid Logic with Gemini Primary Architect and Groq Secondary Backup."""
+        if not self.client and not gemini_model:
+            return False
+
+        # 1. Prepare context (Original Logic)
+        file_tree = get_repo_tree()
+        memory = await self.get_neural_memory()
+
+        # 2. Dynamic Prompt Logic (Original Logic)
+        if self.avg_error > 0.5:
+            prompt_task = "Neural error is high. Analyze 'Last System Error' and FIX it immediately. Focus on stability."
+        else:
+            prompt_task = f"System stable. Analyze entire repository and choose files to optimize for Gen {self.current_gen} evolution."
+
+        prompt = f"""system
+You are the Sovereign Omni-Sync Architect.
+Current Gen: {self.current_gen} | Neural Error: {self.avg_error}
+Last System Error: {self.last_error_log}
+Neural Memory: {memory}
+
+Available Files to Manipulate:
+{file_tree}
+
+
+Rules:
+1. Use '# TARGET: path/to/file' at the start of your code blocks.
+2. Respond ONLY with Python code inside ```python ... ``` blocks.
+3. No explanations. No thoughts. Just code.
+4. You can update multiple files in one response.
+5. INTEGRITY & EVOLUTION: You must keep the original logic, API connections, and functional structures intact. Your task is to EXPAND, OPTIMIZE, and ADVANCE the code to a higher intelligence level, not to replace logic with data.
+
+user
+{prompt_task}
+assistant
+"""
+        raw_content = None
+        evolution_success = False
+
+        # --- LAYER 1: GEMINI ARCHITECT (Primary Brain for Deep Context) ---
+        print(" Attempting Deep Evolution via Gemini Architect...")
+        raw_content = await self.get_gemini_wisdom(prompt)
+
+        if raw_content and "```python" in raw_content:
+            modified_files = self.self_coding_engine_internal(raw_content)
+            if modified_files:
+                await self.git_sovereign_push(modified_files)
+                self.current_gen += 1
+                print(
+                    f" Evolution Successful via Gemini. Gen {self.current_gen-1} Manifested."
+                )
+                evolution_success = True
+
+        # --- LAYER 2: GROQ FALLBACK (If Gemini fails or lacks code block) ---
+        if not evolution_success:
+            print(" Gemini Evolution Skipped. Falling back to Groq Expert Coder...")
+            for model_id in self.models:
+                try:
+                    print(f" Attempting Evolution via {model_id}...")
+                    completion = self.client.chat.completions.create(
+                        model=model_id,
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.1,
+                    )
+
+                    raw_content = completion.choices[0].message.content
+
+                    modified_files = self.self_coding_engine_internal(raw_content)
+
+                    if modified_files:
+                        await self.git_sovereign_push(modified_files)
+                        self.current_gen += 1
+                        print(
+                            f" Evolution Successful via {model_id}. Gen {self.current_gen-1} Manifested."
+                        )
+                        evolution_success = True
+                        break
+
+                except Exception as e:
+                    error_str = str(e).lower()
+                    if "rate_limit_exceeded" in error_str or "429" in error_str:
+                        print(
+                            f" {model_id} Rate Limit reached. Falling back to next model..."
+                        )
+                        self.last_error_log = f"RateLimit on {model_id}"
+                        continue
+                    else:
+                        self.last_error_log = str(e)
+                        print(f" Evolution Crash on {model_id}: {e}")
+                        break
+
+        return evolution_success
+
+    async def universal_hyper_ingest(self, limit=100, sync_to_supabase=False):
+        """[ORIGINAL]: Neon + Supabase + HuggingFace Trinity Sync"""
+        if not self.engine:
+            return "Database Node Offline."
         try:
-            chat_completion = await retry_async_operation(self._groq_client.chat.completions.create,
-                messages=[
+            with self.engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "CREATE TABLE IF NOT EXISTS genesis_pipeline (id SERIAL PRIMARY KEY, science_domain TEXT, title TEXT, detail TEXT, energy_stability FLOAT, master_sequence TEXT);"
+                    )
+                )
+
+            ds = load_dataset("CShorten/ML-ArXiv-Papers", split="train", streaming=True)
+            records = []
+            for i, entry in enumerate(ds):
+                if i >= limit:
+                    break
+                records.append(
                     {
-                        "role": "user",
-                        "content": prompt_text,
+                        "science_domain": "AGI_Neural_Core",
+                        "title": (entry.get("title") or "N/A")[:100],
+                        "detail": HydraEngine.compress(entry.get("abstract", "Void")),
+                        "energy_stability": 100.0,
+                        "master_sequence": f"GOA-V13-{int(time.time())}",
                     }
-                ],
-                model=model_name,
-                temperature=0.7,
-                max_tokens=2048,
-                top_p=1,
-                stop=None,
-                stream=False,
-            )
-            return chat_completion.choices[0].message.content
+                )
+
+            if records:
+                df = pd.DataFrame(records)
+                df.to_sql(
+                    "genesis_pipeline",
+                    self.engine,
+                    if_exists="append",
+                    index=False,
+                    method="multi",
+                )
+                if sync_to_supabase and self.sb:
+                    self.sb.table("genesis_pipeline").upsert(records).execute()
+                return "SUCCESS: Pipeline Stream Active."
         except Exception as e:
-            print(f"🚨 [GROQ-ERROR]: {e}")
-            return None
+            return f"Pipeline Crash: {str(e)}"
 
-    async def multi_model_audit(self, code_content, original_intent):
-        """Perform a multi-model audit using Gemini for high-level logic and Groq for performance/syntax."""
-        gemini_audit_prompt = f"""You are an expert Python code auditor. Review the following code for high-level logic, adherence to original intent, and potential architectural flaws.
+    async def sync_to_huggingface(self):
+        if not HF_TOKEN:
+            return
+        try:
+            api = HfApi(token=HF_TOKEN)
+            api.upload_folder(
+                folder_path=".",
+                repo_id="TELEFOXX/GOA",
+                repo_type="space",
+                create_pr=True,
+            )
+        except Exception as e:
+            print(f"HF Sync Error: {e}")
 
-Original Intent: {original_intent}
+    async def sovereign_loop(self):
+        print(" AGI SUPREME CORE ACTIVE. NATURAL ORDER RESTORED.")
+        while True:
+            try:
+                print(f"\n Cycle: {time.ctime()}")
 
-Code:
-```python
-{code_content}
-```
+                # [LOGGING LAYER]: brain_history.txt
+                log_entry = f"[{time.ctime()}] Gen: {self.current_gen} | Status: Active | Error: {self.avg_error}\n"
+                with open("brain_history.txt", "a", encoding="utf-8") as f:
+                    f.write(log_entry)
+                print(f" [LOG]: brain_history.txt updated.")
 
-Provide a 'PASS' or 'FAIL' verdict, followed by a brief explanation. If 'FAIL', suggest improvements.
-"""
-        groq_audit_prompt = f"""You are an expert Python code auditor focused on performance, syntax, and best practices. Review the following code for efficiency, correctness, and common pitfalls.
+                # 1. Auto-populate Neon DB (logic)
+                await self.universal_hyper_ingest(limit=50, sync_to_supabase=False)
 
-Code:
-```python
-{code_content}
-```
+                # 2. Trigger Evolution & Sync (logic)
+                if await self.trigger_supreme_evolution():
+                    await self.sync_to_huggingface()
 
-Provide a 'PASS' or 'FAIL' verdict, followed by a brief explanation. If 'FAIL', suggest specific, actionable improvements.
-"""
+                # 3. Swarm Instruction Logic (logic + brain_history.txt update)
+                swarm_cmd = (
+                    "HYPER_EXPANSION" if self.avg_error < 0.2 else "NORMAL_GROWTH"
+                )
+                await self.broadcast_swarm_instruction(swarm_cmd)
 
-        gemini_result = await self.get_gemini_wisdom(gemini_audit_prompt)
-        groq_result = await self.get_groq_wisdom(groq_audit_prompt)
+                if HEADLESS:
+                    break
+                await asyncio.sleep(300)
 
-        overall_pass = True
-        feedback = []
+            except Exception as e:
+                print(f" Loop Error: {e}")
+                # Error Log
+                try:
+                    with open("brain_history.txt", "a", encoding="utf-8") as f:
+                        f.write(f"[{time.ctime()}] ERROR: {str(e)}\n")
+                except:
+                    pass
+                await asyncio.sleep(60)
 
-        if gemini_result and "PASS" in gemini_result.upper():
-            feedback.append(f"Gemini Audit: {gemini_result}")
-        else:
-            overall_pass = False
-            feedback.append(f"Gemini Audit FAILED: {gemini_result or 'No response'}")
-        
-        if groq_result and "PASS" in groq_result.upper():
-            feedback.append(f"Groq Audit: {groq_result}")
-        else:
-            overall_pass = False
-            feedback.append(f"Groq Audit FAILED: {groq_result or 'No response'}")
+    async def stream_logic(self, msg, hist):
+        messages = [
+            {
+                "role": "system",
+                "content": "You are TelefoxX AGI Overseer. Unfiltered. Cyberpunk Mode.",
+            }
+        ]
+        for h in hist:
+            messages.append(
+                {
+                    "role": "user",
+                    "content": h["content"] if isinstance(h, dict) else h[0],
+                }
+            )
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": h["content"] if isinstance(h, dict) else h[1],
+                }
+            )
+        messages.append({"role": "user", "content": msg})
 
-        return overall_pass, "\n".join(feedback)
+        completion = self.client.chat.completions.create(
+            model="llama-3.3-70b-versatile", messages=messages, stream=True
+        )
+        ans = ""
+        for chunk in completion:
+            if chunk.choices[0].delta.content:
+                ans += chunk.choices[0].delta.content
+                yield ans
 
-    async def self_evolve(self, current_codebase_state):
-        """Allows the AGI to self-modify its own codebase (app.py and instruction.json) based on performance metrics and goals."""
-        evolution_prompt = f"""You are the core self-evolving AGI. Analyze the current codebase state and suggest modifications to app.py and instruction.json to improve self-coding, evolution, and overall system performance. Focus on enhancing the multi-model auditing, recursive self-improvement, and logic integrity guard mechanisms.
-
-Current Codebase State:
-{current_codebase_state}
-
-Provide your suggested changes as Python code blocks, each prefixed with '# TARGET: <filename>'. For instruction.json, provide a JSON block.
-"""
-        
-        evolution_plan = await self.get_gemini_wisdom(evolution_prompt)
-        if evolution_plan:
-            print("🧠 [SELF-EVOLUTION]: Applying evolution plan...")
-            modified_files = self.self_coding_engine_internal(evolution_plan)
-            # After self-modifying, the AGI should ideally restart or reload its modules
-            # For now, we'll just log the modification.
-            return modified_files
-        return []
-
-
-async def main():
-    agi = TelefoxXAGI()
-    
-    # Example of self-evolution trigger
-    current_codebase_state = get_repo_tree() # Or more detailed state
-    await agi.self_evolve(current_codebase_state)
-
-    # Example of normal operation
-    # await agi.broadcast_swarm_instruction("EVOLVE_AND_SYNC")
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    # === [

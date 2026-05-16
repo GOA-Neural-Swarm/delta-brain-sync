@@ -1,7 +1,7 @@
 {
-  "command": "EVOLVE_AND_SYNC",
-  "core_power": 533,
-  "avg_api": 4986.086229086229,
-  "replicate": "HYPER_DRIVE",
-  "updated_at": "2026-04-26T11:40:48.732Z"
+  "command": "HYPER_EXPANSION",
+  "core_power": 668,
+  "avg_api": 4885.1499085923215,
+  "replicate": true,
+  "updated_at": "2026-05-16T05:11:44.061Z"
 }
