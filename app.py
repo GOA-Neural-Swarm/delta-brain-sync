@@ -1,4 +1,3 @@
-
 import os
 import sys
 import zlib
@@ -8,12 +7,15 @@ import time
 import subprocess
 import asyncio
 import backoff
-feature/meta-evolution-logic
+
+feature / meta - evolution - logic
+
 
 # Helper for retries with exponential backoff
 @backoff.on_exception(backoff.expo, Exception, max_tries=5)
 async def retry_async_operation(operation, *args, **kwargs):
     return await operation(*args, **kwargs)
+
 
 main
 import re
@@ -29,10 +31,12 @@ from groq import Groq
 from google import genai
 from google.genai import types
 
+
 # Helper for retries with exponential backoff
 @backoff.on_exception(backoff.expo, Exception, max_tries=5)
 async def retry_async_operation(operation, *args, **kwargs):
     return await operation(*args, **kwargs)
+
 
 # [GENESIS LAYER]:
 def bootstrap_system():
@@ -123,11 +127,12 @@ def generate_brain_evolution(prompt_text):
     )
     return response.text
 
+
 async def audit_code_integrity(code_content, original_intent):
     if not client:
         print("⚠️ [GEMINI AUDIT]: API Key missing. Skipping code audit.")
         return True, "Audit skipped due to missing API key."
-    
+
     audit_prompt = f"""You are an expert Python code auditor. Your task is to review a piece of generated Python code and determine if it adheres to the original intent and is syntactically correct. You should also check for potential bugs or logical flaws.
 
 Original Intent: {original_intent}
@@ -169,6 +174,7 @@ except ImportError:
     Client = None
 
 # --- [UTILITY FUNCTIONS] ---
+
 
 def get_repo_tree():
 
@@ -475,7 +481,18 @@ assistant
                 records.append(
                     {
                         "science_domain": "AGI_Neural_Core",
-                        "science_domains_master_list": ["Neuroscience", "Quantum Computing", "Astrobiology", "Genomic Engineering", "Advanced Robotics", "Cognitive Science", "Theoretical Physics", "Information Theory", "Complex Systems", "Cybernetics"],
+                        "science_domains_master_list": [
+                            "Neuroscience",
+                            "Quantum Computing",
+                            "Astrobiology",
+                            "Genomic Engineering",
+                            "Advanced Robotics",
+                            "Cognitive Science",
+                            "Theoretical Physics",
+                            "Information Theory",
+                            "Complex Systems",
+                            "Cybernetics",
+                        ],
                         "title": (entry.get("title") or "N/A")[:100],
                         "detail": HydraEngine.compress(entry.get("abstract", "Void")),
                         "energy_stability": 100.0,
@@ -573,8 +590,11 @@ assistant
             )
         messages.append({"role": "user", "content": msg})
 
-        completion = await retry_async_operation(self._groq_client.chat.completions.create,
-            model="llama-3.3-70b-versatile", messages=messages, stream=True
+        completion = await retry_async_operation(
+            self._groq_client.chat.completions.create,
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            stream=True,
         )
         ans = ""
         for chunk in completion:

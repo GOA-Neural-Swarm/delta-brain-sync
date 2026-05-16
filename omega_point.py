@@ -336,7 +336,8 @@ def evolved_processing(self, tensor_in):
                 config_data.get("asi_core_parameters", {})
                 .get("machine_learning_constraints", {})
                 .get("mutation_rate", 0.05)
-                if isinstance(config_data, dict) else 0.05
+                if isinstance(config_data, dict)
+                else 0.05
             )
 
             while time.time() - start_time < duration_seconds:
