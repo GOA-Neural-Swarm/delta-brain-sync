@@ -436,7 +436,7 @@ if __name__ == "__main__":
     print("=" * 50 + "\n", flush=True)
 
     # ၃။ INITIALIZE SINGULARITY (YAML က ရလာတဲ့ value တွေနဲ့)
-    singularity = TerminalSingularity(initial_mass=int(initial_mass))
+    singularity = TerminalSingularity(initial_mass=5)
 
     try:
         # Run for 60 seconds
