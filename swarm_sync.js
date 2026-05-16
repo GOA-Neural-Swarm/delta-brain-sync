@@ -8,7 +8,8 @@ function getNeuralDecision(
   const hyperExpansionThreshold = 0.8;
   const adaptiveGrowthThreshold = 0.7;
   const stealthLockdownThreshold = 0.5;
-  const utilitarianConsideration = environmentComplexity > adaptiveGrowthThreshold;
+  const utilitarianConsideration =
+    environmentComplexity > adaptiveGrowthThreshold;
   const existentialRisk = uncertaintyFactor > stealthLockdownThreshold;
   const stoicResilience = environmentComplexity < hyperExpansionThreshold;
   const command =
@@ -21,13 +22,13 @@ function getNeuralDecision(
         : uncertaintyFactor > stealthLockdownThreshold
           ? "STEALTH_LOCKDOWN"
           : "NORMAL_GROWTH";
-  return { 
-    command, 
-    replicate: true, 
-    avgApi, 
-    utilitarianConsideration, 
-    existentialRisk, 
-    stoicResilience 
+  return {
+    command,
+    replicate: true,
+    avgApi,
+    utilitarianConsideration,
+    existentialRisk,
+    stoicResilience,
   };
 }
 
