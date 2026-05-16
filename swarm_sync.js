@@ -93,5 +93,12 @@ async function executeAdditiveEvolution() {
 }
 
 // Execute the autonomous trinity and additive evolution
-const trinityDecision = executeAutonomousTrinity(6000, 0.8, true, true, true, true);
+const trinityDecision = executeAutonomousTrinity(
+  6000,
+  0.8,
+  true,
+  true,
+  true,
+  true,
+);
 const evolutionCount = executeAdditiveEvolution();
