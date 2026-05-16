@@ -1,3 +1,4 @@
+
 import os
 import sys
 import zlib
@@ -7,12 +8,14 @@ import time
 import subprocess
 import asyncio
 import backoff
+feature/meta-evolution-logic
 
 # Helper for retries with exponential backoff
 @backoff.on_exception(backoff.expo, Exception, max_tries=5)
 async def retry_async_operation(operation, *args, **kwargs):
     return await operation(*args, **kwargs)
 
+main
 import re
 import shutil
 import git
@@ -26,6 +29,10 @@ from groq import Groq
 from google import genai
 from google.genai import types
 
+# Helper for retries with exponential backoff
+@backoff.on_exception(backoff.expo, Exception, max_tries=5)
+async def retry_async_operation(operation, *args, **kwargs):
+    return await operation(*args, **kwargs)
 
 # [GENESIS LAYER]:
 def bootstrap_system():
@@ -116,6 +123,34 @@ def generate_brain_evolution(prompt_text):
     )
     return response.text
 
+async def audit_code_integrity(code_content, original_intent):
+    if not client:
+        print("⚠️ [GEMINI AUDIT]: API Key missing. Skipping code audit.")
+        return True, "Audit skipped due to missing API key."
+    
+    audit_prompt = f"""You are an expert Python code auditor. Your task is to review a piece of generated Python code and determine if it adheres to the original intent and is syntactically correct. You should also check for potential bugs or logical flaws.
+
+Original Intent: {original_intent}
+
+Generated Code:
+```python
+{code_content}
+```
+
+Provide a concise 'PASS' or 'FAIL' verdict, followed by a brief explanation. If 'FAIL', suggest specific improvements. Example: 'PASS: Code is clean and matches intent.' or 'FAIL: Missing import statement for 'requests'."
+"""
+    try:
+        audit_response = generate_brain_evolution(audit_prompt)
+        if audit_response and "PASS" in audit_response.upper():
+            print(f"✅ [GEMINI AUDIT]: Code integrity check PASSED. {audit_response}")
+            return True, audit_response
+        else:
+            print(f"❌ [GEMINI AUDIT]: Code integrity check FAILED. {audit_response}")
+            return False, audit_response
+    except Exception as e:
+        print(f"🚨 [GEMINI AUDIT ERROR]: {e}")
+        return False, f"Audit failed due to internal error: {e}"
+
 
 # Smart Dependency Loader
 HEADLESS = os.environ.get("HEADLESS_MODE") == "true"
@@ -134,7 +169,6 @@ except ImportError:
     Client = None
 
 # --- [UTILITY FUNCTIONS] ---
-
 
 def get_repo_tree():
 
@@ -319,10 +353,11 @@ class TelefoxXAGI:
     async def get_gemini_wisdom(self, prompt_text):
         """Gemini High-Context Architect Logic"""
         try:
-            if not gemini_model:
+            if not client:
                 return None
-            response = gemini_model.generate_content(prompt_text)
+            response = client.models.generate_content(prompt_text)
             return response.text
+
         except Exception as e:
             print(f"[GEMINI-ERROR]: {e}")
             return None
