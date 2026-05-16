@@ -103,7 +103,7 @@ async function main() {
     true,
   );
   const evolutionCount = await executeAdditiveEvolution();
-  return { trinityDecision, evolutionCount };
+  console.log({ trinityDecision, evolutionCount });
 }
 
 main();
