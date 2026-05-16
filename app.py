@@ -8,8 +8,6 @@ import subprocess
 import asyncio
 import backoff
 
-feature / meta - evolution - logic
-
 
 # Helper for retries with exponential backoff
 @backoff.on_exception(backoff.expo, Exception, max_tries=5)
@@ -17,7 +15,6 @@ async def retry_async_operation(operation, *args, **kwargs):
     return await operation(*args, **kwargs)
 
 
-main
 import re
 import shutil
 import git
