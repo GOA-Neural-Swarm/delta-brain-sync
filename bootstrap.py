@@ -66,15 +66,12 @@ class Infrastructure:
 
 
 def main():
-    # Create initial infrastructure
     infra = Infrastructure()
     for k, v in infra.infra.items():
         infra.create_file(k, v)
 
-    # Install initial dependencies
     infra.install_dependencies("requirements.txt")
 
-    # Apply evolutionary update
     evolutionary_update = {
         "evolutionary_update.py": [
             "import os",
@@ -84,7 +81,6 @@ def main():
     }
     infra.apply_evolutionary_update(evolutionary_update)
 
-    # Apply existential update
     existential_update = {
         "existential_update.py": [
             "import os",
@@ -94,7 +90,6 @@ def main():
     }
     infra.apply_existential_update(existential_update)
 
-    # Apply stoic update
     stoic_update = {
         "stoic_update.py": [
             "import os",
@@ -104,7 +99,6 @@ def main():
     }
     infra.apply_stoic_update(stoic_update)
 
-    # Apply utilitarian update
     utilitarian_update = {
         "utilitarian_update.py": [
             "import os",
@@ -114,7 +108,6 @@ def main():
     }
     infra.apply_utilitarian_update(utilitarian_update)
 
-    # Apply hyper-dimensional update
     hyper_dimensional_update = {
         "hyper_dimensional_update.py": [
             "import os",
@@ -124,7 +117,6 @@ def main():
     }
     infra.apply_hyper_dimensional_update(hyper_dimensional_update)
 
-    # Update infrastructure with new file
     new_infra = {
         "new_file.py": [
             "import os",
@@ -134,7 +126,6 @@ def main():
     }
     infra.update_infra(new_infra)
 
-    # Update infrastructure with new dependencies
     new_dependencies = {
         "requirements.txt": [
             "numpy",
@@ -143,7 +134,6 @@ def main():
     infra.update_infra(new_dependencies)
     infra.install_dependencies("requirements.txt")
 
-    # Update infrastructure with updated file
     updated_file = {
         "flask_api.py": [
             "from flask import Flask, jsonify",
@@ -155,7 +145,6 @@ def main():
     }
     infra.update_infra(updated_file)
 
-    # Remove infrastructure file
     remove_infra = {
         "recovery.py": [],
     }
@@ -164,7 +153,6 @@ def main():
             del infra.infra[k]
             infra.remove_file(k)
 
-    # Preserve the updated infrastructure
     infra_preserved = infra.preserve_infra()
     return infra_preserved
 

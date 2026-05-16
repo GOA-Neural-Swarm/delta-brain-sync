@@ -5,12 +5,9 @@ import math
 import os
 import sys
 import pickle
-
-try:
-    import omega_point
-except ImportError:
-    pass
-
+from sklearn import svm
+from sklearn import decomposition
+from sklearn import metrics
 
 class Linear:
     def __init__(self, i, o, s=None):
@@ -55,29 +52,17 @@ class NeuralBrain:
         self.load_memory()
 
     def data_mine_sequences(self, phenomena_data):
-        """
-        Exploration of sequences of phenomena to identify patterns
-        beyond isolated focus points.
-        """
         sequences = []
         for i in range(len(phenomena_data) - 1):
             sequences.append((phenomena_data[i], phenomena_data[i + 1]))
         return sequences
 
     def compute_brier_score(self, predictions, actuals):
-        """
-        Implementation of the Brier game of prediction.
-        Ensures the game is mixable and finds the optimal learning rate.
-        """
         predictions = np.array(predictions)
         actuals = np.array(actuals)
         return np.mean(np.square(predictions - actuals))
 
     def evolve_classifier(self, new_information, new_classes):
-        """
-        Enables the classifier to take on new information and classes
-        by evolving the classifier architecture.
-        """
         print(f"[GEN {self.gen}] Integrating new information: {new_information}")
         if new_classes:
             self.classifier_type = f"Evolving_SVM_v{self.gen}.{len(new_classes)}_OMEGA"
@@ -128,7 +113,6 @@ class SyncManager:
             return False
 
     def check_integrity(self):
-        # Neural Error: 0.0 threshold
         return True
 
 
@@ -146,7 +130,6 @@ class SovereignArchitect:
         self.brain.sync_neural_memory()
 
     def execute_evolution_step(self):
-        # Optimization: Transitioning from standard classification to Evolving SVM
         self.brain.evolve_classifier(
             "Sequence phenomena mining", ["Class_A", "Class_B"]
         )
@@ -158,19 +141,12 @@ class SovereignArchitect:
 
 
 def calculate_learning_rate(n_iterations):
-    """
-    Finds the optimal learning rate and substitute for the Brier game.
-    """
     if n_iterations == 0:
         return 0.1
     return 1.0 / math.sqrt(n_iterations)
 
 
 def association_rule_mining(transactions, min_support):
-    """
-    Search for association rules within the mined phenomena sequences.
-    """
-    # Simplified association rule logic for Gen 1
     rules = []
     for item in transactions:
         if transactions.count(item) >= min_support:
@@ -183,7 +159,6 @@ class EvolvingClassifier:
         self.classifier = None
 
     def evolve(self, new_information, new_classes):
-        # Use an additive evolutionary process
         if self.classifier:
             self.classifier = self.additive_evolution(
                 self.classifier, new_information, new_classes
@@ -192,19 +167,10 @@ class EvolvingClassifier:
             self.classifier = self.initialize_classifier(new_information, new_classes)
 
     def initialize_classifier(self, new_information, new_classes):
-        # Initialize a new classifier with the given information and classes
-        from sklearn import svm
-
         self.classifier = svm.SVC()
 
     def additive_evolution(self, current_classifier, new_information, new_classes):
-        # Evolve the current classifier using an additive evolutionary process
-        from sklearn import svm
-
         new_classifier = svm.SVC()
-        # Combine the current classifier with the new information and classes
-        # For simplicity, this example just adds the new classifier to the current one
-        # In a real-world scenario, this could involve more complex methods, such as ensemble methods or transfer learning
         if current_classifier:
             new_classifier = current_classifier
         return new_classifier
@@ -218,63 +184,37 @@ class PhenomenaProcessor:
         self.phenomena_data.append(phenomenon)
 
     def process_phenomena(self):
-        # Process the phenomena data using the evolving classifier
         evolving_classifier = EvolvingClassifier()
         for phenomenon in self.phenomena_data:
-            # Evolve the classifier with the new phenomenon
             evolving_classifier.evolve(phenomenon, ["Class_A", "Class_B"])
-            # Use the evolved classifier to classify the phenomenon
             classification = evolving_classifier.classifier.predict([phenomenon])
             print(f"Classification: {classification}")
 
 
 def existential_evolving_process(brain, phenomena_data):
-    """
-    Apply existential, evolutionary, and stoic principles to the brain and phenomena data.
-    """
-    from sklearn import svm
-
     for phenomenon in phenomena_data:
-        # Use an evolutionary process to evolve the brain's classifier
         brain.evolve_classifier(phenomenon, ["Class_A", "Class_B"])
-        # Classify the phenomenon using the evolved classifier
         classification = svm.SVC().predict([phenomenon])
         print(f"Classification: {classification}")
-        # Apply a stoic approach to accept the classification and integrate it into the brain's knowledge
         brain.sync_neural_memory()
 
 
 def hyperdimensional_logic_integration(brain, phenomena_data):
-    """
-    Integrate hyperdimensional logic into the brain's processing of phenomena data.
-    """
-    from sklearn import decomposition
-
-    # Apply PCA to reduce the dimensionality of the phenomena data
     pca = decomposition.PCA(n_components=2)
     reduced_data = pca.fit_transform(phenomena_data)
-    # Process the reduced data using the brain's classifier
     for phenomenon in reduced_data:
         classification = brain.core_ai.l2.forward(phenomenon)
         print(f"Classification: {classification}")
 
 
 def utilitarian_optimization(brain, phenomena_data):
-    """
-    Apply utilitarian principles to optimize the brain's processing of phenomena data.
-    """
-    from sklearn import metrics
-
-    # Calculate the utility of each phenomenon
     utilities = []
     for phenomenon in phenomena_data:
         classification = brain.core_ai.l2.forward(phenomenon)
         utility = metrics.accuracy_score([classification], [classification])
         utilities.append(utility)
-    # Select the phenomenon with the highest utility
     max_utility = max(utilities)
     max_phenomenon = phenomena_data[utilities.index(max_utility)]
-    # Process the selected phenomenon using the brain's classifier
     classification = brain.core_ai.l2.forward(max_phenomenon)
     print(f"Classification: {classification}")
 
