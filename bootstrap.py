@@ -61,6 +61,15 @@ class Infrastructure:
     def apply_hyper_dimensional_update(self, update):
         self.update_infra(update)
 
+    def add_file(self, filename, content):
+        self.infra[filename] = content
+        self.create_file(filename, content)
+
+    def update_file(self, filename, content):
+        if filename in self.infra:
+            self.infra[filename] = content
+            self.create_file(filename, content)
+
     def preserve_infra(self):
         return self.infra.copy()
 
@@ -158,4 +167,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    infra = main()
+    print("Infrastructure:", infra)
