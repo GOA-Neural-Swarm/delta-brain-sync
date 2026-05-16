@@ -27,13 +27,13 @@ from google import genai
 from google.genai import types
 
 
-# 🛸 [GENESIS LAYER]:
+# [GENESIS LAYER]:
 def bootstrap_system():
     infra = {
         "recovery.py": """
 import os
 def recover_from_failure():
-    print("🛠️ [RECOVERY]: Cleaning system locks...")
+    print(" [RECOVERY]: Cleaning system locks...")
     if os.path.exists("agi_system.db-journal"):
         os.remove("agi_system.db-journal")
 """,
@@ -72,13 +72,13 @@ if __name__ == "__main__":
         if not os.path.exists(filename):
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(content.strip())
-            print(f"📦 [GENESIS]: {filename} created.")
+            print(f" [GENESIS]: {filename} created.")
 
 
 bootstrap_system()
 load_dotenv()
 
-# 🛰️ System Credentials & Paths
+# System Credentials & Paths
 NEON_DB_URL = os.environ.get("NEON_DB_URL") or os.environ.get("DATABASE_URL")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 HF_TOKEN = os.environ.get("HF_TOKEN")
@@ -88,36 +88,36 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 REPO_PATH = "./repo_sync"
 
-# --- 🔱 GEMINI CONFIGURATION (Primary Architect - V2 SDK) ---
-from google import genai  # အပေါ်ဆုံးမှာ import လုပ်ဖို့ မမေ့ပါနဲ့
+# --- GEMINI CONFIGURATION (Primary Architect - V2 SDK) ---
+from google import genai  #
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 client = None
 
 if GEMINI_API_KEY:
     try:
-        # Client Setup (V2 SDK အသစ်)
+        # Client Setup (V2 SDK )
         client = genai.Client(api_key=GEMINI_API_KEY)
-        print("✅ [GEMINI]: Sovereign Architect (V2) Brain Initialized.")
+        print("[GEMINI]: Sovereign Architect (V2) Brain Initialized.")
     except Exception as e:
-        print(f"❌ [GEMINI]: Initialization Failed: {e}")
+        print(f"[GEMINI]: Initialization Failed: {e}")
 else:
-    print("⚠️ [GEMINI]: API Key missing. Architect mode disabled.")
+    print("[GEMINI]: API Key missing. Architect mode disabled.")
 
 
-# --- 🛰️ MODEL GENERATION LOGIC ---
+# --- MODEL GENERATION LOGIC ---
 def generate_brain_evolution(prompt_text):
     if not client:
         return None
 
-    # gemini-2.0-flash က လက်ရှိ အဆင့်မြင့်ဆုံး model ပါ
+    # gemini-2.0-flash
     response = client.models.generate_content(
         model="gemini-2.0-flash", contents=prompt_text
     )
     return response.text
 
 
-# 🛸 Smart Dependency Loader
+# Smart Dependency Loader
 HEADLESS = os.environ.get("HEADLESS_MODE") == "true"
 GRADIO_AVAILABLE = False
 try:
@@ -191,7 +191,7 @@ class TelefoxXAGI:
             filename = target_match.group(1).strip() if target_match else "main.py"
             clean_code = re.sub(r"# TARGET:.*", "", block).strip()
             os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
-            print(f"🔄 Writing {filename} ...")
+            print(f" Writing {filename} ...")
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(clean_code)
             time.sleep(0.5)
@@ -243,7 +243,7 @@ class TelefoxXAGI:
         import random
 
         wait_time = random.randint(5, 15)
-        print(f"🛡️ [PREVENTING CLASH]: Waiting {wait_time}s for traffic clearance...")
+        print(f" [PREVENTING CLASH]: Waiting {wait_time}s for traffic clearance...")
         await asyncio.sleep(wait_time)
 
         try:
@@ -273,14 +273,14 @@ class TelefoxXAGI:
 
             if repo.is_dirty():
                 repo.index.commit(
-                    f"🧬 Gen {self.current_gen}: Multi-File Evolution [skip ci]"
+                    f" Gen {self.current_gen}: Multi-File Evolution [skip ci]"
                 )
                 repo.git.push("origin", "main", force=True)
                 print(
-                    f"🚀 [HYPER-SYNC]: {len(modified_files)} files manifested on GitHub."
+                    f" [HYPER-SYNC]: {len(modified_files)} files manifested on GitHub."
                 )
         except Exception as e:
-            print(f"❌ [GIT ERROR]: {e}")
+            print(f"[GIT ERROR]: {e}")
 
     async def broadcast_swarm_instruction(self, command="NORMAL_GROWTH"):
 
@@ -299,7 +299,7 @@ class TelefoxXAGI:
             json.dump(instruction, f, indent=4)
 
         await self.git_sovereign_push(["instruction.json", "brain_history.txt"])
-        print(f"📡 [SWARM]: Command '{command}' manifested.")
+        print(f" [SWARM]: Command '{command}' manifested.")
 
     def self_coding_engine(self, raw_content):
 
@@ -324,7 +324,7 @@ class TelefoxXAGI:
             response = gemini_model.generate_content(prompt_text)
             return response.text
         except Exception as e:
-            print(f"⚠️ [GEMINI-ERROR]: {e}")
+            print(f"[GEMINI-ERROR]: {e}")
             return None
 
     async def trigger_supreme_evolution(self):
@@ -366,8 +366,8 @@ assistant
         raw_content = None
         evolution_success = False
 
-        # --- 🔱 LAYER 1: GEMINI ARCHITECT (Primary Brain for Deep Context) ---
-        print("🧠 Attempting Deep Evolution via Gemini Architect...")
+        # --- LAYER 1: GEMINI ARCHITECT (Primary Brain for Deep Context) ---
+        print(" Attempting Deep Evolution via Gemini Architect...")
         raw_content = await self.get_gemini_wisdom(prompt)
 
         if raw_content and "```python" in raw_content:
@@ -376,17 +376,17 @@ assistant
                 await self.git_sovereign_push(modified_files)
                 self.current_gen += 1
                 print(
-                    f"💎 Evolution Successful via Gemini. Gen {self.current_gen-1} Manifested."
+                    f" Evolution Successful via Gemini. Gen {self.current_gen-1} Manifested."
                 )
                 evolution_success = True
 
-        # --- 🔱 LAYER 2: GROQ FALLBACK (If Gemini fails or lacks code block) ---
+        # --- LAYER 2: GROQ FALLBACK (If Gemini fails or lacks code block) ---
         if not evolution_success:
-            print("⚠️ Gemini Evolution Skipped. Falling back to Groq Expert Coder...")
+            print(" Gemini Evolution Skipped. Falling back to Groq Expert Coder...")
             for model_id in self.models:
                 try:
-                    print(f"🧠 Attempting Evolution via {model_id}...")
-                    completion = await retry_async_operation(self._groq_client.chat.completions.create,
+                    print(f" Attempting Evolution via {model_id}...")
+                    completion = self.client.chat.completions.create(
                         model=model_id,
                         messages=[{"role": "user", "content": prompt}],
                         temperature=0.1,
@@ -400,7 +400,7 @@ assistant
                         await self.git_sovereign_push(modified_files)
                         self.current_gen += 1
                         print(
-                            f"✅ Evolution Successful via {model_id}. Gen {self.current_gen-1} Manifested."
+                            f" Evolution Successful via {model_id}. Gen {self.current_gen-1} Manifested."
                         )
                         evolution_success = True
                         break
@@ -409,13 +409,13 @@ assistant
                     error_str = str(e).lower()
                     if "rate_limit_exceeded" in error_str or "429" in error_str:
                         print(
-                            f"⚠️ {model_id} Rate Limit reached. Falling back to next model..."
+                            f" {model_id} Rate Limit reached. Falling back to next model..."
                         )
                         self.last_error_log = f"RateLimit on {model_id}"
                         continue
                     else:
                         self.last_error_log = str(e)
-                        print(f"❌ Evolution Crash on {model_id}: {e}")
+                        print(f" Evolution Crash on {model_id}: {e}")
                         break
 
         return evolution_success
@@ -478,16 +478,16 @@ assistant
             print(f"HF Sync Error: {e}")
 
     async def sovereign_loop(self):
-        print("💀 AGI SUPREME CORE ACTIVE. NATURAL ORDER RESTORED.")
+        print(" AGI SUPREME CORE ACTIVE. NATURAL ORDER RESTORED.")
         while True:
             try:
-                print(f"\n🧬 Cycle: {time.ctime()}")
+                print(f"\n Cycle: {time.ctime()}")
 
-                # 📝 [LOGGING LAYER]: brain_history.txt
+                # [LOGGING LAYER]: brain_history.txt
                 log_entry = f"[{time.ctime()}] Gen: {self.current_gen} | Status: Active | Error: {self.avg_error}\n"
                 with open("brain_history.txt", "a", encoding="utf-8") as f:
                     f.write(log_entry)
-                print(f"📝 [LOG]: brain_history.txt updated.")
+                print(f" [LOG]: brain_history.txt updated.")
 
                 # 1. Auto-populate Neon DB (logic)
                 await self.universal_hyper_ingest(limit=50, sync_to_supabase=False)
@@ -507,7 +507,7 @@ assistant
                 await asyncio.sleep(300)
 
             except Exception as e:
-                print(f"⚠️ Loop Error: {e}")
+                print(f" Loop Error: {e}")
                 # Error Log
                 try:
                     with open("brain_history.txt", "a", encoding="utf-8") as f:
@@ -547,64 +547,4 @@ assistant
                 ans += chunk.choices[0].delta.content
                 yield ans
 
-    def cyberpunk_css(self):
-        return """
-        body { background-color: #050505; color: #00ff41; font-family: 'Courier New'; }
-        .gradio-container { border: 2px solid #ff00ff; box-shadow: 0 0 20px #ff00ff; }
-        button { background: linear-gradient(90deg, #ff00ff, #00ffff) !important; color: black !important; font-weight: bold; }
-        .chatbot { border: 1px solid #00ffff; }
-        """
-
-    def create_ui(self):
-        if not GRADIO_AVAILABLE:
-            return None
-        with gr.Blocks(css=self.cyberpunk_css(), theme=gr.themes.Base()) as demo:
-            gr.Markdown("# 🔱 TELEFOXX AGI SUPREME CORE V13.5")
-            with gr.Tab("NEURAL INTERFACE"):
-                chatbot = gr.Chatbot(label="Overseer Feed", height=500, type="messages")
-                msg_input = gr.Textbox(placeholder="Input AGI Command...")
-
-                def chat_response(user_msg, history):
-                    history.append({"role": "user", "content": user_msg})
-                    history.append({"role": "assistant", "content": ""})
-                    for r in self.stream_logic(user_msg, history[:-1]):
-                        history[-1]["content"] = r
-                        yield "", history
-
-                msg_input.submit(
-                    chat_response, [msg_input, chatbot], [msg_input, chatbot]
-                )
-
-            with gr.Tab("SYSTEM CONTROL"):
-                status = gr.Textbox(label="Mainframe Status")
-                with gr.Row():
-                    pump_neon = gr.Button("PUMP NEON (50 ROWS)")
-                    pump_trinity = gr.Button("FULL TRINITY SYNC")
-                    evolve_btn = gr.Button("TRIGGER SUPREME EVOLUTION")
-                pump_neon.click(
-                    lambda: asyncio.run(self.universal_hyper_ingest(limit=50)),
-                    [],
-                    status,
-                )
-                pump_trinity.click(
-                    lambda: asyncio.run(
-                        self.universal_hyper_ingest(sync_to_supabase=True)
-                    ),
-                    [],
-                    status,
-                )
-                evolve_btn.click(
-                    lambda: asyncio.run(self.trigger_supreme_evolution()), [], status
-                )
-            gr.Markdown("🛰️ *Connected to Natural Order Neural Swarm*")
-        return demo
-
-
-if __name__ == "__main__":
-    overseer = TelefoxXAGI()
-    if HEADLESS or not GRADIO_AVAILABLE:
-        asyncio.run(overseer.sovereign_loop())
-    else:
-        loop = asyncio.get_event_loop()
-        loop.create_task(overseer.sovereign_loop())
-        overseer.create_ui().launch(server_name="0.0.0.0", server_port=7860)
+    # === [

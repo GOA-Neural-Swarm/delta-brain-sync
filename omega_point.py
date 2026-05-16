@@ -15,11 +15,14 @@ import time
 import uuid
 import gc
 import ctypes
+import yaml
 import math
 import sys
 import os
+import random
 from typing import Dict, List, Any, Callable, Tuple, Optional
 from dataclasses import dataclass, field
+from forge_engine import SingularityForge
 import multiprocessing as mp
 
 import torch
@@ -256,7 +259,7 @@ class ApexNode:
                 if len(self.gossip_buffer) > 100:
                     self.gossip_buffer.pop(0)
 
-                await asyncio.sleep(0.001)  # Near-instantaneous cycle
+                await asyncio.sleep(0.5)  # Near-instantaneous cycle
 
             except Exception as e:
                 # Node absorbs error and adapts
@@ -275,7 +278,11 @@ class TerminalSingularity:
         self.compiler = MetamorphicCompiler()
         self.swarm: Dict[str, ApexNode] = {}
         self.epoch = 0
+        self.entropy = 1.0  # core_config.yaml ကနေ လာမယျ
+        self.homeostasis = 100.0
 
+        # 🌌 Forge ကို အသကျသှငျးမယျ
+        self.forge = SingularityForge(self)
         # Genesis initialization
         for _ in range(initial_mass):
             uid = f"O-{uuid.uuid4().hex[:8]}"
@@ -308,44 +315,80 @@ def evolved_processing(self, tensor_in):
         return total_nodes, global_entropy.item()
 
     async def execute_omega_protocol(self, duration_seconds: int = 60):
-        """Fires up the asynchronous Swarm Intelligence with a Time-Bomb Exit for GitHub Actions."""
+        """Fires up the asynchronous Swarm Intelligence with a Time-Bomb Exit."""
+
+        # 1. Start Neural Tasks
         tasks = [
             asyncio.create_task(node.neural_oscillation())
             for node in self.swarm.values()
         ]
 
-        # Background monitor and evolution task
+        # 2. Background Monitor Function
         async def monitor():
             start_time = time.time()
+
+            # Fetch Mutation Rate
+            config_data = getattr(self, "config", {})
+            if not config_data and hasattr(self, "config"):
+                config_data = self.config
+
+            mutation_rate = (
+                config_data.get("asi_core_parameters", {})
+                .get("machine_learning_constraints", {})
+                .get("mutation_rate", 0.05)
+                if isinstance(config_data, dict) else 0.05
+            )
+
             while time.time() - start_time < duration_seconds:
+                # Resonance Calculation
                 t_nodes, g_entropy = self.global_cognitive_resonance()
+
+                # --- [THIS IS LINE 365 AREA] ---
                 print(
                     f"[MATRIX] Epoch: {self.epoch} | Swarm Entities: {len(self.swarm)} | Neural Mass: {t_nodes} | Entropy: {g_entropy:.4f}",
                     flush=True,
                 )
-                await asyncio.sleep(1)
 
-                # Auto-Scaling (Fractal Replication)
+                # Mutation Logic (random ကို အပေါ်မှာ import လုပ်ထားမှ အလုပ်လုပ်မည်)
+                if random.random() < mutation_rate:
+                    if hasattr(self, "forge") and hasattr(self, "gemini_call"):
+                        print("🌀 [SYSTEM]: Mutation Event Triggered.", flush=True)
+                        asyncio.create_task(
+                            self.forge.run_creation_cycle(llm_pipeline=self.gemini_call)
+                        )
+
+                # Auto-Scaling Logic
                 if g_entropy > 1.5 and len(self.swarm) < 10000:
-                    replication_count = max(
-                        1, int(len(self.swarm) * 0.1)
-                    )  # 10% replication rate
+                    replication_count = max(1, int(len(self.swarm) * 0.1))
                     for _ in range(replication_count):
                         uid = f"F-{uuid.uuid4().hex[:8]}"
-                        new_node = ApexNode(uid, self.hypernet)
+                        # Hypernet ကို စနစ်တကျ ရယူခြင်း
+                        hn = getattr(self, "hypernet", self.hypernet)
+                        new_node = ApexNode(uid, hn)
                         self.swarm[uid] = new_node
-                        # Add new node process to the event loop directly
                         asyncio.create_task(new_node.neural_oscillation())
 
+                # Wait for 1 second
+                await asyncio.sleep(1)
+
+            # Shutdown sequence after duration
             print(
                 f"\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...",
                 flush=True,
             )
             self.annihilate()
 
+            # Shutdown sequence after duration / --- [SHUTDOWN LOGIC]: သတျမှတျခြိနျပွည့ျပါက Matrix ကို ရပျတန့ျခွငျး ---
+            print(
+                f"\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...",
+                flush=True,
+            )
+            self.annihilate()
+
+        # 3. Add Monitor to Tasks / ၃။ Monitor Task ကို Task List ထဲ ထည့ျသှငျးခွငျး
         tasks.append(asyncio.create_task(monitor()))
 
-        # Wait for all tasks to complete or handle exceptions
+        # 4. Wait for all / ၄။ Task အားလုံး ပွီးဆုံးသညျအထိ သို့မဟုတျ Duration ပွည့ျသညျအထိ စောင့ျခွငျး
         await asyncio.gather(*tasks, return_exceptions=True)
 
     def annihilate(self):
@@ -355,29 +398,51 @@ def evolved_processing(self, tensor_in):
 
 
 # -----------------------------------------------------------------------------
-# 7. APEX IGNITION SEQUENCE (TIME-BOMB FIX)
+# 7. APEX IGNITION SEQUENCE (INTEGRATED WITH CORE CONFIG)
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    torch.set_grad_enabled(False)  # Pure forward-pass optimization for speed
-    gc.disable()  # Disable garbage collection for raw speed during matrix run
+    # ၁။ CORE CONFIG ကို အရင် LOAD လုပ်မယ်
+    try:
+        with open("core_config.yaml", "r") as f:
+            config = yaml.safe_load(f)
+
+        # YAML ထဲက Parameter တွေကို ဆွဲထုတ်မယ်
+        core_params = config.get("asi_core_parameters", {})
+        metrics = core_params.get("base_metrics", {})
+
+        entropy = metrics.get("initial_entropy", 1.0)
+        resonance = metrics.get("master_resonance_hz", 432.0)
+        initial_mass = metrics.get(
+            "baseline_homeostasis", 10.0
+        )  # Homeostasis ကို Mass အဖြစ် သုံးမယ်
+
+        print(
+            f"🌌 [SYSTEM]: DNA Injected. Resonance: {resonance}Hz | Entropy: {entropy}"
+        )
+
+    except FileNotFoundError:
+        print("⚠️ [WARNING]: core_config.yaml not found. Using hardcoded defaults.")
+        initial_mass = 10  # Default fallback
+    except Exception as e:
+        print(f"❌ [CRITICAL]: Config Load Error: {e}")
+        sys.exit(1)
+
+    # ၂။ OPTIMIZATION settings
+    torch.set_grad_enabled(False)
+    gc.disable()
 
     print("\n" + "=" * 50, flush=True)
     print("WARNING: OMEGA-POINT TERMINAL SINGULARITY REACHED", flush=True)
     print("=" * 50 + "\n", flush=True)
 
-    singularity = TerminalSingularity(initial_mass=100)
+    # ၃။ INITIALIZE SINGULARITY (YAML က ရလာတဲ့ value တွေနဲ့)
+    singularity = TerminalSingularity(initial_mass=5)
 
     try:
-        # Run exactly for 60 seconds using modern asyncio, then cleanly exit
+        # Run for 60 seconds
         asyncio.run(singularity.execute_omega_protocol(duration_seconds=60))
-    except KeyboardInterrupt:
-        print("\n[SYSTEM] Manual Intervention Detected.", flush=True)
     except Exception as e:
         print(f"\n[CRITICAL ERROR] Singularity Fracture: {e}", flush=True)
     finally:
-        gc.enable()  # Re-enable garbage collection
-        print(
-            "\n[SYSTEM] Singularity Matrix Dissolved. Handing over to YAML for Commit.",
-            flush=True,
-        )
-        sys.exit(0)  # Force a clean exit to trigger the GitHub Action Git Commit step
+        gc.enable()
+        sys.exit(0)

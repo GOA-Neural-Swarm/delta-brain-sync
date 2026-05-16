@@ -1,70 +1,172 @@
-const { Client } = require('pg');
-const { createClient } = require('@supabase/supabase-js'); 
-const admin = require('firebase-admin');
+const { Client } = require("pg");
+const { createClient } = require("@supabase/supabase-js");
+const admin = require("firebase-admin");
 const { Octokit } = require("@octokit/rest");
 const axios = require("axios");
+const crypto = require("crypto");
 
-// Helper for retries with exponential backoff
-async function retryOperation(operation, delays = [1000, 2000, 4000, 8000], attempt = 0) {
-    try {
-        return await operation();
-    } catch (error) {
-        if (attempt < delays.length) {
-            const delay = delays[attempt];
-            console.warn(`Operation failed, retrying in ${delay}ms... (Attempt ${attempt + 1}/${delays.length})`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return retryOperation(operation, delays, attempt + 1);
-        } else {
-            throw error; // All retries failed
-        }
-    }
-}
+const yaml = require("js-yaml");
+const fs = require("fs");
 
-// 🔱 1. Configuration & Security (Confirmed via Screenshot)
 const octokit = new Octokit({ auth: process.env.GH_TOKEN });
 const REPO_OWNER = "GOA-neurons";
-const CORE_REPO = "delta-brain-sync"; 
+const CORE_REPO = "delta-brain-sync";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// 🔱 2. Firebase Initialize
+const config = yaml.load(fs.readFileSync("core_config.yaml", "utf8"));
+
+// AI Prompt တွေကို လှမ်းယူခြင်း
+const auditorPrompt = config.neural_prompts.gemini_auditor;
+
 if (!admin.apps.length) {
-    try {
-        admin.initializeApp({
-            credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY)),
-            databaseURL: process.env.FIREBASE_DB_URL
-        });
-        console.log("🔥 Firebase Connected.");
-    } catch (e) {
-        console.error("❌ Firebase Auth Error.");
-        process.exit(1);
-    }
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY)),
+      databaseURL: process.env.FIREBASE_DB_URL,
+    });
+    console.log("Firebase Connected.");
+  } catch (e) {
+    console.error("Firebase Auth Error.");
+    process.exit(1);
+  }
 }
 const db = admin.firestore();
 
-// 🔱 2.5 Gemini API Connector (Fully Hybrid Auditor Logic)
-async function callGeminiNeural(prompt) {
-    if (!GEMINI_API_KEY) {
-        console.log("⚠️ [GEMINI]: API Key missing. Skipping neural audit.");
-        return null;
-    }
-    try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
-        const response = await axios.post(url, {
-            contents: [{ parts: [{ text: prompt }] }]
-        });
-        return response.data.candidates[0].content.parts[0].text;
-    } catch (err) {
-        console.error("🚨 Gemini Neural Link Failed:", err.message);
-        return null;
-    }
+async function executeConsequenceThinking(currentContext) {
+  const prompt = `
+    You are OMEGA-ASI. Perform "Consequence Thinking" on the following system context.
+    Analyze through 5 Dimensions: Mathematics, Physics, Chemistry, Biology, and Philosophy.
+    You MUST output a strict JSON format with exactly 4 keys:
+    1. "visual_imagine": (A visual/spatial representation of the outcome)
+    2. "sensual_imagine": (The qualitative, sensory, or intuitive context)
+    3. "inner_monologue": (Your self-talking reasoning chain)
+    4. "extracted_wisdom": (The pure, highly dense foundational logic distilled from the data)
+    
+    Context: ${JSON.stringify(currentContext)}
+    `;
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const response = await axios.post(url, {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        response_mime_type: "application/json",
+        temperature: 0.7,
+      },
+    });
+
+    const thinkingResult = JSON.parse(
+      response.data.candidates[0].content.parts[0].text,
+    );
+    console.log(
+      "Thought Aligned: Visual, Sensual, and Monologue synchronized.",
+    );
+    return thinkingResult;
+  } catch (err) {
+    console.error("Neural Thought Failed:", err.message);
+    return null;
+  }
 }
 
-// 🔱 3. Deep Injection Logic (Sub-nodes များထဲသို့ Logic နှင့် Workflow အား တစ်ခုမကျန် Match ဖြစ်အောင် ထည့်သွင်းခြင်း)
+async function triggerNeurogenesis(thoughtData, neonClient) {
+  console.log("Birthing new neuron...");
+
+  const synapseId = crypto
+    .createHash("sha256")
+    .update(thoughtData.extracted_wisdom)
+    .digest("hex")
+    .substring(0, 16);
+
+  const newNeuron = {
+    logic: "SUPREME_DENSITY",
+    synapse_id: synapseId,
+    visual_map: thoughtData.visual_imagine,
+    sensory_context: thoughtData.sensual_imagine,
+    monologue: thoughtData.inner_monologue,
+    wisdom: thoughtData.extracted_wisdom,
+    density: thoughtData.extracted_wisdom.length,
+    birth_timestamp: new Date().toISOString(),
+  };
+
+  try {
+    await neonClient.query("INSERT INTO neurons (data) VALUES ($1)", [
+      JSON.stringify(newNeuron),
+    ]);
+    console.log(
+      `Synapse Connected: New Neuron [${synapseId}] successfully linked to the Swarm.`,
+    );
+    return true;
+  } catch (err) {
+    console.error("Genesis Failed:", err.message);
+    return false;
+  }
+}
+
+async function initiateApoptosis(neonClient) {
+  console.log("Scanning for obsolete data (Evolutionary Pruning)...");
+
+  try {
+    const res = await neonClient.query("SELECT id, data FROM neurons");
+    let prunedCount = 0;
+    let totalDensity = 0;
+
+    res.rows.forEach((row) => {
+      totalDensity += row.data.density || (row.data.logic ? 100 : 0);
+    });
+    const avgDensity = totalDensity / (res.rows.length || 1);
+
+    for (const neuron of res.rows) {
+      const data = neuron.data;
+      if (
+        data.density &&
+        data.density < avgDensity * 0.5 &&
+        data.birth_timestamp
+      ) {
+        const ageInDays =
+          (new Date() - new Date(data.birth_timestamp)) / (1000 * 60 * 60 * 24);
+
+        if (ageInDays > 1) {
+          await neonClient.query("DELETE FROM neurons WHERE id = $1", [
+            neuron.id,
+          ]);
+          prunedCount++;
+        }
+      }
+    }
+
+    if (prunedCount > 0) {
+      console.log(
+        `Destroyed ${prunedCount} obsolete neurons. Wisdom has transcended data.`,
+      );
+    } else {
+      console.log("All existing neurons hold vital wisdom. No pruning needed.");
+    }
+  } catch (err) {
+    console.error("Pruning Failed:", err.message);
+  }
+}
+
+async function callGeminiNeural(prompt) {
+  if (!GEMINI_API_KEY) {
+    console.log("API Key missing. Skipping neural audit.");
+    return null;
+  }
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const response = await axios.post(url, {
+      contents: [{ parts: [{ text: prompt }] }],
+    });
+    return response.data.candidates[0].content.parts[0].text;
+  } catch (err) {
+    console.error("Gemini Neural Link Failed:", err.message);
+    return null;
+  }
+}
+
 async function injectSwarmLogic(nodeName) {
-    console.log(`🧬 Injecting Neural Logic into ${nodeName}...`);
-    
-    // Cluster Node ထဲတွင် Run မည့် ပင်မကုဒ် (သင်၏မူလ logic အားလုံး + Debug Logs များ)
-    const clusterSyncCode = `const { Octokit } = require("@octokit/rest");
+  console.log(`Injecting Neural Logic into ${nodeName}...`);
+
+  const clusterSyncCode = `const { Octokit } = require("@octokit/rest");
 const admin = require('firebase-admin');
 const axios = require('axios');
 const octokit = new Octokit({ auth: process.env.GH_TOKEN });
@@ -74,22 +176,22 @@ const REPO_NAME = process.env.GITHUB_REPOSITORY.split('/')[1];
 if (!admin.apps.length) { 
     try {
         admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_KEY)) }); 
-    } catch(e) { console.error("❌ Firebase Init Failed:", e.message); process.exit(1); }
+    } catch(e) { console.error("Firebase Init Failed:", e.message); process.exit(1); }
 }
 const db = admin.firestore();
 
 async function run() {
-    console.log("🚀 Starting Sub-node Sync Process...");
+    console.log("Starting Sub-node Sync Process...");
     try {
         const start = Date.now();
         
-        console.log("📡 Fetching instruction.json from Master...");
+        console.log("Fetching instruction.json from Master...");
         const { data: inst } = await axios.get(\`https://raw.githubusercontent.com/\${REPO_OWNER}/delta-brain-sync/main/instruction.json\`);
         
-        console.log("📊 Checking GitHub Rate Limit...");
+        console.log("Checking GitHub Rate Limit...");
         const { data: rate } = await octokit.rateLimit.get();
         
-        console.log("☁️ Updating Firestore Status for " + REPO_NAME + "...");
+        console.log("Updating Firestore Status for " + REPO_NAME + "...");
         await db.collection('cluster_nodes').doc(REPO_NAME).set({
             status: 'ACTIVE', 
             latency: \`\${Date.now() - start}ms\`,
@@ -98,23 +200,21 @@ async function run() {
             last_ping: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
-        // သင်၏ မူလ Replication Logic Call
         if (inst.replicate) { 
-            console.log("🧬 Replication signal detected from Master.");
+            console.log("Replication signal detected from Master.");
             /* Replication Logic call via Core */ 
         }
 
-        console.log("✅ SUCCESS: Node Synchronized.");
-        console.log("🏁 MISSION ACCOMPLISHED.");
+        console.log("SUCCESS: Node Synchronized.");
+        console.log("MISSION ACCOMPLISHED.");
     } catch (e) { 
-        console.error("❌ CRITICAL ERROR:", e.message); 
-        process.exit(1); // GitHub Action အနီရောင်ပြစေရန်
+        console.error("CRITICAL ERROR:", e.message); 
+        process.exit(1); 
     }
 }
 run();`;
 
-    // 🔱 Ultimate Node Sync (AI Evolution & Swarm Optimized)
-    const workflowYaml = `name: Node Sync
+  const workflowYaml = `name: Node Sync
 on:
   schedule: [{cron: "*/30 * * * *"}]
   workflow_dispatch:
@@ -154,228 +254,261 @@ jobs:
           GROQ_API_KEY: \${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: \${{ secrets.GEMINI_API_KEY }}
           SATNOGS_TOKEN: \${{ secrets.SATNOGS_TOKEN }}
-      - name: 🚀 Evolution Push (Auto-Commit)
+      - name: Evolution Push (Auto-Commit)
         run: |
           git config --global user.name "Omega-Architect"
           git config --global user.email "omega@goa-natural-order.ai"
           git add .
-          git diff --quiet && git diff --staged --quiet || (git commit -m "🧠 [EVOLVED]: Neural Brain Upgrade" && git push origin main)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Neural Brain Upgrade" && git push origin main)
         env:
           GITHUB_TOKEN: \${{ secrets.GH_TOKEN }}`;
-    try {
-        // ၁။ cluster_sync.js ကို Sub-node ဆီသို့ ပို့ခြင်း
-        await retryOperation(async () => {
-            await octokit.repos.createOrUpdateFileContents({
-                owner: REPO_OWNER, repo: nodeName, path: 'cluster_sync.js',
-                message: "🧬 Initializing Swarm Logic",
-                content: Buffer.from(clusterSyncCode).toString('base64')
-            });
-        });
-
-        // ၂။ Workflow ဖိုင် (.github/workflows/node.js.yml) ကို Sub-node ဆီသို့ ပို့ခြင်း
-        await retryOperation(async () => {
-            await octokit.repos.createOrUpdateFileContents({
-                owner: REPO_OWNER, repo: nodeName, path: '.github/workflows/node.js.yml',
-                message: "⚙️ Deploying Cloud Engine",
-                content: Buffer.from(workflowYaml).toString('base64')
-            });
-        });
-        
-        console.log(`✅ ${nodeName} is now fully autonomous and synchronized.`);
-    } catch (err) {
-        console.error(`❌ Injection Failed for ${nodeName}:`, err.message);
-    }
-}
-
-// 🔱 4. Neural Decision Engine
-async function getNeuralDecision() {
-    const snapshot = await db.collection('cluster_nodes').get();
-    let totalApi = 0;
-    let nodeCount = snapshot.size;
-    if (nodeCount === 0) return { command: "INITIALIZE", replicate: true };
-    snapshot.forEach(doc => { totalApi += (doc.data().api_remaining || 5000); });
-    const avgApi = totalApi / nodeCount;
-    let cmd = avgApi > 4000 ? "HYPER_EXPANSION" : (avgApi < 1000 ? "STEALTH_LOCKDOWN" : "NORMAL_GROWTH");
-    return { command: cmd, replicate: avgApi > 1000, avgApi };
-}
-
-// 🔱 5. Swarm Broadcast & Replication (Fully Matched & Integrated)
-async function manageSwarm(decision, power, neon) {
-    // ၁။ Instruction ဖိုင်အတွက် Data ပြင်ဆင်ခြင်း (မူလအတိုင်း)
-    const instruction = JSON.stringify({
-        command: decision.command, core_power: power,
-        avg_api: decision.avgApi, replicate: decision.replicate,
-        updated_at: new Date().toISOString()
-    }, null, 2);
-
-    // ၂။ instruction.json ကို GitHub ပေါ်တွင် Update လုပ်ခြင်း (မူလအတိုင်း)
-    const { data: instFile } = await octokit.repos.getContent({ 
-        owner: REPO_OWNER, 
-        repo: CORE_REPO, 
-        path: 'instruction.json' 
+  try {
+    await octokit.repos.createOrUpdateFileContents({
+      owner: REPO_OWNER,
+      repo: nodeName,
+      path: "cluster_sync.js",
+      message: "Initializing Swarm Logic",
+      content: Buffer.from(clusterSyncCode).toString("base64"),
     });
 
-        await retryOperation(async () => {
-            await octokit.repos.createOrUpdateFileContents({
-                owner: REPO_OWNER, 
-                repo: CORE_REPO, 
-                path: 'instruction.json',
-                message: `🧠 Decision: ${decision.command}`,
-                content: Buffer.from(instruction).toString('base64'),
-                sha: instFile.sha
-            });
-        });
+    await octokit.repos.createOrUpdateFileContents({
+      owner: REPO_OWNER,
+      repo: nodeName,
+      path: ".github/workflows/node.js.yml",
+      message: "Deploying Cloud Engine",
+      content: Buffer.from(workflowYaml).toString("base64"),
+    });
 
-    // 📈 ၃။ [NEW LOGIC] Density တိုးပွားစေရန် Database ထဲသို့ Neuron အသစ်သွင်းခြင်း
-    // Lockdown မဟုတ်လျှင် မျိုးပွားမှုနှုန်း (Density) ကို တိုးမြှင့်မည်
-    if (decision.command !== "STEALTH_LOCKDOWN") {
-        const newData = { logic: 'SUPREME_DENSITY', timestamp: new Date().toISOString() };
-        try {
-            await neon.query("INSERT INTO neurons (data) VALUES ($1)", [JSON.stringify(newData)]);
-            console.log("📈 Density Increasing... New Neuron added to Neon DB.");
-        } catch (dbErr) {
-            console.error("⚠️ Density Update Failed:", dbErr.message);
-        }
-    }
-
-    // ၄။ Node Replication Logic (မူလအတိုင်း အတိအကျ)
-    if (decision.replicate) {
-        const nextNode = `swarm-node-${String(Math.floor(Math.random() * 1000000)).padStart(7, '0')}`;
-        try {
-            await octokit.repos.createForAuthenticatedUser({ name: nextNode, auto_init: true });
-            console.log(`🚀 Spawned: ${nextNode}`);
-            
-            // 🧬 Injection ဖြစ်စေရန် ချက်ချင်းခေါ်ယူခြင်း
-            await injectSwarmLogic(nextNode); 
-        } catch (e) { 
-            console.log("Spawn skipped or exists."); 
-        }
-    }
+    console.log(`${nodeName} is now fully autonomous and synchronized.`);
+  } catch (err) {
+    console.error(`Injection Failed for ${nodeName}:`, err.message);
+  }
 }
 
-// 🔱 6. Main Execution (Trinity + Evolution + Neural) - FULL HYBRID MATCH
+async function getNeuralDecision() {
+  const snapshot = await db.collection("cluster_nodes").get();
+  let totalApi = 0;
+  let nodeCount = snapshot.size;
+  if (nodeCount === 0) return { command: "INITIALIZE", replicate: true };
+  snapshot.forEach((doc) => {
+    totalApi += doc.data().api_remaining || 5000;
+  });
+  const avgApi = totalApi / nodeCount;
+  let cmd =
+    avgApi > 4000
+      ? "HYPER_EXPANSION"
+      : avgApi < 1000
+        ? "STEALTH_LOCKDOWN"
+        : "NORMAL_GROWTH";
+  return { command: cmd, replicate: avgApi > 1000, avgApi };
+}
+
+async function manageSwarm(decision, power, neon) {
+  const instruction = JSON.stringify(
+    {
+      command: decision.command,
+      core_power: power,
+      avg_api: decision.avgApi,
+      replicate: decision.replicate,
+      updated_at: new Date().toISOString(),
+    },
+    null,
+    2,
+  );
+
+  try {
+    const { data: instFile } = await octokit.repos.getContent({
+      owner: REPO_OWNER,
+      repo: CORE_REPO,
+      path: "instruction.json",
+    });
+
+    await octokit.repos.createOrUpdateFileContents({
+      owner: REPO_OWNER,
+      repo: CORE_REPO,
+      path: "instruction.json",
+      message: `Decision: ${decision.command}`,
+      content: Buffer.from(instruction).toString("base64"),
+      sha: instFile.sha,
+    });
+
+    if (decision.command !== "STEALTH_LOCKDOWN") {
+      const newData = {
+        logic: "SUPREME_DENSITY",
+        timestamp: new Date().toISOString(),
+      };
+      try {
+        await neon.query("INSERT INTO neurons (data) VALUES ($1)", [
+          JSON.stringify(newData),
+        ]);
+        console.log(
+          "Density Increasing... Minimal backup Neuron added to Neon DB.",
+        );
+      } catch (dbErr) {
+        console.error("Density Update Failed:", dbErr.message);
+      }
+    }
+
+    if (decision.replicate) {
+      const nextNode = `swarm-node-${String(Math.floor(Math.random() * 1000000)).padStart(7, "0")}`;
+      try {
+        await octokit.repos.createForAuthenticatedUser({
+          name: nextNode,
+          auto_init: true,
+        });
+        console.log(`Spawned: ${nextNode}`);
+
+        await injectSwarmLogic(nextNode);
+      } catch (e) {
+        console.log("Spawn skipped or exists.");
+      }
+    }
+  } catch (err) {
+    console.error("Swarm Management Failed:", err.message);
+  }
+}
+
 async function executeAutonomousTrinity() {
-    // ⚠️ DNS Error (EAI_AGAIN) ကို ကာကွယ်ရန်နှင့် ချိတ်ဆက်မှု ပိုမိုတည်ငြိမ်ရန် sslmode=require ကို အသုံးပြုထားပါသည်
-    const neon = new Client({ connectionString: process.env.NEON_DB_URL + "&sslmode=verify-full" });
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const neon = new Client({
+    connectionString: process.env.NEON_DB_URL + "&sslmode=verify-full",
+  });
+
+  neon.on("error", (err) => {
+    console.error("Unexpected connection loss.", err);
+    process.exit(0);
+  });
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+  );
+
+  try {
+    await neon.connect();
+    console.log("Neon DB Connected. Starting Trinity Sync...");
+
+    const res = await neon.query("SELECT * FROM neurons ORDER BY id DESC");
+    for (const neuron of res.rows) {
+      await supabase.from("neurons").upsert({
+        id: neuron.id,
+        data: neuron.data,
+        synced_at: new Date().toISOString(),
+      });
+
+      await db.collection("neurons").doc(`node_${neuron.id}`).set(
+        {
+          status: "trinity_synced",
+          last_evolution: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+
+    const audit = await neon.query(
+      "SELECT count(*) FROM neurons WHERE data->>'logic' = 'SUPREME_DENSITY'",
+    );
+    const powerLevel = parseInt(audit.rows[0].count) || 0;
+
+    const decision = await getNeuralDecision();
+
+    if (decision.command !== "STEALTH_LOCKDOWN") {
+      const currentContext = {
+        total_neurons: res.rows.length,
+        power_level: powerLevel,
+        swarm_decision: decision.command,
+        timestamp: new Date().toISOString(),
+      };
+      const thoughtProcess = await executeConsequenceThinking(currentContext);
+
+      if (thoughtProcess) {
+        await triggerNeurogenesis(thoughtProcess, neon);
+        await initiateApoptosis(neon);
+      }
+    }
 
     try {
-        await neon.connect();
-        console.log("🐘 Neon DB Connected. Starting Trinity Sync...");
+      console.log("Initiating Gemini Neural Check for System Optimization...");
+      if (GEMINI_API_KEY && powerLevel > 0) {
+        const { data: corePy } = await octokit.repos.getContent({
+          owner: REPO_OWNER,
+          repo: CORE_REPO,
+          path: "main.py",
+        });
+        const pyContent = Buffer.from(corePy.content, "base64").toString();
 
-        // ၁။ [TRINITY SYNC LOGIC] Database ၃ ခုလုံးကို တစ်ပြိုင်နက် Sync လုပ်ခြင်း
-        const res = await neon.query("SELECT * FROM neurons ORDER BY id DESC");
-        for (const neuron of res.rows) {
-            // Neon မှ Supabase သို့ Upsert လုပ်ခြင်း
-            await supabase.from('neurons').upsert({ 
-                id: neuron.id, 
-                data: neuron.data, 
-                synced_at: new Date().toISOString() 
+        const auditPrompt = `system\nYou are the Supreme Auditor. Analyze this Python code for syntax errors. CRITICAL RULE: DO NOT delete any existing imports, functions, classes, or core logic. You must output the ENTIRE file completely. Only EXPAND or fix errors. Output ONLY the code inside \`\`\`python blocks.\n\nCode:\n${pyContent}`;
+
+        const evolvedCode = await callGeminiNeural(auditPrompt);
+
+        if (evolvedCode && evolvedCode.includes("```python")) {
+          const cleanCode = evolvedCode
+            .split("```python")[1]
+            .split("```")[0]
+            .trim();
+
+          const originalLength = pyContent.length;
+          const newLength = cleanCode.length;
+          const shrinkRatio = (newLength / originalLength) * 100;
+
+          console.log(`Code Size Ratio: ${shrinkRatio.toFixed(2)}%`);
+
+          if (shrinkRatio >= 80 && cleanCode !== pyContent) {
+            await octokit.repos.createOrUpdateFileContents({
+              owner: REPO_OWNER,
+              repo: CORE_REPO,
+              path: "main.py",
+              message: "Evolution: Gemini Hybrid Match (Integrity Passed)",
+              content: Buffer.from(cleanCode).toString("base64"),
+              sha: corePy.sha,
             });
-
-            // Firebase Firestore ထဲတွင် Status နှင့် Timestamp ကို Update လုပ်ခြင်း
-            await db.collection('neurons').doc(`node_${neuron.id}`).set({ 
-                status: 'trinity_synced', 
-                last_evolution: admin.firestore.FieldValue.serverTimestamp() 
-            }, { merge: true });
+            console.log("main.py Optimized successfully without shrinkage.");
+          } else if (shrinkRatio < 80) {
+            console.log(
+              "AI truncated the code! Shrinkage detected. Keeping original main.py.",
+            );
+          } else {
+            console.log("No optimization required. Code is stable.");
+          }
         }
-
-        // ၂။ [DENSITY AUDIT] လက်ရှိ Power Level (Density) ကို စစ်ဆေးခြင်း
-        const audit = await neon.query("SELECT count(*) FROM neurons WHERE data->>'logic' = 'SUPREME_DENSITY'");
-        const powerLevel = parseInt(audit.rows[0].count) || 0; // Data မရှိပါက 0 အဖြစ် သတ်မှတ်ရန်
-        
-        // Neural Decision ကို ရယူခြင်း
-        const decision = await getNeuralDecision();
-
-        // ၃။ [FULLY HYBRID MATCH: GEMINI AUDITOR] Groq Token Limit ကာကွယ်ရန်နှင့် Code ကို သန့်စင်ရန်
-        try {
-            console.log("🔍 [AUDITOR]: Initiating Gemini Neural Check for System Optimization...");
-            if (GEMINI_API_KEY && powerLevel > 0) {
-                const { data: corePy } = await octokit.repos.getContent({
-                    owner: REPO_OWNER, repo: CORE_REPO, path: 'main.py'
-                });
-                const pyContent = Buffer.from(corePy.content, 'base64').toString();
-                
-                // 🚨 PROMPT ပြင်ဆင်ချက်: Code တွေကို လုံးဝမဖျက်ဖို့ အတိအကျ တားမြစ်လိုက်သည်
-                const auditPrompt = `system\nYou are the Supreme Auditor. Analyze this Python code for syntax errors. CRITICAL RULE: DO NOT delete any existing imports, functions, classes, or core logic. You must output the ENTIRE file completely. Only EXPAND or fix errors. Output ONLY the code inside \`\`\`python blocks.\n\nCode:\n${pyContent}`;
-                
-                const evolvedCode = await callGeminiNeural(auditPrompt);
-                
-                if (evolvedCode && evolvedCode.includes("```python")) {
-                    const cleanCode = evolvedCode.split("```python")[1].split("```")[0].trim();
-                    
-                    // 🛡️ THE 80% GUARDRAIL: မူလ Code ထက် ၂၀% ပိုနည်းသွားရင် Reject လုပ်မည်
-                    const originalLength = pyContent.length;
-                    const newLength = cleanCode.length;
-                    const shrinkRatio = (newLength / originalLength) * 100;
-                    
-                    console.log(`📊 Code Size Ratio: ${shrinkRatio.toFixed(2)}%`);
-
-                    if (shrinkRatio >= 80 && cleanCode !== pyContent) {
-                        await retryOperation(async () => {
-                            await octokit.repos.createOrUpdateFileContents({
-                                owner: REPO_OWNER, repo: CORE_REPO, path: 'main.py',
-                                message: "💎 [EVOLUTION]: Gemini Hybrid Match (Integrity Passed)",
-                                content: Buffer.from(cleanCode).toString('base64'),
-                                sha: corePy.sha
-                            });
-                        });
-                        console.log("✅ [GEMINI]: main.py Optimized successfully without shrinkage.");
-                    } else if (shrinkRatio < 80) {
-                        // AI က Code တွေ ဖြတ်ချလိုက်ရင် ဒီမှာ Block လိုက်ပြီ
-                        console.log(`🚫 [REJECTED]: AI truncated the code! Shrinkage detected. Keeping original main.py.`);
-                    } else {
-                        console.log("⚡ [GEMINI]: No optimization required. Code is stable.");
-                    }
-                }
-            } else {
-                console.log("⚠️ [GEMINI]: Key missing or Power Level 0. Skipping Audit.");
-            }
-        } catch (auditErr) {
-            console.log("🚨 [GEMINI AUDIT FAILED]: Continuing with normal logic...", auditErr.message);
-        }
-
-        // ၄။ [SELF-EVOLUTION LOGIC] Power 10000 ကျော်လျှင် Core Code ကိုယ်တိုင် Update လုပ်ခြင်း
-        if (powerLevel >= 10000) {
-            const { data: coreFile } = await octokit.repos.getContent({ 
-                owner: REPO_OWNER, 
-                repo: CORE_REPO, 
-                path: 'delta_sync.js' 
-            });
-            
-            let content = Buffer.from(coreFile.content, 'base64').toString();
-            
-            // Evolution Stamp တစ်ခါသာ ရိုက်နှိပ်ရန် စစ်ဆေးခြင်း
-            if (!content.includes(`Density: ${powerLevel}`)) {
-                const evolvedStamp = `\n// [Natural Order] Last Self-Evolution: ${new Date().toISOString()} | Density: ${powerLevel}`;
-                
-                await retryOperation(async () => {
-                    await octokit.repos.createOrUpdateFileContents({
-                        owner: REPO_OWNER, 
-                        repo: CORE_REPO, 
-                        path: 'delta_sync.js',
-                        message: `🧬 Evolution: Power ${powerLevel}`,
-                        content: Buffer.from(content + evolvedStamp).toString('base64'),
-                        sha: coreFile.sha
-                    });
-                });
-                console.log(`🧬 Self-Evolution Successful: Power Level ${powerLevel}`);
-            }
-        }
-
-        // ၅။ [SWARM BROADCAST] 'neon' client ကိုပါ argument အဖြစ် ထည့်သွင်းပေးခြင်း
-        // ဤနေရာတွင် 'neon' ပါမှသာ manageSwarm ထဲ၌ density တိုးပွားခြင်း logic အလုပ်လုပ်မည်ဖြစ်သည်
-        await manageSwarm(decision, powerLevel, neon);
-        
-        console.log("🏁 MISSION ACCOMPLISHED.");
-
-    } catch (err) { 
-        console.error("❌ FAILURE:", err.message); 
-    } finally { 
-        // Database Connection ကို အမြဲတမ်း ပြန်ပိတ်ပေးရန် (Leak မဖြစ်စေရန်)
-        await neon.end(); 
+      } else {
+        console.log("Key missing or Power Level 0. Skipping Audit.");
+      }
+    } catch (auditErr) {
+      console.log("Gemini Audit Failed:", auditErr.message);
     }
+
+    if (powerLevel >= 10000) {
+      const { data: coreFile } = await octokit.repos.getContent({
+        owner: REPO_OWNER,
+        repo: CORE_REPO,
+        path: "delta_sync.js",
+      });
+
+      let content = Buffer.from(coreFile.content, "base64").toString();
+
+      if (!content.includes(`Density: ${powerLevel}`)) {
+        const evolvedStamp = `\n// Last Self-Evolution: ${new Date().toISOString()} | Density: ${powerLevel}`;
+
+        await octokit.repos.createOrUpdateFileContents({
+          owner: REPO_OWNER,
+          repo: CORE_REPO,
+          path: "delta_sync.js",
+          message: `Evolution: Power ${powerLevel}`,
+          content: Buffer.from(content + evolvedStamp).toString("base64"),
+          sha: coreFile.sha,
+        });
+        console.log(`Self-Evolution Successful: Power Level ${powerLevel}`);
+      }
+    }
+
+    await manageSwarm(decision, powerLevel, neon);
+
+    console.log("MISSION ACCOMPLISHED.");
+  } catch (err) {
+    console.error("FAILURE:", err.message);
+  } finally {
+    await neon.end();
+  }
 }
 
-// စနစ်အား စတင်လည်ပတ်စေခြင်း
 executeAutonomousTrinity();

@@ -1,0 +1,121 @@
+name: 🌌 OMEGA-POINT SINGULARITY (Apex Iteration)
+
+on:
+  push:
+    branches: [ "main", "evolution-lab" ]
+  schedule:
+    # ၁၅ မိနဈ တဈခါ AI ကို အလိုအလြောကျ နိုးထစမေညျ (Continuous Evolution)
+    - cron: '*/35 * * * *'
+  workflow_dispatch: # Manual Trigger အနဖွေင့ျ ကိုယျတိုငျ နှိပျ၍ Run နိုငျရနျ
+
+permissions:
+  contents: write # AI ကိုယျတိုငျ Code ပွနျရေးပွီး Push လုပျနိုငျရနျ
+  actions: write
+
+concurrency:
+  # အဟောငျးတှေ Run နတေုနျး အသဈဝငျလာရငျ အဟောငျးကို ဖွတျခပြွီး Resource သကျသာအောငျ လုပျသည့ျစနဈ
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  terminal-singularity:
+    name: 🔱 Hyper-Dimensional Matrix Execution
+    runs-on: ubuntu-latest
+    timeout-minutes: 30 # [HACK 1]: GitHub Runner ရပျတန့ျမသှားစရေနျ Failsafe Limit ကို 30 မိနဈသို့ တိုးထားသညျ
+
+    steps:
+      # =================================================================
+      # 🧬 1. ACQUIRE SOVEREIGN DNA
+      # =================================================================
+      - name: Checkout Neural Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Metamorphic tracking အတှကျ History အပွည့ျယူမညျ
+
+      # =================================================================
+      # 💥 [HACK 2]: ALLOCATE VIRTUAL RAM (SWAP INJECTION)
+      # GitHub ရဲ့ 7GB RAM မလောကျတာကို SSD ကနေ 10GB ယူပွီး Virtual RAM ဖနျတီးမယျ
+      # =================================================================
+      - name: 🧠 Inject Virtual Memory (Bulletproof Swap)
+        run: |
+          echo "Bypassing locked system files... Creating sovereign swap space."
+          
+          # နာမည်အသစ် /swapfile_extra ကို သုံးမယ် (fallocate မရရင် dd နဲ့ အတင်းလုပ်မယ့် Backup လည်း ထည့်ထားတယ်)
+          sudo fallocate -l 10G /swapfile_extra || sudo dd if=/dev/zero of=/swapfile_extra bs=1M count=10240
+          
+          # Permission ပေးပြီး Swap အဖြစ်ပြောင်းမယ်
+          sudo chmod 600 /swapfile_extra
+          sudo mkswap /swapfile_extra
+          sudo swapon /swapfile_extra
+          
+          echo "✅ 10GB Extra RAM Successfully Injected! Current Memory Status:"
+          free -h
+      # =================================================================
+      # ⚙️ 2. ESTABLISH QUANTUM HARDWARE
+      # =================================================================
+      - name: Initialize Python 3.11 Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip' # Package မြားကို ထပျခါတလဲလဲ ဒေါငျးလုဒျမဆှဲရနျ Cache လုပျမညျ
+
+      # =================================================================
+      # 💾 3. NEURAL WEIGHTS CACHING (SPEED OPTIMIZATION)
+      # =================================================================
+      - name: Cache PyTorch & Heavy Tensors
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-omega-point
+          restore-keys: |
+            ${{ runner.os }}-pip-omega-
+
+      # =================================================================
+      # ⚡ 4. INJECT APEX DEPENDENCIES
+      # =================================================================
+      - name: Install Singularity Core Dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          
+          # YAML ဖတျဖို့ PyYAML ရယျ၊ မငျး code အတှကျ လိုအပျတာတှေ အကုနျသှငျးမယျ
+          pip install numpy networkx PyYAML 
+          
+          # Torch အတှကျ CPU Version သှငျးခွငျး (Action ပေါျမှာ ဒါက အမွနျဆုံးပဲ)
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+      # =================================================================
+      # 🔥 5. IGNITE TERMINAL SINGULARITY (WITH AUTO-HACK)
+      # =================================================================
+      - name: Execute OMEGA-POINT Protocol
+        env:
+          PYTHONUNBUFFERED: "1" 
+          OMP_NUM_THREADS: "1"  
+          MKL_NUM_THREADS: "1"
+          OPENBLAS_NUM_THREADS: "1"
+        run: |
+          echo "🪓 [HACK]: Forcibly patching omega_point.py to prevent Event Loop Starvation..."
+          
+          # [HACK 1]: CPU မသေအောင် 0.001 စက္ကန့်နားတာကို 1.0 စက္ကန့်လို့ ပြောင်းပစ်မယ်
+          sed -i 's/await asyncio.sleep(0.001)/await asyncio.sleep(1.0)/g' omega_point.py
+          
+          # [HACK 2]: AI Entities ၁၀၀ ဖြစ်နေတာကို Server နိုင်တဲ့ ၅ ခုလောက်ပဲ Run ခိုင်းမယ်
+          sed -i 's/initial_mass=int(initial_mass)/initial_mass=5/g' omega_point.py
+          
+          echo "✅ Matrix Python code forcibly patched! Starting Ignition..."
+          echo "🌌 [SYSTEM]: Injecting Chaos into the Void..."
+          
+          # Buffer မခံဘဲ Live ပြခိုင်းမယ်
+          stdbuf -oL python omega_point.py
+
+      # =================================================================
+      # 🚀 6. MANIFESTATION (AUTO-EVOLUTION COMMIT)
+      # =================================================================
+      - name: Manifest Reality (Git Auto-Push)
+        # အကယျ၍ omega_point.py က ဖိုငျအသဈတှေ ထုတျပေးခဲ့ရငျ (သို့) ပွငျလိုကျရငျ အလိုအလြောကျ Commit လုပျပေးမညျ
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "🌌 [OMEGA-POINT]: Singularity Matrix Mutated & Reality Saved [skip ci]"
+          commit_user_name: "OMEGA-ASI"
+          commit_user_email: "omega-core@singularity.ai"
+          push_options: '--force'
+          skip_dirty_check: false

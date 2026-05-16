@@ -1,54 +1,152 @@
 import requests
 import os
 import time
+from typing import List
+import logging
 
-# 🔱 Environment Variables ကို Workflow ထဲကအတိုင်း တိုက်ရိုက်ယူမယ်
+# Environment Variables
 GITHUB_TOKEN = os.getenv("GH_TOKEN")
 SOURCE_ENTITY = "GOA-neurons"
 TARGET_ORG = "GOA-Neural-Swarm"
 BATCH_SIZE = 15
 
+# Headers for GitHub API requests
 headers = {
     "Authorization": f"token {GITHUB_TOKEN}",
     "Accept": "application/vnd.github.v3+json",
+    "User-Agent": "Swarm-Node-Transfer",
 }
 
+# Logger configuration
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
-def get_nodes():
-    # 🔱 ပြင်ဆင်ချက်: GOA-neurons သည် User ဖြစ်သောကြောင့် /users/ ကို ပြန်သုံးရပါမည်
+
+def get_nodes() -> List[str]:
+    """
+    Retrieve a list of 'swarm-node-' repositories from the source entity
+
+    Returns:
+        List[str]: A list of repository names
+    """
     url = f"https://api.github.com/users/{SOURCE_ENTITY}/repos?per_page=100"
-    res = requests.get(url, headers=headers)
+    params = {"type": "all", "state": "all"}
+    res = requests.get(url, headers=headers, params=params)
 
     if res.status_code == 200:
         repo_list = res.json()
-        # "swarm-node-" ပါဝင်သော repo များကို ရှာဖွေခြင်း
+        # Filter repositories by name
         found = [r["name"] for r in repo_list if "swarm-node-" in r["name"]]
         return found
     else:
-        # Error တက်ပါက ဘာကြောင့်လဲဆိုတာ အသေးစိတ်ထုတ်ပြမယ်
-        print(f"❌ API Error: {res.status_code} - {res.text}")
+        # Handle API errors
+        logging.error(f"API Error: {res.status_code} - {res.text}")
         return []
 
 
-nodes = get_nodes()
+def transfer_repo(repo: str) -> bool:
+    """
+    Transfer a repository to the target organization
 
-if nodes:
-    print(
-        f"📦 Found {len(nodes)} nodes in {SOURCE_ENTITY}. Transferring first {BATCH_SIZE}..."
-    )
-    for repo in nodes[:BATCH_SIZE]:
-        # Transfer လုပ်မည့် Endpoint (User repo ဖြစ်စေ၊ Org repo ဖြစ်စေ ဤ path သည် အတူတူပင်ဖြစ်သည်)
-        url = f"https://api.github.com/repos/{SOURCE_ENTITY}/{repo}/transfer"
-        payload = {"new_owner": TARGET_ORG}
+    Args:
+        repo (str): The name of the repository to transfer
 
-        response = requests.post(url, headers=headers, json=payload)
+    Returns:
+        bool: Transfer status
+    """
+    url = f"https://api.github.com/repos/{SOURCE_ENTITY}/{repo}/transfer"
+    # Set the new owner for the repository
+    payload = {"new_owner": TARGET_ORG, "team_ids": []}
 
-        if response.status_code == 202:
-            print(f"✅ Transferred: {repo}")
-        else:
-            error_msg = response.json().get("message", "Unknown Error")
-            print(f"⚠️ Failed {repo}: {error_msg}")
+    response = requests.post(url, headers=headers, json=payload)
 
-        time.sleep(1)  # Rate limit ရှောင်ရန်
-else:
-    print(f"✨ No 'swarm-node-' repositories found in {SOURCE_ENTITY}.")
+    if response.status_code == 202:
+        # Log successful transfer
+        logging.info(f"Transferred: {repo}")
+        return True
+    else:
+        # Log transfer failure
+        error_msg = response.json().get("message", "Unknown Error")
+        logging.error(f"Failed {repo}: {error_msg}")
+        return False
+
+
+def transfer_repos(repos: List[str]) -> None:
+    """
+    Transfer a list of repositories to the target organization
+
+    Args:
+        repos (List[str]): A list of repository names to transfer
+    """
+    for repo in repos:
+        transfer_repo(repo)
+        # Pause for 1 second to avoid rate limiting
+        time.sleep(1)
+
+
+def process_repos_in_batches(repos: List[str], batch_size: int) -> None:
+    """
+    Process a list of repositories in batches
+
+    Args:
+        repos (List[str]): A list of repository names
+        batch_size (int): The size of each batch
+    """
+    failed_transfers = []
+    for i in range(0, len(repos), batch_size):
+        batch = repos[i : i + batch_size]
+        failed_batch_transfers = [repo for repo in batch if not transfer_repo(repo)]
+        failed_transfers.extend(failed_batch_transfers)
+        # Pause for 1 second to avoid rate limiting
+        time.sleep(1)
+    if failed_transfers:
+        logging.warning(
+            f"Failed to transfer {len(failed_transfers)} repositories: {failed_transfers}"
+        )
+
+
+def retry_failed_transfers(failed_transfers: List[str], max_retries: int = 3) -> None:
+    """
+    Retry failed repository transfers
+
+    Args:
+        failed_transfers (List[str]): A list of repository names that failed transfer
+        max_retries (int): The maximum number of retries. Defaults to 3.
+    """
+    for _ in range(max_retries):
+        new_failed_transfers = []
+        for repo in failed_transfers:
+            if not transfer_repo(repo):
+                new_failed_transfers.append(repo)
+        failed_transfers = new_failed_transfers
+        if not failed_transfers:
+            break
+    if failed_transfers:
+        logging.error(
+            f"Failed to transfer {len(failed_transfers)} repositories after {max_retries} retries: {failed_transfers}"
+        )
+
+
+def main() -> None:
+    # Get the list of 'swarm-node-' repositories
+    nodes = get_nodes()
+
+    if nodes:
+        # Log the number of nodes found
+        logging.info(
+            f"Found {len(nodes)} nodes in {SOURCE_ENTITY}. Transferring in batches of {BATCH_SIZE}..."
+        )
+        # Process the repositories in batches
+        process_repos_in_batches(nodes, BATCH_SIZE)
+        # Retry failed transfers
+        failed_transfers = [repo for repo in nodes if not transfer_repo(repo)]
+        if failed_transfers:
+            retry_failed_transfers(failed_transfers)
+    else:
+        # Log no repositories found
+        logging.info(f"No 'swarm-node-' repositories found in {SOURCE_ENTITY}.")
+
+
+if __name__ == "__main__":
+    main()
