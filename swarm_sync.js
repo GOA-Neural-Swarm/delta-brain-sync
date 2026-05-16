@@ -56,17 +56,20 @@ async function executeAutonomousTrinity(
   if (evolutionaryAdaptation) {
     console.log("Evolutionary adaptation enabled");
   }
+  return decision;
 }
 
 // Execute the autonomous trinity with additive evolution
 async function executeAdditiveEvolution() {
   let environmentComplexity = 0.5;
   let uncertaintyFactor = 0.2;
+  let avgApi = 5000;
+  let evolutionCount = 0;
   for (let i = 0; i < 5; i++) {
     environmentComplexity = Math.min(1, environmentComplexity + 0.1);
     uncertaintyFactor = Math.min(1, uncertaintyFactor + 0.05);
     const decision = getNeuralDecision(
-      5000,
+      avgApi,
       environmentComplexity,
       uncertaintyFactor,
     );
@@ -76,6 +79,8 @@ async function executeAdditiveEvolution() {
     if (replicate) {
       const nextNode = `swarm-node-${i + 1}`;
       console.log(`Replicating to node: ${nextNode}`);
+      avgApi += 1000; // Increase the avgApi after replication
+      evolutionCount++;
     }
 
     console.log(`Iteration ${i + 1}:`);
@@ -84,8 +89,9 @@ async function executeAdditiveEvolution() {
     console.log(`Command: ${command}`);
     console.log();
   }
+  return evolutionCount;
 }
 
 // Execute the autonomous trinity and additive evolution
-executeAutonomousTrinity(6000, 0.8, true, true, true, true);
-executeAdditiveEvolution();
+const trinityDecision = executeAutonomousTrinity(6000, 0.8, true, true, true, true);
+const evolutionCount = executeAdditiveEvolution();
