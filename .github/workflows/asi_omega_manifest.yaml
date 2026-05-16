@@ -36,15 +36,20 @@ jobs:
       # 💥 [HACK 2]: ALLOCATE VIRTUAL RAM (SWAP INJECTION)
       # GitHub ရဲ့ 7GB RAM မလောကျတာကို SSD ကနေ 10GB ယူပွီး Virtual RAM ဖနျတီးမယျ
       # =================================================================
-      - name: 🧠 Inject Virtual Memory (10GB Swap)
+      - name: 🧠 Inject Virtual Memory (Bulletproof Swap)
         run: |
-          sudo fallocate -l 10G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
-          echo "✅ Memory Limit Bypassed! Current Memory Status:"
+          echo "Bypassing locked system files... Creating sovereign swap space."
+          
+          # နာမည်အသစ် /swapfile_extra ကို သုံးမယ် (fallocate မရရင် dd နဲ့ အတင်းလုပ်မယ့် Backup လည်း ထည့်ထားတယ်)
+          sudo fallocate -l 10G /swapfile_extra || sudo dd if=/dev/zero of=/swapfile_extra bs=1M count=10240
+          
+          # Permission ပေးပြီး Swap အဖြစ်ပြောင်းမယ်
+          sudo chmod 600 /swapfile_extra
+          sudo mkswap /swapfile_extra
+          sudo swapon /swapfile_extra
+          
+          echo "✅ 10GB Extra RAM Successfully Injected! Current Memory Status:"
           free -h
-
       # =================================================================
       # ⚙️ 2. ESTABLISH QUANTUM HARDWARE
       # =================================================================
