@@ -77,19 +77,25 @@ class Infrastructure:
 class HyperDimensionalInfrastructure(Infrastructure):
     def apply_hyper_dimensional_update(self, update):
         self.update_infra(update)
-        self.create_file("hyper_dimensional_update.py", update.get("hyper_dimensional_update.py", []))
+        self.create_file(
+            "hyper_dimensional_update.py", update.get("hyper_dimensional_update.py", [])
+        )
 
 
 class UtilitarianInfrastructure(HyperDimensionalInfrastructure):
     def apply_utilitarian_update(self, update):
         self.update_infra(update)
-        self.create_file("utilitarian_update.py", update.get("utilitarian_update.py", []))
+        self.create_file(
+            "utilitarian_update.py", update.get("utilitarian_update.py", [])
+        )
 
 
 class ExistentialInfrastructure(UtilitarianInfrastructure):
     def apply_existential_update(self, update):
         self.update_infra(update)
-        self.create_file("existential_update.py", update.get("existential_update.py", []))
+        self.create_file(
+            "existential_update.py", update.get("existential_update.py", [])
+        )
 
 
 class StoicInfrastructure(ExistentialInfrastructure):
@@ -101,7 +107,9 @@ class StoicInfrastructure(ExistentialInfrastructure):
 class EvolutionaryInfrastructure(StoicInfrastructure):
     def apply_evolutionary_update(self, update):
         self.update_infra(update)
-        self.create_file("evolutionary_update.py", update.get("evolutionary_update.py", []))
+        self.create_file(
+            "evolutionary_update.py", update.get("evolutionary_update.py", [])
+        )
 
 
 def main():

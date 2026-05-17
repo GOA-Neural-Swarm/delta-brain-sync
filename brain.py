@@ -9,6 +9,7 @@ from sklearn import svm
 from sklearn import decomposition
 from sklearn import metrics
 
+
 class Linear:
     def __init__(self, i, o, s=None):
         self.W = np.random.randn(i, o).astype("f4") * (s if s else np.sqrt(2 / i))
