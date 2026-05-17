@@ -94,3 +94,7 @@ if __name__ == "__main__":
     # Initialize System
     watchdog = SystemWatchdog()
     watchdog.execute_main_brain()
+    while True:
+        watchdog.assess_system_stability()
+        watchdog.evolve_system()
+        time.sleep(1)
