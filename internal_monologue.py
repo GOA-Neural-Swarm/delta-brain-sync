@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class HyperDimensionalLogic:
     def __init__(self, dimensions):
         self.dimensions = dimensions
@@ -92,12 +91,12 @@ def main():
     existential_values = [5, 4, 3, 2, 1]
     stoic_values = [1, 1, 1, 1, 1]
     evolutionary_values = [2, 2, 2, 2, 2]
-    for _ in range(5):
+    for i in range(5):
         evolutionary_system.update_values(
             utilitarian_values, existential_values, stoic_values, evolutionary_values
         )
         additive_evolution = evolutionary_system.calculate_additive_evolution()
-        print(f"Additive Evolution: {additive_evolution}")
+        print(f"Iteration {i+1} - Additive Evolution: {additive_evolution}")
         utilitarian_values = [x + 1 for x in utilitarian_values]
         existential_values = [x - 1 for x in existential_values]
     evolutionary_system.print_history()
