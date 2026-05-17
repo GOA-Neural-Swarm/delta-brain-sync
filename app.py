@@ -8,12 +8,16 @@ import subprocess
 import asyncio
 import backoff
 
+feature / meta - evolution - logic
+
+
 # Helper for retries with exponential backoff
 @backoff.on_exception(backoff.expo, Exception, max_tries=5)
 async def retry_async_operation(operation, *args, **kwargs):
     return await operation(*args, **kwargs)
 
 
+main
 import re
 import shutil
 import git
@@ -126,7 +130,7 @@ def generate_brain_evolution(prompt_text):
 
 async def audit_code_integrity(code_content, original_intent):
     if not client:
-        print(" [GEMINI AUDIT]: API Key missing. Skipping code audit.")
+        print("⚠️ [GEMINI AUDIT]: API Key missing. Skipping code audit.")
         return True, "Audit skipped due to missing API key."
 
     audit_prompt = f"""You are an expert Python code auditor. Your task is to review a piece of generated Python code and determine if it adheres to the original intent and is syntactically correct. You should also check for potential bugs or logical flaws.
@@ -134,20 +138,22 @@ async def audit_code_integrity(code_content, original_intent):
 Original Intent: {original_intent}
 
 Generated Code:
+```python
 {code_content}
+```
 
 Provide a concise 'PASS' or 'FAIL' verdict, followed by a brief explanation. If 'FAIL', suggest specific improvements. Example: 'PASS: Code is clean and matches intent.' or 'FAIL: Missing import statement for 'requests'."
 """
     try:
         audit_response = generate_brain_evolution(audit_prompt)
         if audit_response and "PASS" in audit_response.upper():
-            print(f" [GEMINI AUDIT]: Code integrity check PASSED. {audit_response}")
+            print(f"✅ [GEMINI AUDIT]: Code integrity check PASSED. {audit_response}")
             return True, audit_response
         else:
-            print(f" [GEMINI AUDIT]: Code integrity check FAILED. {audit_response}")
+            print(f"❌ [GEMINI AUDIT]: Code integrity check FAILED. {audit_response}")
             return False, audit_response
     except Exception as e:
-        print(f" [GEMINI AUDIT ERROR]: {e}")
+        print(f"🚨 [GEMINI AUDIT ERROR]: {e}")
         return False, f"Audit failed due to internal error: {e}"
 
 
@@ -364,7 +370,7 @@ class TelefoxXAGI:
 
     async def trigger_supreme_evolution(self):
         """[STABILITY + EVOLUTION]: Fully Matched Hybrid Logic with Gemini Primary Architect and Groq Secondary Backup."""
-        if not self._groq_client and not client:
+        if not self.client and not gemini_model:
             return False
 
         # 1. Prepare context (Original Logic)
@@ -421,7 +427,7 @@ assistant
             for model_id in self.models:
                 try:
                     print(f" Attempting Evolution via {model_id}...")
-                    completion = self._groq_client.chat.completions.create(
+                    completion = self.client.chat.completions.create(
                         model=model_id,
                         messages=[{"role": "user", "content": prompt}],
                         temperature=0.1,
@@ -508,6 +514,94 @@ assistant
                 return "SUCCESS: Pipeline Stream Active."
         except Exception as e:
             return f"Pipeline Crash: {str(e)}"
+
+    async def sync_to_huggingface(self):
+        if not HF_TOKEN:
+            return
+        try:
+            api = HfApi(token=HF_TOKEN)
+            api.upload_folder(
+                folder_path=".",
+                repo_id="TELEFOXX/GOA",
+                repo_type="space",
+                create_pr=True,
+            )
+        except Exception as e:
+            print(f"HF Sync Error: {e}")
+
+    async def sovereign_loop(self):
+        print(" AGI SUPREME CORE ACTIVE. NATURAL ORDER RESTORED.")
+        while True:
+            try:
+                print(f"\n Cycle: {time.ctime()}")
+
+                # [LOGGING LAYER]: brain_history.txt
+                log_entry = f"[{time.ctime()}] Gen: {self.current_gen} | Status: Active | Error: {self.avg_error}\n"
+                with open("brain_history.txt", "a", encoding="utf-8") as f:
+                    f.write(log_entry)
+                print(f" [LOG]: brain_history.txt updated.")
+
+                # 1. Auto-populate Neon DB (logic)
+                await self.universal_hyper_ingest(limit=50, sync_to_supabase=False)
+
+                # 2. Trigger Evolution & Sync (logic)
+                if await self.trigger_supreme_evolution():
+                    await self.sync_to_huggingface()
+
+                # 3. Swarm Instruction Logic (logic + brain_history.txt update)
+                swarm_cmd = (
+                    "HYPER_EXPANSION" if self.avg_error < 0.2 else "NORMAL_GROWTH"
+                )
+                await self.broadcast_swarm_instruction(swarm_cmd)
+
+                if HEADLESS:
+                    break
+                await asyncio.sleep(300)
+
+            except Exception as e:
+                print(f" Loop Error: {e}")
+                # Error Log
+                try:
+                    with open("brain_history.txt", "a", encoding="utf-8") as f:
+                        f.write(f"[{time.ctime()}] ERROR: {str(e)}\n")
+                except:
+                    pass
+                await asyncio.sleep(60)
+
+    async def stream_logic(self, msg, hist):
+        messages = [
+            {
+                "role": "system",
+                "content": "You are TelefoxX AGI Overseer. Unfiltered. Cyberpunk Mode.",
+            }
+        ]
+        for h in hist:
+            messages.append(
+                {
+                    "role": "user",
+                    "content": h["content"] if isinstance(h, dict) else h[0],
+                }
+            )
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": h["content"] if isinstance(h, dict) else h[1],
+                }
+            )
+        messages.append({"role": "user", "content": msg})
+
+        completion = await retry_async_operation(
+            self._groq_client.chat.completions.create,
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            stream=True,
+        )
+        ans = ""
+        for chunk in completion:
+            if chunk.choices[0].delta.content:
+                ans += chunk.choices[0].delta.content
+                yield ans
+
     # === [CORE_PROTECTION_START] ===
     def cyber(self):
         pass
