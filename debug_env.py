@@ -35,7 +35,7 @@ class SovereignAuditor:
         )
 
     def check_system_integrity(self):
-        print(" [1/5] Auditing Core System...")
+        print(" [1/5] Auditing Core System...">
         self.report["system"] = {
             "os": platform.system(),
             "os_release": platform.release(),
@@ -43,6 +43,7 @@ class SovereignAuditor:
             "architecture": platform.machine(),
             "processor": platform.processor(),
         }
+        logging.info("System integrity checked")
 
     def check_hardware_resources(self):
         print(" [2/5] Analyzing Hardware Capabilities...")
@@ -58,18 +59,21 @@ class SovereignAuditor:
             self.report["hardware"][
                 "ram"
             ] = "psutil not installed (Hardware audit limited)"
+        logging.info("Hardware resources checked")
 
         try:
             gpu_check = subprocess.run(["nvidia-smi"], capture_output=True, text=True)
             self.report["hardware"]["gpu_available"] = gpu_check.returncode == 0
         except FileNotFoundError:
             self.report["hardware"]["gpu_available"] = False
+        logging.info("GPU availability checked")
 
     def audit_packages(self):
         print(" [3/5] Scanning Installed Neural Pathways (Packages)...")
         dists = importlib.metadata.distributions()
         for d in dists:
             self.report["packages"][d.metadata["Name"]] = d.version
+        logging.info("Packages audited")
 
     def resolve_conflicts(self):
         print(" [4/5] Resolving Package Conflicts...")
@@ -130,6 +134,7 @@ class SovereignAuditor:
             except Exception as e:
                 logging.error(f"Audit Error: {e}")
                 self.report["conflicts"].append(f"Error occurred for {package}")
+        logging.info("Conflicts resolved")
 
     def check_additive_evolution(self):
         print(" [5/5] Checking Additive Evolution...")
@@ -163,12 +168,14 @@ class SovereignAuditor:
                         "--quiet",
                     ]
                 )
+        logging.info("Additive evolution checked")
 
     def generate_final_report(self):
         report_file = "system_health.json"
         with open(report_file, "w") as f:
             json.dump(self.report, f, indent=4)
         print(f"\n Audit Complete. Intelligence Report saved to: {report_file}")
+        logging.info("Final report generated")
 
         print("\n--- HEALTH SUMMARY ---")
         print(f"OS: {self.report['system']['os']}")
@@ -177,6 +184,7 @@ class SovereignAuditor:
             f"GPU: {'Detected' if self.report['hardware'].get('gpu_available') else 'Not Found'}"
         )
         print(f"Status: { 'CRITICAL' if self.report['conflicts'] else 'OPTIMIZED' }")
+        logging.info("Health summary displayed")
 
 
 if __name__ == "__main__":

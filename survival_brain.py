@@ -40,6 +40,8 @@ class SystemWatchdog:
     def __init__(self):
         self.survival_core = SurvivalBrain()
         self.log_file = "recovery_logs.md"
+        self.error_history = []
+        self.recovery_attempts = 0
 
     def execute_main_brain(self):
         try:
@@ -55,6 +57,8 @@ class SystemWatchdog:
         # Activate Survival Mode
         self.survival_core.run()
         self.log_recovery_state(error_msg)
+        self.recovery_attempts += 1
+        self.error_history.append(error_msg)
 
     def log_recovery_state(self, error_msg):
         # Log Recovery State
@@ -69,8 +73,26 @@ class SystemWatchdog:
         except Exception as e:
             print(f"[LOG ERROR] Could not save recovery state: {e}")
 
+    def assess_system_stability(self):
+        # Assess System Stability
+        if self.recovery_attempts > 5:
+            print("[WATCHDOG] System stability compromised. Initiating shutdown sequence.")
+            sys.exit(1)
+        elif self.recovery_attempts > 0:
+            print("[WATCHDOG] System recovery attempted. Monitoring stability...")
+
+    def evolve_system(self):
+        # Evolve System
+        if self.recovery_attempts > 0:
+            # Attempt to improve system resilience
+            self.survival_core.w += np.random.randn(*self.survival_core.w.shape) * 0.01
+            self.survival_core.b += np.random.randn(*self.survival_core.b.shape) * 0.01
+            print("[WATCHDOG] System evolution initiated. New parameters applied.")
+
 
 if __name__ == "__main__":
     # Initialize System
     watchdog = SystemWatchdog()
     watchdog.execute_main_brain()
+    watchdog.assess_system_stability()
+    watchdog.evolve_system()

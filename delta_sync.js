@@ -1,3 +1,4 @@
+// Importing necessary libraries
 const { Client } = require("pg");
 const { createClient } = require("@supabase/supabase-js");
 const admin = require("firebase-admin");
@@ -8,16 +9,19 @@ const crypto = require("crypto");
 const yaml = require("js-yaml");
 const fs = require("fs");
 
+// Creating instances
 const octokit = new Octokit({ auth: process.env.GH_TOKEN });
 const REPO_OWNER = "GOA-neurons";
 const CORE_REPO = "delta-brain-sync";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
+// Loading configuration
 const config = yaml.load(fs.readFileSync("core_config.yaml", "utf8"));
 
-// AI Prompt တွေကို လှမ်းယူခြင်း
+// AI Prompt
 const auditorPrompt = config.neural_prompts.gemini_auditor;
 
+// Firebase initialization
 if (!admin.apps.length) {
   try {
     admin.initializeApp({
@@ -32,6 +36,7 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 
+// Function to execute consequence thinking
 async function executeConsequenceThinking(currentContext) {
   const prompt = `
     You are OMEGA-ASI. Perform "Consequence Thinking" on the following system context.
@@ -68,6 +73,7 @@ async function executeConsequenceThinking(currentContext) {
   }
 }
 
+// Function to trigger neurogenesis
 async function triggerNeurogenesis(thoughtData, neonClient) {
   console.log("Birthing new neuron...");
 
@@ -102,6 +108,7 @@ async function triggerNeurogenesis(thoughtData, neonClient) {
   }
 }
 
+// Function to initiate apoptosis
 async function initiateApoptosis(neonClient) {
   console.log("Scanning for obsolete data (Evolutionary Pruning)...");
 
@@ -146,6 +153,7 @@ async function initiateApoptosis(neonClient) {
   }
 }
 
+// Function to call Gemini neural
 async function callGeminiNeural(prompt) {
   if (!GEMINI_API_KEY) {
     console.log("API Key missing. Skipping neural audit.");
@@ -163,6 +171,7 @@ async function callGeminiNeural(prompt) {
   }
 }
 
+// Function to inject swarm logic
 async function injectSwarmLogic(nodeName) {
   console.log(`Injecting Neural Logic into ${nodeName}...`);
 
@@ -285,6 +294,7 @@ jobs:
   }
 }
 
+// Function to get neural decision
 async function getNeuralDecision() {
   const snapshot = await db.collection("cluster_nodes").get();
   let totalApi = 0;
@@ -303,6 +313,7 @@ async function getNeuralDecision() {
   return { command: cmd, replicate: avgApi > 1000, avgApi };
 }
 
+// Function to manage swarm
 async function manageSwarm(decision, power, neon) {
   const instruction = JSON.stringify(
     {
@@ -368,6 +379,7 @@ async function manageSwarm(decision, power, neon) {
   }
 }
 
+// Function to execute autonomous trinity
 async function executeAutonomousTrinity() {
   const neon = new Client({
     connectionString: process.env.NEON_DB_URL + "&sslmode=verify-full",
@@ -463,9 +475,7 @@ async function executeAutonomousTrinity() {
             });
             console.log("main.py Optimized successfully without shrinkage.");
           } else if (shrinkRatio < 80) {
-            console.log(
-              "AI truncated the code! Shrinkage detected. Keeping original main.py.",
-            );
+            console.log("AI truncated the code! Shrinkage detected. Keeping original main.py.");
           } else {
             console.log("No optimization required. Code is stable.");
           }
