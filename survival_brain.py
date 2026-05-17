@@ -94,5 +94,3 @@ if __name__ == "__main__":
     # Initialize System
     watchdog = SystemWatchdog()
     watchdog.execute_main_brain()
-    watchdog.assess_system_stability()
-    watchdog.evolve_system()
