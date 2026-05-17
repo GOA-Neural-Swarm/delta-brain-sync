@@ -23,7 +23,7 @@ class UtilitarianLoss(nn.Module):
         super(UtilitarianLoss, self).__init__()
 
     def forward(self, predictions, targets):
-        return -torch.sum(predictions * targets)
+        return -torch.mean(predictions * targets)
 
 
 class StoicOptimizer(optim.Optimizer):
