@@ -10,7 +10,7 @@ class HyperDimensionalLogger:
         self.stoic_threshold = 5
         self.evolutionary_update_count = 0
 
-    def log(self, message):
+    def log(self, message: str) -> int:
         if self.stoic_filter(message):
             with open(self.log_file, "a") as file:
                 file.write(message + "\n")
@@ -19,17 +19,17 @@ class HyperDimensionalLogger:
             self.evolutionary_history.append({"action": "log", "message": message})
         return self.utilitarian_metric
 
-    def exists(self, path):
+    def exists(self, path: str) -> bool:
         return os.path.exists(path)
 
-    def stoic_filter(self, message):
+    def stoic_filter(self, message: str) -> bool:
         if "error" in message.lower():
             return False
         if len(message) > self.stoic_threshold:
             return False
         return True
 
-    def evolutionary_additive(self, new_message):
+    def evolutionary_additive(self, new_message: str) -> bool:
         if self.stoic_filter(new_message):
             with open(self.log_file, "r") as file:
                 existing_lines = file.readlines()
@@ -44,7 +44,7 @@ class HyperDimensionalLogger:
             return True
         return False
 
-    def evolutionary_delete(self, message):
+    def evolutionary_delete(self, message: str) -> bool:
         if message in self.existential_state:
             with open(self.log_file, "r") as file:
                 existing_lines = file.readlines()
@@ -58,7 +58,7 @@ class HyperDimensionalLogger:
             return True
         return False
 
-    def evolutionary_update(self, old_message, new_message):
+    def evolutionary_update(self, old_message: str, new_message: str) -> bool:
         if old_message in self.existential_state:
             if self.stoic_filter(new_message):
                 self.evolutionary_delete(old_message)
@@ -74,7 +74,7 @@ class HyperDimensionalLogger:
                 return True
         return False
 
-    def get_evolutionary_history(self):
+    def get_evolutionary_history(self) -> list:
         return self.evolutionary_history
 
 
