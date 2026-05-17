@@ -7,7 +7,6 @@ try:
 except ImportError:
     print("[WARNING] 'omega_point' module not found. Proceeding in strictly isolated mode.")
 
-
 class SurvivalBrain:
     def __init__(self, in_d=784, out_d=10):
         self.w = np.random.randn(in_d, out_d).astype(np.float32) * np.sqrt(2.0 / (in_d + out_d))
