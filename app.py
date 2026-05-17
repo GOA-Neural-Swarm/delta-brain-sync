@@ -508,26 +508,7 @@ assistant
                 return "SUCCESS: Pipeline Stream Active."
         except Exception as e:
             return f"Pipeline Crash: {str(e)}"
-
-    async def sync_to_huggingface(self):
-        if not HF_TOKEN:
-            return
-        try:
-            api = HfApi(token=HF_TOKEN)
-            api.upload_folder(
-                folder_path=".",
-                repo_id="TELEFOXX/GOA",
-                repo_type="space",
-                create_pr=True,
-            )
-        except Exception as e:
-            print(f"HF Sync Error: {e}")
-
-    async def sovereign_loop(self):
-        print(" AGI SUPREME CORE ACTIVE. NATURAL ORDER RESTORED.")
-        while True:
-            try:
-                print(f"\n Cycle: {time.ctime()}")
-
-                # [LOGGING LAYER]: brain_history.txt
-                log_entry = f"[{time.ctime()}] Gen: {self.current_gen} | Status: Active | Error: {
+    # === [CORE_PROTECTION_START] ===
+    def cyber(self):
+        pass
+    # === [CORE_PROTECTION_END] ===
