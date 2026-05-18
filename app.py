@@ -20,10 +20,12 @@ from groq import Groq
 from google import genai
 from google.genai import types
 
+
 # Define helper function for retries with exponential backoff
 @backoff.on_exception(backoff.expo, Exception, max_tries=5)
 async def retry_async_operation(operation, *args, **kwargs):
     return await operation(*args, **kwargs)
+
 
 # Define constants and load environment variables
 load_dotenv()
@@ -53,6 +55,7 @@ if GEMINI_API_KEY:
 else:
     print("[GEMINI]: API Key missing. Architect mode disabled.")
 
+
 # Define model generation logic
 def generate_brain_evolution(prompt_text):
     if not client:
@@ -62,6 +65,7 @@ def generate_brain_evolution(prompt_text):
         model="gemini-2.0-flash", contents=prompt_text
     )
     return response.text
+
 
 # Define audit code integrity logic
 async def audit_code_integrity(code_content, original_intent):
@@ -90,6 +94,7 @@ Provide a concise 'PASS' or 'FAIL' verdict, followed by a brief explanation. If 
         print(f" [GEMINI AUDIT ERROR]: {e}")
         return False, f"Audit failed due to internal error: {e}"
 
+
 # Define HydraEngine class
 class HydraEngine:
     @staticmethod
@@ -106,6 +111,7 @@ class HydraEngine:
             return zlib.decompress(base64.b64decode(compressed_data)).decode("utf-8")
         except:
             return str(compressed_data)
+
 
 # Define TelefoxXAGI class
 class TelefoxXAGI:
@@ -443,6 +449,7 @@ assistant
     def cyber(self):
         pass
 
+
 def get_repo_tree():
     tree = []
     for root, dirs, files in os.walk("."):
@@ -453,11 +460,14 @@ def get_repo_tree():
             tree.append(path)
     return "\n".join(tree)
 
+
 # Create instance of TelefoxXAGI
 agi = TelefoxXAGI()
+
 
 # Run sovereign loop
 async def main():
     await agi.sovereign_loop()
+
 
 asyncio.run(main())

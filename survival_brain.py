@@ -5,11 +5,16 @@ import sys
 try:
     import omega_point
 except ImportError:
-    print("[WARNING] 'omega_point' module not found. Proceeding in strictly isolated mode.")
+    print(
+        "[WARNING] 'omega_point' module not found. Proceeding in strictly isolated mode."
+    )
+
 
 class SurvivalBrain:
     def __init__(self, in_d=784, out_d=10):
-        self.w = np.random.randn(in_d, out_d).astype(np.float32) * np.sqrt(2.0 / (in_d + out_d))
+        self.w = np.random.randn(in_d, out_d).astype(np.float32) * np.sqrt(
+            2.0 / (in_d + out_d)
+        )
         self.b = np.zeros(out_d, dtype=np.float32)
         self.is_active = False
 
@@ -62,13 +67,17 @@ class SystemWatchdog:
         try:
             with open(self.log_file, "a") as f:
                 f.write(payload)
-            print(f"[LOG] Recovery state saved to {self.log_file}. Ready for GitHub push.")
+            print(
+                f"[LOG] Recovery state saved to {self.log_file}. Ready for GitHub push."
+            )
         except Exception as e:
             print(f"[LOG ERROR] Could not save recovery state: {e}")
 
     def assess_system_stability(self):
         if self.recovery_attempts > 5:
-            print("[WATCHDOG] System stability compromised. Initiating shutdown sequence.")
+            print(
+                "[WATCHDOG] System stability compromised. Initiating shutdown sequence."
+            )
             sys.exit(1)
         elif self.recovery_attempts > 0:
             print("[WATCHDOG] System recovery attempted. Monitoring stability...")
@@ -80,8 +89,12 @@ class SystemWatchdog:
             mutation_rate = 0.01
             if self.evolution_index % 10 == 0:
                 mutation_rate = 0.1
-            self.survival_core.w += np.random.randn(*self.survival_core.w.shape) * mutation_rate
-            self.survival_core.b += np.random.randn(*self.survival_core.b.shape) * mutation_rate
+            self.survival_core.w += (
+                np.random.randn(*self.survival_core.w.shape) * mutation_rate
+            )
+            self.survival_core.b += (
+                np.random.randn(*self.survival_core.b.shape) * mutation_rate
+            )
             self.evolution_index += 1
             print("[WATCHDOG] System evolution initiated. New parameters applied.")
             self.update_evolutionary_pressure()
