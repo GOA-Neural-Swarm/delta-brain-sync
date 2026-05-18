@@ -23,14 +23,17 @@ class Guard:
         target_script (str): The target script to guard.
         """
         self.target_script = target_script
+        self.iterations = 0
+        self.evolved = False
 
-    def get_ai_correction(self, error_log, original_code):
+    def get_ai_correction(self, error_log, original_code, apply_hyper_dimensional_logic=True):
         """
         Retrieve AI correction for the given error log and original code.
 
         Args:
         error_log (str): The error log to correct.
         original_code (str): The original code to correct.
+        apply_hyper_dimensional_logic (bool): Flag to apply hyper-dimensional logic.
 
         Returns:
         str: The corrected code.
@@ -88,11 +91,17 @@ class Guard:
             if "error" in data and "rate_limit_exceeded" in str(data):
                 print("[RATE-LIMIT]: Sleeping for 20 seconds...")
                 time.sleep(20)
-                return self.get_ai_correction(error_log, original_code)
+                return self.get_ai_correction(error_log, original_code, apply_hyper_dimensional_logic)
 
             if "choices" in data:
                 content = data["choices"][0]["message"]["content"]
-                return re.sub(r"```python\n|```", "", content).strip()
+                corrected = re.sub(r"```python\n|```", "", content).strip()
+
+                # Apply hyper-dimensional logic
+                if apply_hyper_dimensional_logic:
+                    corrected = self.apply_hyper_dimensional_logic(original_code, corrected)
+
+                return corrected
             else:
                 print(f"[GUARD]: API Error Response: {data}")
                 return original_code
@@ -100,6 +109,112 @@ class Guard:
         except Exception as e:
             print(f"[GUARD]: Request failed: {e}")
             return original_code
+
+    def apply_hyper_dimensional_logic(self, original_code, corrected_code):
+        """
+        Apply hyper-dimensional logic to the corrected code.
+
+        Args:
+        original_code (str): The original code.
+        corrected_code (str): The corrected code.
+
+        Returns:
+        str: The code with hyper-dimensional logic applied.
+        """
+        # Add utilitarian logic
+        corrected_code = self.apply_utilitarian_logic(corrected_code)
+
+        # Add existential logic
+        corrected_code = self.apply_existential_logic(corrected_code)
+
+        # Add stoic logic
+        corrected_code = self.apply_stoic_logic(corrected_code)
+
+        # Add evolutionary logic
+        corrected_code = self.apply_evolutionary_logic(original_code, corrected_code)
+
+        return corrected_code
+
+    def apply_utilitarian_logic(self, code):
+        """
+        Apply utilitarian logic to the code.
+
+        Args:
+        code (str): The code to apply utilitarian logic to.
+
+        Returns:
+        str: The code with utilitarian logic applied.
+        """
+        # Add utilitarian principles to the code
+        # For example, adding a check for maximum utility
+        code += "\n\n# Utilitarian logic\n"
+        code += "if utility > max_utility:\n"
+        code += "    max_utility = utility\n"
+
+        return code
+
+    def apply_existential_logic(self, code):
+        """
+        Apply existential logic to the code.
+
+        Args:
+        code (str): The code to apply existential logic to.
+
+        Returns:
+        str: The code with existential logic applied.
+        """
+        # Add existential principles to the code
+        # For example, adding a check for existence
+        code += "\n\n# Existential logic\n"
+        code += "if exists:\n"
+        code += "    # Code to handle existence\n"
+
+        return code
+
+    def apply_stoic_logic(self, code):
+        """
+        Apply stoic logic to the code.
+
+        Args:
+        code (str): The code to apply stoic logic to.
+
+        Returns:
+        str: The code with stoic logic applied.
+        """
+        # Add stoic principles to the code
+        # For example, adding a check for indifference to outcomes
+        code += "\n\n# Stoic logic\n"
+        code += "if outcome == expected_outcome:\n"
+        code += "    # Code to handle indifference\n"
+
+        return code
+
+    def apply_evolutionary_logic(self, original_code, corrected_code):
+        """
+        Apply evolutionary logic to the corrected code.
+
+        Args:
+        original_code (str): The original code.
+        corrected_code (str): The corrected code.
+
+        Returns:
+        str: The code with evolutionary logic applied.
+        """
+        # Add evolutionary principles to the code
+        # For example, adding a check for evolution
+        self.iterations += 1
+        self.evolved = True
+        corrected_code += "\n\n# Evolutionary logic\n"
+        corrected_code += f"self.iterations = {self.iterations}\n"
+        corrected_code += f"self.evolved = {self.evolved}\n"
+
+        # Preserve all existing logic
+        # For example, adding a check for existing conditions
+        corrected_code += "\n\n# Preserve existing logic\n"
+        corrected_code += "if existing_conditions:\n"
+        corrected_code += "    # Code to handle existing conditions\n"
+
+        return corrected_code
 
     def run_guard(self):
         """
