@@ -35,7 +35,7 @@ class HyperDimensionalLogger:
                 existing_lines = file.readlines()
             with open(self.log_file, "w") as file:
                 file.write(new_message + "\n")
-                file.writelines(existing_lines)
+                file.writelines([line for line in existing_lines if line.strip() != new_message])
             self.utilitarian_metric += 1
             self.existential_state[new_message] = True
             self.evolutionary_history.append(
@@ -78,8 +78,36 @@ class HyperDimensionalLogger:
         return self.evolutionary_history
 
 
+class EvolutionaryHyperDimensionalLogger(HyperDimensionalLogger):
+    def __init__(self):
+        super().__init__()
+        self.preserved_evolutionary_history = []
+
+    def evolutionary_preserve(self):
+        self.preserved_evolutionary_history = list(self.evolutionary_history)
+
+    def get_preserved_evolutionary_history(self) -> list:
+        return self.preserved_evolutionary_history
+
+
+class AdditiveEvolutionaryHyperDimensionalLogger(EvolutionaryHyperDimensionalLogger):
+    def __init__(self):
+        super().__init__()
+
+    def evolutionary_additive_update(self, new_message: str):
+        if self.stoic_filter(new_message):
+            self.evolutionary_history.append(
+                {"action": "additive_update", "message": new_message}
+            )
+            self.evolutionary_preserve()
+            with open(self.log_file, "a") as file:
+                file.write(new_message + "\n")
+            self.utilitarian_metric += 1
+            self.existential_state[new_message] = True
+
+
 def main():
-    logger = HyperDimensionalLogger()
+    logger = AdditiveEvolutionaryHyperDimensionalLogger()
     print(logger.exists("/"))
     logger.log("Initial message")
     print(logger.log_file)
@@ -92,7 +120,10 @@ def main():
     logger.evolutionary_update("New message to update", "Updated message")
     print(logger.utilitarian_metric)
     print(logger.get_evolutionary_history())
-    print(logger.evolutionary_history)
+    logger.evolutionary_preserve()
+    logger.evolutionary_additive_update("New additive update message")
+    print(logger.get_preserved_evolutionary_history())
+    print(logger.get_evolutionary_history())
 
 
 if __name__ == "__main__":
