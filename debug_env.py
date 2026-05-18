@@ -35,7 +35,7 @@ class SovereignAuditor:
         )
 
     def check_system_integrity(self):
-        print(" [1/5] Auditing Core System...">
+        print(" [1/5] Auditing Core System...")
         self.report["system"] = {
             "os": platform.system(),
             "os_release": platform.release(),
