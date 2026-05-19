@@ -26,7 +26,9 @@ class Guard:
         self.iterations = 0
         self.evolved = False
 
-    def get_ai_correction(self, error_log, original_code, apply_hyper_dimensional_logic=True):
+    def get_ai_correction(
+        self, error_log, original_code, apply_hyper_dimensional_logic=True
+    ):
         """
         Retrieve AI correction for the given error log and original code.
 
@@ -91,7 +93,9 @@ class Guard:
             if "error" in data and "rate_limit_exceeded" in str(data):
                 print("[RATE-LIMIT]: Sleeping for 20 seconds...")
                 time.sleep(20)
-                return self.get_ai_correction(error_log, original_code, apply_hyper_dimensional_logic)
+                return self.get_ai_correction(
+                    error_log, original_code, apply_hyper_dimensional_logic
+                )
 
             if "choices" in data:
                 content = data["choices"][0]["message"]["content"]
@@ -99,7 +103,9 @@ class Guard:
 
                 # Apply hyper-dimensional logic
                 if apply_hyper_dimensional_logic:
-                    corrected = self.apply_hyper_dimensional_logic(original_code, corrected)
+                    corrected = self.apply_hyper_dimensional_logic(
+                        original_code, corrected
+                    )
 
                 return corrected
             else:

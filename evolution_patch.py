@@ -35,7 +35,9 @@ class HyperDimensionalLogger:
                 existing_lines = file.readlines()
             with open(self.log_file, "w") as file:
                 file.write(new_message + "\n")
-                file.writelines([line for line in existing_lines if line.strip() != new_message])
+                file.writelines(
+                    [line for line in existing_lines if line.strip() != new_message]
+                )
             self.utilitarian_metric += 1
             self.existential_state[new_message] = True
             self.evolutionary_history.append(
