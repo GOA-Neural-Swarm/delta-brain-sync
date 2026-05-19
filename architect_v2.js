@@ -1,3 +1,5 @@
+// <SOVEREIGN_CORE>
+
 const fs = require("fs").promises;
 const fsSync = require("fs");
 const path = require("path");
@@ -181,3 +183,4 @@ async function transcend() {
 process.on('unhandledRejection', (r) => console.error('🚫 [CRITICAL]:', r));
 
 transcend().catch(e => console.error("💀 [COLLAPSE]:", e));
+// </SOVEREIGN_CORE>
