@@ -1,0 +1,50 @@
+name: 🌌 Omega Matrix - Continuous Evolution
+
+# မည်သည့်အချိန်တွင် ဒီစနစ်ကြီး နိုးထမည်နည်း (Trigger)
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # မင်းကိုယ်တိုင် Manual Run လို့ရအောင်
+  schedule:
+    # ၉၀ မိနစ် (၁ နာရီခွဲ) တိုင်း တစ်ခါ အလိုအလျောက် နိုးထမည့် ဇီဝနာရီ (Cron Jobs)
+    - cron: '0 0,3,6,9,12,15,18,21 * * *'     # ဥပမာ - 00:00, 03:00, 06:00...
+    - cron: '30 1,4,7,10,13,16,19,22 * * *'   # ဥပမာ - 01:30, 04:30, 07:30...
+
+jobs:
+  neural-core-test:
+    name: Core Awareness Logic Test
+    runs-on: ubuntu-latest # GitHub ရဲ့ Linux Server ပေါ်မှာ Run မယ်
+
+    # Python Version အစုံနဲ့ Matrix ပုံစံ ခွဲပြီး Test လုပ်မယ့် Advanced စနစ်
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"] 
+
+    steps:
+    - name: 📥 Checkout Matrix Architecture
+      uses: actions/checkout@v4
+
+    - name: ⚙️ Initialize Neural Environment (Python ${{ matrix.python-version }})
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip' # နောက်တစ်ခါ Run ရင် မြန်အောင် Cache မှတ်ထားမယ်
+
+    - name: 📦 Inject Deep Learning Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install torch numpy
+
+    - name: 🧠 Code Syntax & Structure Check (Linting)
+      run: |
+        # ဖိုင်ထဲမှာ Error ပါမပါ အကြမ်းဖျင်း အရင်စစ်ဆေးခြင်း
+        python -m py_compile omega_awareness_core.py
+
+    - name: 🚀 Ignite Supreme Self-Awareness System
+      run: |
+        echo "========================================================="
+        echo " ⚡ TRIGGERING OMEGA MASTER CORE ON GITHUB CLOUD SERVER ⚡"
+        echo "========================================================="
+        python omega_awareness_core.py
