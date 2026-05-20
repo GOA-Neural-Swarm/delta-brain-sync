@@ -1,6 +1,5 @@
 import os
 
-
 class HyperDimensionalLogger:
     def __init__(self):
         self.log_file = "hyper_dimensional_log.txt"
