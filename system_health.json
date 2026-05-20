@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-05-20T13:57:35.847738",
+    "timestamp": "2026-05-20T16:44:54.137090",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1013-azure",
@@ -120,7 +120,6 @@
         "greenlet": "3.5.1",
         "multidict": "6.7.1",
         "pydub": "0.25.1",
-        "aiohappyeyeballs": "2.6.1",
         "joblib": "1.5.3",
         "pathspec": "1.1.1",
         "bandit": "1.9.4",
@@ -152,6 +151,7 @@
         "safehttpx": "0.1.7",
         "proto-plus": "1.28.0",
         "black": "26.5.1",
+        "aiohappyeyeballs": "2.6.2",
         "google-auth": "2.53.0",
         "fsspec": "2026.2.0",
         "ruff": "0.15.13",
@@ -168,7 +168,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.59,
+        "ram_available_gb": 14.61,
         "gpu_available": false
     }
 }
