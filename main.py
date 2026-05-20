@@ -1,5 +1,5 @@
 import numpy as np
- 
+
 
 class P:
     def __init__(self, d):
