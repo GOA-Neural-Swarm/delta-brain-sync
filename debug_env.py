@@ -191,7 +191,9 @@ class SovereignAuditor:
 
         # Evolutionary: prioritize the survival and adaptation of the system
         # We're doing this by checking for additive evolution and making necessary updates
-        logging.info("Utilitarian, Existential, Stoic, and Evolutionary philosophies applied")
+        logging.info(
+            "Utilitarian, Existential, Stoic, and Evolutionary philosophies applied"
+        )
 
     def generate_final_report(self):
         report_file = "system_health.json"

@@ -131,8 +131,12 @@ class EvolvedApp:
                     self.classifier.additive_evolve(new_data)
                     self.regressor.additive_evolve(new_data)
                 else:
-                    self.classifier.additive_evolve(new_data, self.classifier.get_current_weights())
-                    self.regressor.additive_evolve(new_data, self.regressor.get_current_weights())
+                    self.classifier.additive_evolve(
+                        new_data, self.classifier.get_current_weights()
+                    )
+                    self.regressor.additive_evolve(
+                        new_data, self.regressor.get_current_weights()
+                    )
 
                 self.logger.log_info(
                     f"Services evolved successfully (Iteration {i+1}/{num_iterations})"
@@ -215,7 +219,9 @@ class EvolvingClassifier:
         # Add your update logic here
         pass
 
-    def additive_evolve(self, new_data: List[List[float]], current_weights=None) -> None:
+    def additive_evolve(
+        self, new_data: List[List[float]], current_weights=None
+    ) -> None:
         # Add your additive evolution logic here
         if current_weights is None:
             pass  # Perform initial evolution
@@ -239,7 +245,9 @@ class EvolvingRegressor:
         # Add your update logic here
         pass
 
-    def additive_evolve(self, new_data: List[List[float]], current_weights=None) -> None:
+    def additive_evolve(
+        self, new_data: List[List[float]], current_weights=None
+    ) -> None:
         # Add your additive evolution logic here
         if current_weights is None:
             pass  # Perform initial evolution
