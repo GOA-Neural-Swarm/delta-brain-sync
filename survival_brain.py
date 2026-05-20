@@ -52,7 +52,7 @@ class SystemWatchdog:
         self.evolutionary_pressure = 0
         self.previous_utilitarian_score = 0
         self.best_survival_core = None
-        self.best_survival_core_utilitarian_score = float('-inf')
+        self.best_survival_core_utilitarian_score = float("-inf")
 
     def execute_main_brain(self):
         try:
