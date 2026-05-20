@@ -50,6 +50,9 @@ class SystemWatchdog:
         self.existential_risk = 0
         self.stoic_resilience = 0
         self.evolutionary_pressure = 0
+        self.previous_utilitarian_score = 0
+        self.best_survival_core = None
+        self.best_survival_core_utilitarian_score = float('-inf')
 
     def execute_main_brain(self):
         try:
@@ -99,14 +102,27 @@ class SystemWatchdog:
             weights = self.survival_core.get_weights()
             new_w = weights[0] + (np.random.randn(*weights[0].shape) * mutation_rate)
             new_b = weights[1] + (np.random.randn(*weights[1].shape) * mutation_rate)
-            self.survival_core.set_weights(new_w, new_b)
+            new_core = SurvivalBrain()
+            new_core.set_weights(new_w, new_b)
+            new_utilitarian_score = self.evaluate_utilitarian_score(new_core)
+            if new_utilitarian_score > self.best_survival_core_utilitarian_score:
+                self.best_survival_core = new_core
+                self.best_survival_core_utilitarian_score = new_utilitarian_score
+                self.survival_core = new_core
             self.evolution_index += 1
             print("[WATCHDOG] System evolution initiated. New parameters applied.")
             self.update_evolutionary_pressure()
             self.update_utilitarian_score()
 
+    def evaluate_utilitarian_score(self, survival_core):
+        w, b = survival_core.get_weights()
+        return -np.sum(np.abs(w)) - np.sum(np.abs(b))
+
     def update_utilitarian_score(self):
-        self.utilitarian_score = len(self.error_history) * -1
+        if self.best_survival_core:
+            self.utilitarian_score = self.evaluate_utilitarian_score(self.survival_core)
+        else:
+            self.utilitarian_score = len(self.error_history) * -1
         print(f"[UTILITARIAN SCORE] Current score: {self.utilitarian_score}")
 
     def update_existential_risk(self):
