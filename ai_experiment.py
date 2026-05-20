@@ -4,6 +4,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
+
 class HyperDimensionalSpace:
     def __init__(self, dimensions):
         self.dimensions = dimensions
