@@ -4,6 +4,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
+
 class HyperDimensionalSpace:
     def __init__(self, dimensions):
         self.dimensions = dimensions
@@ -16,12 +17,14 @@ class HyperDimensionalSpace:
         else:
             return np.random.normal(0, 0.1, size=(data.shape[0], self.dimensions))
 
+
 class UtilitarianLoss(nn.Module):
     def __init__(self):
         super(UtilitarianLoss, self).__init__()
 
     def forward(self, predictions, targets):
         return -torch.mean(predictions * targets)
+
 
 class StoicOptimizer(optim.Optimizer):
     def __init__(self, params, lr):
@@ -43,6 +46,7 @@ class StoicOptimizer(optim.Optimizer):
 
         return loss
 
+
 class ExistentialDataset(Dataset):
     def __init__(self, data, labels):
         self.data = data
@@ -54,6 +58,7 @@ class ExistentialDataset(Dataset):
     def __getitem__(self, idx):
         return self.data[idx], self.labels[idx]
 
+
 class EvolutionaryModel(nn.Module):
     def __init__(self):
         super(EvolutionaryModel, self).__init__()
@@ -64,6 +69,7 @@ class EvolutionaryModel(nn.Module):
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
         return x
+
 
 class EvolutionaryTrainer:
     def __init__(self, model, optimizer, loss_fn, hyper_space, dataset):
@@ -92,6 +98,7 @@ class EvolutionaryTrainer:
                 self.optimizer.step()
 
                 print(f"Epoch {epoch+1}, Loss: {loss.item()}")
+
 
 class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
     def __init__(self, model, optimizer, loss_fn, hyper_space, dataset, alpha=0.1):
@@ -131,6 +138,7 @@ class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
 
                 print(f"Epoch {epoch+1}, Loss: {loss.item()}")
 
+
 def main():
     torch.manual_seed(0)
     hyper_space = HyperDimensionalSpace(dimensions=20)
@@ -151,6 +159,7 @@ def main():
         existential_dataset,
     )
     trainer.train(epochs=10)
+
 
 if __name__ == "__main__":
     main()
