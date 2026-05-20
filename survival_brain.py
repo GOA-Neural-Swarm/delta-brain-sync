@@ -31,6 +31,13 @@ class SurvivalBrain:
         print("=" * 50 + "\n")
         return True
 
+    def get_weights(self):
+        return self.w, self.b
+
+    def set_weights(self, w, b):
+        self.w = w
+        self.b = b
+
 
 class SystemWatchdog:
     def __init__(self):
@@ -89,12 +96,10 @@ class SystemWatchdog:
             mutation_rate = 0.01
             if self.evolution_index % 10 == 0:
                 mutation_rate = 0.1
-            self.survival_core.w += (
-                np.random.randn(*self.survival_core.w.shape) * mutation_rate
-            )
-            self.survival_core.b += (
-                np.random.randn(*self.survival_core.b.shape) * mutation_rate
-            )
+            weights = self.survival_core.get_weights()
+            new_w = weights[0] + (np.random.randn(*weights[0].shape) * mutation_rate)
+            new_b = weights[1] + (np.random.randn(*weights[1].shape) * mutation_rate)
+            self.survival_core.set_weights(new_w, new_b)
             self.evolution_index += 1
             print("[WATCHDOG] System evolution initiated. New parameters applied.")
             self.update_evolutionary_pressure()
