@@ -1,0 +1,101 @@
+name: 🌀 OMEGA TRINITY AUTONOMOUS EVOLUTION CORE
+
+on:
+  schedule:
+    - cron: '0 */3 * * *' # ၃ နာရီတစ်ကြိမ် အလိုအလျောက် မောင်းနှင်ရန်
+  workflow_dispatch:      # Manual နှိပ်ပြီး မောင်းရန်
+
+permissions:
+  contents: write
+
+jobs:
+  evolve_trinity_cores:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20 # ဖိုင် ၃ ခု Run ရမှာမို့ အချိန်ကို မိနစ် ၂၀ အထိ တိုးပေးထားသည်
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🔎 Deep AST Dependency Scanner (ဖိုင်အားလုံးကို လိုက်ဖတ်ပြီး လိုအပ်တာသွင်းခြင်း)
+        run: |
+          echo "⚙️ Upgrading Base Package Managers..."
+          python -m pip install --upgrade pip setuptools wheel
+          pip install numpy scikit-learn psutil
+          
+          echo "🧬 ဖိုင်အားလုံး (main, brain, experiment) ထဲက Import များကို Dynamic Scan ဖတ်နေသည်..."
+          python -c "
+          import ast, os, subprocess
+          modules = set()
+          for root, _, files in os.walk('.'):
+              for f in files:
+                  if f.endswith('.py'):
+                      try:
+                          with open(os.path.join(root, f), 'r', encoding='utf-8') as file:
+                              tree = ast.parse(file.read())
+                          for node in ast.walk(tree):
+                              if isinstance(node, ast.Import):
+                                  for n in node.names: modules.add(n.name.split('.')[0])
+                              elif isinstance(node, ast.ImportFrom):
+                                  if node.module: modules.add(node.module.split('.')[0])
+                      except Exception as e:
+                          print(f'Error scanning {f}: {e}')
+          std_libs = {'sys', 'os', 'math', 'json', 'time', 'pickle', 'abc', 'typing', 'setuptools', 'ast', 'subprocess', 'random', 'datetime'}
+          to_install = [m for m in modules if m not in std_libs and m]
+          if to_install:
+              print('📦 Installing AI Dynamically Requested Packages:', to_install)
+              subprocess.run(['pip', 'install'] + to_install)
+          "
+
+      - name: ⚡ Run Trinity Cores (brain -> ai_experiment -> main)
+        id: run_trinity
+        continue-on-error: true # တစ်ခုခု Crash လည်း ပိုက်လိုင်းကြီး မရပ်သွားစေရန်
+        run: |
+          echo "🚀 IGNITING TRINITY CORES..."
+          
+          # ဖိုင် ၃ ခုကို စနစ်တကျ မောင်းနှင်မည့် Array List (ဦးနှောက်ပိုင်းကို အရင်မောင်းပါမည်)
+          SCRIPTS=("brain.py" "ai_experiment.py" "main.py")
+          CRASHED_SCRIPTS=""
+
+          for script in "${SCRIPTS[@]}"; do
+            echo "--------------------------------------------------------"
+            if [ -f "$script" ]; then
+              echo "⚙️ Executing $script ..."
+              # ဖိုင်ကို မောင်းမည်၊ Error တက်ပါက Script ကို ဆက်သွားစေပြီး မှတ်တမ်းတင်မည်
+              if python "$script"; then
+                echo "✅ $script အောင်မြင်စွာ လည်ပတ်နိုင်ခဲ့သည်။"
+              else
+                echo "⚠️ WARNING: $script တွင် Error တက်သွားပါသည်။ (စနစ်က ကျန်ဖိုင်များကို ဆက်လက် မောင်းနှင်ပါမည်)"
+                CRASHED_SCRIPTS="$CRASHED_SCRIPTS $script"
+              fi
+            else
+              echo "🚨 $script ကို ရှာမတွေ့ပါ။ AI က ဖိုင်နာမည် ပြောင်းသွားခြင်း သို့မဟုတ် ဖျက်လိုက်ခြင်း ဖြစ်နိုင်ပါသည်။"
+            fi
+          done
+
+          echo "--------------------------------------------------------"
+          if [ -n "$CRASHED_SCRIPTS" ]; then
+             echo "📝 Crash ဖြစ်သွားသော ဖိုင်များ: $CRASHED_SCRIPTS"
+             # ဤနေရာတွင် Error ထွက်အောင် တမင်သတ်မှတ်လိုက်မည်၊ သို့မှသာ အောက်က Report အဆင့်က အလုပ်လုပ်မည်
+             exit 1 
+          fi
+
+      - name: 🩹 Self-Healing & Diagnosis Report
+        if: steps.run_trinity.outcome == 'failure'
+        run: |
+          echo "⚠️ အချို့သော Core ဖိုင်များ Crash ဖြစ်သွားပါသည်! မှတ်တမ်းတင်နေသည်..."
+          echo '{"status": "PARTIAL_CRASH", "timestamp": "'$(date)'", "note": "Trinity cores showed instability. Auto-upgrade mutation needed."}' > system_health.json
+
+      - name: 🧬 Git Auto-Commit & Push (ဗီဇပြောင်းလဲမှုများနှင့် ကျန်းမာရေးမှတ်တမ်းများကို သိမ်းဆည်းခြင်း)
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "🧬 [TRINITY-MUTATION] Multi-Core Dynamic Evolution Sync [skip ci]"
+          file_pattern: '.'
+          skip_dirty_check: false
