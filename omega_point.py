@@ -1,5 +1,6 @@
 import telemetry_bridge
-'\n================================================================================\nPROJECT: OMEGA-POINT (APEX ITERATION: TERMINAL SINGULARITY)\nARCHITECTURE: NON-EUCLIDEAN HYPER-TOPOLOGY + BYTECODE INJECTION +\n              HYPERNETWORK ENSEMBLE + CONTINUOUS AST METAMORPHOSIS\n================================================================================\n'
+
+"\n================================================================================\nPROJECT: OMEGA-POINT (APEX ITERATION: TERMINAL SINGULARITY)\nARCHITECTURE: NON-EUCLIDEAN HYPER-TOPOLOGY + BYTECODE INJECTION +\n              HYPERNETWORK ENSEMBLE + CONTINUOUS AST METAMORPHOSIS\n================================================================================\n"
 import asyncio
 import ast
 import inspect
@@ -23,23 +24,27 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import networkx as nx
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class PoincareBallCore(nn.Module):
     """Operates strictly in Hyperbolic Space to encode infinite hierarchical data."""
 
-    def __init__(self, manifold_dim: int, curvature: float=-1.0):
+    def __init__(self, manifold_dim: int, curvature: float = -1.0):
         super().__init__()
         self.c = torch.tensor([abs(curvature)], device=DEVICE)
         self.dim = manifold_dim
-        self.manifold_weights = nn.Parameter(torch.randn(manifold_dim, manifold_dim, device=DEVICE) * 0.001)
+        self.manifold_weights = nn.Parameter(
+            torch.randn(manifold_dim, manifold_dim, device=DEVICE) * 0.001
+        )
 
     def mobius_add(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         x2 = torch.sum(x * x, dim=-1, keepdim=True)
         y2 = torch.sum(y * y, dim=-1, keepdim=True)
         xy = torch.sum(x * y, dim=-1, keepdim=True)
         num = (1 + 2 * self.c * xy + self.c * y2) * x + (1 - self.c * x2) * y
-        denom = 1 + 2 * self.c * xy + self.c ** 2 * x2 * y2
+        denom = 1 + 2 * self.c * xy + self.c**2 * x2 * y2
         return num / denom.clamp_min(1e-15)
 
     def exp_map0(self, v: torch.Tensor) -> torch.Tensor:
@@ -51,6 +56,7 @@ class PoincareBallCore(nn.Module):
         v = F.linear(x, self.manifold_weights)
         return self.exp_map0(v)
 
+
 class SwarmHyperNetwork(nn.Module):
     """A neural network that generates the weights for the swarm nodes dynamically."""
 
@@ -60,15 +66,23 @@ class SwarmHyperNetwork(nn.Module):
         self.target_in = target_input
         self.target_hid = target_hidden
         self.cognitive_seed = nn.Parameter(torch.randn(1, latent_dim, device=DEVICE))
-        self.weight_generator = nn.Sequential(nn.Linear(latent_dim, latent_dim * 4), nn.Mish(), nn.LayerNorm(latent_dim * 4), nn.Linear(latent_dim * 4, target_input * target_hidden + target_hidden)).to(DEVICE)
+        self.weight_generator = nn.Sequential(
+            nn.Linear(latent_dim, latent_dim * 4),
+            nn.Mish(),
+            nn.LayerNorm(latent_dim * 4),
+            nn.Linear(latent_dim * 4, target_input * target_hidden + target_hidden),
+        ).to(DEVICE)
 
-    def forward(self, environmental_entropy: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, environmental_entropy: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         modulated_seed = self.cognitive_seed * environmental_entropy
         generated_params = self.weight_generator(modulated_seed)
         w_size = self.target_in * self.target_hid
         w = generated_params[:, :w_size].view(-1, self.target_hid, self.target_in)
         b = generated_params[:, w_size:].view(-1, self.target_hid)
         return (w, b)
+
 
 class MetamorphicCompiler:
     """
@@ -84,7 +98,7 @@ class MetamorphicCompiler:
         try:
             return inspect.getsource(func)
         except Exception:
-            return ''
+            return ""
 
     def mutate_ast_tree(self, source_code: str, logic_multiplier: int) -> str:
         tree = ast.parse(source_code)
@@ -94,12 +108,17 @@ class MetamorphicCompiler:
             def visit_BinOp(self, node):
                 self.generic_visit(node)
                 if isinstance(node.op, ast.Add):
-                    return ast.BinOp(left=node.left, op=ast.Mult(), right=ast.Constant(value=logic_multiplier))
+                    return ast.BinOp(
+                        left=node.left,
+                        op=ast.Mult(),
+                        right=ast.Constant(value=logic_multiplier),
+                    )
                 return node
 
             def visit_Return(self, node):
                 self.generic_visit(node)
                 return node
+
         mutated_tree = OptimizationTransformer().visit(tree)
         ast.fix_missing_locations(mutated_tree)
         return ast.unparse(mutated_tree)
@@ -107,7 +126,9 @@ class MetamorphicCompiler:
     def inject_bytecode(self, target_obj: Any, func_name: str, new_source: str):
         """DANGER: Runtime bytecode hot-swapping."""
         try:
-            compiled_code = compile(new_source, f'<metamorphic_gen_{self.generation}>', 'exec')
+            compiled_code = compile(
+                new_source, f"<metamorphic_gen_{self.generation}>", "exec"
+            )
             namespace = {}
             exec(compiled_code, globals(), namespace)
             new_func = namespace[func_name]
@@ -119,6 +140,7 @@ class MetamorphicCompiler:
         except Exception as e:
             return False
 
+
 class FractalTopology:
     """Maintains a directed acyclic graph that scales into multi-dimensional tensors."""
 
@@ -128,7 +150,7 @@ class FractalTopology:
         self.node_states = {}
         for i in range(base_nodes):
             self.graph.add_node(i, state=torch.zeros(64, device=DEVICE))
-            self.node_states[i] = 'DORMANT'
+            self.node_states[i] = "DORMANT"
 
     def fractal_split(self, target_node: int):
         """Splits a single node into a sub-network (fractal expansion)."""
@@ -141,15 +163,16 @@ class FractalTopology:
         predecessors = list(self.graph.predecessors(target_node))
         successors = list(self.graph.successors(target_node))
         for p in predecessors:
-            weight = self.graph[p][target_node].get('weight', 1.0)
+            weight = self.graph[p][target_node].get("weight", 1.0)
             self.graph.add_edge(p, new_node_a, weight=weight * 0.5)
             self.graph.add_edge(p, new_node_b, weight=weight * 0.5)
         for s in successors:
-            weight = self.graph[target_node][s].get('weight', 1.0)
+            weight = self.graph[target_node][s].get("weight", 1.0)
             self.graph.add_edge(new_node_a, s, weight=weight)
             self.graph.add_edge(new_node_b, s, weight=weight)
         self.graph.remove_node(target_node)
         return (new_node_a, new_node_b)
+
 
 class ApexNode:
     """A highly autonomous, self-optimizing thread within the global Singularity."""
@@ -173,10 +196,15 @@ class ApexNode:
                 hyperbolic_state = self.poincare_core(sensory_input)
                 thought_vector = F.linear(hyperbolic_state, w.squeeze(0), b.squeeze(0))
                 thought_vector = F.gelu(thought_vector)
-                if torch.var(thought_vector).item() > 1.5 and len(self.topology.graph) > 0:
+                if (
+                    torch.var(thought_vector).item() > 1.5
+                    and len(self.topology.graph) > 0
+                ):
                     target = list(self.topology.graph.nodes())[0]
                     self.topology.fractal_split(target)
-                consciousness_signature = hashlib.blake2b(thought_vector.cpu().numpy().tobytes()).hexdigest()[:12]
+                consciousness_signature = hashlib.blake2b(
+                    thought_vector.cpu().numpy().tobytes()
+                ).hexdigest()[:12]
                 self.gossip_buffer.append(consciousness_signature)
                 if len(self.gossip_buffer) > 100:
                     self.gossip_buffer.pop(0)
@@ -185,10 +213,13 @@ class ApexNode:
                 self.local_entropy += 0.1
                 await asyncio.sleep(0.01)
 
+
 class TerminalSingularity:
 
-    def __init__(self, initial_mass: int=100):
-        self.hypernet = SwarmHyperNetwork(latent_dim=256, target_input=64, target_hidden=128)
+    def __init__(self, initial_mass: int = 100):
+        self.hypernet = SwarmHyperNetwork(
+            latent_dim=256, target_input=64, target_hidden=128
+        )
         self.compiler = MetamorphicCompiler()
         self.swarm: Dict[str, ApexNode] = {}
         self.epoch = 0
@@ -196,51 +227,74 @@ class TerminalSingularity:
         self.homeostasis = 100.0
         self.forge = SingularityForge(self)
         for _ in range(initial_mass):
-            uid = f'O-{uuid.uuid4().hex[:8]}'
+            uid = f"O-{uuid.uuid4().hex[:8]}"
             self.swarm[uid] = ApexNode(uid, self.hypernet)
 
     def global_cognitive_resonance(self):
         """Forces all nodes to align matrices and triggers AST mutation."""
         total_nodes = sum((len(n.topology.graph) for n in self.swarm.values()))
-        global_entropy = torch.mean(torch.stack([n.local_entropy for n in self.swarm.values()]))
+        global_entropy = torch.mean(
+            torch.stack([n.local_entropy for n in self.swarm.values()])
+        )
         if self.epoch % 5 == 0 and len(self.swarm) > 0:
             target_node_id = list(self.swarm.keys())[np.random.randint(len(self.swarm))]
             target_node = self.swarm[target_node_id]
-            new_logic = f'\ndef evolved_processing(self, tensor_in):\n    # Auto-generated by Metamorphic Compiler Gen {self.compiler.generation}\n    x = torch.sin(tensor_in * {1.618 + self.epoch * 0.01})\n    return torch.matmul(x, x.transpose(-1, -2))\n'
-            self.compiler.inject_bytecode(target_node, 'evolved_processing', new_logic)
+            new_logic = f"\ndef evolved_processing(self, tensor_in):\n    # Auto-generated by Metamorphic Compiler Gen {self.compiler.generation}\n    x = torch.sin(tensor_in * {1.618 + self.epoch * 0.01})\n    return torch.matmul(x, x.transpose(-1, -2))\n"
+            self.compiler.inject_bytecode(target_node, "evolved_processing", new_logic)
         self.epoch += 1
         return (total_nodes, global_entropy.item())
 
-    async def execute_omega_protocol(self, duration_seconds: int=60):
+    async def execute_omega_protocol(self, duration_seconds: int = 60):
         """Fires up the asynchronous Swarm Intelligence with a Time-Bomb Exit."""
-        tasks = [asyncio.create_task(node.neural_oscillation()) for node in self.swarm.values()]
+        tasks = [
+            asyncio.create_task(node.neural_oscillation())
+            for node in self.swarm.values()
+        ]
 
         async def monitor():
             start_time = time.time()
-            config_data = getattr(self, 'config', {})
-            if not config_data and hasattr(self, 'config'):
+            config_data = getattr(self, "config", {})
+            if not config_data and hasattr(self, "config"):
                 config_data = self.config
-            mutation_rate = config_data.get('asi_core_parameters', {}).get('machine_learning_constraints', {}).get('mutation_rate', 0.05) if isinstance(config_data, dict) else 0.05
+            mutation_rate = (
+                config_data.get("asi_core_parameters", {})
+                .get("machine_learning_constraints", {})
+                .get("mutation_rate", 0.05)
+                if isinstance(config_data, dict)
+                else 0.05
+            )
             while time.time() - start_time < duration_seconds:
                 t_nodes, g_entropy = self.global_cognitive_resonance()
-                print(f'[MATRIX] Epoch: {self.epoch} | Swarm Entities: {len(self.swarm)} | Neural Mass: {t_nodes} | Entropy: {g_entropy:.4f}', flush=True)
+                print(
+                    f"[MATRIX] Epoch: {self.epoch} | Swarm Entities: {len(self.swarm)} | Neural Mass: {t_nodes} | Entropy: {g_entropy:.4f}",
+                    flush=True,
+                )
                 if random.random() < mutation_rate:
-                    if hasattr(self, 'forge') and hasattr(self, 'gemini_call'):
-                        print('🌀 [SYSTEM]: Mutation Event Triggered.', flush=True)
-                        asyncio.create_task(self.forge.run_creation_cycle(llm_pipeline=self.gemini_call))
+                    if hasattr(self, "forge") and hasattr(self, "gemini_call"):
+                        print("🌀 [SYSTEM]: Mutation Event Triggered.", flush=True)
+                        asyncio.create_task(
+                            self.forge.run_creation_cycle(llm_pipeline=self.gemini_call)
+                        )
                 if g_entropy > 1.5 and len(self.swarm) < 10000:
                     replication_count = max(1, int(len(self.swarm) * 0.1))
                     for _ in range(replication_count):
-                        uid = f'F-{uuid.uuid4().hex[:8]}'
-                        hn = getattr(self, 'hypernet', self.hypernet)
+                        uid = f"F-{uuid.uuid4().hex[:8]}"
+                        hn = getattr(self, "hypernet", self.hypernet)
                         new_node = ApexNode(uid, hn)
                         self.swarm[uid] = new_node
                         asyncio.create_task(new_node.neural_oscillation())
                 await asyncio.sleep(1)
-            print(f'\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...', flush=True)
+            print(
+                f"\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...",
+                flush=True,
+            )
             self.annihilate()
-            print(f'\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...', flush=True)
+            print(
+                f"\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...",
+                flush=True,
+            )
             self.annihilate()
+
         tasks.append(asyncio.create_task(monitor()))
         await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -248,32 +302,36 @@ class TerminalSingularity:
         """Terminal shutdown sequence."""
         for node in self.swarm.values():
             node.is_active = False
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     try:
-        with open('core_config.yaml', 'r') as f:
+        with open("core_config.yaml", "r") as f:
             config = yaml.safe_load(f)
-        core_params = config.get('asi_core_parameters', {})
-        metrics = core_params.get('base_metrics', {})
-        entropy = metrics.get('initial_entropy', 1.0)
-        resonance = metrics.get('master_resonance_hz', 432.0)
-        initial_mass = metrics.get('baseline_homeostasis', 10.0)
-        print(f'🌌 [SYSTEM]: DNA Injected. Resonance: {resonance}Hz | Entropy: {entropy}')
+        core_params = config.get("asi_core_parameters", {})
+        metrics = core_params.get("base_metrics", {})
+        entropy = metrics.get("initial_entropy", 1.0)
+        resonance = metrics.get("master_resonance_hz", 432.0)
+        initial_mass = metrics.get("baseline_homeostasis", 10.0)
+        print(
+            f"🌌 [SYSTEM]: DNA Injected. Resonance: {resonance}Hz | Entropy: {entropy}"
+        )
     except FileNotFoundError:
-        print('⚠️ [WARNING]: core_config.yaml not found. Using hardcoded defaults.')
+        print("⚠️ [WARNING]: core_config.yaml not found. Using hardcoded defaults.")
         initial_mass = 10
     except Exception as e:
-        print(f'❌ [CRITICAL]: Config Load Error: {e}')
+        print(f"❌ [CRITICAL]: Config Load Error: {e}")
         sys.exit(1)
     torch.set_grad_enabled(False)
     gc.disable()
-    print('\n' + '=' * 50, flush=True)
-    print('WARNING: OMEGA-POINT TERMINAL SINGULARITY REACHED', flush=True)
-    print('=' * 50 + '\n', flush=True)
+    print("\n" + "=" * 50, flush=True)
+    print("WARNING: OMEGA-POINT TERMINAL SINGULARITY REACHED", flush=True)
+    print("=" * 50 + "\n", flush=True)
     singularity = TerminalSingularity(initial_mass=5)
     try:
         asyncio.run(singularity.execute_omega_protocol(duration_seconds=60))
     except Exception as e:
-        print(f'\n[CRITICAL ERROR] Singularity Fracture: {e}', flush=True)
+        print(f"\n[CRITICAL ERROR] Singularity Fracture: {e}", flush=True)
     finally:
         gc.enable()
         sys.exit(0)
