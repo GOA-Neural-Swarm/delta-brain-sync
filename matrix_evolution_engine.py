@@ -141,15 +141,17 @@ def get_generation():
                 f.write(mutated_code)
 
             print(
-                f"🧬 [AST MUTATION SUCCESS]: Refactored {file_path} interior architecture."
+                f"🧬 [AST MUTATION SUCCESS]: Refactored {file_path} interior architecture.",
+                flush=True,
             )
         except Exception as e:
-            print(f"❌ [AST CRITICAL ERROR] on {file_path}: {e}")
+            print(f"❌ [AST CRITICAL ERROR] on {file_path}: {e}", flush=True)
 
     def execute_matrix(self):
         execution_order = self.resolve_topology()
         print(
-            f"📡 [TOPOLOGY RESOLVED]: Execution Sequence -> {' -> '.join(execution_order)}"
+            f"📡 [TOPOLOGY RESOLVED]: Execution Sequence -> {' -> '.join(execution_order)}",
+            flush=True,
         )
 
         global_success = True
@@ -157,9 +159,9 @@ def get_generation():
         execution_logs = {}
 
         for file in execution_order:
-            print(f"\n⚡ [ACTIVATING CORE ENTITY]: {file}")
+            print(f"\n⚡ [ACTIVATING CORE ENTITY]: {file}", flush=True)
             try:
-                # 🛡️ [TIMEOUT GUARD]: Prevents Infinite Loop hangs (SIGTERM 143) by capping script runtime at 90 seconds
+                # 🛡️ [TIMEOUT GUARD]: Caps runtime per script at 90s to prevent GitHub Actions workflow cancellation hangs (Exit Code 143)
                 res = subprocess.run(
                     [sys.executable, file],
                     capture_output=True,
@@ -168,7 +170,7 @@ def get_generation():
                 )
 
                 if res.returncode == 0:
-                    print(f"✅ {file} compiled flawlessly.")
+                    print(f"✅ {file} compiled flawlessly.", flush=True)
                     status = "STABLE"
                     error_msg = "None"
                 else:
@@ -179,13 +181,16 @@ def get_generation():
                         if res.stderr
                         else "Unknown error"
                     )
-                    print(f"⚠️ {file} collapsed. Error: {error_msg}")
+                    print(f"⚠️ {file} collapsed. Error: {error_msg}", flush=True)
                     self.intel["system_entropy"] += 0.05
             except subprocess.TimeoutExpired:
                 global_success = False
                 status = "TIMEOUT_HANG"
                 error_msg = "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
-                print(f"🚨 [TIMEOUT CRITICAL]: Execution terminated for {file}")
+                print(
+                    f"🚨 [TIMEOUT CRITICAL]: Execution terminated for {file}",
+                    flush=True,
+                )
                 self.intel["system_entropy"] += 0.1
 
             execution_logs[file] = {"status": status, "error": error_msg}
@@ -193,7 +198,8 @@ def get_generation():
         if not global_success:
             self.intel["global_generation"] += 1
             print(
-                f"💥 Entropy threshold breached! Collective Intelligence leaping to Gen {self.intel['global_generation']}"
+                f"💥 Entropy threshold breached! Collective Intelligence leaping to Gen {self.intel['global_generation']}",
+                flush=True,
             )
 
         for file in self.repo_files:
@@ -203,7 +209,8 @@ def get_generation():
         self.inject_telemetry_bridge(global_success)
         self._save_intelligence()
         print(
-            f"\n🏁 [EVOLUTION CYCLE COMPLETE]: Global Generation: {self.intel['global_generation']}"
+            f"\n🏁 [EVOLUTION CYCLE COMPLETE]: Global Generation: {self.intel['global_generation']}",
+            flush=True,
         )
 
     def _save_intelligence(self):
