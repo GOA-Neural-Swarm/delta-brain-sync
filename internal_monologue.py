@@ -1,5 +1,5 @@
-import telemetry_bridge
 import numpy as np
+import telemetry_bridge
 
 
 class HyperDimensionalLogic:
@@ -68,8 +68,8 @@ class EvolutionarySystem:
 
     def calculate_additive_evolution(self):
         result = self.hyper_dimensional_logic.calculate_additive_evolution()
-        self.history["additive_evolution"].append(result)
-        return result
+        self.history["additive_evolution"].append(result.tolist())
+        return result.tolist()
 
     def print_history(self):
         print("Utilitarian Values History:")
@@ -103,6 +103,9 @@ def main():
         print(f"Iteration {i + 1} - Additive Evolution: {additive_evolution}")
         utilitarian_values = [x + 1 for x in utilitarian_values]
         existential_values = [x - 1 for x in existential_values]
+        stoic_values = [x + 0.5 for x in stoic_values]
+        evolutionary_values = [x + 1 for x in evolutionary_values]
+
     evolutionary_system.print_history()
 
 
