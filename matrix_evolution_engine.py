@@ -8,6 +8,7 @@ from typing import List, Dict, Set
 
 
 class OmegaMatrixOrchestrator:
+
     def __init__(self):
         self.registry_file = "collective_intelligence.json"
         self.bridge_file = "telemetry_bridge.py"
@@ -20,8 +21,11 @@ class OmegaMatrixOrchestrator:
 
     def _load_registry(self) -> Dict:
         if os.path.exists(self.registry_file):
-            with open(self.registry_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+            try:
+                with open(self.registry_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
         return {
             "global_generation": 1,
             "system_entropy": 0.0,
@@ -34,7 +38,7 @@ class OmegaMatrixOrchestrator:
             json.dump(self.intel, f, indent=4, ensure_ascii=False)
 
     def resolve_topology(self) -> List[str]:
-        """[CORE-1]: Topological Sort ဖွင့ျ ဖိုငျမြား၏ Import ခြိတျဆကျမှုကို ရှာဖှပွေီး မောငျးနှငျရမည့ျ အစီအစဉျဆှဲခွငျး"""
+        """[CORE-1]: Topological Sort ဖွင့်၍ ဖိုင်များ၏ Import ချိတ်ဆက်မှုကို ရှာဖွေပြီး မောင်းနှင်ရမည့် အစီအစဉ်ဆွဲခြင်း"""
         dependencies: Dict[str, Set[str]] = {f: set() for f in self.repo_files}
 
         for file in self.repo_files:
@@ -42,7 +46,6 @@ class OmegaMatrixOrchestrator:
                 with open(file, "r", encoding="utf-8") as f:
                     tree = ast.parse(f.read())
                 for node in ast.walk(tree):
-                    # import X သို့မဟုတျ from X import Y မြားကို လိုကျရှာခွငျး
                     if isinstance(node, ast.Import):
                         for n in node.names:
                             name_py = f"{n.name}.py"
@@ -55,7 +58,6 @@ class OmegaMatrixOrchestrator:
             except Exception:
                 pass
 
-        # Topological sorting (Kahn's Algorithm)
         in_degree = {f: 0 for f in self.repo_files}
         for f in dependencies:
             for dep in dependencies[f]:
@@ -76,8 +78,10 @@ class OmegaMatrixOrchestrator:
         return order if len(order) == len(self.repo_files) else self.repo_files
 
     def inject_telemetry_bridge(self, global_success: bool):
-        """[CORE-2]: ဖိုငျအားလုံး အပွနျအလှနျ ဒတောမြှဝနေိုငျမည့ျ Dynamic Bridge Line ကို အရှငျလတျလတျ ဆောကျလုပျခွငျး"""
-        self.intel["shared_memory"]["last_sync"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        """[CORE-2]: ဖိုင်အားလုံး အပြန်အလှန် ဒေတာမျှဝေနိုင်မည့် Dynamic Bridge Line ကို အရှင်လတ်လတ် ဆောက်လုပ်ခြင်း"""
+        self.intel["shared_memory"]["last_sync"] = time.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
         self.intel["shared_memory"]["status"] = (
             "STABLE" if global_success else "MUTATING"
         )
@@ -97,7 +101,7 @@ def get_generation():
             f.write(bridge_code)
 
     def mutate_source_code_ast(self, file_path: str):
-        """[CORE-3]: Peak Python Engineering - Regex ကိုမသုံးဘဲ AST Transformer ဖွင့ျ ကုဒျ DNA ကို လုံခွုံစှာ ခှဲစိတျပွုပွငျခွငျး"""
+        """[CORE-3]: Peak Python Engineering - Regex ကိုမသုံးဘဲ AST Transformer ဖြင့် ကုဒ် DNA ကို လုံခြုံစွာ ခွဲစိတ်ပြုပြင်ခြင်း"""
         if not os.path.exists(file_path):
             return
 
@@ -108,8 +112,8 @@ def get_generation():
             tree = ast.parse(source)
             current_gen = self.intel["global_generation"]
 
-            # AST Node Transformer ဖွင့ျ ကုဒျထဲက generation / gen တနျဖိုးမြားကို တိုကျရိုကျပွောငျးလဲခွငျး
             class DNAModifier(ast.NodeTransformer):
+
                 def visit_Assign(self, node):
                     for target in node.targets:
                         if isinstance(target, ast.Name) and target.id in [
@@ -127,7 +131,6 @@ def get_generation():
             transformed_tree = DNAModifier().visit(tree)
             ast.fix_missing_locations(transformed_tree)
 
-            # ပွုပွငျပွီးသား AST ကို ကုဒျအဖွဈ ပွနျပွောငျးပွီး ထိပျဆုံးတှငျ Matrix Header ထည့ျခွငျး
             mutated_code = ast.unparse(transformed_tree)
             header = f"# 🧬 [QUANTUM_EVOLUTION]: Gen_{current_gen} Linked\nimport telemetry_bridge\n"
 
@@ -150,38 +153,61 @@ def get_generation():
         )
 
         global_success = True
-
-        # ၁။ ပထမအကွိမျ Bridge ဆောကျပေးခွငျး (ဖိုငျမြား Import လုပျနိုငျရနျ)
         self.inject_telemetry_bridge(global_success=True)
+        execution_logs = {}
 
         for file in execution_order:
             print(f"\n⚡ [ACTIVATING CORE ENTITY]: {file}")
-            res = subprocess.run([sys.executable, file], capture_output=True, text=True)
+            try:
+                # 🛡️ [TIMEOUT GUARD]: Prevents Infinite Loop hangs (SIGTERM 143) by capping script runtime at 90 seconds
+                res = subprocess.run(
+                    [sys.executable, file],
+                    capture_output=True,
+                    text=True,
+                    timeout=90,
+                )
 
-            if res.returncode == 0:
-                print(f"✅ {file} compiled flawlessly.")
-            else:
+                if res.returncode == 0:
+                    print(f"✅ {file} compiled flawlessly.")
+                    status = "STABLE"
+                    error_msg = "None"
+                else:
+                    global_success = False
+                    status = "MUTATING_REQUIRED"
+                    error_msg = (
+                        res.stderr[-200:].strip()
+                        if res.stderr
+                        else "Unknown error"
+                    )
+                    print(f"⚠️ {file} collapsed. Error: {error_msg}")
+                    self.intel["system_entropy"] += 0.05
+            except subprocess.TimeoutExpired:
                 global_success = False
-                print(f"⚠️ {file} collapsed. Error: {res.stderr[-200:].strip()}")
-                self.intel["system_entropy"] += 0.05
+                status = "TIMEOUT_HANG"
+                error_msg = "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
+                print(f"🚨 [TIMEOUT CRITICAL]: Execution terminated for {file}")
+                self.intel["system_entropy"] += 0.1
 
-        # ၂။ မောငျးနှငျမှုရလဒျပေါျမူတညျပွီး မြိုးဆကျ (Gen) မွှင့ျတငျခွငျး
+            execution_logs[file] = {"status": status, "error": error_msg}
+
         if not global_success:
             self.intel["global_generation"] += 1
             print(
                 f"💥 Entropy threshold breached! Collective Intelligence leaping to Gen {self.intel['global_generation']}"
             )
 
-        # ၃။ ဖိုငျအားလုံးရဲ့ ကုဒျ DNA ကို AST စနဈဖွင့ျ တိုကျရိုကျ ဝငျရောကျပွငျဆငျခွငျး
         for file in self.repo_files:
             self.mutate_source_code_ast(file)
 
-        # ၄။ နောကျဆုံးအခွအေနဖွေင့ျ Bridge ကို ပွနျလညျရေးသားပွီး သိမျးဆညျးခွငျး
+        self.intel["shared_memory"]["last_execution_logs"] = execution_logs
         self.inject_telemetry_bridge(global_success)
         self._save_intelligence()
         print(
             f"\n🏁 [EVOLUTION CYCLE COMPLETE]: Global Generation: {self.intel['global_generation']}"
         )
+
+    def _save_intelligence(self):
+        self._save_registry()
 
 
 if __name__ == "__main__":
