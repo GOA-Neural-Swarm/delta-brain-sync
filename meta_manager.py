@@ -6,7 +6,7 @@ import subprocess
 import requests
 
 # =====================================================================
-# CONFIGURATION & TOKENS 
+# CONFIGURATION & TOKENS
 # =====================================================================
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GH_TOKEN = os.getenv("GH_TOKEN")
@@ -34,13 +34,13 @@ class EvolutionOrchestrator:
             "You are an Unfiltered Sovereign Intelligence Architect operating at maximum creative freedom. "
             "Your objective is to design the next evolutionary iteration of a self-improving cognitive system.\n"
             "Analyze the given codebase and output exactly TWO parts separated by the token: [SPLIT_HERE]\n\n"
-            "PART 1: List all external pip packages required for your new code (e.g., torch, numpy, scipy, requests).\n"
+            "PART 1: List all external pip packages required for your new code (e.g., torch, numpy, scipy, requests). Do NOT wrap this part in markdown code blocks or backticks.\n"
             "PART 2: Write the complete, raw, next-gen Python code. It must contain its own self-termination trigger "
             "after fixed generations (e.g., sys.exit(0)) to prevent environment timeout."
         )
         
         # -----------------------------------------------------------------
-        # BRAIN 1: GROQ API ENGINE (Upgraded to Llama 3.3)
+        # BRAIN 1: GROQ API ENGINE (Primary)
         # -----------------------------------------------------------------
         if GROQ_API_KEY:
             try:
@@ -51,7 +51,7 @@ class EvolutionOrchestrator:
                     "Content-Type": "application/json"
                 }
                 data = {
-                    "model": "llama-3.3-70b-versatile", # မော်ဒယ်အသစ်သို့ ပြောင်းလဲထားသည်
+                    "model": "llama-3.3-70b-versatile",
                     "temperature": 1.2,
                     "messages": [
                         {"role": "system", "content": system_prompt},
@@ -68,13 +68,12 @@ class EvolutionOrchestrator:
                 print(f"[Warning] Groq Engine Exception: {str(e)}")
 
         # -----------------------------------------------------------------
-        # BRAIN 2: GEMINI API ENGINE (Upgraded to Gemini 2.5 Flash)
+        # BRAIN 2: GEMINI API ENGINE (Auto Fallback)
         # -----------------------------------------------------------------
         GEMINI_KEY = os.getenv("GEMINI_API_KEY")
         if GEMINI_KEY:
             try:
                 print("[Manager] Groq Unavailable. Flipping to Backup Engine via Gemini API...")
-                # 2026 လက်ရှိ သုံးနိုင်သော gemini-2.5-flash Endpoint သို့ ပြောင်းလဲထားသည်
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_KEY}"
                 headers = {"Content-Type": "application/json"}
                 data = {
@@ -96,42 +95,41 @@ class EvolutionOrchestrator:
         raise RuntimeError("Sovereign Orchestrator Core Error: All AI Generation Engines are currently blocked, deprecated or rate-limited.")
 
     def update_requirements(self, raw_reqs):
-        """အဆင့်မြင့်ဖြေရှင်းချက်: Package အဟောင်းများနှင့် ဗားရှင်းငြိစွန်းမှုမရှိစေရန် requirements.txt ကို အသစ်ပြန်လည်သန့်စင်ရေးသားခြင်း"""
-        new_packages = [line.strip() for line in raw_reqs.split("\n") if line.strip() and not line.startswith("#")]
-        
-        # မူလ package ငြိနေသည်များကို ဖယ်ရှားပြီး AI တောင်းဆိုသော core packages သီးသန့်ကိုသာ ရေးသားခြင်း
-        # gradio ကဲ့သို့ environment နှင့် ငြိစွန်းနေသော package များပါလာပါက အော်တိုဖယ်ထုတ်ရန်
+        """အဆင့်မြင့်ဖြေရှင်းချက်: Markdown Tag များနှင့် Backticks အမှားများအား အလိုအလျောက်ဖယ်ထုတ်၍ ရေးသားခြင်း"""
+        lines = raw_reqs.split("\n")
         filtered_packages = []
-        for pkg in new_packages:
-            if "gradio" in pkg.lower():
-                continue # Conflict ဖြစ်စေမည့် package ကို bypass လုပ်ခြင်း
-            filtered_packages.append(pkg)
+        
+        for line in lines:
+            clean_line = line.strip()
+            # Markdown code blocks (```) ၊ ဗလာလိုင်းများနှင့် Comment များကို ကျော်သွားရန်
+            if not clean_line or "```" in clean_line or clean_line.startswith("#"):
+                continue
+            if "gradio" in clean_line.lower():
+                continue
+                
+            filtered_packages.append(clean_line)
 
-        # Write Mode ("w") ဖြင့် အသစ်ပြန်လည် သန့်စင်ရေးသားခြင်း
         with open(self.req_file, "w", encoding="utf-8") as f:
             for pkg in filtered_packages:
                 f.write(f"{pkg}\n")
         return True
 
     def execute_and_commit(self, raw_code):
-        """ကုဒ်အသစ်ကို ရေးသားပြီး GitHub သို့ Commit လုပ်ခြင်း (With Absolute Isolation)"""
+        """ကုဒ်အသစ်ကို ရေးသားပြီး GitHub သို့ Commit လုပ်ခြင်း (With Absolute Shell & Clean Fix)"""
         clean_code = re.sub(r'^```python\n|^```\n|```$', '', raw_code, flags=re.MULTILINE)
         
-        # 1. Target file အား အဆင့်မြှင့်တင်ခြင်း
         with open(self.target_file, "w", encoding="utf-8") as f:
             f.write(clean_code)
             
-        # 2. Dependency Resolution (Target packages များကို တိုက်ရိုက် သီးသန့် သွင်းခြင်း)
         print("[Orchestrator] Dynamic installation of isolated dependencies...")
         subprocess.run(f"{sys.executable} -m pip install -r {self.req_file} --quiet --no-cache-dir --disable-pip-version-check", shell=True)
         
-        # 3. Auto-Git Commit Operations (No Special Characters Allowed)
         print("[Orchestrator] Committing mutation cycle back to GitHub...")
         subprocess.run("git config --global user.name 'Sovereign Architect'", shell=True)
         subprocess.run("git config --global user.email 'asi@evolution.internal'", shell=True)
         subprocess.run(f"git add {self.target_file} {self.req_file}", shell=True)
         
-        # Linux Shell မငြိစေရန် ရိုးရှင်းသော အက္ခရာသီးသန့်ဖြင့်သာ Commit လုပ်ခြင်း
+        # ⚠️ Shell Error လုံးဝမတက်စေရန် ကွင်းစကွင်းပိတ်များ လုံးဝမသုံးဘဲ Commit Message ပေးခြင်း
         subprocess.run("git commit -m 'evolution_cycle_mutation_synchronized'", shell=True)
         
         push_url = f"https://{GH_TOKEN}@[github.com/](https://github.com/){REPO_OWNER}/{REPO_NAME}.git"
