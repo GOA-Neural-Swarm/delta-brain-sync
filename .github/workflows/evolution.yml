@@ -1,12 +1,17 @@
 name: OMEGA MATRIX AUTOMATED EVOLUTION PIPELINE
 
 on:
-  # 1. Repo ထဲကို ကုဒ် Commit ဝင်လာတိုင်း အော်တို ပတ်ခိုင်းမယ်
-  push:
-    branches:
-      - main
-  # 2. ကိုယ်တိုင် manual နှိပ်ပြီး Run ချင်ရင်လည်း ရအောင် လုပ်ထားမယ်
+  # ၁ နာရီခြား တစ်ခါ အလိုအလျောက် ပတ် Run မည့် စနစ် (Cron Job)
+  schedule:
+    - cron: '0 * * * *'
+    
+  # ကိုယ်တိုင် manual နှိပ်ပြီး စမ်းချင်ရင်လည်း ရအောင် လုပ်ထားမယ်
   workflow_dispatch:
+
+  # ⚠️ မန်နေဂျာက အော်တို Commit ပြန်တွန်းတဲ့အခါ ပိုက်လိုင်းတွေ ထပ်ခါတလဲလဲ Run ပြီး ထပ်မသွားအောင် push ကို ခဏပိတ်ထားပါသည်
+  # push:
+  #   branches:
+  #     - main
 
 jobs:
   evolve_generation:
