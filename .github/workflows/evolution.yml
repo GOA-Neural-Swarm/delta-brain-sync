@@ -1,0 +1,46 @@
+name: OMEGA MATRIX AUTOMATED EVOLUTION PIPELINE
+
+on:
+  # 1. Repo ထဲကို ကုဒ် Commit ဝင်လာတိုင်း အော်တို ပတ်ခိုင်းမယ်
+  push:
+    branches:
+      - main
+  # 2. ကိုယ်တိုင် manual နှိပ်ပြီး Run ချင်ရင်လည်း ရအောင် လုပ်ထားမယ်
+  workflow_dispatch:
+
+jobs:
+  evolve_generation:
+    runs-on: ubuntu-latest
+
+    steps:
+      # အဆင့် ၁: GitHub Repository ထဲက ကုဒ်တွေကို ဒေါင်းလုဒ်ဆွဲယူခြင်း
+      - name: Checkout Repository Context
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Commit ရာဇဝင်အားလုံးကို သန့်သန့်ရှင်းရှင်း ဖတ်နိုင်အောင်
+
+      # အဆင့် ၂: Python Environment ကို အဆင်သင့်ဖြစ်အောင် အောက်ခြေကနေ ပြင်ဆင်ခြင်း
+      - name: Setup Pure Python Runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip' # Package အဟောင်းတွေကို အမြန်ပြန်သုံးနိုင်အောင်
+
+      # အဆင့် ၃: အခြေခံ လိုအပ်ချက်များကို အရင် Install လုပ်ခြင်း
+      - name: Initialize Core Requirements
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt || echo "Ignoring bootstrap errors, manager will self-heal dependencies."
+          fi
+          python -m pip install requests # Manager အလုပ်လုပ်ဖို့အတွက် မဖြစ်မနေလိုအပ်သော package
+
+      # အဆင့် ၄: စီမံခန့်ခွဲသူ (Manager) ကုဒ်ကို အမိန့်ပေး အလုပ်စခိုင်းခြင်း
+      # ဤနေရာတွင် မင်းရဲ့ GROQ/GEMINI API Key နှင့် GitHub Token (Secret) များကို အလိုအလျောက် ချိတ်ဆက်ပေးမည်
+      - name: Execute Meta-Management & Self-Evolution
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          python meta_manager.py
