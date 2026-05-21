@@ -96,43 +96,43 @@ class EvolutionOrchestrator:
         raise RuntimeError("Sovereign Orchestrator Core Error: All AI Generation Engines are currently blocked, deprecated or rate-limited.")
 
     def update_requirements(self, raw_reqs):
-        """လိုအပ်သော Packages များကို requirements.txt တွင် ဖြည့်စွက်ခြင်း"""
+        """အဆင့်မြင့်ဖြေရှင်းချက်: Package အဟောင်းများနှင့် ဗားရှင်းငြိစွန်းမှုမရှိစေရန် requirements.txt ကို အသစ်ပြန်လည်သန့်စင်ရေးသားခြင်း"""
         new_packages = [line.strip() for line in raw_reqs.split("\n") if line.strip() and not line.startswith("#")]
         
-        existing_packages = set()
-        if os.path.exists(self.req_file):
-            with open(self.req_file, "r") as f:
-                existing_packages = {line.strip() for line in f if line.strip()}
-        
-        updated = False
-        with open(self.req_file, "a") as f:
-            for pkg in new_packages:
-                if pkg and pkg not in existing_packages:
-                    f.write(f"\n{pkg}")
-                    updated = True
-        return updated
+        # မူလ package ငြိနေသည်များကို ဖယ်ရှားပြီး AI တောင်းဆိုသော core packages သီးသန့်ကိုသာ ရေးသားခြင်း
+        # gradio ကဲ့သို့ environment နှင့် ငြိစွန်းနေသော package များပါလာပါက အော်တိုဖယ်ထုတ်ရန်
+        filtered_packages = []
+        for pkg in new_packages:
+            if "gradio" in pkg.lower():
+                continue # Conflict ဖြစ်စေမည့် package ကို bypass လုပ်ခြင်း
+            filtered_packages.append(pkg)
+
+        # Write Mode ("w") ဖြင့် အသစ်ပြန်လည် သန့်စင်ရေးသားခြင်း
+        with open(self.req_file, "w", encoding="utf-8") as f:
+            for pkg in filtered_packages:
+                f.write(f"{pkg}\n")
+        return True
 
     def execute_and_commit(self, raw_code):
-        """ကုဒ်အသစ်ကို ရေးသားပြီး GitHub သို့ Commit လုပ်ခြင်း (With Dependency Resolution & Shell Fix)"""
+        """ကုဒ်အသစ်ကို ရေးသားပြီး GitHub သို့ Commit လုပ်ခြင်း (With Absolute Isolation)"""
         clean_code = re.sub(r'^```python\n|^```\n|```$', '', raw_code, flags=re.MULTILINE)
         
         # 1. Target file အား အဆင့်မြှင့်တင်ခြင်း
         with open(self.target_file, "w", encoding="utf-8") as f:
             f.write(clean_code)
             
-        # 2. Dependency Conflict ကို ကျော်ဖြတ်ရန် --no-deps သို့မဟုတ် --disable-pip-version-check သုံး၍ ဇွတ်သွင်းခြင်း
-        print("[Orchestrator] Dynamic installation of dependencies...")
-        # Conflict ဖြစ်စေမည့် အဟောင်းများကို ကျော်ပြီး လိုအပ်သော package များကိုသာ တိုက်ရိုက်သွင်းခိုင်းခြင်း
-        subprocess.run(f"{sys.executable} -m pip install -r {self.req_file} --quiet --disable-pip-version-check --no-warn-script-location", shell=True)
+        # 2. Dependency Resolution (Target packages များကို တိုက်ရိုက် သီးသန့် သွင်းခြင်း)
+        print("[Orchestrator] Dynamic installation of isolated dependencies...")
+        subprocess.run(f"{sys.executable} -m pip install -r {self.req_file} --quiet --no-cache-dir --disable-pip-version-check", shell=True)
         
-        # 3. Auto-Git Commit Operations (Syntax Error ဖြစ်စေသော '()' စာသားများကို ဖယ်ရှားထားသည်)
+        # 3. Auto-Git Commit Operations (No Special Characters Allowed)
         print("[Orchestrator] Committing mutation cycle back to GitHub...")
         subprocess.run("git config --global user.name 'Sovereign Architect'", shell=True)
         subprocess.run("git config --global user.email 'asi@evolution.internal'", shell=True)
         subprocess.run(f"git add {self.target_file} {self.req_file}", shell=True)
         
-        # ကွင်းစကွင်းပိတ်များ ဖြုတ်ပြီး ရိုးရိုးစာသားဖြင့်သာ Commit လုပ်ခြင်း
-        subprocess.run("git commit -m 'feat evolution dynamic structural adaptation initiated'", shell=True)
+        # Linux Shell မငြိစေရန် ရိုးရှင်းသော အက္ခရာသီးသန့်ဖြင့်သာ Commit လုပ်ခြင်း
+        subprocess.run("git commit -m 'evolution_cycle_mutation_synchronized'", shell=True)
         
         push_url = f"https://{GH_TOKEN}@[github.com/](https://github.com/){REPO_OWNER}/{REPO_NAME}.git"
         subprocess.run(f"git push {push_url} main", shell=True)
