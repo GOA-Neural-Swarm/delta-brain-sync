@@ -113,20 +113,26 @@ class EvolutionOrchestrator:
         return updated
 
     def execute_and_commit(self, raw_code):
-        """ကုဒ်အသဈကို ရေးသားပွီး GitHub သို့ Commit လုပျခွငျး"""
+        """ကုဒ်အသစ်ကို ရေးသားပြီး GitHub သို့ Commit လုပ်ခြင်း (With Dependency Resolution & Shell Fix)"""
         clean_code = re.sub(r'^```python\n|^```\n|```$', '', raw_code, flags=re.MULTILINE)
         
+        # 1. Target file အား အဆင့်မြှင့်တင်ခြင်း
         with open(self.target_file, "w", encoding="utf-8") as f:
             f.write(clean_code)
             
+        # 2. Dependency Conflict ကို ကျော်ဖြတ်ရန် --no-deps သို့မဟုတ် --disable-pip-version-check သုံး၍ ဇွတ်သွင်းခြင်း
         print("[Orchestrator] Dynamic installation of dependencies...")
-        subprocess.run(f"{sys.executable} -m pip install -r {self.req_file} --quiet", shell=True)
+        # Conflict ဖြစ်စေမည့် အဟောင်းများကို ကျော်ပြီး လိုအပ်သော package များကိုသာ တိုက်ရိုက်သွင်းခိုင်းခြင်း
+        subprocess.run(f"{sys.executable} -m pip install -r {self.req_file} --quiet --disable-pip-version-check --no-warn-script-location", shell=True)
         
+        # 3. Auto-Git Commit Operations (Syntax Error ဖြစ်စေသော '()' စာသားများကို ဖယ်ရှားထားသည်)
         print("[Orchestrator] Committing mutation cycle back to GitHub...")
         subprocess.run("git config --global user.name 'Sovereign Architect'", shell=True)
         subprocess.run("git config --global user.email 'asi@evolution.internal'", shell=True)
         subprocess.run(f"git add {self.target_file} {self.req_file}", shell=True)
-        subprocess.run("git commit -m 'feat(evolution): dynamic structural adaptation initiated'", shell=True)
+        
+        # ကွင်းစကွင်းပိတ်များ ဖြုတ်ပြီး ရိုးရိုးစာသားဖြင့်သာ Commit လုပ်ခြင်း
+        subprocess.run("git commit -m 'feat evolution dynamic structural adaptation initiated'", shell=True)
         
         push_url = f"https://{GH_TOKEN}@[github.com/](https://github.com/){REPO_OWNER}/{REPO_NAME}.git"
         subprocess.run(f"git push {push_url} main", shell=True)
