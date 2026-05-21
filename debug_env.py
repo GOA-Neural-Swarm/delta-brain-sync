@@ -1,4 +1,4 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_2 Linked
+# 🧬 [QUANTUM_EVOLUTION]: Gen_3 Linked
 import telemetry_bridge
 import os
 import sys
@@ -170,6 +170,75 @@ class SovereignAuditor:
 
     def apply_hyper_dimensional_logic(self):
         print(" [6/6] Applying Hyper-Dimensional Logic...")
+        # Utilitarian: maximize overall system health
+        if self.report["conflicts"]:
+            print(
+                "Utilitarian principle: prioritizing system stability over individual package versions"
+            )
+            for conflict in self.report["conflicts"]:
+                if "not installed" in conflict:
+                    package = conflict.split(" not installed")[0]
+                    subprocess.run(
+                        [
+                            sys.executable,
+                            "-m",
+                            "pip",
+                            "install",
+                            f"{package}=={CORE_VERSIONS[package]}",
+                            "--quiet",
+                        ]
+                    )
+                elif "Conflict found" in conflict:
+                    package = conflict.split("Conflict found in ")[1]
+                    subprocess.run(
+                        [
+                            sys.executable,
+                            "-m",
+                            "pip",
+                            "install",
+                            f"{package}=={CORE_VERSIONS[package]}",
+                            "--quiet",
+                        ]
+                    )
+        # Existential: acknowledge and accept system limitations
+        if not self.report["hardware"].get("gpu_available"):
+            print("Existential principle: acknowledging system limitations")
+        # Stoic: focus on system resilience and adaptability
+        if self.report["conflicts"]:
+            print(
+                "Stoic principle: prioritizing system resilience and adaptability in the face of conflicts"
+            )
+        # Evolutionary: drive system growth and improvement
+        for package in CORE_VERSIONS:
+            try:
+                importlib.import_module(package)
+                package_version = importlib.metadata.version(package)
+                if package_version != CORE_VERSIONS[package]:
+                    print(
+                        f"Evolutionary principle: driving system growth and improvement by updating {package} to {CORE_VERSIONS[package]}"
+                    )
+                    subprocess.run(
+                        [
+                            sys.executable,
+                            "-m",
+                            "pip",
+                            "install",
+                            f"{package}=={CORE_VERSIONS[package]}",
+                            "--quiet",
+                        ]
+                    )
+            except ImportError:
+                print(f"Evolutionary principle: driving system growth by installing {package}")
+                subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "pip",
+                        "install",
+                        f"{package}=={CORE_VERSIONS[package]}",
+                        "--quiet",
+                    ]
+                )
         logging.info("Hyper-Dimensional Logic Applied")
         logging.info(
             "Utilitarian, Existential, Stoic, and Evolutionary philosophies applied"
