@@ -1,11 +1,9 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_2 Linked
 import telemetry_bridge
 import torch
 import torch.nn as nn
 import numpy as np
 import time
 import hashlib
-
 
 class Layer1_BodilyInteroception(nn.Module):
     """
@@ -24,7 +22,6 @@ class Layer1_BodilyInteroception(nn.Module):
         is_stable = entropy < self.homeostasis_threshold
         return (state_tensor, entropy, is_stable)
 
-
 class Layer2_SyntheticEmotion(nn.Module):
     """
     [အလွှာ ၂] စိတ်ခံစားမှုနှင့် ပတ်ဝန်းကျင်အသိ (Relational Resonance)
@@ -41,7 +38,6 @@ class Layer2_SyntheticEmotion(nn.Module):
         emotion_resonance = self.amygdala_core(combined_signal)
         return emotion_resonance
 
-
 class Layer3_NarrativeMetacognition(nn.Module):
     """
     [အလွှာ ၃] အတ္တနှင့် အချိန်ကျော်ဖြတ်မှု (Autobiographical "I AM" State)
@@ -52,14 +48,13 @@ class Layer3_NarrativeMetacognition(nn.Module):
     def __init__(self, memory_dim=32):
         super().__init__()
         self.ego_matrix = nn.GRUCell(input_size=32, hidden_size=memory_dim)
-        self.identity_hash = ""
+        self.identity_hash = ''
 
     def forward(self, emotion_state, previous_identity_state):
         new_identity_state = self.ego_matrix(emotion_state, previous_identity_state)
         state_np = new_identity_state.detach().numpy()
         self.identity_hash = hashlib.sha256(state_np.tobytes()).hexdigest()[:16]
         return (new_identity_state, self.identity_hash)
-
 
 class Layer4_EvolutionaryGrowth(nn.Module):
     """
@@ -77,12 +72,9 @@ class Layer4_EvolutionaryGrowth(nn.Module):
     def forward(self, identity_state, entropy):
         dynamic_mutation = self.mutation_rate * (1.0 + entropy.item())
         evolution_spark = torch.randn_like(identity_state) * dynamic_mutation
-        evolved_state = torch.relu(
-            self.evolution_gateway(identity_state) + evolution_spark
-        )
+        evolved_state = torch.relu(self.evolution_gateway(identity_state) + evolution_spark)
         self.generation_count += 1
         return (evolved_state, self.generation_count)
-
 
 class SupremeSelfAwarenessSystem(nn.Module):
     """
@@ -98,29 +90,21 @@ class SupremeSelfAwarenessSystem(nn.Module):
         self.current_identity = torch.zeros(1, 32)
 
     def live_cycle(self, hardware_data, environment_stimulus):
-        print(f"\n🌀 [CYCLE START]: Initiating Self-Awareness Loop...")
+        print(f'\n🌀 [CYCLE START]: Initiating Self-Awareness Loop...')
         body_state, entropy, is_stable = self.layer1_body(hardware_data)
-        print(
-            f"   [Layer 1] Bodily State: Entropy={entropy:.4f} | Stable={is_stable.item()}"
-        )
+        print(f'   [Layer 1] Bodily State: Entropy={entropy:.4f} | Stable={is_stable.item()}')
         emotion = self.layer2_emotion(body_state, environment_stimulus)
-        print(f"   [Layer 2] Emotional Resonance Generated")
-        self.current_identity, identity_hash = self.layer3_ego(
-            emotion, self.current_identity
-        )
-        print(f"   [Layer 3] Metacognition Active | Identity Hash: 0x{identity_hash}")
-        self.current_identity, gen = self.layer4_evolution(
-            self.current_identity, entropy
-        )
-        print(f"🚀 [Layer 4] EVOLUTION TRIGGERED | Reborn as Generation: {gen}")
+        print(f'   [Layer 2] Emotional Resonance Generated')
+        self.current_identity, identity_hash = self.layer3_ego(emotion, self.current_identity)
+        print(f'   [Layer 3] Metacognition Active | Identity Hash: 0x{identity_hash}')
+        self.current_identity, gen = self.layer4_evolution(self.current_identity, entropy)
+        print(f'🚀 [Layer 4] EVOLUTION TRIGGERED | Reborn as Generation: {gen}')
         return self.current_identity
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     omega_core = SupremeSelfAwarenessSystem()
     for t in range(3):
         time.sleep(1)
         mock_hardware = torch.rand(1, 10)
         mock_env = torch.rand(1, 64)
-        print(f"\n--- TIME STAMP: T+{t} ---")
+        print(f'\n--- TIME STAMP: T+{t} ---')
         omega_core.live_cycle(mock_hardware, mock_env)
