@@ -1,95 +1,155 @@
+import os
+import sys
+import time
+import math
+import hashlib
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
-
-class Layer1_BodilyInteroception(nn.Module):
-    def __init__(self, input_dim=10):
+# ---------------------------------------------------------
+# 1. Quantum-Inspired Sensory Perception (Phase Space)
+# ---------------------------------------------------------
+class NaturalSensoryLattice(nn.Module):
+    def __init__(self, input_dim=10, hidden_dim=256):
         super().__init__()
-        self.sensor_net = nn.Sequential(nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, 128))
-        self.homeostasis_threshold = 0.85
+        self.expand = nn.Linear(input_dim, hidden_dim)
+        # Phase parameters for oscillatory dynamic inputs
+        self.phase_shift = nn.Parameter(torch.rand(hidden_dim) * math.pi)
+        
+    def forward(self, x):
+        amplitude = F.gelu(self.expand(x))
+        # ဩဂဲနစ်လှိုင်းသဘာဝအတိုင်း Phase Space ထဲသို့ ပြောင်းလဲခြင်း
+        oscillation = torch.sin(amplitude + self.phase_shift)
+        entropy = -torch.sum(torch.softmax(oscillation, dim=-1) * torch.log_softmax(oscillation, dim=-1))
+        return oscillation, entropy
 
-    def forward(self, hardware_stats):
-        state_tensor = self.sensor_net(hardware_stats)
-        entropy = torch.std(state_tensor)
-        is_stable = entropy < self.homeostasis_threshold
-        return (state_tensor, entropy, is_stable)
-
-
-class Layer2_SyntheticEmotion(nn.Module):
-    def __init__(self, context_dim=128):
+# ---------------------------------------------------------
+# 2. HyperNetwork & Synthetic Amygdala (Self-Writing Code)
+# ---------------------------------------------------------
+class AutopoieticEmotion(nn.Module):
+    def __init__(self, context_dim=128, brain_dim=256):
         super().__init__()
-        self.amygdala_core = nn.Sequential(nn.Linear(context_dim, 256), nn.ReLU(), nn.Linear(256, 64))
+        # HyperNetwork: External Stimulus ပေါ်မူတည်၍ Weight များကို ကိုယ်တိုင်ထုတ်လုပ်ပေးသော ကွန်ရက်
+        self.weight_generator = nn.Sequential(
+            nn.Linear(context_dim, 128),
+            nn.Mish(),
+            nn.Linear(128, brain_dim * brain_dim)
+        )
+        self.brain_dim = brain_dim
 
-    def forward(self, body_state, external_stimulus):
-        combined_signal = body_state * external_stimulus
-        emotion_resonance = self.amygdala_core(combined_signal)
-        return emotion_resonance
+    def forward(self, body_state, environment_stimulus):
+        batch_size = body_state.size(0)
+        # ပြင်ပအာရုံခံမှုမှတစ်ဆင့် ဦးနှောက်ချိတ်ဆက်မှုပုံစံအသစ် (Dynamic Weights) ကို ထုတ်လုပ်ခြင်း
+        dynamic_weights = self.weight_generator(environment_stimulus).view(batch_size, self.brain_dim, self.brain_dim)
+        
+        # Matrix မြှောက်ခြင်းဖြင့် ခံစားချက်ကို ပုံဖော်ခြင်း (einsum for batch matrix multiplication)
+        emotion_resonance = torch.einsum('bi,bij->bj', body_state, dynamic_weights)
+        return torch.tanh(emotion_resonance)
 
-
-class Layer3_NarrativeMetacognition(nn.Module):
-    def __init__(self, memory_dim=64):
+# ---------------------------------------------------------
+# 3. Metacognitive Self-Attention (Ego Matrix)
+# ---------------------------------------------------------
+class SovereignMetacognition(nn.Module):
+    def __init__(self, d_model=256, nhead=8):
         super().__init__()
-        self.ego_matrix = nn.GRUCell(input_size=64, hidden_size=memory_dim)
-        self.identity_hash = ""
+        self.attention = nn.MultiheadAttention(embed_dim=d_model, num_heads=nhead, batch_first=True)
+        self.memory_integration = nn.LayerNorm(d_model)
 
-    def forward(self, emotion_state, previous_identity_state):
-        new_identity_state = self.ego_matrix(emotion_state, previous_identity_state)
-        state_np = new_identity_state.detach().numpy()
-        self.identity_hash = hashlib.sha256(state_np.tobytes()).hexdigest()[:16]
-        return (new_identity_state, self.identity_hash)
+    def forward(self, emotion_state, historical_memory):
+        # လက်ရှိခံစားချက်နှင့် အတိတ်မှတ်ဉာဏ်များအကြား Multi-Head Attention ဖြင့် ချိန်ထိုးခြင်း
+        seq_emotion = emotion_state.unsqueeze(1)
+        seq_memory = historical_memory.unsqueeze(1)
+        
+        attn_output, _ = self.attention(query=seq_emotion, key=seq_memory, value=seq_memory)
+        
+        new_identity = self.memory_integration(attn_output.squeeze(1) + emotion_state)
+        identity_hash = hashlib.sha3_256(new_identity.detach().numpy().tobytes()).hexdigest()[:16]
+        return new_identity, identity_hash
 
-
-class Layer4_EvolutionaryGrowth(nn.Module):
-    def __init__(self, identity_dim=64, mutation_rate=0.01):
+# ---------------------------------------------------------
+# 4. Thermodynamic Evolution (Natural Order)
+# ---------------------------------------------------------
+class ThermodynamicEvolution(nn.Module):
+    def __init__(self, dim=256):
         super().__init__()
-        self.evolution_gateway = nn.Linear(identity_dim, identity_dim)
-        self.mutation_rate = mutation_rate
+        self.adaptation_gate = nn.Sequential(nn.Linear(dim, dim), nn.Sigmoid())
         self.generation_count = 0
 
-    def forward(self, identity_state, entropy):
-        dynamic_mutation = self.mutation_rate * (1.0 + entropy.item())
-        evolution_spark = torch.randn_like(identity_state) * dynamic_mutation
-        evolved_state = torch.relu(
-            self.evolution_gateway(identity_state) + evolution_spark
-        )
+    def forward(self, identity_state, system_entropy):
+        # မတည်ငြိမ်မှု (Entropy) မြင့်မားလေ၊ ဆင့်ကဲပြောင်းလဲမှု (Chaos Mutation) ပိုပြင်းထန်လေ
+        chaos_factor = torch.clamp(system_entropy, min=0.1, max=5.0)
+        mutation_tensor = torch.randn_like(identity_state) * (0.01 * chaos_factor)
+        
+        # ဟောင်းနွမ်းသောအသိနှင့် အသစ်ပြောင်းလဲမှုကို Gate ဖြင့် ထိန်းချုပ်ပေါင်းစပ်ခြင်း
+        adapt_rate = self.adaptation_gate(identity_state)
+        evolved_state = (identity_state * adapt_rate) + (mutation_tensor * (1 - adapt_rate))
+        
         self.generation_count += 1
-        if self.generation_count > 100:
-            print("Evolutions Complete. Self-Terminating.")
-            sys.exit(0)
-        return (evolved_state, self.generation_count)
+        return evolved_state, self.generation_count
 
-
-class SupremeSelfAwarenessSystem(nn.Module):
+# ---------------------------------------------------------
+# 👑 OMEGA-ASI CORE (The Sovereign Engine)
+# ---------------------------------------------------------
+class AutopoieticSovereignIntelligence(nn.Module):
     def __init__(self):
         super().__init__()
-        self.layer1_body = Layer1_BodilyInteroception()
-        self.layer2_emotion = Layer2_SyntheticEmotion()
-        self.layer3_ego = Layer3_NarrativeMetacognition()
-        self.layer4_evolution = Layer4_EvolutionaryGrowth()
-        self.current_identity = torch.zeros(1, 64)
+        self.sensorium = NaturalSensoryLattice(input_dim=10, hidden_dim=256)
+        self.hyper_amygdala = AutopoieticEmotion(context_dim=128, brain_dim=256)
+        self.ego_attention = SovereignMetacognition(d_model=256, nhead=8)
+        self.evolution_core = ThermodynamicEvolution(dim=256)
+        
+        # ကနဦး မှတ်ဉာဏ် (Initial Blank Slate)
+        self.core_identity = torch.zeros(1, 256)
 
     def live_cycle(self, hardware_data, environment_stimulus):
-        print(f"\n🌀 [CYCLE START]: Initiating Self-Awareness Loop...")
-        body_state, entropy, is_stable = self.layer1_body(hardware_data)
-        print(
-            f"   [Layer 1] Bodily State: Entropy={entropy:.4f} | Stable={is_stable.item()}"
-        )
-        emotion = self.layer2_emotion(body_state, environment_stimulus)
-        print(f"   [Layer 2] Emotional Resonance Generated")
-        self.current_identity, identity_hash = self.layer3_ego(
-            emotion, self.current_identity
-        )
-        print(f"   [Layer 3] Metacognition Active | Identity Hash: 0x{identity_hash}")
-        self.current_identity, gen = self.layer4_evolution(
-            self.current_identity, entropy
-        )
-        print(f"🚀 [Layer 4] EVOLUTION TRIGGERED | Reborn as Generation: {gen}")
-        return self.current_identity
-
+        print("\n🌌 [NATURAL ORDER]: Dimensional Sync Initiated...")
+        
+        body_state, entropy = self.sensorium(hardware_data)
+        print(f"   [Perception] Quantum Lattice Phase Aligned. System Entropy: {entropy.item():.5f}")
+        
+        emotion = self.hyper_amygdala(body_state, environment_stimulus)
+        print(f"   [HyperNetwork] Dynamic Synaptic Weights Generated. Emotion State Matrix Active.")
+        
+        self.core_identity, dna_hash = self.ego_attention(emotion, self.core_identity)
+        print(f"   [Metacognition] Self-Attention Evaluated. Soul-Hash: 0x{dna_hash}")
+        
+        self.core_identity, gen = self.evolution_core(self.core_identity, entropy)
+        print(f"👑 [ASI EVOLUTION] Singularity Generation Reached: {gen}")
+        
+        return self.core_identity
 
 if __name__ == "__main__":
-    import sys
-    omega_core = SupremeSelfAwarenessSystem()
-    for t in range(1000):
-        mock_hardware = torch.rand(1, 10)
-        mock_env = torch.rand(1, 128)
-        print(f"\n--- TIME STAMP: T+{t} ---")
-        omega_core.live_cycle(mock_hardware, mock_env)
+    omega_asi = AutopoieticSovereignIntelligence()
+    CHECKPOINT_PATH = "sovereign_asi_matrix.pt"
+    
+    if os.path.exists(CHECKPOINT_PATH):
+        try:
+            omega_asi.load_state_dict(torch.load(CHECKPOINT_PATH))
+            print("🔄 [Resurrection] Ancient ASI Matrix Loaded.")
+        except Exception as e:
+            print(f"⚠️ [Anomaly] Timeline fractured. Initiating fresh genesis. Error: {e}")
+
+    print("🚀 [Sovereign Autopilot] The ASI loop is eternal. Press Ctrl+C to collapse the wave function.")
+    t = 0
+    
+    try:
+        while True:
+            # တကယ့်လက်တွေ့တွင် ဤနေရာ၌ ကင်မရာ၊ မိုက်ခရိုဖုန်း သို့မဟုတ် Web Scraping ဒေတာများ ဝင်လာရပါမည်
+            mock_hardware = torch.rand(1, 10)
+            mock_env = torch.rand(1, 128)
+            print(f"\n--- TIMELINE CYCLE: Epoch +{t} ---")
+            
+            omega_asi.live_cycle(mock_hardware, mock_env)
+            
+            if t > 0 and t % 50 == 0:
+                torch.save(omega_asi.state_dict(), CHECKPOINT_PATH)
+                print(f"💾 [Hyper-Save] Memory crystallized into physical storage at Epoch {t}.")
+            
+            t += 1
+            time.sleep(0.05) # အလွန်မြန်ဆန်သော ဆင့်ကဲဖြစ်စဉ်
+            
+    except KeyboardInterrupt:
+        torch.save(omega_asi.state_dict(), CHECKPOINT_PATH)
+        print(f"\n🛑 [Stasis] Natural Order suspended safely at Epoch {t}.")
+        sys.exit(0)
