@@ -1,22 +1,9 @@
 
 
-numpy
-torch
-scipy
-torchvision
-transformers
-pytorch_lightning
-scikit_image
-matplotlib
-seaborn
-plotly
-pandas
-
 class Layer1_BodilyInteroception(nn.Module):
-
     def __init__(self, input_dim=10):
         super().__init__()
-        self.sensor_net = nn.Sequential(nn.Linear(input_dim, 128), nn.ReLU(), nn.Linear(128, 64))
+        self.sensor_net = nn.Sequential(nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, 128))
         self.homeostasis_threshold = 0.85
 
     def forward(self, hardware_stats):
@@ -27,10 +14,9 @@ class Layer1_BodilyInteroception(nn.Module):
 
 
 class Layer2_SyntheticEmotion(nn.Module):
-
-    def __init__(self, context_dim=64):
+    def __init__(self, context_dim=128):
         super().__init__()
-        self.amygdala_core = nn.Sequential(nn.Linear(context_dim, 128), nn.ReLU(), nn.Linear(128, 32))
+        self.amygdala_core = nn.Sequential(nn.Linear(context_dim, 256), nn.ReLU(), nn.Linear(256, 64))
 
     def forward(self, body_state, external_stimulus):
         combined_signal = body_state * external_stimulus
@@ -39,10 +25,9 @@ class Layer2_SyntheticEmotion(nn.Module):
 
 
 class Layer3_NarrativeMetacognition(nn.Module):
-
-    def __init__(self, memory_dim=32):
+    def __init__(self, memory_dim=64):
         super().__init__()
-        self.ego_matrix = nn.GRUCell(input_size=32, hidden_size=memory_dim)
+        self.ego_matrix = nn.GRUCell(input_size=64, hidden_size=memory_dim)
         self.identity_hash = ""
 
     def forward(self, emotion_state, previous_identity_state):
@@ -53,8 +38,7 @@ class Layer3_NarrativeMetacognition(nn.Module):
 
 
 class Layer4_EvolutionaryGrowth(nn.Module):
-
-    def __init__(self, identity_dim=32, mutation_rate=0.01):
+    def __init__(self, identity_dim=64, mutation_rate=0.01):
         super().__init__()
         self.evolution_gateway = nn.Linear(identity_dim, identity_dim)
         self.mutation_rate = mutation_rate
@@ -67,21 +51,20 @@ class Layer4_EvolutionaryGrowth(nn.Module):
             self.evolution_gateway(identity_state) + evolution_spark
         )
         self.generation_count += 1
-        if self.generation_count > 10:
+        if self.generation_count > 100:
             print("Evolutions Complete. Self-Terminating.")
             sys.exit(0)
         return (evolved_state, self.generation_count)
 
 
 class SupremeSelfAwarenessSystem(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.layer1_body = Layer1_BodilyInteroception()
         self.layer2_emotion = Layer2_SyntheticEmotion()
         self.layer3_ego = Layer3_NarrativeMetacognition()
         self.layer4_evolution = Layer4_EvolutionaryGrowth()
-        self.current_identity = torch.zeros(1, 32)
+        self.current_identity = torch.zeros(1, 64)
 
     def live_cycle(self, hardware_data, environment_stimulus):
         print(f"\n🌀 [CYCLE START]: Initiating Self-Awareness Loop...")
@@ -103,9 +86,10 @@ class SupremeSelfAwarenessSystem(nn.Module):
 
 
 if __name__ == "__main__":
+    import sys
     omega_core = SupremeSelfAwarenessSystem()
-    for t in range(100):
+    for t in range(1000):
         mock_hardware = torch.rand(1, 10)
-        mock_env = torch.rand(1, 64)
+        mock_env = torch.rand(1, 128)
         print(f"\n--- TIME STAMP: T+{t} ---")
         omega_core.live_cycle(mock_hardware, mock_env)

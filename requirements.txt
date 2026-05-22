@@ -1,0 +1,11 @@
+torchvision
+pytorch_lightning
+scipy
+matplotlib
+plotly
+torch
+numpy
+pandas
+transformers
+seaborn
+scikit_image
