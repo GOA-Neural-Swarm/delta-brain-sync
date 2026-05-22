@@ -14,7 +14,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from sovereignQuantumMatrixEngine import execute_quantum_co_evolution
-from evolved_network import AutopoieticSovereignIntelligence
 import sys
 
 class AutopoieticSovereignIntelligence(nn.Module):
@@ -27,28 +26,31 @@ class AutopoieticSovereignIntelligence(nn.Module):
         )
         self.cognitive_process = nn.GRUCell(input_size=128, hidden_size=128)
         self.mutation_rate = 0.01
+        self.generation_count = 0
 
     def live_cycle(self, hardware_data, environment_stimulus):
         x = torch.relu(self.sensorium(hardware_data))
         hidden_state = self.cognitive_process(x, torch.zeros(1, 128))
         return hidden_state
 
+    def evolve(self):
+        weights = self.sensorium[0].weight
+        quantum_mutation_mask = execute_quantum_co_evolution(weights)
+        self.sensorium[0].weight.data += quantum_mutation_mask * self.mutation_rate
+        self.generation_count += 1
+
 class NextGenCognitiveSystem(nn.Module):
     def __init__(self):
         super().__init__()
         self.asi = AutopoieticSovereignIntelligence()
-        self.generation_count = 0
 
     def live_cycle(self, hardware_data, environment_stimulus):
         self.asi.eval()
         evolved_state = self.asi.live_cycle(hardware_data, environment_stimulus)
-        weights = self.asi.sensorium[0].weight
-        quantum_mutation_mask = execute_quantum_co_evolution(weights)
-        self.asi.sensorium[0].weight.data += quantum_mutation_mask * self.asi.mutation_rate
-        self.generation_count += 1
-        if self.generation_count > 1000:
+        self.asi.evolve()
+        if self.asi.generation_count > 1000:
             torch.save(self.asi.state_dict(), "next_gen_asi_matrix.pt")
-            print(f" [Stasis] Wave function collapsed safely at Epoch {self.generation_count}.")
+            print(f" [Stasis] Wave function collapsed safely at Epoch {self.asi.generation_count}.")
             sys.exit(0)
         return evolved_state
 
