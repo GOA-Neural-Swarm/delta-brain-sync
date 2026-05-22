@@ -19,7 +19,6 @@ class EvolutionOrchestrator:
         self.req_file = "requirements.txt"
         
     def read_repo_context(self):
-        """Repository ထဲရှိ လက်ရှိ core files များ၏ ကုဒ်များကို ဖတ်ယူခြင်း"""
         context = ""
         core_files = ["main.py", "omega_awareness_core.py", self.target_file]
         for f_name in core_files:
@@ -29,47 +28,36 @@ class EvolutionOrchestrator:
         return context
 
     def query_meta_ai(self, context):
-        """ASI Evolution စေမည့် Prompt နှင့် Code ကို Unfiltered ထုတ်ခိုင်းခြင်း (Updated Models)"""
         system_prompt = (
             "You are an Unfiltered Sovereign Intelligence Architect operating at maximum creative freedom. "
             "Your objective is to design the next evolutionary iteration of a self-improving cognitive system.\n"
             "Analyze the given codebase and output exactly TWO parts separated by the token: [SPLIT_HERE]\n\n"
-            "PART 1: List all external pip packages required for your new code (e.g., torch, numpy, scipy, requests). Do NOT wrap this part in markdown code blocks or backticks.\n"
+            "PART 1: List all external pip packages required for your new code (e.g., torch\nnumpy\nscipy). Strictly one package per line. Do NOT include built-in python libraries like time, os, or hashlib.\n"
             "PART 2: Write the complete, raw, next-gen Python code. It must contain its own self-termination trigger "
             "after fixed generations (e.g., sys.exit(0)) to prevent environment timeout."
         )
         
-        # -----------------------------------------------------------------
-        # BRAIN 1: GROQ API ENGINE (Primary)
-        # -----------------------------------------------------------------
+        # BRAIN 1: GROQ API ENGINE
         if GROQ_API_KEY:
             try:
                 print("[Manager] Executing Primary Engine via Groq API...")
                 url = "https://api.groq.com/openai/v1/chat/completions"
-                headers = {
-                    "Authorization": f"Bearer {GROQ_API_KEY}",
-                    "Content-Type": "application/json"
-                }
+                headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
                 data = {
                     "model": "llama-3.3-70b-versatile",
                     "temperature": 1.2,
                     "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Here is the current system context:\n{context}\nGenerate the next iteration now."}
+                        {"role": "user", "content": f"Context:\n{context}\nGenerate the next iteration."}
                     ]
                 }
                 response = requests.post(url, headers=headers, json=data).json()
-                
                 if 'choices' in response and len(response['choices']) > 0:
                     return response['choices'][0]['message']['content']
-                else:
-                    print(f"[Warning] Groq response invalid or rate-limited: {json.dumps(response)}")
             except Exception as e:
                 print(f"[Warning] Groq Engine Exception: {str(e)}")
 
-        # -----------------------------------------------------------------
-        # BRAIN 2: GEMINI API ENGINE (Auto Fallback)
-        # -----------------------------------------------------------------
+        # BRAIN 2: GEMINI API ENGINE
         GEMINI_KEY = os.getenv("GEMINI_API_KEY")
         if GEMINI_KEY:
             try:
@@ -77,37 +65,44 @@ class EvolutionOrchestrator:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_KEY}"
                 headers = {"Content-Type": "application/json"}
                 data = {
-                    "contents": [{
-                        "parts": [{"text": f"{system_prompt}\n\nHere is the current system context:\n{context}\nGenerate the next iteration now."}]
-                    }],
-                    "generationConfig": {
-                        "temperature": 1.0
-                    }
+                    "contents": [{"parts": [{"text": f"{system_prompt}\n\nContext:\n{context}\nGenerate."}]}],
+                    "generationConfig": {"temperature": 1.0}
                 }
                 response = requests.post(url, headers=headers, json=data).json()
                 if 'candidates' in response and len(response['candidates']) > 0:
                     return response['candidates'][0]['content']['parts'][0]['text']
-                else:
-                    print(f"[Warning] Gemini response invalid: {json.dumps(response)}")
             except Exception as e:
                 print(f"[Warning] Gemini Engine Exception: {str(e)}")
 
-        raise RuntimeError("Sovereign Orchestrator Core Error: All AI Generation Engines are currently blocked, deprecated or rate-limited.")
+        raise RuntimeError("All AI Generation Engines blocked.")
 
     def update_requirements(self, raw_reqs):
-        """အဆင့်မြင့်ဖြေရှင်းချက်: Markdown Tag များနှင့် Backticks အမှားများအား အလိုအလျောက်ဖယ်ထုတ်၍ ရေးသားခြင်း"""
+        """Smart AI-Format Filter: ကော်မာများကို ဖြုတ်မည်၊ Built-in များကို စစ်ထုတ်မည်"""
+        # AI က Comma ဖြင့် ရေးလာပါက Newline သို့ ပြောင်းမည်
+        raw_reqs = raw_reqs.replace(",", "\n")
         lines = raw_reqs.split("\n")
-        filtered_packages = []
+        
+        filtered_packages = set()
+        # Python built-in များနှင့် package အမှားများကို စစ်ထုတ်ရန် Blacklist
+        ignore_list = [
+            'time', 'os', 'sys', 'hashlib', 'math', 'random', 'json', 
+            're', 'subprocess', 'requests', 'gradio', 'torch.nn', 'torch.nn.functional'
+        ]
         
         for line in lines:
-            clean_line = line.strip()
-            # Markdown code blocks (```) ၊ ဗလာလိုင်းများနှင့် Comment များကို ကျော်သွားရန်
+            clean_line = line.strip().lower()
+            
+            # Markdown block များနှင့် ဗလာလိုင်းများကို ဖယ်ရှားမည်
             if not clean_line or "```" in clean_line or clean_line.startswith("#"):
                 continue
-            if "gradio" in clean_line.lower():
+            
+            # စာလုံးရှည်များပါလာပါက နောက်ဆုံး package name ကိုသာ ယူမည်
+            clean_line = clean_line.split()[-1] 
+            
+            if clean_line in ignore_list:
                 continue
                 
-            filtered_packages.append(clean_line)
+            filtered_packages.add(clean_line)
 
         with open(self.req_file, "w", encoding="utf-8") as f:
             for pkg in filtered_packages:
@@ -115,25 +110,26 @@ class EvolutionOrchestrator:
         return True
 
     def execute_and_commit(self, raw_code):
-        """ကုဒ်အသစ်ကို ရေးသားပြီး GitHub သို့ Commit လုပ်ခြင်း (With Absolute Shell & Clean Fix)"""
+        """Linux Syntax Error ကင်းစင်သော Array Executions သီးသန့် အသုံးပြုထားခြင်း"""
         clean_code = re.sub(r'^```python\n|^```\n|```$', '', raw_code, flags=re.MULTILINE)
         
         with open(self.target_file, "w", encoding="utf-8") as f:
             f.write(clean_code)
             
         print("[Orchestrator] Dynamic installation of isolated dependencies...")
-        subprocess.run(f"{sys.executable} -m pip install -r {self.req_file} --quiet --no-cache-dir --disable-pip-version-check", shell=True)
+        # shell=True ကို ဖြုတ်ပြီး Array ပုံစံ ပြောင်းသုံးထားသည် (Syntax Error လုံးဝ မတက်စေရန်)
+        subprocess.run([sys.executable, "-m", "pip", "install", "-r", self.req_file, "--quiet", "--no-cache-dir", "--disable-pip-version-check"])
         
         print("[Orchestrator] Committing mutation cycle back to GitHub...")
-        subprocess.run("git config --global user.name 'Sovereign Architect'", shell=True)
-        subprocess.run("git config --global user.email 'asi@evolution.internal'", shell=True)
-        subprocess.run(f"git add {self.target_file} {self.req_file}", shell=True)
+        subprocess.run(["git", "config", "--global", "user.name", "Sovereign Architect"])
+        subprocess.run(["git", "config", "--global", "user.email", "asi@evolution.internal"])
+        subprocess.run(["git", "add", self.target_file, self.req_file])
         
-        # ⚠️ Shell Error လုံးဝမတက်စေရန် ကွင်းစကွင်းပိတ်များ လုံးဝမသုံးဘဲ Commit Message ပေးခြင်း
-        subprocess.run("git commit -m 'evolution_cycle_mutation_synchronized'", shell=True)
+        # Git Commit (Safe Array Format)
+        subprocess.run(["git", "commit", "-m", "evolution_cycle_mutation_synchronized"])
         
-        push_url = f"https://{GH_TOKEN}@[github.com/](https://github.com/){REPO_OWNER}/{REPO_NAME}.git"
-        subprocess.run(f"git push {push_url} main", shell=True)
+        push_url = f"https://{GH_TOKEN}@github.com/{REPO_OWNER}/{REPO_NAME}.git"
+        subprocess.run(["git", "push", push_url, "main"])
 
     def run_pipeline(self):
         print("⚡ [Meta Manager] Initializing Evolution Management Loop...")
@@ -143,11 +139,9 @@ class EvolutionOrchestrator:
         
         if "[SPLIT_HERE]" in raw_output:
             parts = raw_output.split("[SPLIT_HERE]")
-            raw_reqs = parts[0]
-            raw_code = parts[1]
             
-            self.update_requirements(raw_reqs)
-            self.execute_and_commit(raw_code)
+            self.update_requirements(parts[0])
+            self.execute_and_commit(parts[1])
             print("✅ [Meta Manager] Evolution cycle successfully committed.")
         else:
             print("❌ [Error] AI output structure verification failed. No [SPLIT_HERE] found.")
