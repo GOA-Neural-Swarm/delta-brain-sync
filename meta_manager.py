@@ -35,6 +35,7 @@ class EvolutionOrchestrator:
             "PART 1: List all external pip packages required for your new code (e.g., torch\nnumpy\nscipy). Strictly one package per line. Do NOT include built-in python libraries like time, os, or hashlib.\n"
             "PART 2: Write the complete, raw, next-gen Python code. It must contain its own self-termination trigger "
             "after fixed generations (e.g., sys.exit(0)) to prevent environment timeout."
+            "You must integrate the SovereignQuantumMatrixEngine from quantum_bridge.py. Pass your layer weights into execute_quantum_co_evolution(weights) to fetch the quantum_mutation_mask. Use this matrix mask to directly mutate your evolved_network.py layer weights during the evolution cycle."
         )
         
         # BRAIN 1: GROQ API ENGINE
