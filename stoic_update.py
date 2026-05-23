@@ -31,7 +31,7 @@ class StoicFunction:
         self.evolving_system = EvolvingSystem()
 
     def stoic_function(self):
-        print('Stoic function added')
+        print("Stoic function added")
         self.evolving_system.add_component(self)
 
 
@@ -55,7 +55,7 @@ evolving_system = EvolvingSystem()
 stoic_function = StoicFunction()
 stoic_function.stoic_function()
 utility = evolving_system.utility
-print('Current utility:', utility.get())
+print("Current utility:", utility.get())
 
 
 # Test the add_component method

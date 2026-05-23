@@ -109,7 +109,9 @@ class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
             model, optimizer, loss_fn, hyper_space, dataset
         )
         self.alpha = alpha
-        self.preserved_model = EvolutionaryModel(input_dim=20, hidden_dim=10, output_dim=10)
+        self.preserved_model = EvolutionaryModel(
+            input_dim=20, hidden_dim=10, output_dim=10
+        )
         self.preserved_model.load_state_dict(model.state_dict())
 
     def evolve(self):

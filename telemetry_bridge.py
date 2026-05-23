@@ -21,14 +21,8 @@ MATRIX_STATE = {
                 "status": "TIMEOUT_HANG",
                 "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected).",
             },
-            "existential_update.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
-            "evolutionary_update.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
+            "existential_update.py": {"status": "STABLE", "error": "None"},
+            "evolutionary_update.py": {"status": "STABLE", "error": "None"},
             "main.py": {
                 "status": "MUTATING_REQUIRED",
                 "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/main.py\", line 3, in <module>\n    import torch\nModuleNotFoundError: No module named 'torch'",
