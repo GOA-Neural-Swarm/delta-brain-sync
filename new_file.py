@@ -29,7 +29,7 @@ class EvolutionaryModule:
     def apply_utilitarian_logic(self, new_function):
         self.existing_logic.append(new_function)
         self.preserved_logic.append(new_function)
-        self.utilitarian_value += new_function.__code__.co_code.__len__()
+        self.utilitarian_value += len(new_function.__code__.co_code)
 
     def existential_check(self):
         if self.utilitarian_value > 0:
@@ -55,7 +55,7 @@ class UtilitarianCalculator:
         self.utilitarian_value = 0
 
     def calculate_utilitarian_value(self, function):
-        self.utilitarian_value += function.__code__.co_code.__len__()
+        self.utilitarian_value += len(function.__code__.co_code)
 
 
 class ExistentialChecker:
