@@ -17,9 +17,7 @@ class HyperDimensionalLogic:
         print("Applying utilitarian principle: {}".format(self.utilitarian_principle))
 
     def apply_existential_perspective(self):
-        print(
-            "Applying existential perspective: {}".format(self.existential_perspective)
-        )
+        print("Applying existential perspective: {}".format(self.existential_perspective))
 
     def apply_stoic_approach(self):
         print("Applying stoic approach: {}".format(self.stoic_approach))
@@ -37,6 +35,9 @@ class HyperDimensionalLogic:
         self.evolutionary_paradigm += " with quantum evolution"
         print("Evolved to: {}".format(self.evolutionary_paradigm))
 
+    def get_existing_logic(self):
+        return self.existing_logic
+
 
 def hyper_dimensional_function():
     print("Hyper-dimensional function added")
@@ -44,10 +45,12 @@ def hyper_dimensional_function():
     hyper_dimensional_logic.preserve_existing_logic(hyper_dimensional_function.__name__)
     hyper_dimensional_logic.apply_hyper_dimensional_logic()
     hyper_dimensional_logic.evolve()
+    print("Existing Logic: {}".format(hyper_dimensional_logic.get_existing_logic()))
 
 
 def main():
     hyper_dimensional_function()
+
 
 if __name__ == "__main__":
     main()
