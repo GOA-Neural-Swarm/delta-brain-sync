@@ -1,7 +1,6 @@
 import telemetry_bridge
 import os
 
-
 class HyperDimensionalLogic:
 
     def __init__(self):
@@ -42,9 +41,13 @@ class HyperDimensionalLogic:
 def hyper_dimensional_function():
     print("Hyper-dimensional function added")
     hyper_dimensional_logic = HyperDimensionalLogic()
-    hyper_dimensional_logic.preserve_existing_logic(hyper_dimensional_function)
+    hyper_dimensional_logic.preserve_existing_logic(hyper_dimensional_function.__name__)
     hyper_dimensional_logic.apply_hyper_dimensional_logic()
     hyper_dimensional_logic.evolve()
 
 
-hyper_dimensional_function()
+def main():
+    hyper_dimensional_function()
+
+if __name__ == "__main__":
+    main()
