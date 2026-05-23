@@ -20,7 +20,16 @@ class EvolutionaryModule(StoicModule):
         print("Evolutionary principle added")
 
 
-class UtilitarianModule(EvolutionaryModule):
+class ExistentialModule(EvolutionaryModule):
+
+    def __init__(self):
+        super().__init__()
+
+    def existential_principle(self):
+        print("Existential principle applied")
+
+
+class UtilitarianModule(ExistentialModule):
 
     def __init__(self):
         super().__init__()
@@ -38,15 +47,11 @@ class HyperDimensionalModule(UtilitarianModule):
         print("Hyper-dimensional logic applied")
 
 
-def existential_function():
-    print("Existential function added")
-
-
 def main():
     module = HyperDimensionalModule()
-    existential_function()
     module.stoic_principle()
     module.evolutionary_principle()
+    module.existential_principle()
     module.utilitarian_principle()
     module.hyper_dimensional_logic()
 
