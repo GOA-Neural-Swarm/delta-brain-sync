@@ -1,3 +1,4 @@
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -35,23 +36,18 @@ def execute_quantum_co_evolution(weights):
     It returns a mutation mask of the same shape as the input weights,
     introducing small, pseudo-quantum random perturbations.
     """
+    # Simulate a quantum mutation mask: small random perturbation
+    # The magnitude of this perturbation can be tuned or made more complex.
+    # For now, a simple scaled random tensor.
     return torch.randn_like(weights) * 0.01  # Small random perturbation
 
 
 # --- Constants for the Unified System ---
-HARDWARE_INPUT_DIM = (
-    10  # Input dimension for bodily interoception (e.g., CPU, RAM stats)
-)
+HARDWARE_INPUT_DIM = 10  # Input dimension for bodily interoception (e.g., CPU, RAM stats)
 COGNITIVE_TASK_INPUT_DIM = 10  # Input dimension for the primary cognitive processing core (e.g., environmental observations)
-WORKSPACE_DIM = (
-    128  # The dimensionality of the global workspace state and cognitive hidden states
-)
-COGNITIVE_PROCESS_HIDDEN_DIM = (
-    128  # Hidden dimension for recurrent cognitive processing (matches WORKSPACE_DIM)
-)
-EMOTION_CONTEXT_DIM = (
-    64  # Dimension for emotional context derived from body state and environment
-)
+WORKSPACE_DIM = 128  # The dimensionality of the global workspace state and cognitive hidden states
+COGNITIVE_PROCESS_HIDDEN_DIM = 128  # Hidden dimension for recurrent cognitive processing (matches WORKSPACE_DIM)
+EMOTION_CONTEXT_DIM = 64  # Dimension for emotional context derived from body state and environment
 MAX_GENERATIONS = 7500  # Self-termination trigger: Maximum generations before shutdown
 BASE_MUTATION_RATE = 0.005  # Base rate for quantum-enhanced evolutionary mutation
 
@@ -166,7 +162,8 @@ class SupremeSelfAwarenessSystem(nn.Module):
         self.layer2_emotion = Layer2_SyntheticEmotion()
         self.layer3_ego = Layer3_NarrativeMetacognition()
         self.layer4_evolution = Layer4_EvolutionaryGrowth()
-        # current_identity is a persistent parameter but not directly trainable
+        # current_identity is a persistent parameter but not directly trainable by optimizer,
+        # its evolution is self-driven.
         self.current_identity = nn.Parameter(torch.zeros(1, 32), requires_grad=False)
 
     def live_cycle(self, hardware_data, environment_stimulus):
@@ -193,7 +190,7 @@ class SupremeSelfAwarenessSystem(nn.Module):
         return (self.current_identity.data, emotion, entropy, gen_count, is_stable)
 
 
-# --- Classes from evolved_network.py, now enhanced with self-awareness integration ---
+# --- Classes for the primary cognitive core, quantum-enhanced and integrated with self-awareness ---
 
 
 class SovereignCognitiveCore(nn.Module):
@@ -216,6 +213,7 @@ class SovereignCognitiveCore(nn.Module):
             nn.ReLU(),
             nn.Linear(256, cognitive_hidden_dim),
         )
+        # GRUCell for continuous internal cognitive processing
         self.cognitive_process = nn.GRUCell(
             input_size=cognitive_hidden_dim, hidden_size=cognitive_hidden_dim
         )
@@ -242,6 +240,7 @@ class SovereignCognitiveCore(nn.Module):
         sensory_output = self.sensorium(external_cognitive_input)
 
         # Dynamic modulation: Higher entropy can intensify processing
+        # This is a simple example; more complex modulation could involve gating or scaling
         if awareness_entropy > 0.5:  # Arbitrary threshold, tune as needed
             sensory_output = sensory_output * (1.0 + awareness_entropy.item() * 0.1)
 
@@ -268,10 +267,12 @@ class SovereignCognitiveCore(nn.Module):
         )
 
         # Further modulation by emotion and identity stability
+        # Stronger emotions (positive or negative) could lead to more exploratory mutations
         if (
             awareness_emotion.abs().mean() > 0.5
         ):  # If strong emotion (positive or negative)
             dynamic_mutation_rate *= 1.1  # Increase mutation rate slightly
+        # A very weak or unstable identity state might encourage more rapid structural changes
         if (
             awareness_identity_state.norm() < 0.1
         ):  # If identity is very weak/unstable (arbitrary threshold)
@@ -281,41 +282,14 @@ class SovereignCognitiveCore(nn.Module):
 
         # Apply quantum mutation mask to trainable weights
         # Uses execute_quantum_co_evolution from the mock quantum_bridge.py
-        if (
-            hasattr(self.sensorium[0], "weight")
-            and self.sensorium[0].weight is not None
-        ):
-            weights_to_mutate_sensorium = self.sensorium[0].weight.data
-            quantum_mutation_mask_sensorium = execute_quantum_co_evolution(
-                weights_to_mutate_sensorium
-            )
-            self.sensorium[0].weight.data.add_(
-                quantum_mutation_mask_sensorium * dynamic_mutation_rate
-            )
-
-        if (
-            hasattr(self.cognitive_process, "weight_ih")
-            and self.cognitive_process.weight_ih is not None
-        ):
-            weights_to_mutate_ih = self.cognitive_process.weight_ih.data
-            quantum_mutation_mask_ih = execute_quantum_co_evolution(
-                weights_to_mutate_ih
-            )
-            self.cognitive_process.weight_ih.data.add_(
-                quantum_mutation_mask_ih * dynamic_mutation_rate
-            )
-
-        if (
-            hasattr(self.cognitive_process, "weight_hh")
-            and self.cognitive_process.weight_hh is not None
-        ):
-            weights_to_mutate_hh = self.cognitive_process.weight_hh.data
-            quantum_mutation_mask_hh = execute_quantum_co_evolution(
-                weights_to_mutate_hh
-            )
-            self.cognitive_process.weight_hh.data.add_(
-                quantum_mutation_mask_hh * dynamic_mutation_rate
-            )
+        for name, param in self.named_parameters():
+            if "weight" in name and param.requires_grad:
+                weights_to_mutate = param.data
+                quantum_mutation_mask = execute_quantum_co_evolution(
+                    weights_to_mutate
+                )
+                # Apply mutation directly to the weights' data
+                param.data.add_(quantum_mutation_mask * dynamic_mutation_rate)
 
         self.generation_count += 1
         return self.generation_count
@@ -332,6 +306,7 @@ class QuantumGlobalWorkspace(nn.Module):
         super().__init__()
         self.workspace_dim = workspace_dim
         self.num_modules = num_modules
+        # Current workspace state is a learnable parameter, representing the "conscious thought"
         self.current_workspace_state = nn.Parameter(torch.randn(1, workspace_dim))
         self.query = nn.Linear(workspace_dim, workspace_dim)
         self.key = nn.Linear(workspace_dim, workspace_dim)
@@ -352,10 +327,10 @@ class QuantumGlobalWorkspace(nn.Module):
                    new_conscious_state: The integrated, conscious representation.
                    attention_weights: The weights indicating focus on each module.
         """
+        batch_size = module_outputs.size(0)
+
         # Expand query to match batch size
-        Q = self.query(self.current_workspace_state).expand(
-            module_outputs.size(0), -1, -1
-        )
+        Q = self.query(self.current_workspace_state).expand(batch_size, -1, -1)
         K = self.key(module_outputs)
         V = self.value(module_outputs)
 
@@ -369,11 +344,12 @@ class QuantumGlobalWorkspace(nn.Module):
         new_conscious_state = torch.matmul(attention_weights, V)
 
         # Update the persistent global workspace state
+        # Average across the batch if batch_size > 1
         self.current_workspace_state.data = (
             0.9 * self.current_workspace_state.data
             + 0.1 * new_conscious_state.mean(dim=0).squeeze(0)
         )
-        return (new_conscious_state.squeeze(1), attention_weights.squeeze(1))
+        return new_conscious_state.squeeze(1), attention_weights.squeeze(1)
 
 
 class AethericCognitiveOmniSystem(nn.Module):
@@ -395,11 +371,11 @@ class AethericCognitiveOmniSystem(nn.Module):
         )
         # Global workspace integrates two distinct inputs: Cognitive Core output and Self-Awareness Identity
         self.global_workspace = QuantumGlobalWorkspace(
-            workspace_dim=COGNITIVE_PROCESS_HIDDEN_DIM, num_modules=2
+            workspace_dim=COGNITIVE_PROCESS_HIDDEN_DIM,
+            num_modules=2,  # For Cognitive Core output and projected Awareness Identity
         )
-        self.current_core_hidden_state = (
-            None  # Persistent hidden state for the cognitive core GRU
-        )
+        # Persistent hidden state for the cognitive core GRU
+        self.current_core_hidden_state = None
         # Projection layer to match identity state dimension (32) to workspace dimension (128)
         self.awareness_identity_projection = nn.Linear(32, COGNITIVE_PROCESS_HIDDEN_DIM)
 
@@ -452,9 +428,8 @@ class AethericCognitiveOmniSystem(nn.Module):
         core_cognitive_output, _ = self.core(
             external_cognitive_input, awareness_entropy, self.current_core_hidden_state
         )
-        self.current_core_hidden_state = (
-            core_cognitive_output.detach()
-        )  # Update persistent hidden state
+        # Update persistent hidden state. Detach to prevent gradients flowing back into previous cycles.
+        self.current_core_hidden_state = core_cognitive_output.detach()
 
         # 3. Integrate outputs into Quantum Global Workspace for conscious processing
         # Project the self-awareness identity state to match the workspace dimension
@@ -473,11 +448,14 @@ class AethericCognitiveOmniSystem(nn.Module):
             (1.0 + awareness_emotion.abs().mean()).clamp(min=0.1, max=2.0).unsqueeze(-1)
         )
         # Self-awareness identity's salience: Influenced inversely by entropy (more stable -> higher salience)
+        # This needs to be broadcastable to the batch size, assuming awareness states are per-batch or global.
+        # Here, it's global (1,1) so we expand it.
         salience_for_awareness = (
             (1.0 - awareness_entropy.item())
             .clamp(min=0.1, max=1.0)
             .unsqueeze(-1)
             .unsqueeze(-1)
+            .expand_as(salience_for_core)
         )
 
         all_salience = torch.stack(
@@ -519,7 +497,7 @@ if __name__ == "__main__":
 
     # Define mock input dimensions based on the constants
     mock_hardware_input_dim = HARDWARE_INPUT_DIM
-    mock_env_stimulus_dim = EMOTION_CONTEXT_DIM
+    mock_env_stimulus_dim = EMOTION_CONTEXT_DIM  # Matches context_dim for Layer2
     mock_cognitive_input_dim = COGNITIVE_TASK_INPUT_DIM
 
     try:
@@ -555,8 +533,8 @@ if __name__ == "__main__":
             # Store history for plotting and analysis
             core_generation_history.append(current_core_gen)
             awareness_generation_history.append(current_awareness_gen)
-            emotion_history.append(current_emotion.mean().item())
-            entropy_history.append(current_entropy.item())
+            emotion_history.append(current_emotion.mean().item())  # .mean().item() for scalar
+            entropy_history.append(current_entropy.item())  # .item() for scalar
             focus_core_history.append(
                 focus.detach().numpy()[0][0]
             )  # Focus on Cognitive Core
@@ -583,7 +561,7 @@ if __name__ == "__main__":
                 print(
                     f"\n [Stasis] Aetheric wave function collapsed safely at Core Generation {current_core_gen}. Initiating systemic shutdown."
                 )
-                sys.exit(0)
+                sys.exit(0)  # Terminate the script
 
             # Periodically plot progress to visualize system dynamics
             if cycle_count % 1000 == 0:
