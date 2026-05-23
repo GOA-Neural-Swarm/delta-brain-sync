@@ -1,4 +1,4 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_7 Linked
+# [QUANTUM_EVOLUTION]: Gen_8 Linked
 import telemetry_bridge
 import os
 import sys
@@ -64,6 +64,10 @@ class Evolutionary:
         # Simple evolution example
         self.population = [individual + 1 for individual in self.population]
 
+    def evolve_additive(self, addition):
+        # Additive evolution example
+        self.population = [individual + addition for individual in self.population]
+
 
 def main():
     hdl = HyperDimensionalLogic()
@@ -76,6 +80,7 @@ def main():
     utilitarian.add_goal("Maximize happiness")
     existential.set_purpose("Find meaning")
     evolutionary.add_individual(10)
+    evolutionary.add_individual(20)
 
     print("Hyper-Dimensional Logic:")
     print(hdl.get_dimensions())
@@ -86,6 +91,9 @@ def main():
     print("\nStoic:")
     print(stoic.accept())
     print("\nEvolutionary (initial):")
+    print(evolutionary.get_population())
+    evolutionary.evolve_additive(5)
+    print("Evolutionary (after additive evolution):")
     print(evolutionary.get_population())
     evolutionary.evolve()
     print("Evolutionary (after evolution):")

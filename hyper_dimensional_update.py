@@ -29,15 +29,18 @@ class HyperDimensionalLogic:
     def apply_evolutionary_paradigm(self):
         print('Applying evolutionary paradigm: {}'.format(self.evolutionary_paradigm))
 
+    def apply_hyper_dimensional_logic(self):
+        self.apply_utilitarian_principle()
+        self.apply_existential_perspective()
+        self.apply_stoic_approach()
+        self.apply_evolutionary_paradigm()
+
 
 def hyper_dimensional_function():
     print('Hyper-dimensional function added')
     hyper_dimensional_logic = HyperDimensionalLogic()
     hyper_dimensional_logic.preserve_existing_logic(hyper_dimensional_function)
-    hyper_dimensional_logic.apply_utilitarian_principle()
-    hyper_dimensional_logic.apply_existential_perspective()
-    hyper_dimensional_logic.apply_stoic_approach()
-    hyper_dimensional_logic.apply_evolutionary_paradigm()
+    hyper_dimensional_logic.apply_hyper_dimensional_logic()
 
 
 hyper_dimensional_function()

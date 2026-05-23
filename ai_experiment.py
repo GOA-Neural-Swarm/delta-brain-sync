@@ -64,10 +64,10 @@ class ExistentialDataset(Dataset):
 
 class EvolutionaryModel(nn.Module):
 
-    def __init__(self):
+    def __init__(self, input_dim, hidden_dim, output_dim):
         super(EvolutionaryModel, self).__init__()
-        self.fc1 = nn.Linear(20, 10)
-        self.fc2 = nn.Linear(10, 10)
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
         x = torch.relu(self.fc1(x))
@@ -109,7 +109,7 @@ class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
             model, optimizer, loss_fn, hyper_space, dataset
         )
         self.alpha = alpha
-        self.preserved_model = EvolutionaryModel()
+        self.preserved_model = EvolutionaryModel(input_dim=20, hidden_dim=10, output_dim=10)
         self.preserved_model.load_state_dict(model.state_dict())
 
     def evolve(self):
@@ -129,7 +129,7 @@ class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
                 inputs = torch.from_numpy(inputs).float()
                 labels = torch.from_numpy(labels).float()
                 evolved_inputs = torch.from_numpy(
-                    self.hyper_space.evolve(inputs.numpy(), preserve_existing=True)
+                    self.hyper_space.evolve(inputs.numpy(), preserveExisting=True)
                 ).float()
                 outputs = self.model(evolved_inputs)
                 loss = self.loss_fn(outputs, labels)
@@ -143,7 +143,7 @@ def main():
     torch.manual_seed(0)
     hyper_space = HyperDimensionalSpace(dimensions=20)
     utilitarian_loss = UtilitarianLoss()
-    evolutionary_model = EvolutionaryModel()
+    evolutionary_model = EvolutionaryModel(input_dim=20, hidden_dim=10, output_dim=10)
     stoic_optimizer = StoicOptimizer(params=evolutionary_model.parameters(), lr=0.01)
     np.random.seed(0)
     data = np.random.rand(100, 20)
