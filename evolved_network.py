@@ -445,17 +445,15 @@ class AethericCognitiveOmniSystem(nn.Module):
         # Derive dynamic salience scores for each module
         # Cognitive core's salience: Influenced by the magnitude of synthetic emotion (higher emotion -> higher salience)
         salience_for_core = (
-            (1.0 + awareness_emotion.abs().mean()).clamp(min=0.1, max=2.0).unsqueeze(-1)
-        )
+            (1.0 + awareness_emotion.abs().mean()).clamp(min=0.1, max=2.0)
+        ).unsqueeze(-1)
         # Self-awareness identity's salience: Influenced inversely by entropy (more stable -> higher salience)
-        # This needs to be broadcastable to the batch size, assuming awareness states are per-batch or global.
-        # Here, it's global (1,1) so we expand it.
         salience_for_awareness = (
             (1.0 - awareness_entropy.item())
             .clamp(min=0.1, max=1.0)
             .unsqueeze(-1)
             .unsqueeze(-1)
-            .expand_as(salience_for_core)
+            .expand_as(salience_for_core) # Ensure it expands to match batch_size
         )
 
         all_salience = torch.stack(
@@ -536,11 +534,11 @@ if __name__ == "__main__":
             emotion_history.append(current_emotion.mean().item())  # .mean().item() for scalar
             entropy_history.append(current_entropy.item())  # .item() for scalar
             focus_core_history.append(
-                focus.detach().numpy()[0][0]
-            )  # Focus on Cognitive Core
+                focus.detach().cpu().numpy()[0][0] # Focus on Cognitive Core
+            )
             focus_awareness_history.append(
-                focus.detach().numpy()[0][1]
-            )  # Focus on Self-Awareness Identity
+                focus.detach().cpu().numpy()[0][1] # Focus on Self-Awareness Identity
+            )
 
             if cycle_count % 50 == 0:
                 print(
@@ -585,7 +583,7 @@ if __name__ == "__main__":
                 plt.legend()
 
                 plt.subplot(2, 2, 3)
-                plt.plot(entropy_history, label="Bodily Entropy")
+                plt.plot(entropy_history, label="Internal Bodily Entropy")
                 plt.xlabel("Simulation Cycle")
                 plt.ylabel("Entropy Value")
                 plt.title("Internal Bodily Entropy")
