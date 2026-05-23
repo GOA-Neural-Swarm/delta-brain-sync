@@ -1,21 +1,17 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_8 Linked
 import telemetry_bridge
 import os
 
-
 def new_function():
-    print("New function added")
-
+    print('New function added')
 
 def new_additive_function():
-    print("New additive function")
-
+    print('New additive function')
 
 def new_utilitarian_function():
-    print("New utilitarian function added")
-
+    print('New utilitarian function added')
 
 class EvolutionaryModule:
+
     def __init__(self):
         self.existing_logic = [new_function]
         self.utilitarian_value = 0
@@ -42,12 +38,10 @@ class EvolutionaryModule:
 
     def evolutionary_addition(self, new_function):
         self.apply_hyper_dimensional_logic(new_function)
-        print(f"Evolutionary addition: {new_function.__name__}")
-
+        print(f'Evolutionary addition: {new_function.__name__}')
 
 def new_existential_function():
-    print("New existential function added")
-
+    print('New existential function added')
 
 def main():
     evolutionary_module = EvolutionaryModule()
@@ -55,7 +49,5 @@ def main():
     evolutionary_module.apply_utilitarian_logic(new_utilitarian_function)
     evolutionary_module.evolutionary_addition(new_existential_function)
     print(evolutionary_module.stoic_preservation(evolutionary_module.existing_logic))
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

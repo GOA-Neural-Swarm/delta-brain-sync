@@ -1,16 +1,18 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_8 Linked
+import telemetry_bridge
 import os
 import sqlite3
 
-
 class DatabaseRecovery:
-    def __init__(self, db_name="agi_system.db"):
+
+    def __init__(self, db_name='agi_system.db'):
         """
         Initialize the DatabaseRecovery class.
 
         :param db_name: The name of the database file.
         """
         self.db_name = db_name
-        self.journal_file = f"{db_name}-journal"
+        self.journal_file = f'{db_name}-journal'
 
     def is_journal_file_present(self):
         """
@@ -38,7 +40,7 @@ class DatabaseRecovery:
             conn.close()
             return True
         except sqlite3.Error as e:
-            print(f"Error recovering database: {e}")
+            print(f'Error recovering database: {e}')
             return False
 
     def recover(self):
@@ -48,12 +50,9 @@ class DatabaseRecovery:
         if self.is_journal_file_present():
             self.remove_journal_file()
             if self.connect_to_database():
-                print("Database recovery successful")
+                print('Database recovery successful')
             else:
-                print("Database recovery failed")
-
-
-# Call the recover function
-if __name__ == "__main__":
+                print('Database recovery failed')
+if __name__ == '__main__':
     db_recovery = DatabaseRecovery()
     db_recovery.recover()
