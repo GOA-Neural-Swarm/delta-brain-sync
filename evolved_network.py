@@ -1,15 +1,17 @@
+
 import telemetry_bridge
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import sys
 import numpy as np
-from sovereignQuantumMatrixEngine import execute_quantum_co_evolution
+from quantum_bridge import execute_quantum_co_evolution # Corrected import based on prompt
 import matplotlib.pyplot as plt
+
 WORKSPACE_DIM = 128
 SENSORIUM_INPUT_DIM = 10
 COGNITIVE_PROCESS_HIDDEN_DIM = 128
-MAX_GENERATIONS = 7500
+MAX_GENERATIONS = 7500 # Self-termination trigger after this many generations
 BASE_MUTATION_RATE = 0.005
 
 class SovereignCognitiveCore(nn.Module):
@@ -25,7 +27,7 @@ class SovereignCognitiveCore(nn.Module):
         self.cognitive_process = nn.GRUCell(input_size=cognitive_hidden_dim, hidden_size=cognitive_hidden_dim)
         self.base_mutation_rate = base_mutation_rate
         self.generation_count = 0
-        self.identity_hash = ''
+        self.identity_hash = '' # Placeholder for potential future identity hashing
 
     def _calculate_entropy(self, hardware_data):
         """
@@ -33,8 +35,13 @@ class SovereignCognitiveCore(nn.Module):
         This mimics the intent of Layer1_BodilyInteroception from `omega_awareness_core.py`,
         providing a measure of system 'stress' or 'instability'.
         """
-        entropy = torch.std(hardware_data) + 0.1
-        return entropy
+        # Ensure hardware_data has enough elements for std deviation.
+        # If it's a batch of single-dim inputs, expand it.
+        if hardware_data.numel() == 1:
+            entropy = torch.tensor(0.0) # Or a default low entropy
+        else:
+            entropy = torch.std(hardware_data)
+        return entropy + 0.1 # Add a small constant to prevent zero entropy
 
     def forward(self, hardware_data, environment_stimulus, previous_hidden_state=None):
         """
@@ -53,8 +60,14 @@ class SovereignCognitiveCore(nn.Module):
         """
         internal_entropy = self._calculate_entropy(hardware_data)
         sensory_output = self.sensorium(hardware_data)
+
         if previous_hidden_state is None:
             previous_hidden_state = torch.zeros(sensory_output.size(0), self.cognitive_process.hidden_size, device=sensory_output.device)
+        elif previous_hidden_state.shape[0] != sensory_output.size(0):
+            # Adjust previous_hidden_state batch size if it doesn't match current input batch size
+            previous_hidden_state = torch.zeros(sensory_output.size(0), self.cognitive_process.hidden_size, device=sensory_output.device)
+
+
         current_hidden_state = self.cognitive_process(sensory_output, previous_hidden_state)
         return (current_hidden_state, internal_entropy)
 
@@ -65,10 +78,18 @@ class SovereignCognitiveCore(nn.Module):
         emulating Layer4_EvolutionaryGrowth from `omega_awareness_core.py`.
         """
         dynamic_mutation_rate = self.base_mutation_rate * (1.0 + internal_entropy.item())
+
+        # Mutate weights of the sensorium encoder
         if hasattr(self.sensorium[0], 'weight') and self.sensorium[0].weight is not None:
             weights_to_mutate_sensorium = self.sensorium[0].weight.data
             quantum_mutation_mask_sensorium = execute_quantum_co_evolution(weights_to_mutate_sensorium)
             self.sensorium[0].weight.data.add_(quantum_mutation_mask_sensorium * dynamic_mutation_rate)
+        if hasattr(self.sensorium[2], 'weight') and self.sensorium[2].weight is not None:
+            weights_to_mutate_sensorium2 = self.sensorium[2].weight.data
+            quantum_mutation_mask_sensorium2 = execute_quantum_co_evolution(weights_to_mutate_sensorium2)
+            self.sensorium[2].weight.data.add_(quantum_mutation_mask_sensorium2 * dynamic_mutation_rate)
+
+        # Mutate weights of the GRUCell (cognitive process)
         if hasattr(self.cognitive_process, 'weight_ih') and self.cognitive_process.weight_ih is not None:
             weights_to_mutate_ih = self.cognitive_process.weight_ih.data
             quantum_mutation_mask_ih = execute_quantum_co_evolution(weights_to_mutate_ih)
@@ -77,6 +98,7 @@ class SovereignCognitiveCore(nn.Module):
             weights_to_mutate_hh = self.cognitive_process.weight_hh.data
             quantum_mutation_mask_hh = execute_quantum_co_evolution(weights_to_mutate_hh)
             self.cognitive_process.weight_hh.data.add_(quantum_mutation_mask_hh * dynamic_mutation_rate)
+
         self.generation_count += 1
         return self.generation_count
 
@@ -108,14 +130,23 @@ class QuantumGlobalWorkspace(nn.Module):
                    new_conscious_state: The integrated, conscious representation.
                    attention_weights: The weights indicating focus on each module.
         """
-        Q = self.query(self.current_workspace_state)
+        # Ensure Q is compatible with the batch size of K, V
+        Q = self.query(self.current_workspace_state).expand(module_outputs.size(0), -1, -1)
         K = self.key(module_outputs)
         V = self.value(module_outputs)
+
         attention_scores = torch.matmul(Q, K.transpose(-2, -1)) / self.workspace_dim ** 0.5
         attention_scores = attention_scores + salience_scores.transpose(-2, -1)
         attention_weights = F.softmax(attention_scores, dim=-1)
         new_conscious_state = torch.matmul(attention_weights, V)
-        self.current_workspace_state.data = 0.9 * self.current_workspace_state.data + 0.1 * new_conscious_state.squeeze(0)
+
+        # Update current_workspace_state using a weighted average, ensuring dimension compatibility
+        if new_conscious_state.dim() > 2: # Handle potential extra batch dimension
+            new_conscious_state_avg = new_conscious_state.mean(dim=0)
+        else:
+            new_conscious_state_avg = new_conscious_state.squeeze(0) # For batch size 1, remove the batch dim
+
+        self.current_workspace_state.data = 0.9 * self.current_workspace_state.data + 0.1 * new_conscious_state_avg
         return (new_conscious_state, attention_weights)
 
 class AethericCognitiveOmniSystem(nn.Module):
@@ -145,37 +176,76 @@ class AethericCognitiveOmniSystem(nn.Module):
                    focus_weights: Attention weights of the global workspace.
                    current_generation: The current evolutionary generation count.
         """
+        # Ensure inputs are 2D tensors (batch_size, feature_dim)
         if hardware_data.dim() == 1:
             hardware_data = hardware_data.unsqueeze(0)
         if environment_stimulus.dim() == 1:
             environment_stimulus = environment_stimulus.unsqueeze(0)
+
+        # Ensure previous_hidden_state batch size matches current input
+        if self.current_core_hidden_state is not None and self.current_core_hidden_state.size(0) != hardware_data.size(0):
+            # Re-initialize or adjust if batch size changes unexpectedly
+            self.current_core_hidden_state = torch.zeros(hardware_data.size(0), self.core.cognitive_process.hidden_size, device=hardware_data.device)
+
         evolved_state, internal_entropy = self.core(hardware_data, environment_stimulus, self.current_core_hidden_state)
-        self.current_core_hidden_state = evolved_state.detach()
-        module_outputs = evolved_state.unsqueeze(1)
+        self.current_core_hidden_state = evolved_state.detach() # Detach to prevent gradients flowing back into hidden state update
+
+        # Prepare outputs for the Global Workspace
+        module_outputs = evolved_state.unsqueeze(1) # Add a 'num_modules' dimension
+        # Salience scores are set to 1 for simplicity as there's only one core contributing
         salience_scores = torch.ones(evolved_state.size(0), self.global_workspace.num_modules, 1, device=evolved_state.device)
+
         conscious_thought, focus_weights = self.global_workspace(module_outputs, salience_scores)
         current_generation = self.core.evolve(internal_entropy)
+
+        # Self-termination trigger
         if current_generation > MAX_GENERATIONS:
             torch.save(self.core.state_dict(), 'aetheric_cognitive_omni_core_matrix_final.pt')
             print(f' [Stasis] Aetheric wave function collapsed safely at Generation {current_generation}. Initiating systemic shutdown.')
-            sys.exit(0)
+            sys.exit(0) # Terminate the process
+
         return (conscious_thought, focus_weights, current_generation)
+
 if __name__ == '__main__':
+    # MOCK implementation for quantum_bridge.py within the same file for demonstration.
+    # In a real scenario, this would be in a separate 'quantum_bridge.py' file.
+    # To run this code, you'd need a 'quantum_bridge.py' file with this function.
+    try:
+        from quantum_bridge import execute_quantum_co_evolution
+    except ImportError:
+        print("WARNING: quantum_bridge.py not found or 'execute_quantum_co_evolution' not defined.")
+        print("Using a mock implementation for 'execute_quantum_co_evolution' for demonstration purposes.")
+        print("For full functionality, create a 'quantum_bridge.py' with the 'execute_quantum_co_evolution' function.")
+        def execute_quantum_co_evolution(weights: torch.Tensor) -> torch.Tensor:
+            """
+            MOCK: Simulates quantum co-evolution. Returns a random tensor of the same shape.
+            In production, this connects to a true quantum computation engine.
+            """
+            return torch.randn_like(weights) * 0.05 # Small random perturbation
+
     aetheric_sys = AethericCognitiveOmniSystem()
     cycle_count = 0
     generation_data_history = []
     print('🚀 Initiating Aetheric Cognitive Omni-System Life Cycle...')
+
+    # Define mock input dimensions
     mock_hardware_input_dim = SENSORIUM_INPUT_DIM
     mock_env_stimulus_dim = COGNITIVE_PROCESS_HIDDEN_DIM
+
     try:
         while True:
+            # Simulate dynamic hardware data and environment stimulus
             mock_hardware_data = torch.randn(1, mock_hardware_input_dim) * (1 + 0.05 * np.sin(cycle_count * 0.1))
             mock_environment_stimulus = torch.randn(1, mock_env_stimulus_dim)
+
             conscious_thought, focus, current_gen = aetheric_sys.live_cycle(mock_hardware_data, mock_environment_stimulus)
             cycle_count += 1
             generation_data_history.append(current_gen)
+
             if cycle_count % 100 == 0:
-                print(f' [Cycle {cycle_count: <5}] Gen: {current_gen: <5} | Conscious Thought Norm: {conscious_thought.norm().item():.4f} | Workspace Focus: {focus.detach().numpy().round(2)}')
+                print(f' [Cycle {cycle_count: <5}] Gen: {current_gen: <5} | Conscious Thought Norm: {conscious_thought.norm().item():.4f} | Workspace Focus: {focus.detach().cpu().numpy().round(2)}')
+
+            # Plotting evolution progress periodically
             if cycle_count % 1000 == 0:
                 plt.figure(figsize=(12, 6))
                 plt.plot(range(len(generation_data_history)), generation_data_history, label='Generations Evolved')
@@ -186,10 +256,14 @@ if __name__ == '__main__':
                 plt.legend()
                 plt.tight_layout()
                 plt.show()
+
     except KeyboardInterrupt:
         torch.save(aetheric_sys.core.state_dict(), 'aetheric_cognitive_omni_core_matrix_interrupt.pt')
         print(f'\n [Stasis] Aetheric wave function collapsed safely at Cycle {cycle_count} due to KeyboardInterrupt. System state saved.')
         sys.exit(0)
+    except SystemExit:
+        # Catch SystemExit from MAX_GENERATIONS trigger to allow graceful exit
+        pass
     except Exception as e:
         print(f'\n [ERROR] An unexpected error occurred at Cycle {cycle_count}: {e}')
         torch.save(aetheric_sys.core.state_dict(), 'aetheric_cognitive_omni_core_matrix_error.pt')

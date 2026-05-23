@@ -1,9 +1,3 @@
 torch
-matplotlib
-pandas
-qiskit-ibm-runtime
-torch_scatter
 numpy
-scipy
-qiskit
-torchvision
+matplotlib
