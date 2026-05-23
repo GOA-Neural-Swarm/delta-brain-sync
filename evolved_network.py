@@ -8,6 +8,8 @@ qiskit
 qiskit-ibm-runtime
 torchvision
 quantum_bridge
+torch_scatter
+
 
 # PART 2: Next-gen Python code for the self-improving cognitive system
 import torch
@@ -15,8 +17,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sovereignQuantumMatrixEngine import execute_quantum_co_evolution
 import sys
+import numpy as np
+from scipy import sparse
+from torchvision import models
+from qiskit import QuantumCircuit, execute, Aer
+from qiskit_ibm_runtime import QuantumExperiment, Job
+from torch_scatter import scatter_sum
 
-class NeuroSymbioticCore(nn.Module):
+
+class MetaNeuroSymbioticCore(nn.Module):
     def __init__(self):
         super().__init__()
         self.sensorium = nn.Sequential(
@@ -39,11 +48,36 @@ class NeuroSymbioticCore(nn.Module):
         self.sensorium[0].weight.data += quantum_mutation_mask * self.mutation_rate
         self.generation_count += 1
 
-class NextGenCognitiveSystem(nn.Module):
+class QuantumGlobalWorkspace(nn.Module):
+    def __init__(self, workspace_dim, num_modules):
+        super().__init__()
+        self.workspace_dim = workspace_dim
+        self.current_workspace_state = nn.Parameter(torch.randn(1, workspace_dim))
+        self.query = nn.Linear(workspace_dim, workspace_dim)
+        self.key = nn.Linear(workspace_dim, workspace_dim)
+        self.value = nn.Linear(workspace_dim, workspace_dim)
+
+    def forward(self, module_outputs, salience_scores):
+        Q = self.query(self.current_workspace_state)
+        K = self.key(module_outputs)
+        V = self.value(module_outputs)
+        attention_scores = (
+            torch.matmul(Q, K.transpose(-2, -1)) / self.workspace_dim**0.5
+        )
+        attention_scores = attention_scores + salience_scores.transpose(-2, -1)
+        attention_weights = F.softmax(attention_scores, dim=-1)
+        new_conscious_state = torch.matmul(attention_weights, V)
+        self.current_workspace_state.data = (
+            0.9 * self.current_workspace_state.data
+            + 0.1 * new_conscious_state.squeeze(0)
+        )
+        return (new_conscious_state, attention_weights)
+
+class NextGenMetaCognitiveSystem(nn.Module):
     def __init__(self):
         super().__init__()
-        self.neuro_core = NeuroSymbioticCore()
-        self.global_workspace = GlobalWorkspace(workspace_dim=128, num_modules=3)
+        self.neuro_core = MetaNeuroSymbioticCore()
+        self.global_workspace = QuantumGlobalWorkspace(workspace_dim=128, num_modules=3)
 
     def live_cycle(self, hardware_data, environment_stimulus):
         self.neuro_core.eval()
@@ -59,7 +93,7 @@ class NextGenCognitiveSystem(nn.Module):
         return conscious_thought
 
 if __name__ == "__main__":
-    next_gen_cogsys = NextGenCognitiveSystem()
+    next_gen_cogsys = NextGenMetaCognitiveSystem()
     t = 0
     try:
         while True:
