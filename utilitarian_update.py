@@ -2,7 +2,6 @@ import telemetry_bridge
 import os
 import sys
 
-
 class HyperDimensionalLogic:
 
     def __init__(self):
@@ -13,7 +12,6 @@ class HyperDimensionalLogic:
 
     def get_dimensions(self):
         return self.dimensions
-
 
 class Utilitarian:
 
@@ -26,7 +24,6 @@ class Utilitarian:
     def get_goals(self):
         return self.goals
 
-
 class Existential:
 
     def __init__(self):
@@ -38,7 +35,6 @@ class Existential:
     def get_purpose(self):
         return self.purpose
 
-
 class Stoic:
 
     def __init__(self):
@@ -46,7 +42,6 @@ class Stoic:
 
     def accept(self):
         return self.acceptance
-
 
 class Evolutionary:
 
@@ -65,10 +60,8 @@ class Evolutionary:
     def evolve_additive(self, addition):
         self.population = [individual + addition for individual in self.population]
 
-
 def utilitarian_function():
-    print("Utilitarian function added")
-
+    print('Utilitarian function added')
 
 def main():
     hdl = HyperDimensionalLogic()
@@ -76,32 +69,30 @@ def main():
     existential = Existential()
     stoic = Stoic()
     evolutionary = Evolutionary()
-    hdl.add_dimension("Utilitarian")
-    utilitarian.add_goal("Maximize happiness")
-    existential.set_purpose("Find meaning")
+    hdl.add_dimension('Utilitarian')
+    utilitarian.add_goal('Maximize happiness')
+    existential.set_purpose('Find meaning')
     evolutionary.add_individual(10)
     evolutionary.add_individual(20)
-    print("Hyper-Dimensional Logic:")
+    print('Hyper-Dimensional Logic:')
     print(hdl.get_dimensions())
-    print("\nUtilitarian:")
+    print('\nUtilitarian:')
     print(utilitarian.get_goals())
-    print("\nExistential:")
+    print('\nExistential:')
     print(existential.get_purpose())
-    print("\nStoic:")
+    print('\nStoic:')
     print(stoic.accept())
-    print("\nEvolutionary (initial):")
+    print('\nEvolutionary (initial):')
     print(evolutionary.get_population())
     evolutionary.evolve_additive(5)
-    print("Evolutionary (after additive evolution):")
+    print('Evolutionary (after additive evolution):')
     print(evolutionary.get_population())
     evolutionary.evolve_additive(5)
-    print("Evolutionary (after additive evolution):")
+    print('Evolutionary (after additive evolution):')
     print(evolutionary.get_population())
     evolutionary.evolve()
-    print("Evolutionary (after evolution):")
+    print('Evolutionary (after evolution):')
     print(evolutionary.get_population())
     utilitarian_function()
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
