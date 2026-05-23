@@ -2,11 +2,12 @@
 import telemetry_bridge
 import os
 
+
 def new_function():
-    print('New function added')
+    print("New function added")
+
 
 class EvolutionaryModule:
-
     def __init__(self):
         self.existing_logic = [new_function]
         self.utilitarian_value = 0
@@ -27,12 +28,16 @@ class EvolutionaryModule:
             preserved_logic.append(function)
         return preserved_logic
 
+
 def new_additive_function():
-    print('New additive function')
+    print("New additive function")
+
 
 def main():
     evolutionary_module = EvolutionaryModule()
     evolutionary_module.apply_hyper_dimensional_logic(new_additive_function)
     print(evolutionary_module.stoic_preservation(evolutionary_module.existing_logic))
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     main()
