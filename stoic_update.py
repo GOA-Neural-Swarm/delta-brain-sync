@@ -61,6 +61,7 @@ print("Current utility:", utility.get())
 evolving_system.add_component(NewComponent())
 print("Updated utility:", evolving_system.utility.get())
 
+
 class ExistentialComponent:
     def __init__(self):
         self.exists = True
@@ -68,8 +69,10 @@ class ExistentialComponent:
     def existential_crisis(self):
         self.exists = False
 
+
 evolving_system.add_component(ExistentialComponent())
 print("Updated utility after existential component:", evolving_system.utility.get())
+
 
 class EvolutionaryComponent:
     def __init__(self):
@@ -78,8 +81,10 @@ class EvolutionaryComponent:
     def evolve(self):
         self.evolution_level += 1
 
+
 evolving_system.add_component(EvolutionaryComponent())
 print("Updated utility after evolutionary component:", evolving_system.utility.get())
+
 
 class HyperDimensionalComponent:
     def __init__(self):
@@ -88,8 +93,12 @@ class HyperDimensionalComponent:
     def add_dimension(self):
         self.dimensions += 1
 
+
 evolving_system.add_component(HyperDimensionalComponent())
-print("Updated utility after hyper-dimensional component:", evolving_system.utility.get())
+print(
+    "Updated utility after hyper-dimensional component:", evolving_system.utility.get()
+)
+
 
 def utilitarian_analysis(evolving_system):
     print("Utilitarian analysis started")
@@ -102,5 +111,6 @@ def utilitarian_analysis(evolving_system):
             print("Evolutionary component detected")
         elif isinstance(component, HyperDimensionalComponent):
             print("Hyper-dimensional component detected")
+
 
 utilitarian_analysis(evolving_system)
