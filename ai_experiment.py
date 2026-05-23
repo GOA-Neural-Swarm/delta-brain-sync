@@ -132,5 +132,6 @@ def main():
     existential_dataset = ExistentialDataset(data=data, labels=labels)
     trainer = AdditiveEvolutionaryTrainer(evolutionary_model, stoic_optimizer, utilitarian_loss, hyper_space, existential_dataset)
     trainer.train(epochs=10)
+
 if __name__ == '__main__':
     main()
