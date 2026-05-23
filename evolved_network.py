@@ -1,19 +1,15 @@
-
-
-# PART 1: List of external pip packages required for the new code
+# 🧬 [QUANTUM_EVOLUTION]: Gen_6 Linked
+import telemetry_bridge
 torch
 numpy
 scipy
 qiskit
-qiskit-ibm-runtime
+qiskit - ibm - runtime
 torchvision
 quantum_bridge
 torch_scatter
 matplotlib
 pandas
-
-
-# PART 2: Next-gen Python code for the self-improving cognitive system
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -29,13 +25,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 class MetaNeuroSymbioticCore(nn.Module):
+
     def __init__(self):
         super().__init__()
-        self.sensorium = nn.Sequential(
-            nn.Linear(10, 256),
-            nn.ReLU(),
-            nn.Linear(256, 128)
-        )
+        self.sensorium = nn.Sequential(nn.Linear(10, 256), nn.ReLU(), nn.Linear(256, 128))
         self.cognitive_process = nn.GRUCell(input_size=128, hidden_size=128)
         self.mutation_rate = 0.01
         self.generation_count = 0
@@ -52,6 +45,7 @@ class MetaNeuroSymbioticCore(nn.Module):
         self.generation_count += 1
 
 class QuantumGlobalWorkspace(nn.Module):
+
     def __init__(self, workspace_dim, num_modules):
         super().__init__()
         self.workspace_dim = workspace_dim
@@ -64,19 +58,15 @@ class QuantumGlobalWorkspace(nn.Module):
         Q = self.query(self.current_workspace_state)
         K = self.key(module_outputs)
         V = self.value(module_outputs)
-        attention_scores = (
-            torch.matmul(Q, K.transpose(-2, -1)) / self.workspace_dim**0.5
-        )
+        attention_scores = torch.matmul(Q, K.transpose(-2, -1)) / self.workspace_dim ** 0.5
         attention_scores = attention_scores + salience_scores.transpose(-2, -1)
         attention_weights = F.softmax(attention_scores, dim=-1)
         new_conscious_state = torch.matmul(attention_weights, V)
-        self.current_workspace_state.data = (
-            0.9 * self.current_workspace_state.data
-            + 0.1 * new_conscious_state.squeeze(0)
-        )
+        self.current_workspace_state.data = 0.9 * self.current_workspace_state.data + 0.1 * new_conscious_state.squeeze(0)
         return (new_conscious_state, attention_weights)
 
 class NextGenMetaCognitiveSystem(nn.Module):
+
     def __init__(self):
         super().__init__()
         self.neuro_core = MetaNeuroSymbioticCore()
@@ -90,12 +80,11 @@ class NextGenMetaCognitiveSystem(nn.Module):
         conscious_thought, focus_weights = self.global_workspace(module_outputs, salience_scores)
         self.neuro_core.evolve()
         if self.neuro_core.generation_count > 1000:
-            torch.save(self.neuro_core.state_dict(), "next_gen_neuro_core_matrix.pt")
-            print(f" [Stasis] Wave function collapsed safely at Epoch {self.neuro_core.generation_count}.")
+            torch.save(self.neuro_core.state_dict(), 'next_gen_neuro_core_matrix.pt')
+            print(f' [Stasis] Wave function collapsed safely at Epoch {self.neuro_core.generation_count}.')
             sys.exit(0)
         return conscious_thought
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     next_gen_cogsys = NextGenMetaCognitiveSystem()
     t = 0
     generation_data = []
@@ -105,7 +94,7 @@ if __name__ == "__main__":
             mock_env = torch.randn(1, 128)
             next_gen_cogsys.live_cycle(mock_hardware, mock_env)
             t += 1
-            print(f" [Cycle {t}] Processing...")
+            print(f' [Cycle {t}] Processing...')
             generation_data.append(t)
             if t % 100 == 0:
                 plt.plot(generation_data)
@@ -114,6 +103,6 @@ if __name__ == "__main__":
                 plt.title('Evolution of Meta-Cognitive System')
                 plt.show()
     except KeyboardInterrupt:
-        torch.save(next_gen_cogsys.neuro_core.state_dict(), "next_gen_neuro_core_matrix.pt")
-        print(f"\n [Stasis] Wave function collapsed safely at Epoch {t}.")
+        torch.save(next_gen_cogsys.neuro_core.state_dict(), 'next_gen_neuro_core_matrix.pt')
+        print(f'\n [Stasis] Wave function collapsed safely at Epoch {t}.')
         sys.exit(0)

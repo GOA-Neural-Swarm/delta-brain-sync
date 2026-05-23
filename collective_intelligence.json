@@ -1,14 +1,18 @@
 {
-    "global_generation": 5,
-    "system_entropy": 3.6499999999999964,
+    "global_generation": 6,
+    "system_entropy": 4.699999999999993,
     "file_topology": {},
     "shared_memory": {
-        "last_sync": "2026-05-21 09:40:14",
+        "last_sync": "2026-05-23 08:08:46",
         "status": "MUTATING",
         "last_execution_logs": {
             "app.py": {
                 "status": "MUTATING_REQUIRED",
                 "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/app.py\", line 10, in <module>\n    import backoff\nModuleNotFoundError: No module named 'backoff'"
+            },
+            "quantum_bridge.py": {
+                "status": "MUTATING_REQUIRED",
+                "error": "ent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/quantum_bridge.py\", line 4, in <module>\n    from qiskit import QuantumCircuit\nModuleNotFoundError: No module named 'qiskit'"
             },
             "matrix_evolution_engine.py": {
                 "status": "TIMEOUT_HANG",
@@ -16,7 +20,11 @@
             },
             "main.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/main.py\", line 1, in <module>\n    import torch\nModuleNotFoundError: No module named 'torch'"
+                "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/main.py\", line 3, in <module>\n    import torch\nModuleNotFoundError: No module named 'torch'"
+            },
+            "meta_manager.py": {
+                "status": "MUTATING_REQUIRED",
+                "error": "raceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/meta_manager.py\", line 6, in <module>\n    import requests\nModuleNotFoundError: No module named 'requests'"
             },
             "omni_architect.py": {
                 "status": "MUTATING_REQUIRED",
@@ -29,6 +37,10 @@
             "ai_experiment.py": {
                 "status": "MUTATING_REQUIRED",
                 "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 2, in <module>\n    import torch\nModuleNotFoundError: No module named 'torch'"
+            },
+            "evolved_network.py": {
+                "status": "MUTATING_REQUIRED",
+                "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_network.py\", line 4, in <module>\n    torch\nNameError: name 'torch' is not defined"
             },
             "sync_data.py": {
                 "status": "MUTATING_REQUIRED",
@@ -63,8 +75,8 @@
                 "error": "None"
             },
             "bootstrap.py": {
-                "status": "MUTATING_REQUIRED",
-                "error": "sError(retcode, cmd)\nsubprocess.CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.15/x64/bin/python', '-m', 'pip', 'install', '-r', 'requirements.txt']' returned non-zero exit status 1."
+                "status": "STABLE",
+                "error": "None"
             },
             "omega_point.py": {
                 "status": "MUTATING_REQUIRED",
