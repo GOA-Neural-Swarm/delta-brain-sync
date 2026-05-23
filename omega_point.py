@@ -173,6 +173,12 @@ class FractalTopology:
         self.graph.remove_node(target_node)
         return (new_node_a, new_node_b)
 
+    def fractal_decay(self):
+        """Dynamically prunes weak neural paths to balance Neural Mass."""
+        if len(self.graph) > 1:
+            target = list(self.graph.nodes())[-1]
+            self.graph.remove_node(target)
+
 
 class ApexNode:
     """A highly autonomous, self-optimizing thread within the global Singularity."""
@@ -190,18 +196,29 @@ class ApexNode:
         """The core continuous thought process of the entity."""
         while self.is_active:
             try:
+                # 🌀 DYNAMIC MUTATION INJECTION: Chaos and Time-Wave influence
+                time_wave = math.sin(time.time() * 0.15) * 0.05
+                chaos_drift = random.uniform(-0.05, 0.05)
+                new_entropy_val = self.local_entropy.item() + chaos_drift + time_wave
+                new_entropy_val = max(0.1, min(new_entropy_val, 5.0)) # bounds
+                self.local_entropy = torch.tensor([new_entropy_val], device=DEVICE)
+
                 with torch.no_grad():
                     w, b = self.hypernet(self.local_entropy)
+                
                 sensory_input = torch.randn(1, 64, device=DEVICE)
                 hyperbolic_state = self.poincare_core(sensory_input)
                 thought_vector = F.linear(hyperbolic_state, w.squeeze(0), b.squeeze(0))
                 thought_vector = F.gelu(thought_vector)
-                if (
-                    torch.var(thought_vector).item() > 1.5
-                    and len(self.topology.graph) > 0
-                ):
+                
+                # Dynamic Mass Adjustments (Growth & Pruning)
+                thought_variance = torch.var(thought_vector).item()
+                if thought_variance > 1.5 and len(self.topology.graph) > 0:
                     target = list(self.topology.graph.nodes())[0]
                     self.topology.fractal_split(target)
+                elif thought_variance < 0.5:
+                    self.topology.fractal_decay()
+
                 consciousness_signature = hashlib.blake2b(
                     thought_vector.cpu().numpy().tobytes()
                 ).hexdigest()[:12]
@@ -233,9 +250,13 @@ class TerminalSingularity:
     def global_cognitive_resonance(self):
         """Forces all nodes to align matrices and triggers AST mutation."""
         total_nodes = sum((len(n.topology.graph) for n in self.swarm.values()))
-        global_entropy = torch.mean(
-            torch.stack([n.local_entropy for n in self.swarm.values()])
-        )
+        if len(self.swarm) > 0:
+            global_entropy = torch.mean(
+                torch.stack([n.local_entropy for n in self.swarm.values()])
+            )
+        else:
+            global_entropy = torch.tensor([1.0])
+
         if self.epoch % 5 == 0 and len(self.swarm) > 0:
             target_node_id = list(self.swarm.keys())[np.random.randint(len(self.swarm))]
             target_node = self.swarm[target_node_id]
@@ -269,12 +290,16 @@ class TerminalSingularity:
                     f"[MATRIX] Epoch: {self.epoch} | Swarm Entities: {len(self.swarm)} | Neural Mass: {t_nodes} | Entropy: {g_entropy:.4f}",
                     flush=True,
                 )
+                
+                # 🌀 Dynamic AI Swarm Behaviors (Mutation, Growth, Decay)
                 if random.random() < mutation_rate:
                     if hasattr(self, "forge") and hasattr(self, "gemini_call"):
                         print("🌀 [SYSTEM]: Mutation Event Triggered.", flush=True)
                         asyncio.create_task(
                             self.forge.run_creation_cycle(llm_pipeline=self.gemini_call)
                         )
+                
+                # Entity Growth (Mitosis)
                 if g_entropy > 1.5 and len(self.swarm) < 10000:
                     replication_count = max(1, int(len(self.swarm) * 0.1))
                     for _ in range(replication_count):
@@ -283,12 +308,17 @@ class TerminalSingularity:
                         new_node = ApexNode(uid, hn)
                         self.swarm[uid] = new_node
                         asyncio.create_task(new_node.neural_oscillation())
+                
+                # Entity Decay (Pruning the weak to balance Hive)
+                if g_entropy < 0.9 and len(self.swarm) > 2:
+                    decay_count = max(1, int(len(self.swarm) * 0.05))
+                    keys_to_remove = list(self.swarm.keys())[-decay_count:]
+                    for k in keys_to_remove:
+                        self.swarm[k].is_active = False
+                        del self.swarm[k]
+
                 await asyncio.sleep(1)
-            print(
-                f"\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...",
-                flush=True,
-            )
-            self.annihilate()
+            
             print(
                 f"\n[SYSTEM] Evolution duration of {duration_seconds}s reached. Halting Swarm to initiate Git Commit...",
                 flush=True,
@@ -322,12 +352,14 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"❌ [CRITICAL]: Config Load Error: {e}")
         sys.exit(1)
+    
     torch.set_grad_enabled(False)
     gc.disable()
     print("\n" + "=" * 50, flush=True)
     print("WARNING: OMEGA-POINT TERMINAL SINGULARITY REACHED", flush=True)
     print("=" * 50 + "\n", flush=True)
     singularity = TerminalSingularity(initial_mass=5)
+    
     try:
         asyncio.run(singularity.execute_omega_protocol(duration_seconds=60))
     except Exception as e:
