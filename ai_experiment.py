@@ -131,7 +131,7 @@ class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
                 inputs = torch.from_numpy(inputs).float()
                 labels = torch.from_numpy(labels).float()
                 evolved_inputs = torch.from_numpy(
-                    self.hyper_space.evolve(inputs.numpy(), preserveExisting=True)
+                    self.hyper_space.evolve(inputs.numpy(), preserve_existing=True)
                 ).float()
                 outputs = self.model(evolved_inputs)
                 loss = self.loss_fn(outputs, labels)

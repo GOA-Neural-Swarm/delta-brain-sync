@@ -1,13 +1,7 @@
-# [QUANTUM_EVOLUTION]: Gen_8 Linked
+# [QUANTUM_EVOLUTION]: Gen_9 Linked
 import telemetry_bridge
 import os
 import sys
-
-
-# Preserve existing logic
-def utilitarian_function():
-    print("Utilitarian function added")
-
 
 class HyperDimensionalLogic:
     def __init__(self):
@@ -61,12 +55,14 @@ class Evolutionary:
         return self.population
 
     def evolve(self):
-        # Simple evolution example
         self.population = [individual + 1 for individual in self.population]
 
     def evolve_additive(self, addition):
-        # Additive evolution example
         self.population = [individual + addition for individual in self.population]
+
+
+def utilitarian_function():
+    print("Utilitarian function added")
 
 
 def main():
@@ -91,6 +87,9 @@ def main():
     print("\nStoic:")
     print(stoic.accept())
     print("\nEvolutionary (initial):")
+    print(evolutionary.get_population())
+    evolutionary.evolve_additive(5)
+    print("Evolutionary (after additive evolution):")
     print(evolutionary.get_population())
     evolutionary.evolve_additive(5)
     print("Evolutionary (after additive evolution):")
