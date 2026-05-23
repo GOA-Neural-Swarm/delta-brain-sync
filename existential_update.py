@@ -57,4 +57,6 @@ def main():
 
 
 if __name__ == "__main__":
+    telemetry_bridge.init()
     main()
+    telemetry_bridge.disconnect()
