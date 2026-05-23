@@ -1,17 +1,18 @@
-
 import telemetry_bridge
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import sys
 import numpy as np
-from quantum_bridge import execute_quantum_co_evolution
+from quantum_bridge import (
+    execute_quantum_co_evolution,
+)  # Corrected import based on prompt
 import matplotlib.pyplot as plt
 
 WORKSPACE_DIM = 128
 SENSORIUM_INPUT_DIM = 10
 COGNITIVE_PROCESS_HIDDEN_DIM = 128
-MAX_GENERATIONS = 7500 # Self-termination trigger after this many generations
+MAX_GENERATIONS = 7500  # Self-termination trigger after this many generations
 BASE_MUTATION_RATE = 0.005
 
 
@@ -50,10 +51,10 @@ class SovereignCognitiveCore(nn.Module):
         # Ensure hardware_data has enough elements for std deviation.
         # If it's a batch of single-dim inputs, expand it.
         if hardware_data.numel() == 1:
-            entropy = torch.tensor(0.0) # Or a default low entropy
+            entropy = torch.tensor(0.0)  # Or a default low entropy
         else:
             entropy = torch.std(hardware_data)
-        return entropy + 0.1 # Add a small constant to prevent zero entropy
+        return entropy + 0.1  # Add a small constant to prevent zero entropy
 
     def forward(self, hardware_data, environment_stimulus, previous_hidden_state=None):
         """
@@ -159,7 +160,9 @@ class QuantumGlobalWorkspace(nn.Module):
                    attention_weights: The weights indicating focus on each module.
         """
         # Ensure Q is compatible with the batch size of K, V
-        Q = self.query(self.current_workspace_state).expand(module_outputs.size(0), -1, -1)
+        Q = self.query(self.current_workspace_state).expand(
+            module_outputs.size(0), -1, -1
+        )
         K = self.key(module_outputs)
         V = self.value(module_outputs)
         attention_scores = (
