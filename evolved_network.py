@@ -9,6 +9,8 @@ qiskit-ibm-runtime
 torchvision
 quantum_bridge
 torch_scatter
+matplotlib
+pandas
 
 
 # PART 2: Next-gen Python code for the self-improving cognitive system
@@ -23,7 +25,8 @@ from torchvision import models
 from qiskit import QuantumCircuit, execute, Aer
 from qiskit_ibm_runtime import QuantumExperiment, Job
 from torch_scatter import scatter_sum
-
+import matplotlib.pyplot as plt
+import pandas as pd
 
 class MetaNeuroSymbioticCore(nn.Module):
     def __init__(self):
@@ -95,6 +98,7 @@ class NextGenMetaCognitiveSystem(nn.Module):
 if __name__ == "__main__":
     next_gen_cogsys = NextGenMetaCognitiveSystem()
     t = 0
+    generation_data = []
     try:
         while True:
             mock_hardware = torch.randn(1, 10)
@@ -102,6 +106,13 @@ if __name__ == "__main__":
             next_gen_cogsys.live_cycle(mock_hardware, mock_env)
             t += 1
             print(f" [Cycle {t}] Processing...")
+            generation_data.append(t)
+            if t % 100 == 0:
+                plt.plot(generation_data)
+                plt.xlabel('Epoch')
+                plt.ylabel('Generation Count')
+                plt.title('Evolution of Meta-Cognitive System')
+                plt.show()
     except KeyboardInterrupt:
         torch.save(next_gen_cogsys.neuro_core.state_dict(), "next_gen_neuro_core_matrix.pt")
         print(f"\n [Stasis] Wave function collapsed safely at Epoch {t}.")
