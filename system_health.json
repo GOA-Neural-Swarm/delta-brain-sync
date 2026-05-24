@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-05-23T17:49:55.571962",
+    "timestamp": "2026-05-24T01:51:21.518292",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1013-azure",
@@ -19,7 +19,6 @@
         "attrs": "26.1.0",
         "orjson": "3.11.9",
         "psycopg2-binary": "2.9.12",
-        "fastapi": "0.136.1",
         "rich": "15.0.0",
         "scipy": "1.17.1",
         "cycler": "0.12.1",
@@ -64,6 +63,7 @@
         "jsonschema": "4.26.0",
         "uritemplate": "4.2.0",
         "multiprocess": "0.70.19",
+        "fastapi": "0.136.3",
         "google-genai": "2.6.0",
         "pycparser": "3.0",
         "Jinja2": "3.1.6",
@@ -168,7 +168,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.55,
+        "ram_available_gb": 14.61,
         "gpu_available": false
     }
 }

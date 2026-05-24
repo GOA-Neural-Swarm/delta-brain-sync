@@ -1,6 +1,7 @@
 import telemetry_bridge
 import os
 
+
 class HyperDimensionalLogic:
 
     def __init__(self):
@@ -17,7 +18,9 @@ class HyperDimensionalLogic:
         print("Applying utilitarian principle: {}".format(self.utilitarian_principle))
 
     def apply_existential_perspective(self):
-        print("Applying existential perspective: {}".format(self.existential_perspective))
+        print(
+            "Applying existential perspective: {}".format(self.existential_perspective)
+        )
 
     def apply_stoic_approach(self):
         print("Applying stoic approach: {}".format(self.stoic_approach))

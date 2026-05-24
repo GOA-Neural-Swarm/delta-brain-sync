@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -43,11 +42,19 @@ def execute_quantum_co_evolution(weights):
 
 
 # --- Constants for the Unified System ---
-HARDWARE_INPUT_DIM = 10  # Input dimension for bodily interoception (e.g., CPU, RAM stats)
+HARDWARE_INPUT_DIM = (
+    10  # Input dimension for bodily interoception (e.g., CPU, RAM stats)
+)
 COGNITIVE_TASK_INPUT_DIM = 10  # Input dimension for the primary cognitive processing core (e.g., environmental observations)
-WORKSPACE_DIM = 128  # The dimensionality of the global workspace state and cognitive hidden states
-COGNITIVE_PROCESS_HIDDEN_DIM = 128  # Hidden dimension for recurrent cognitive processing (matches WORKSPACE_DIM)
-EMOTION_CONTEXT_DIM = 64  # Dimension for emotional context derived from body state and environment
+WORKSPACE_DIM = (
+    128  # The dimensionality of the global workspace state and cognitive hidden states
+)
+COGNITIVE_PROCESS_HIDDEN_DIM = (
+    128  # Hidden dimension for recurrent cognitive processing (matches WORKSPACE_DIM)
+)
+EMOTION_CONTEXT_DIM = (
+    64  # Dimension for emotional context derived from body state and environment
+)
 MAX_GENERATIONS = 7500  # Self-termination trigger: Maximum generations before shutdown
 BASE_MUTATION_RATE = 0.005  # Base rate for quantum-enhanced evolutionary mutation
 
@@ -285,9 +292,7 @@ class SovereignCognitiveCore(nn.Module):
         for name, param in self.named_parameters():
             if "weight" in name and param.requires_grad:
                 weights_to_mutate = param.data
-                quantum_mutation_mask = execute_quantum_co_evolution(
-                    weights_to_mutate
-                )
+                quantum_mutation_mask = execute_quantum_co_evolution(weights_to_mutate)
                 # Apply mutation directly to the weights' data
                 param.data.add_(quantum_mutation_mask * dynamic_mutation_rate)
 
@@ -453,7 +458,7 @@ class AethericCognitiveOmniSystem(nn.Module):
             .clamp(min=0.1, max=1.0)
             .unsqueeze(-1)
             .unsqueeze(-1)
-            .expand_as(salience_for_core) # Ensure it expands to match batch_size
+            .expand_as(salience_for_core)  # Ensure it expands to match batch_size
         )
 
         all_salience = torch.stack(
@@ -531,13 +536,15 @@ if __name__ == "__main__":
             # Store history for plotting and analysis
             core_generation_history.append(current_core_gen)
             awareness_generation_history.append(current_awareness_gen)
-            emotion_history.append(current_emotion.mean().item())  # .mean().item() for scalar
+            emotion_history.append(
+                current_emotion.mean().item()
+            )  # .mean().item() for scalar
             entropy_history.append(current_entropy.item())  # .item() for scalar
             focus_core_history.append(
-                focus.detach().cpu().numpy()[0][0] # Focus on Cognitive Core
+                focus.detach().cpu().numpy()[0][0]  # Focus on Cognitive Core
             )
             focus_awareness_history.append(
-                focus.detach().cpu().numpy()[0][1] # Focus on Self-Awareness Identity
+                focus.detach().cpu().numpy()[0][1]  # Focus on Self-Awareness Identity
             )
 
             if cycle_count % 50 == 0:

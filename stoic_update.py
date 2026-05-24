@@ -1,6 +1,7 @@
 import telemetry_bridge
 import os
 
+
 def calculate_utility(evolving_system):
     """
     Calculate the overall utility of an evolving system.
