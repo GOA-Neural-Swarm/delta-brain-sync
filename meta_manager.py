@@ -38,16 +38,24 @@ class EvolutionOrchestrator:
                     return response['choices'][0]['message']['content']
             except Exception as e:
                 print(f'[Warning] Groq Engine Exception: {str(e)}')
+        # Gemini API အပိုင်းကို ပြင်ဆင်ခြင်း
         GEMINI_KEY = os.getenv('GEMINI_API_KEY')
         if GEMINI_KEY:
             try:
                 print('[Manager] Groq Unavailable. Flipping to Backup Engine via Gemini API...')
-                url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_KEY}'
+                # Model name ကို 1.5-flash သို့ ပြောင်းလဲပါ
+                url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}'
                 headers = {'Content-Type': 'application/json'}
                 data = {'contents': [{'parts': [{'text': f'{system_prompt}\n\nContext:\n{context}\nGenerate.'}]}], 'generationConfig': {'temperature': 1.0}}
-                response = requests.post(url, headers=headers, json=data).json()
-                if 'candidates' in response and len(response['candidates']) > 0:
+                
+                response_obj = requests.post(url, headers=headers, json=data)
+                response = response_obj.json()
+                
+                # API error များအတွက် စစ်ဆေးခြင်း
+                if response_obj.status_code == 200 and 'candidates' in response:
                     return response['candidates'][0]['content']['parts'][0]['text']
+                else:
+                    print(f'[Warning] Gemini API Error: {response}')
             except Exception as e:
                 print(f'[Warning] Gemini Engine Exception: {str(e)}')
         raise RuntimeError('All AI Generation Engines blocked.')
