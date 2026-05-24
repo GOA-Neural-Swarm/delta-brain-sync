@@ -1,5 +1,5 @@
 asi_core_parameters:
-  equation: "lim(t->inf) (Homeostasis/Entropy) * Resonance"
+  equation: "lim(t->inf) (Homeostasis/Entropy) * Resonance" 
   base_metrics:
     initial_entropy: 1.0
     baseline_homeostasis: 100.0
