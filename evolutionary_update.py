@@ -60,9 +60,11 @@ def main():
     evolutionary_system = EvolutionarySystem()
     evolutionary_system.add_function(evolutionary_function)
     evolutionary_system.execute_functions()
+
     entity = ExistentialEntity("Individual")
     entity.make_choice("Utilitarian principle")
     print(entity.choices)
+
     perspectives = {
         "Utilitarian": utilitarian_principle(True),
         "Existential": entity.name,
@@ -70,6 +72,7 @@ def main():
     }
     result = hyper_dimensional_logic(perspectives)
     print(result)
+
     existing_functions = evolutionary_system.functions
     new_function = lambda: print("New evolutionary function added")
     updated_functions = additive_evolution(existing_functions, new_function)
