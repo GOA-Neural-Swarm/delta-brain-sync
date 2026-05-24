@@ -1,4 +1,4 @@
-name: 🌀 OMEGA MATRIX COLLECTIVE EVOLUTION CORE
+name: "🌀 OMEGA MATRIX COLLECTIVE EVOLUTION CORE"
 
 on:
   schedule:
@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   collective_evolution:
@@ -17,6 +18,7 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GH_TOKEN || github.token }}
           fetch-depth: 0
 
       - name: 🐍 Set up Python Environment
@@ -35,7 +37,7 @@ jobs:
       - name: 🔎 Dynamic AST Dependency Scanner (ဉာဏ်ရည်မြင့် Package ရှာဖွေစနစ်)
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install numpy scikit-learn psutil
+          pip install numpy scikit-learn psutil requests
           
           python -c "
           import ast, os, subprocess
@@ -52,7 +54,8 @@ jobs:
                               elif isinstance(node, ast.ImportFrom):
                                   if node.module: modules.add(node.module.split('.')[0])
                       except: pass
-          std_libs = {'sys', 'os', 'math', 'json', 'time', 'pickle', 'abc', 'typing', 'setuptools', 'ast', 'subprocess', 'random', 'datetime', 're', 'typing_extensions'}
+          # Standard libraries နှင့် pre-installed များအား ကျော်ရန်
+          std_libs = {'sys', 'os', 'math', 'json', 'time', 'pickle', 'abc', 'typing', 'setuptools', 'ast', 'subprocess', 'random', 'datetime', 're', 'typing_extensions', 'pydoc', 'collections'}
           to_install = [m for m in modules if m not in std_libs and m]
           if to_install: 
               print('📦 Installing Found Dependencies:', to_install)
@@ -60,6 +63,9 @@ jobs:
           "
 
       - name: ⚡ Trigger Collective Matrix Engine (ပေါင်းစပ်ဉာဏ်ရည် အသက်သွင်းခြင်း)
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           echo "🚀 IGNITING MATRIX EVOLUTION ENGINE..."
           python matrix_evolution_engine.py
@@ -77,15 +83,20 @@ jobs:
               print(f'**💥 System Entropy Level:** {data.get(\"system_entropy\", 0.0):.2f}')
               print('### 📡 Active Core Entities:')
               for core, logs in data.get(\"shared_memory\", {}).get(\"last_execution_logs\", {}).items():
-                  status_icon = '✅' if logs['status'] == 'STABLE' else '⚠️'
-                  print(f'- {status_icon} **{core}**: `{logs[\"status\"]}` (Error: {logs[\"error\"]})')
+                  status_icon = '✅' if logs.get('status') == 'STABLE' else '⚠️'
+                  print(f'- {status_icon} **{core}**: `{logs.get(\"status\", \"UNKNOWN\")}` (Error: {logs.get(\"error\", \"None\")})')
           else:
-              print('# ❌ Registry not found.')
+              print('# ❌ Registry collective_intelligence.json not found.')
           " >> $GITHUB_STEP_SUMMARY
 
       - name: 🧬 Git Auto-Commit & Push (ဗီဇပြောင်းလဲသွားသော ကုဒ်များနှင့် Bridge များကို သိမ်းဆည်းခြင်း)
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "🧬 [MATRIX-EVOLUTION] Shared Collective Intelligence Sync [skip ci]"
-          file_pattern: '*.py *.json' # ပြောင်းလဲသွားတဲ့ Python ကုဒ်အစစ်တွေနဲ့ မှတ်ဉာဏ် JSON ကိုပဲ ကွက်တိသိမ်းမယ်
+          file_pattern: '*.py *.json' # ပြောင်းလဲသွားတဲ့ Python ကုဒ်အစစ်တွေနဲ့ မှတ်ဉာဏ် JSON ကိုပဲ ကွက်တိသိမ်းမည်
           skip_dirty_check: false
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"
+          commit_author: "GOA-neurons <204048940+GOA-neurons@users.noreply.github.com>"
+          # 💡 [FAIL-SAFE]: အောက်ပါလိုင်းသည် Diverged ဖြစ်နေသော Commit ကွာဟချက်များကို Overwrite လုပ်ရန် Force Push လုပ်ပေးပါသည်
+          push_options: '--force'
