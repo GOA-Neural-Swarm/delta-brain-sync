@@ -132,5 +132,9 @@ MATRIX_STATE = {
 def get_shared_value(key, default=None):
     return MATRIX_STATE.get("shared_memory", {}).get(key, default)
 
+def init():
+    print("Telemetry Bridge Initialized")
+    pass
+
 def get_generation():
     return MATRIX_STATE.get("global_generation", 1)
