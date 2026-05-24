@@ -3,10 +3,7 @@ import os
 import sys
 
 def utilitarian_principle(functionality):
-    if functionality:
-        return True
-    else:
-        return False
+    return bool(functionality)
 
 class ExistentialEntity:
 
@@ -18,10 +15,7 @@ class ExistentialEntity:
         self.choices.append(choice)
 
 def stoic_indifference(event):
-    if event:
-        return 'Acknowledged'
-    else:
-        return 'Ignored'
+    return 'Acknowledged' if event else 'Ignored'
 
 class EvolutionarySystem:
 
@@ -36,10 +30,7 @@ class EvolutionarySystem:
             function()
 
 def hyper_dimensional_logic(perspectives):
-    result = {}
-    for perspective, value in perspectives.items():
-        result[perspective] = value
-    return result
+    return perspectives
 
 def evolutionary_function():
     print('Evolutionary function added')
@@ -58,7 +49,7 @@ def main():
     perspectives = {'Utilitarian': utilitarian_principle(True), 'Existential': entity.name, 'Stoic': stoic_indifference(True)}
     result = hyper_dimensional_logic(perspectives)
     print(result)
-    existing_functions = evolutionary_system.functions
+    existing_functions = list(evolutionary_system.functions)
     new_function = lambda: print('New evolutionary function added')
     updated_functions = additive_evolution(existing_functions, new_function)
     evolutionary_system.functions = updated_functions

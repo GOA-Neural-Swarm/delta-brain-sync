@@ -6,7 +6,6 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
 class HyperDimensionalSpace:
-
     def __init__(self, dimensions):
         self.dimensions = dimensions
 
@@ -17,7 +16,6 @@ class HyperDimensionalSpace:
             return np.random.normal(0, 0.1, size=(data.shape[0], self.dimensions))
 
 class UtilitarianLoss(nn.Module):
-
     def __init__(self):
         super(UtilitarianLoss, self).__init__()
 
@@ -25,7 +23,6 @@ class UtilitarianLoss(nn.Module):
         return -torch.mean(predictions * targets)
 
 class StoicOptimizer(optim.Optimizer):
-
     def __init__(self, params, lr):
         defaults = dict(lr=lr)
         super(StoicOptimizer, self).__init__(params, defaults)
@@ -44,7 +41,6 @@ class StoicOptimizer(optim.Optimizer):
         return loss
 
 class ExistentialDataset(Dataset):
-
     def __init__(self, data, labels):
         self.data = data
         self.labels = labels
@@ -56,7 +52,6 @@ class ExistentialDataset(Dataset):
         return (self.data[idx], self.labels[idx])
 
 class EvolutionaryModel(nn.Module):
-
     def __init__(self, input_dim, hidden_dim, output_dim):
         super(EvolutionaryModel, self).__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim)
@@ -68,7 +63,6 @@ class EvolutionaryModel(nn.Module):
         return x
 
 class EvolutionaryTrainer:
-
     def __init__(self, model, optimizer, loss_fn, hyper_space, dataset):
         self.model = model
         self.optimizer = optimizer
@@ -92,7 +86,6 @@ class EvolutionaryTrainer:
                 print(f'Epoch {epoch + 1}, Loss: {loss.item()}')
 
 class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
-
     def __init__(self, model, optimizer, loss_fn, hyper_space, dataset, alpha=0.1):
         super(AdditiveEvolutionaryTrainer, self).__init__(model, optimizer, loss_fn, hyper_space, dataset)
         self.alpha = alpha
@@ -132,5 +125,6 @@ def main():
     existential_dataset = ExistentialDataset(data=data, labels=labels)
     trainer = AdditiveEvolutionaryTrainer(evolutionary_model, stoic_optimizer, utilitarian_loss, hyper_space, existential_dataset)
     trainer.train(epochs=10)
+
 if __name__ == '__main__':
     main()
