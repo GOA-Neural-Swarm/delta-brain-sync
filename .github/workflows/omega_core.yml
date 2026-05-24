@@ -37,7 +37,7 @@ jobs:
       - name: 🔎 Dynamic AST Dependency Scanner (ဉာဏ်ရည်မြင့် Package ရှာဖွေစနစ်)
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install numpy scikit-learn psutil requests
+          pip install numpy scikit-learn psutil requests torch qiskit PyYAML backoff matplotlib psycopg2-binary flask scipy --upgrade
           
           python -c "
           import ast, os, subprocess
