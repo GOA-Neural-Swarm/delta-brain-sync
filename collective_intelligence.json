@@ -1,9 +1,9 @@
 {
-    "global_generation": 9,
-    "system_entropy": 7.9499999999999815,
+    "global_generation": 10,
+    "system_entropy": 9.049999999999992,
     "file_topology": {},
     "shared_memory": {
-        "last_sync": "2026-05-23 15:58:48",
+        "last_sync": "2026-05-24 02:08:19",
         "status": "MUTATING",
         "last_execution_logs": {
             "app.py": {
@@ -23,8 +23,8 @@
                 "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
             },
             "existential_update.py": {
-                "status": "STABLE",
-                "error": "None"
+                "status": "MUTATING_REQUIRED",
+                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 60, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
             },
             "evolutionary_update.py": {
                 "status": "STABLE",
@@ -50,6 +50,10 @@
                 "status": "MUTATING_REQUIRED",
                 "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 2, in <module>\n    import torch\nModuleNotFoundError: No module named 'torch'"
             },
+            "evolved_network.py": {
+                "status": "MUTATING_REQUIRED",
+                "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_network.py\", line 1, in <module>\n    import torch\nModuleNotFoundError: No module named 'torch'"
+            },
             "new_file.py": {
                 "status": "STABLE",
                 "error": "None"
@@ -61,10 +65,6 @@
             "sync_data.py": {
                 "status": "MUTATING_REQUIRED",
                 "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/sync_data.py\", line 2, in <module>\n    import psycopg2\nModuleNotFoundError: No module named 'psycopg2'"
-            },
-            "recovery.py": {
-                "status": "STABLE",
-                "error": "None"
             },
             "transfer_logic.py": {
                 "status": "MUTATING_REQUIRED",
@@ -97,10 +97,6 @@
             "bootstrap.py": {
                 "status": "STABLE",
                 "error": "None"
-            },
-            "evolved_network.py": {
-                "status": "MUTATING_REQUIRED",
-                "error": "bridge import (\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/quantum_bridge.py\", line 5, in <module>\n    from qiskit import QuantumCircuit\nModuleNotFoundError: No module named 'qiskit'"
             },
             "omega_point.py": {
                 "status": "MUTATING_REQUIRED",
