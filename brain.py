@@ -160,22 +160,21 @@ def association_rule_mining(transactions, min_support):
         if transactions.count(item) >= min_support:
             rules.append(item)
 
-    # Convert inner lists to tuples to make them hashable for set()
-    try:
-        hashable_rules = []
-        for r in rules:
-            if isinstance(r, list):
-                hashable_rules.append(tuple(r))
-            else:
-                hashable_rules.append(r)
-        return list(set(hashable_rules))
-    except TypeError:
-        # Fallback for complex nested structures: use a loop with uniqueness check
-        unique_rules = []
-        for r in rules:
-            if r not in unique_rules:
-                unique_rules.append(r)
-        return unique_rules
+    def make_hashable(obj):
+        """Recursively convert unhashable objects into hashable ones."""
+        if isinstance(obj, (list, set)):
+            return tuple(make_hashable(i) for i in obj)
+        elif isinstance(obj, dict):
+            return tuple(sorted((k, make_hashable(v)) for k, v in obj.items()))
+        else:
+            try:
+                hash(obj)
+                return obj
+            except TypeError:
+                return str(obj)
+
+    clean_rules = [make_hashable(r) for r in rules]
+    return list(set(clean_rules))
 
 
 class EvolvingClassifier:
