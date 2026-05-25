@@ -82,6 +82,29 @@ class EvolutionOrchestrator:
             except Exception as e:
                 print(f'[Warning] Gemini Engine Exception: {str(e)}')
                 
+        # === BACKUP 2: OPENAI API ===
+        OPENAI_KEY = os.getenv('OPENAI_API_KEY')
+        if OPENAI_KEY:
+            try:
+                print('[Manager] Flipping to OpenAI Engine...')
+                url = 'https://api.openai.com/v1/chat/completions'
+                headers = {'Authorization': f'Bearer {OPENAI_KEY}', 'Content-Type': 'application/json'}
+                data = {
+                    'model': 'gpt-4o-mini', # သို့မဟုတျ မိမိသုံးခငြျရာ model သတျမှတျပါ
+                    'temperature': 1.0,
+                    'messages': [
+                        {'role': 'system', 'content': system_prompt},
+                        {'role': 'user', 'content': f'Context:\n{context}\nGenerate.'}
+                    ]
+                }
+                res = requests.post(url, headers=headers, json=data)
+                if res.status_code == 200:
+                    return res.json()['choices'][0]['message']['content']
+                else:
+                    print(f'[Warning] OpenAI API Error: {res.text}')
+            except Exception as e:
+                print(f'[Warning] OpenAI Engine Exception: {str(e)}')
+        
         raise RuntimeError('All AI Generation Engines blocked.')
 
     def update_requirements(self, raw_reqs):
