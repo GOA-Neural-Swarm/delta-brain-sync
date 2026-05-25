@@ -101,8 +101,8 @@ class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
 
     def evolve(self):
         with torch.no_grad():
-        for key in self.preserved_model.state_dict():
-            self.model.state_dict()[key].data += self.alpha * (self.preserved_model.state_dict()[key].data - self.model.state_dict()[key].data)
+            for key in self.preserved_model.state_dict():
+                self.model.state_dict()[key].data += self.alpha * (self.preserved_model.state_dict()[key].data - self.model.state_dict()[key].data)
 
     def train(self, epochs):
         data_loader = DataLoader(self.dataset, batch_size=10, shuffle=True)
@@ -133,5 +133,6 @@ def main():
     existential_dataset = ExistentialDataset(data=data, labels=labels)
     trainer = AdditiveEvolutionaryTrainer(evolutionary_model, stoic_optimizer, utilitarian_loss, hyper_space, existential_dataset)
     trainer.train(epochs=10)
+
 if __name__ == '__main__':
     main()
