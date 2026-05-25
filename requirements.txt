@@ -1,3 +1,7 @@
 torch
 numpy
 matplotlib
+streamlit
+scikit-learn
+numpy
+pandas
