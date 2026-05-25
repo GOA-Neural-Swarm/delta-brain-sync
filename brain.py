@@ -151,11 +151,31 @@ def calculate_learning_rate(n_iterations):
 
 
 def association_rule_mining(transactions, min_support):
+    """
+    Perform association rule mining on the given transactions.
+    Ensures the output contains unique rules even if the items are unhashable (e.g., lists).
+    """
     rules = []
     for item in transactions:
         if transactions.count(item) >= min_support:
             rules.append(item)
-    return list(set(rules))
+
+    # Convert inner lists to tuples to make them hashable for set()
+    try:
+        hashable_rules = []
+        for r in rules:
+            if isinstance(r, list):
+                hashable_rules.append(tuple(r))
+            else:
+                hashable_rules.append(r)
+        return list(set(hashable_rules))
+    except TypeError:
+        # Fallback for complex nested structures: use a loop with uniqueness check
+        unique_rules = []
+        for r in rules:
+            if r not in unique_rules:
+                unique_rules.append(r)
+        return unique_rules
 
 
 class EvolvingClassifier:
