@@ -46,7 +46,7 @@ class EvolutionOrchestrator:
         if GEMINI_KEY:
             try:
                 print('[Manager] Groq Unavailable. Flipping to Backup Engine via Gemini API...')
-                url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}'
+                url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={GEMINI_KEY}'
                 headers = {'Content-Type': 'application/json'}
                 data = {'contents': [{'parts': [{'text': f'{system_prompt}\n\nContext:\n{context}\nGenerate.'}]}], 'generationConfig': {'temperature': 1.0}}
                 response_obj = requests.post(url, headers=headers, json=data)
