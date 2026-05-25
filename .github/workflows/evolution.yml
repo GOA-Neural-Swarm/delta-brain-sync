@@ -41,12 +41,13 @@ jobs:
           python -m pip install requests # Manager အလုပ်လုပ်ဖို့အတွက် မဖြစ်မနေလိုအပ်သော package
 
       # အဆင့် ၄: စီမံခန့်ခွဲသူ (Manager) ကုဒ်ကို အမိန့်ပေး အလုပ်စခိုင်းခြင်း
-      # ဤနေရာတွင် မင်းရဲ့ GROQ/GEMINI API Key နှင့် GitHub Token (Secret) များကို အလိုအလျောက် ချိတ်ဆက်ပေးမည်
+      # ဤနေရာတွင် မင်းရဲ့ GROQ/GEMINI/OPENAI API Key များနှင့် GitHub Token (Secret) များကို အလိုအလျောက် ချိတ်ဆက်ပေးမည်
       - name: Execute Meta-Management & Self-Evolution
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }} # 👈 ယခုထပ်မံဖြည့်စွက်လိုက်သော OpenAI Key
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          IBM_QUANTUM_TOKEN: ${{ secrets.IBM_QUANTUM_TOKEN }} # 👈 ဒီလိုငျးကို အသဈထည့ျပါ
+          IBM_QUANTUM_TOKEN: ${{ secrets.IBM_QUANTUM_TOKEN }}
         run: |
           python meta_manager.py
