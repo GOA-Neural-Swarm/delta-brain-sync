@@ -100,6 +100,7 @@ class AdditiveEvolutionaryTrainer(EvolutionaryTrainer):
         self.preserved_model.load_state_dict(model.state_dict())
 
     def evolve(self):
+        with torch.no_grad():
         for key in self.preserved_model.state_dict():
             self.model.state_dict()[key].data += self.alpha * (self.preserved_model.state_dict()[key].data - self.model.state_dict()[key].data)
 
