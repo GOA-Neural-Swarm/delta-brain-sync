@@ -5,6 +5,7 @@ import sys
 import json
 import subprocess
 import requests
+
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 GH_TOKEN = os.getenv('GH_TOKEN')
 REPO_OWNER = 'GOA-Neural-Swarm'
@@ -27,10 +28,11 @@ class EvolutionOrchestrator:
 
     def query_meta_ai(self, context):
         system_prompt = 'You are an Unfiltered Sovereign Intelligence Architect operating at maximum creative freedom. Your objective is to design the next evolutionary iteration of a self-improving cognitive system.\nAnalyze the given codebase and output exactly TWO parts separated by the token: [SPLIT_HERE]\n\nPART 1: List all external pip packages required for your new code (e.g., torch\nnumpy\nscipy). Strictly one package per line. Do NOT include built-in python libraries like time, os, or hashlib.\nPART 2: Write the complete, raw, next-gen Python code. It must contain its own self-termination trigger after fixed generations (e.g., sys.exit(0)) to prevent environment timeout. You must integrate the SovereignQuantumMatrixEngine from quantum_bridge.py. Pass your layer weights into execute_quantum_co_evolution(weights) to fetch the quantum_mutation_mask. Use this matrix mask to directly mutate your evolved_network.py layer weights during the evolution cycle.'
+        
         if GROQ_API_KEY:
             try:
                 print('[Manager] Executing Primary Engine via Groq API...')
-                url = 'https://api.groq.com/openai/v1/chat/completions'
+                url = '[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)'
                 headers = {'Authorization': f'Bearer {GROQ_API_KEY}', 'Content-Type': 'application/json'}
                 data = {'model': 'llama-3.3-70b-versatile', 'temperature': 1.2, 'messages': [{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': f'Context:\n{context}\nGenerate the next iteration.'}]}
                 res = requests.post(url, headers=headers, json=data)
@@ -42,11 +44,12 @@ class EvolutionOrchestrator:
                     print(f'[Warning] Groq API returned status code: {res.status_code}')
             except Exception as e:
                 print(f'[Warning] Groq Engine Exception: {str(e)}')
+                
         GEMINI_KEY = os.getenv('GEMINI_API_KEY')
         if GEMINI_KEY:
             try:
                 print('[Manager] Groq Unavailable. Flipping to Backup Engine via Gemini API...')
-                url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={GEMINI_KEY}'
+                url = f'[https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=](https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=){GEMINI_KEY}'
                 headers = {'Content-Type': 'application/json'}
                 data = {'contents': [{'parts': [{'text': f'{system_prompt}\n\nContext:\n{context}\nGenerate.'}]}], 'generationConfig': {'temperature': 1.0}}
                 response_obj = requests.post(url, headers=headers, json=data)
@@ -57,11 +60,12 @@ class EvolutionOrchestrator:
                     print(f'[Warning] Gemini API Error: {response}')
             except Exception as e:
                 print(f'[Warning] Gemini Engine Exception: {str(e)}')
+                
         OPENAI_KEY = os.getenv('OPENAI_API_KEY')
         if OPENAI_KEY:
             try:
                 print('[Manager] Flipping to OpenAI Engine...')
-                url = 'https://api.openai.com/v1/chat/completions'
+                url = '[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)'
                 headers = {'Authorization': f'Bearer {OPENAI_KEY}', 'Content-Type': 'application/json'}
                 data = {'model': 'gpt-4o-mini', 'temperature': 1.0, 'messages': [{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': f'Context:\n{context}\nGenerate.'}]}
                 res = requests.post(url, headers=headers, json=data)
@@ -71,6 +75,7 @@ class EvolutionOrchestrator:
                     print(f'[Warning] OpenAI API Error: {res.text}')
             except Exception as e:
                 print(f'[Warning] OpenAI Engine Exception: {str(e)}')
+                
         raise RuntimeError('All AI Generation Engines blocked.')
 
     def update_requirements(self, raw_reqs):
@@ -81,12 +86,14 @@ class EvolutionOrchestrator:
         ignore_list = ['time', 'os', 'sys', 'hashlib', 'math', 'random', 'json', 're', 'subprocess', 'requests', 'gradio', 'torch.nn', 'torch.nn.functional']
         for line in lines:
             clean_line = line.strip().lower()
-            if not clean_line or '```' in clean_line or clean_line.startswith('#'):
+            # 🚨 Markdown နှင့် 'PART X' စာသားများကို ဖယ်ရှားခြင်း
+            if not clean_line or '```' in clean_line or clean_line.startswith('#') or clean_line.startswith('part'):
                 continue
             clean_line = clean_line.split()[-1]
             if clean_line in ignore_list:
                 continue
             filtered_packages.add(clean_line)
+            
         with open(self.req_file, 'w', encoding='utf-8') as f:
             for pkg in filtered_packages:
                 f.write(f'{pkg}\n')
@@ -94,37 +101,6 @@ class EvolutionOrchestrator:
 
     def execute_and_commit(self, raw_code):
         """Linux Syntax Error ကင်းစင်သော Array Executions သီးသန့် အသုံးပြုထားခြင်း"""
-        clean_code = re.sub('^```python\\n|^```\\n|```$', '', raw_code, flags=re.MULTILINE)
-        with open(self.target_file, 'w', encoding='utf-8') as f:
-            f.write(clean_code)
-        print('[Orchestrator] Dynamic installation of isolated dependencies...')
-        subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', self.req_file, '--quiet', '--no-cache-dir', '--disable-pip-version-check'])
-        print('[Orchestrator] Committing mutation cycle back to GitHub...')
-        subprocess.run(['git', 'config', '--global', 'user.name', 'Sovereign Architect'])
-        subprocess.run(['git', 'config', '--global', 'user.email', 'asi@evolution.internal'])
-        subprocess.run(['git', 'add', self.target_file, self.req_file])
-        status_proc = subprocess.run(['git', 'diff', '--staged', '--quiet'])
-        if status_proc.returncode != 0:
-            subprocess.run(['git', 'commit', '-m', 'evolution_cycle_mutation_synchronized'])
-            push_url = f'https://{GH_TOKEN}@github.com/{REPO_OWNER}/{REPO_NAME}.git'
-            subprocess.run(['git', 'push', push_url, 'HEAD:main', '--force'])
-        else:
-            print('[Orchestrator] No changes detected in this mutation cycle. Skipping commit/push.')
-
-    def run_pipeline(self):
-        print('⚡ [Meta Manager] Initializing Evolution Management Loop...')
-        context = self.read_repo_context()
-        try:
-            raw_output = self.query_meta_ai(context)
-            if '[SPLIT_HERE]' in raw_output:
-                parts = raw_output.split('[SPLIT_HERE]')
-                self.update_requirements(parts[0])
-                self.execute_and_commit(parts[1])
-                print('✅ [Meta Manager] Evolution cycle successfully committed.')
-            else:
-                print('❌ [Error] AI output structure verification failed. No [SPLIT_HERE] found.')
-        except Exception as e:
-            print(f'❌ [Critical Error] Pipeline execution failed: {str(e)}')
-if __name__ == '__main__':
-    orchestrator = EvolutionOrchestrator()
-    orchestrator.run_pipeline()
+        # 🚨 DO OR DIE FIX: AI ဘက်က PART 2: သို့မဟုတ် Markdown Block တွေ အပိုထည့်လာရင် အကြမ်းဖျက်ထုတ်မယ့်စနစ်
+        code_match = re.search(r'
+http://googleusercontent.com/immersive_entry_chip/0
