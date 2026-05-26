@@ -1,15 +1,11 @@
 {
-    "global_generation": 18,
-    "system_entropy": 16.35000000000006,
+    "global_generation": 19,
+    "system_entropy": 17.15000000000007,
     "file_topology": {},
     "shared_memory": {
-        "last_sync": "2026-05-25 07:09:17",
+        "last_sync": "2026-05-26 02:11:42",
         "status": "MUTATING",
         "last_execution_logs": {
-            "app.py": {
-                "status": "MUTATING_REQUIRED",
-                "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/app.py\", line 13, in <module>\n    import git\nModuleNotFoundError: No module named 'git'"
-            },
             "quantum_bridge.py": {
                 "status": "MUTATING_REQUIRED",
                 "error": "/delta-brain-sync/delta-brain-sync/quantum_bridge.py\", line 7, in <module>\n    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2\nModuleNotFoundError: No module named 'qiskit_ibm_runtime'"
@@ -24,7 +20,7 @@
             },
             "existential_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 52, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
+                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 60, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
             },
             "evolutionary_update.py": {
                 "status": "STABLE",
@@ -48,7 +44,7 @@
             },
             "ai_experiment.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "k/delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 104\n    for key in self.preserved_model.state_dict():\n    ^\nIndentationError: expected an indented block after 'with' statement on line 103"
+                "error": "delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 132, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)"
             },
             "evolved_network.py": {
                 "status": "MUTATING_REQUIRED",
@@ -64,7 +60,7 @@
             },
             "sync_data.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "2026-05-25 07:05:18,845 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
+                "error": "2026-05-26 02:07:25,737 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
             },
             "transfer_logic.py": {
                 "status": "STABLE",
@@ -92,7 +88,7 @@
             },
             "stoic_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "File \"/home/runner/work/delta-brain-sync/delta-brain-sync/stoic_update.py\", line 19, in get\n    return self.utility_values[-1]\n           ~~~~~~~~~~~~~~~~~~~^^^^\nIndexError: list index out of range"
+                "error": "File \"/home/runner/work/delta-brain-sync/delta-brain-sync/stoic_update.py\", line 21, in get\n    return self.utility_values[-1]\n           ~~~~~~~~~~~~~~~~~~~^^^^\nIndexError: list index out of range"
             },
             "bootstrap.py": {
                 "status": "STABLE",
@@ -102,9 +98,13 @@
                 "status": "STABLE",
                 "error": "None"
             },
+            "app.py": {
+                "status": "STABLE",
+                "error": "None"
+            },
             "flask_api.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "/delta-brain-sync/delta-brain-sync/flask_api.py\", line 21, in __init__\n    self.recovery = SovereignRecovery()\n                    ^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignRecovery' is not defined"
+                "error": "/delta-brain-sync/delta-brain-sync/flask_api.py\", line 23, in __init__\n    self.recovery = SovereignRecovery()\n                    ^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignRecovery' is not defined"
             },
             "survival_brain.py": {
                 "status": "TIMEOUT_HANG",
