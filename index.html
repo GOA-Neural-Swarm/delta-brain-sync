@@ -7,7 +7,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1, shrink-to-fit=no"
     />
-    <title>Delta Brain Sync - Swarm Intelligence</title>
+    <title>Delta Brain Sync</title>
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.54.0/build/stlite.css"
@@ -19,140 +19,21 @@
     <script>
       stlite.mount(
         {
-          requirements: ["scikit-learn", "numpy", "pandas", "Pillow"],
+          requirements: ["numpy", "pandas", "scikit-learn", "pillow"],
           entrypoint: "app.py",
           files: {
-            "app.py": `
-import streamlit as st
-import numpy as np
-import pandas as pd
-import os
-from PIL import Image
-import base64
-import math
-import pickle
-
-# Hardened Association Rule Mining Logic (Directly Integrated)
-def association_rule_mining(transactions, min_support):
-    rules = []
-    for item in transactions:
-        if transactions.count(item) >= min_support:
-            rules.append(item)
-
-    def make_hashable(obj):
-        if isinstance(obj, (list, set)):
-            return tuple(make_hashable(i) for i in obj)
-        elif isinstance(obj, dict):
-            return tuple(sorted((k, make_hashable(v)) for k, v in obj.items()))
-        else:
-            try:
-                hash(obj)
-                return obj
-            except TypeError:
-                return str(obj)
-
-    clean_rules = [make_hashable(r) for r in rules]
-    return list(set(clean_rules))
-
-# Mocked Neural Classes for Stlite Environment
-class NeuralBrain:
-    def __init__(self):
-        self.gen = 19
-        self.memory_buffer = ["Core Initialized"]
-
-# Page Configuration
-st.set_page_config(
-    page_title="Delta Brain Sync",
-    page_icon="🐺",
-    layout="wide",
-)
-
-# Custom CSS for Dark Theme
-st.markdown("""
-    <style>
-    .main { background-color: #0e1117; color: #ffffff; }
-    .stSidebar { background-color: #161b22; }
-    h1, h2, h3 { color: #58a6ff; }
-    .stButton>button { width: 100%; background-color: #238636; color: white; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# Sidebar - Logo & Branding
-with st.sidebar:
-    if os.path.exists("logo.png"):
-        logo = Image.open("logo.png")
-        st.image(logo, use_container_width=True)
-    st.title("Delta Brain Sync")
-    st.markdown("---")
-
-    # Bring Your Own Key (BYOK)
-    st.subheader("🔑 Unlock Swarm Core")
-    api_provider = st.selectbox("Select AI Provider", ["Groq", "Gemini", "OpenAI"])
-    user_api_key = st.text_input(f"Enter your {api_provider} API Key", type="password")
-    
-    if user_api_key:
-        st.success(f"{api_provider} Core Linked!")
-    else:
-        st.warning("Please enter an API key to enable advanced processing.")
-
-    st.markdown("---")
-    
-    # Monetization Placeholder
-    st.subheader("💎 Premium Access")
-    st.info("Support the creator to unlock automated analytics.")
-    st.markdown("""
-    **To unlock advanced features:**
-    Send **$10 (USDT)** to this TRC-20 Wallet Address:
-    
-    \`[YOUR_FUTURE_CRYPTO_ADDRESS_HERE]\`
-    
-    *QR Code Integration Pending...*
-    """)
-
-# Main Page
-st.title("🐺 Delta Brain Sync: Swarm Intelligence Dashboard")
-st.write("Welcome to the next generation of association rule mining and neural evolution.")
-
-tab1, tab2 = st.tabs(["📊 Association Mining", "🧠 Neural Evolution"])
-
-with tab1:
-    st.header("Association Rule Mining")
-    data_input = st.text_area("Enter your transactions (JSON format or comma-separated lists)", 
-                             placeholder='[[1, 2], [1, 2], [3, 4]]')
-    min_support = st.slider("Minimum Support", 1, 10, 2)
-    
-    if st.button("Run Mining Engine"):
-        try:
-            import json
-            try:
-                transactions = json.loads(data_input)
-            except:
-                transactions = [line.split(',') for line in data_input.strip().split('\\n') if line]
-            
-            if not transactions:
-                st.error("Please provide valid transaction data.")
-            else:
-                with st.spinner("Processing..."):
-                    results = association_rule_mining(transactions, min_support)
-                    st.success("Mining Complete!")
-                    st.write("### Discovered Rules:")
-                    st.write(results)
-        except Exception as e:
-            st.error(f"Error: {e}")
-
-with tab2:
-    st.header("Neural Evolution")
-    if st.button("Initialize Boot Sequence"):
-        with st.spinner("Booting..."):
-            st.code("--- Sovereign Omni-Sync Architect Initialized ---\\nGen Level: 19\\nNeural Memory: Syncing...")
-            st.success("Architect Ready.")
-
-st.markdown("---")
-st.markdown("© 2026 Delta Brain Sync | Powered by Sovereign Omni-Sync Architect")
-`,
+            "app.py": {
+              url: "app.py",
+            },
+            "brain.py": {
+              url: "brain.py",
+            },
             "logo.png": {
               url: "logo.png",
             },
+            "telemetry_bridge.py": {
+                content: "def log(msg): pass"
+            }
           },
         },
         document.getElementById("stlite")
