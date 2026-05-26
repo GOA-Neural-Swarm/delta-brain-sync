@@ -1,13 +1,13 @@
 
 
-PART 1:
+
 torch
 numpy
 matplotlib
 scipy
 quantum_bridge
 
-PART 2:
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
