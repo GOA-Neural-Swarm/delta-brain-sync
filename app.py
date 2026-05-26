@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_20 Linked
 import telemetry_bridge
 import streamlit as st
 import numpy as np

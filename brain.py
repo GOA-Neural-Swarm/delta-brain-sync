@@ -54,7 +54,7 @@ class OMEGA_ASI:
 class NeuralBrain:
 
     def __init__(self, generation=1):
-        self.gen = 20
+        self.gen = 21
         self.error_rate = 0.0
         self.memory_buffer = []
         self.association_rules = {}
@@ -110,7 +110,7 @@ class SyncManager:
     def push_sync_data(self, data):
         try:
             timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-            gen = 20
+            gen = 21
             status = data.get('status', 'NO_STATUS')
             sync_payload = f'[{timestamp}] SYNC_GEN_{gen}: {status}\n'
             with open(self.sync_log, 'a') as f:
@@ -127,7 +127,7 @@ class SovereignArchitect:
 
     def __init__(self):
         self.version = '1.1.0'
-        self.gen = 20
+        self.gen = 21
         self.brain = NeuralBrain(generation=self.gen)
         self.sync_manager = SyncManager()
 
