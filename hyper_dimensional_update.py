@@ -1,6 +1,6 @@
 import telemetry_bridge
 import os
-
+import sys
 
 class HyperDimensionalLogic:
     """
@@ -19,10 +19,10 @@ class HyperDimensionalLogic:
         Initializes the HyperDimensionalLogic class.
         """
         self.existing_logic = []
-        self.utilitarian_principle = "maximize overall well-being"
-        self.existential_perspective = "individual freedom and choice"
+        self.utilitarian_principle = 'maximize overall well-being'
+        self.existential_perspective = 'individual freedom and choice'
         self.stoic_approach = "endure and accept the things outside of one's control"
-        self.evolutionary_paradigm = "additive and adaptive growth"
+        self.evolutionary_paradigm = 'additive and adaptive growth'
 
     def preserve_existing_logic(self, logic):
         """
@@ -37,19 +37,17 @@ class HyperDimensionalLogic:
         """
         Applies the utilitarian principle, existential perspective, stoic approach, and evolutionary paradigm.
         """
-        print("Applying utilitarian principle: {}".format(self.utilitarian_principle))
-        print(
-            "Applying existential perspective: {}".format(self.existential_perspective)
-        )
-        print("Applying stoic approach: {}".format(self.stoic_approach))
-        print("Applying evolutionary paradigm: {}".format(self.evolutionary_paradigm))
+        print('Applying utilitarian principle: {}'.format(self.utilitarian_principle))
+        print('Applying existential perspective: {}'.format(self.existential_perspective))
+        print('Applying stoic approach: {}'.format(self.stoic_approach))
+        print('Applying evolutionary paradigm: {}'.format(self.evolutionary_paradigm))
 
     def evolve(self):
         """
         Evolves the evolutionary paradigm.
         """
-        self.evolutionary_paradigm += " with quantum evolution"
-        print("Evolved to: {}".format(self.evolutionary_paradigm))
+        self.evolutionary_paradigm += ' with quantum evolution'
+        print('Evolved to: {}'.format(self.evolutionary_paradigm))
 
     def get_existing_logic(self):
         """
@@ -60,27 +58,24 @@ class HyperDimensionalLogic:
         """
         return self.existing_logic
 
-
-def hyper_dimensional_function():
+def hyper_dimensional_function(logic_instance=None):
     """
     A hyper-dimensional function.
     """
-    print("Hyper-dimensional function added")
-    hyper_dimensional_logic = HyperDimensionalLogic()
-    hyper_dimensional_logic.preserve_existing_logic(hyper_dimensional_function.__name__)
-    hyper_dimensional_logic.apply_principles()
-    hyper_dimensional_logic.evolve()
-    print("Existing Logic: {}".format(hyper_dimensional_logic.get_existing_logic()))
-    if len(hyper_dimensional_logic.existing_logic) < 10:
-        hyper_dimensional_function()
-
+    if logic_instance is None:
+        logic_instance = HyperDimensionalLogic()
+    print('Hyper-dimensional function added')
+    logic_instance.preserve_existing_logic(hyper_dimensional_function.__name__)
+    logic_instance.apply_principles()
+    logic_instance.evolve()
+    print('Existing Logic: {}'.format(logic_instance.get_existing_logic()))
+    if len(logic_instance.existing_logic) < 10:
+        hyper_dimensional_function(logic_instance)
 
 def main():
     """
     The main function.
     """
     hyper_dimensional_function()
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
