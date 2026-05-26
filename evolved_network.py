@@ -292,5 +292,7 @@ if __name__ == "__main__":
             torch.save(
                 aetheric_sys.state_dict(), "aetheric_cognitive_omni_system_final.pt"
             )
-            print(f"[Stasis] Aetheric wave function collapsed safely at Core Generation {current_core_gen}. Initiating systemic shutdown.")
+            print(
+                f"[Stasis] Aetheric wave function collapsed safely at Core Generation {current_core_gen}. Initiating systemic shutdown."
+            )
             sys.exit(0)
