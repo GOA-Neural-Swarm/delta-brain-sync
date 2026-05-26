@@ -108,10 +108,10 @@ class SyncManager:
     def push_sync_data(self, data):
         try:
             timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-            gen = data.get('gen', 'UNKNOWN')
-            status = data.get('status', 'NO_STATUS')
+            gen = data.get("gen", "UNKNOWN")
+            status = data.get("status", "NO_STATUS")
             sync_payload = f"[{timestamp}] SYNC_GEN_{gen}: {status}\n"
-            
+
             with open(self.sync_log, "a") as f:
                 f.write(sync_payload)
             return True
@@ -226,7 +226,9 @@ def existential_evolving_process(brain, phenomena_data):
             brain.evolve_classifier(phenomenon, ["Class_A", "Class_B"])
             # Ensure phenomenon is in the correct format for SVC
             formatted_phenomenon = np.array(phenomenon).reshape(1, -1)
-            classification = svm.SVC().fit([[0,0,0]], [0]).predict(formatted_phenomenon) # Dummy fit to avoid error
+            classification = (
+                svm.SVC().fit([[0, 0, 0]], [0]).predict(formatted_phenomenon)
+            )  # Dummy fit to avoid error
             print(f"Classification: {classification}")
             brain.sync_neural_memory()
     except Exception as e:
@@ -240,7 +242,7 @@ def hyperdimensional_logic_integration(brain, phenomena_data):
         if data.ndim != 2 or data.shape[1] < 2:
             print("Insufficient dimensions for PCA")
             return
-            
+
         pca = decomposition.PCA(n_components=2)
         reduced_data = pca.fit_transform(data)
         for phenomenon in reduced_data:
@@ -256,9 +258,9 @@ def utilitarian_optimization(brain, phenomena_data):
         for phenomenon in phenomena_data:
             classification = brain.core_ai.l2.forward(np.array(phenomenon))
             # Mock utility for stability
-            utility = 1.0 
+            utility = 1.0
             utilities.append(utility)
-        
+
         if not utilities:
             return
 

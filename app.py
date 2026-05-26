@@ -14,7 +14,8 @@ st.set_page_config(
 )
 
 # Custom CSS for Dark Theme
-st.markdown("""
+st.markdown(
+    """
     <style>
     .main {
         background-color: #0e1117;
@@ -32,7 +33,9 @@ st.markdown("""
         color: white;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
 
 # Sidebar - Logo & Branding
 with st.sidebar:
@@ -46,14 +49,14 @@ with st.sidebar:
     st.subheader("🔑 Unlock Swarm Core")
     api_provider = st.selectbox("Select AI Provider", ["Groq", "Gemini", "OpenAI"])
     user_api_key = st.text_input(f"Enter your {api_provider} API Key", type="password")
-    
+
     if user_api_key:
         st.success(f"{api_provider} Core Linked!")
     else:
         st.warning("Please enter an API key to enable advanced processing.")
 
     st.markdown("---")
-    
+
     # Monetization Placeholder
     st.subheader("💎 Premium Access")
     st.info("Support the creator to unlock automated analytics.")
@@ -68,30 +71,39 @@ with st.sidebar:
 
 # Main Page
 st.title("🐺 Delta Brain Sync: Swarm Intelligence Dashboard")
-st.write("Welcome to the next generation of association rule mining and neural evolution.")
+st.write(
+    "Welcome to the next generation of association rule mining and neural evolution."
+)
 
 # Tabs for different functionalities
-tab1, tab2, tab3 = st.tabs(["📊 Association Mining", "🧠 Neural Evolution", "⚙️ System Health"])
+tab1, tab2, tab3 = st.tabs(
+    ["📊 Association Mining", "🧠 Neural Evolution", "⚙️ System Health"]
+)
 
 with tab1:
     st.header("Association Rule Mining")
     st.write("Process your data through our hardened association engine.")
-    
-    data_input = st.text_area("Enter your transactions (JSON format or comma-separated lists)", 
-                             placeholder='[[1, 2], [1, 2], [3, 4]]')
-    
+
+    data_input = st.text_area(
+        "Enter your transactions (JSON format or comma-separated lists)",
+        placeholder="[[1, 2], [1, 2], [3, 4]]",
+    )
+
     min_support = st.slider("Minimum Support", 1, 10, 2)
-    
+
     if st.button("Run Mining Engine"):
         try:
             # Simple parsing for demo/use
             import json
+
             try:
                 transactions = json.loads(data_input)
             except:
                 # Fallback to simple list parsing if not valid JSON
-                transactions = [line.split(',') for line in data_input.strip().split('\n') if line]
-            
+                transactions = [
+                    line.split(",") for line in data_input.strip().split("\n") if line
+                ]
+
             if not transactions:
                 st.error("Please provide valid transaction data.")
             else:
@@ -106,12 +118,14 @@ with tab1:
 with tab2:
     st.header("Neural Evolution")
     st.write("Monitor and trigger Sovereign Architect evolution cycles.")
-    
+
     if st.button("Initialize Boot Sequence"):
         architect = SovereignArchitect()
         with st.spinner("Booting..."):
             # Mocking the print outputs to Streamlit
-            st.code("--- Sovereign Omni-Sync Architect Initialized ---\nGen Level: 19\nNeural Memory: Syncing...")
+            st.code(
+                "--- Sovereign Omni-Sync Architect Initialized ---\nGen Level: 19\nNeural Memory: Syncing..."
+            )
             st.success("Architect Ready.")
 
 with tab3:
@@ -121,7 +135,7 @@ with tab3:
         st.metric("Generation Level", "19", "+1")
     with col2:
         st.metric("Stability Rating", "100%", "Secure")
-    
+
     st.write("### Evolution Logs")
     if os.path.exists("evolution_logs.md"):
         with open("evolution_logs.md", "r") as f:
