@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_24 Linked
 import telemetry_bridge
 import os
 import sys
@@ -7,11 +8,12 @@ from qiskit.circuit import ParameterVector
 from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
 
 class SovereignQuantumMatrixEngine:
+    """
+    Initialize the Sovereign Quantum Matrix Engine.
+    """
 
-    def __init__(self, num_qubits=5):
+    def __init__(self, num_qubits: int=5):
         """
-        Initialize the Sovereign Quantum Matrix Engine.
-
         Args:
             num_qubits (int, optional): Number of qubits. Defaults to 5.
         """
@@ -29,7 +31,7 @@ class SovereignQuantumMatrixEngine:
             print(f'❌ [Fatal] No physical quantum hardware available at this moment: {str(e)}')
             raise
 
-    def _map_weights_to_quantum_phases(self, classical_weights):
+    def _map_weights_to_quantum_phases(self, classical_weights: np.ndarray) -> np.ndarray:
         """
         Map classical weights to quantum phases.
 
@@ -49,7 +51,7 @@ class SovereignQuantumMatrixEngine:
         phases = extracted_signals / max_val * np.pi
         return phases
 
-    def execute_quantum_co_evolution(self, classical_layer_weights=None):
+    def execute_quantum_co_evolution(self, classical_layer_weights: np.ndarray=None) -> tuple:
         """
         Execute quantum co-evolution.
 

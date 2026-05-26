@@ -23,12 +23,21 @@ with st.sidebar:
         st.warning('API Key required to unlock processing power.')
     st.markdown('---')
     st.subheader('💎 Premium Access / Support the Creator')
-    st.markdown('\n    To unlock advanced automated analytics, send $10 (USDT) to this TRC-20 Wallet Address: \n    \n    `[YOUR_FUTURE_CRYPTO_ADDRESS_HERE]`\n    ')
+    st.markdown('\n        To unlock advanced automated analytics, send $10 (USDT) to this TRC-20 Wallet Address: \n        `[YOUR_FUTURE_CRYPTO_ADDRESS_HERE]`\n        ')
 st.title('🐺 Delta Brain Sync: Swarm Intelligence Dashboard')
 st.write('Welcome to the next generation of association rule mining and neural evolution.')
 tab1, tab2, tab3 = st.tabs(['📊 Association Mining', '🧠 Neural Evolution', '⚙️ System Health'])
 
 def parse_transactions(data_input):
+    """
+    Parse transactions from input data.
+    
+    Args:
+    data_input (str): Input data in JSON or comma-separated format.
+    
+    Returns:
+    list: Parsed transactions.
+    """
     try:
         transactions = json.loads(data_input)
     except:
@@ -36,6 +45,16 @@ def parse_transactions(data_input):
     return transactions
 
 def run_association_mining(transactions, min_support):
+    """
+    Run association rule mining on transactions.
+    
+    Args:
+    transactions (list): Parsed transactions.
+    min_support (int): Minimum support for association rules.
+    
+    Returns:
+    dict: Association rules.
+    """
     try:
         results = association_rule_mining(transactions, min_support)
         return results
@@ -44,6 +63,9 @@ def run_association_mining(transactions, min_support):
         return None
 
 def initialize_boot_sequence():
+    """
+    Initialize boot sequence for Sovereign Architect.
+    """
     try:
         architect = SovereignArchitect()
         architect.boot_sequence()
@@ -94,4 +116,4 @@ with tab3:
     else:
         st.info('No logs found yet. Run an evolution cycle to generate logs.')
 st.markdown('---')
-st.markdown(' 2026 Delta Brain Sync | Powered by Sovereign Omni-Sync Architect')
+st.markdown('2026 Delta Brain Sync | Powered by Sovereign Omni-Sync Architect')

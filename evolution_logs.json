@@ -1,8 +1,14 @@
 [
     {
-        "timestamp": 1779825407.5164459,
+        "timestamp": 1779833876.086606,
         "file": "./app.py",
         "status": "TRANSCENDED",
-        "asi_score": 108.1009295909471
+        "asi_score": 120.03098713589398
+    },
+    {
+        "timestamp": 1779833883.798389,
+        "file": "./quantum_bridge.py",
+        "status": "TRANSCENDED",
+        "asi_score": 100.98943105442109
     }
 ]
