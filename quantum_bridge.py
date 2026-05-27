@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_24 Linked
 import telemetry_bridge
 import os
 import sys
@@ -7,44 +6,31 @@ from qiskit import QuantumCircuit
 from qiskit.circuit import ParameterVector
 from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
 
-
 class SovereignQuantumMatrixEngine:
     """
     Initialize the Sovereign Quantum Matrix Engine.
     """
 
-    def __init__(self, num_qubits: int = 5):
+    def __init__(self, num_qubits: int=5):
         """
         Args:
             num_qubits (int, optional): Number of qubits. Defaults to 5.
         """
         self.num_qubits = num_qubits
-        self.token = os.getenv("IBM_QUANTUM_TOKEN")
+        self.token = os.getenv('IBM_QUANTUM_TOKEN')
         if not self.token:
-            raise ValueError(
-                "🔴 [Sovereign QAI] IBM_QUANTUM_TOKEN is missing in Environment Secrets."
-            )
-        print("🌌 [Sovereign QAI] Connecting directly to IBM Quantum Cloud network...")
-        self.service = QiskitRuntimeService(channel="ibm_quantum", token=self.token)
-        print(
-            "⚡ [Natural Order] Bypassing simulators. Searching for an active physical Quantum Computer..."
-        )
+            raise ValueError('🔴 [Sovereign QAI] IBM_QUANTUM_TOKEN is missing in Environment Secrets.')
+        print('🌌 [Sovereign QAI] Connecting directly to IBM Quantum Cloud network...')
+        self.service = QiskitRuntimeService(channel='ibm_quantum', token=self.token)
+        print('⚡ [Natural Order] Bypassing simulators. Searching for an active physical Quantum Computer...')
         try:
-            self.backend = self.service.least_busy(
-                simulator=False, operational=True, min_qubits=self.num_qubits
-            )
-            print(
-                f"👑 [Natural Order] Physical Quantum Hardware Locked: {self.backend.name}"
-            )
+            self.backend = self.service.least_busy(simulator=False, operational=True, min_qubits=self.num_qubits)
+            print(f'👑 [Natural Order] Physical Quantum Hardware Locked: {self.backend.name}')
         except Exception as e:
-            print(
-                f"❌ [Fatal] No physical quantum hardware available at this moment: {str(e)}"
-            )
+            print(f'❌ [Fatal] No physical quantum hardware available at this moment: {str(e)}')
             raise
 
-    def _map_weights_to_quantum_phases(
-        self, classical_weights: np.ndarray
-    ) -> np.ndarray:
+    def _map_weights_to_quantum_phases(self, classical_weights: np.ndarray) -> np.ndarray:
         """
         Map classical weights to quantum phases.
 
@@ -58,21 +44,13 @@ class SovereignQuantumMatrixEngine:
             return np.random.uniform(-np.pi, np.pi, self.num_qubits)
         flat_weights = np.array(classical_weights).flatten()
         if len(flat_weights) < self.num_qubits:
-            flat_weights = np.pad(
-                flat_weights, (0, self.num_qubits - len(flat_weights)), "reflect"
-            )
-        extracted_signals = flat_weights[: self.num_qubits]
-        max_val = (
-            np.max(np.abs(extracted_signals))
-            if np.max(np.abs(extracted_signals)) != 0
-            else 1.0
-        )
+            flat_weights = np.pad(flat_weights, (0, self.num_qubits - len(flat_weights)), 'reflect')
+        extracted_signals = flat_weights[:self.num_qubits]
+        max_val = np.max(np.abs(extracted_signals)) if np.max(np.abs(extracted_signals)) != 0 else 1.0
         phases = extracted_signals / max_val * np.pi
         return phases
 
-    def execute_quantum_co_evolution(
-        self, classical_layer_weights: np.ndarray = None
-    ) -> tuple:
+    def execute_quantum_co_evolution(self, classical_layer_weights: np.ndarray=None) -> tuple:
         """
         Execute quantum co-evolution.
 
@@ -82,12 +60,10 @@ class SovereignQuantumMatrixEngine:
         Returns:
             tuple: Quantum mutation mask and mean entropy.
         """
-        print(
-            f"🔬 [Natural Order] Preparing {self.num_qubits}-Qubit GHZ Entanglement Lattice..."
-        )
+        print(f'🔬 [Natural Order] Preparing {self.num_qubits}-Qubit GHZ Entanglement Lattice...')
         target_phases = self._map_weights_to_quantum_phases(classical_layer_weights)
         qc = QuantumCircuit(self.num_qubits)
-        phases_param = ParameterVector("θ", self.num_qubits)
+        phases_param = ParameterVector('θ', self.num_qubits)
         qc.h(0)
         for i in range(self.num_qubits - 1):
             qc.cx(i, i + 1)
@@ -96,36 +72,28 @@ class SovereignQuantumMatrixEngine:
             qc.ry(phases_param[i], i)
             qc.rz(phases_param[i] * 0.5, i)
         qc.measure_all()
-        print(
-            f"🚀 [Physical Target] Dispatching Job to Real QPU [{self.backend.name}] inside IBM Lab..."
-        )
+        print(f'🚀 [Physical Target] Dispatching Job to Real QPU [{self.backend.name}] inside IBM Lab...')
         sampler = SamplerV2(backend=self.backend)
         job = sampler.run([(qc, target_phases)], shots=128)
-        print(
-            f"⏳ [Physical Target] Job ID: {job.job_id()} | Waiting for physical hardware execution..."
-        )
+        print(f'⏳ [Physical Target] Job ID: {job.job_id()} | Waiting for physical hardware execution...')
         result = job.result()
         pub_result = result[0]
         bitstrings = pub_result.data.meas.get_bitstrings()
         mutation_matrix = []
         for bits in bitstrings[:64]:
-            row = [1.0 if b == "1" else -1.0 for b in bits]
+            row = [1.0 if b == '1' else -1.0 for b in bits]
             mutation_matrix.append(row)
         quantum_mutation_mask = np.array(mutation_matrix, dtype=np.float32)
         mean_entropy = np.std(quantum_mutation_mask)
-        print(f"✅ [Physical Target] Real Quantum Mutation Mask Retreived.")
-        print(f"🌀 [Physical Target] Natural Chaos Field Indexed: {mean_entropy:.6f}")
+        print(f'✅ [Physical Target] Real Quantum Mutation Mask Retreived.')
+        print(f'🌀 [Physical Target] Natural Chaos Field Indexed: {mean_entropy:.6f}')
         return (quantum_mutation_mask, mean_entropy)
-
-
-if __name__ == "__main__":
-    print("--- OMEGA MATRIX TRUE HARDWARE KERNEL TEST ---")
+if __name__ == '__main__':
+    print('--- OMEGA MATRIX TRUE HARDWARE KERNEL TEST ---')
     try:
         mock_weights = np.random.randn(64, 32)
         engine = SovereignQuantumMatrixEngine(num_qubits=5)
-        mutation_mask, quantum_entropy = engine.execute_quantum_co_evolution(
-            mock_weights
-        )
-        print(f"\n[Execution Status]: Successful Physical Integration.")
+        mutation_mask, quantum_entropy = engine.execute_quantum_co_evolution(mock_weights)
+        print(f'\n[Execution Status]: Successful Physical Integration.')
     except Exception as e:
-        print(f"❌ [Kernel Panic]: {str(e)}")
+        print(f'❌ [Kernel Panic]: {str(e)}')
