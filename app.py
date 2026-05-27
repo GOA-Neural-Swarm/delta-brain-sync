@@ -11,7 +11,7 @@ st.markdown('\n    <style>\n    .main {\n        background-color: #0e1117;\n   
 with st.sidebar:
     if os.path.exists('logo.png'):
         logo = Image.open('logo.png')
-        st.image(logo, use_container_width=True)
+        st.image(logo, width='stretch')
     st.title('Delta Brain Sync')
     st.markdown('---')
     st.subheader('🔑 Bring Your Own Key')
