@@ -53,12 +53,10 @@ with st.sidebar:
         st.warning("API Key required to unlock processing power.")
     st.markdown("---")
     st.subheader("💎 Premium Access / Support the Creator")
-    st.markdown(
-        """
+    st.markdown("""
         To unlock advanced automated analytics, send $10 (USDT) to this TRC-20 Wallet Address: 
         `[YOUR_FUTURE_CRYPTO_ADDRESS_HERE]`
-        """
-    )
+        """)
 
 st.title("🐺 Delta Brain Sync: Swarm Intelligence Dashboard")
 st.write(
@@ -130,28 +128,32 @@ def generate_ui_report(raw_data, api_key, provider):
     """
     if provider != "Groq":
         return f"⚠️ Report generation is currently optimized for Groq. You selected {provider}."
-        
+
     prompt = f"Transform this raw mining output into a professional executive cyber security summary report using Markdown (bold, bullet points, emojis). Extract the timeline, threat IPs, and system statuses. Do NOT output raw JSON:\n{json.dumps(raw_data)}"
-    
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    
+
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
     payload = {
         "model": "llama-3.1-8b-instant",
         "messages": [
-            {"role": "system", "content": "You are an expert Cyber Security Analyst AI."},
-            {"role": "user", "content": prompt}
-        ]
+            {
+                "role": "system",
+                "content": "You are an expert Cyber Security Analyst AI.",
+            },
+            {"role": "user", "content": prompt},
+        ],
     }
-    
+
     try:
-        response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers=headers,
+            json=payload,
+        )
         response_data = response.json()
-        if 'error' in response_data:
+        if "error" in response_data:
             return f"❌ API Error: {response_data['error']['message']}"
-        return response_data['choices'][0]['message']['content']
+        return response_data["choices"][0]["message"]["content"]
     except Exception as e:
         return f"❌ Failed to generate report: {e}"
 
@@ -166,7 +168,7 @@ with tab1:
         height=200,
     )
     min_support = st.slider("Minimum Support", 1, 10, 2)
-    
+
     if st.button("Run Mining Engine"):
         if not user_api_key:
             st.error("Please enter your API Key in the sidebar first.")
@@ -177,19 +179,21 @@ with tab1:
             else:
                 with st.spinner("Processing Data..."):
                     results = run_association_mining(transactions, min_support)
-                    
+
                     if results:
                         st.success("Mining Complete!")
-                        
+
                         # 1. Raw Data ကို Expander ဖြင့် ဖွက်ပြထားမည်
                         with st.expander("View Raw Discovered Rules (JSON)"):
                             st.write(results)
-                            
+
                         st.markdown("---")
-                        
+
                         # 2. AI ဖြင့် ဖတ်ရလွယ်သော Report ကို ထုတ်ပေးမည်
                         with st.spinner("🧠 AI is drafting the Intelligence Report..."):
-                            report = generate_ui_report(results, user_api_key, api_provider)
+                            report = generate_ui_report(
+                                results, user_api_key, api_provider
+                            )
                             st.subheader("🛰️ Cyber Intelligence Report")
                             st.markdown(report)
                     else:
