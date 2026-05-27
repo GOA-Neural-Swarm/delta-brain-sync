@@ -2,10 +2,8 @@ import telemetry_bridge
 import os
 import sys
 
-
 def utilitarian_principle(functionality):
     return bool(functionality)
-
 
 class ExistentialEntity:
 
@@ -16,10 +14,8 @@ class ExistentialEntity:
     def make_choice(self, choice):
         self.choices.append(choice)
 
-
 def stoic_indifference(event):
-    return "Acknowledged" if event else "Ignored"
-
+    return 'Acknowledged' if event else 'Ignored'
 
 class EvolutionarySystem:
 
@@ -33,40 +29,30 @@ class EvolutionarySystem:
         for function in self.functions:
             function()
 
-
 def hyper_dimensional_logic(perspectives):
     return perspectives
 
-
 def evolutionary_function():
-    print("Evolutionary function added")
-
+    print('Evolutionary function added')
 
 def additive_evolution(existing_functions, new_function):
     existing_functions.append(new_function)
     return existing_functions
 
-
 def main():
     evolutionary_system = EvolutionarySystem()
     evolutionary_system.add_function(evolutionary_function)
     evolutionary_system.execute_functions()
-    entity = ExistentialEntity("Individual")
-    entity.make_choice("Utilitarian principle")
+    entity = ExistentialEntity('Individual')
+    entity.make_choice('Utilitarian principle')
     print(entity.choices)
-    perspectives = {
-        "Utilitarian": utilitarian_principle(True),
-        "Existential": entity.name,
-        "Stoic": stoic_indifference(True),
-    }
+    perspectives = {'Utilitarian': utilitarian_principle(True), 'Existential': entity.name, 'Stoic': stoic_indifference(True)}
     result = hyper_dimensional_logic(perspectives)
     print(result)
     existing_functions = list(evolutionary_system.functions)
-    new_function = lambda: print("New evolutionary function added")
+    new_function = lambda: print('New evolutionary function added')
     updated_functions = additive_evolution(existing_functions, new_function)
     evolutionary_system.functions = updated_functions
     evolutionary_system.execute_functions()
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

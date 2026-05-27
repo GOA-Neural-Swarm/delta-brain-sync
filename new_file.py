@@ -2,7 +2,6 @@ import telemetry_bridge
 import inspect
 import os
 
-
 class EvolutionaryModule:
     """
     This class represents an evolutionary module that applies hyper-dimensional and utilitarian logic.
@@ -64,8 +63,7 @@ class EvolutionaryModule:
         new_function (function): The new function to be added.
         """
         self.apply_hyper_dimensional_logic(new_function)
-        print(f"Evolutionary addition: {new_function.__name__}")
-
+        print(f'Evolutionary addition: {new_function.__name__}')
 
 class UtilitarianCalculator:
     """
@@ -86,7 +84,6 @@ class UtilitarianCalculator:
         function (function): The function to calculate the utilitarian value for.
         """
         self.utilitarian_value += len(inspect.getsource(function).encode())
-
 
 class ExistentialChecker:
     """
@@ -113,7 +110,6 @@ class ExistentialChecker:
             self.exists = True
         return self.exists
 
-
 class StoicPreserver:
     """
     This class represents a stoic preserver that preserves logic.
@@ -138,34 +134,29 @@ class StoicPreserver:
         self.preserved_logic = function_list.copy()
         return self.preserved_logic
 
-
 def new_function():
     """
     A new function that prints a message.
     """
-    print("New function added")
-
+    print('New function added')
 
 def new_additive_function():
     """
     A new additive function that prints a message.
     """
-    print("New additive function")
-
+    print('New additive function')
 
 def new_utilitarian_function():
     """
     A new utilitarian function that prints a message.
     """
-    print("New utilitarian function added")
-
+    print('New utilitarian function added')
 
 def new_existential_function():
     """
     A new existential function that prints a message.
     """
-    print("New existential function added")
-
+    print('New existential function added')
 
 def main():
     """
@@ -181,7 +172,5 @@ def main():
     print(existential_checker.check_existence(evolutionary_module.utilitarian_value))
     stoic_preserver = StoicPreserver()
     print(stoic_preserver.preserve_logic(evolutionary_module.stoic_preservation()))
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
