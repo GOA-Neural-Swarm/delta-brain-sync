@@ -4,6 +4,7 @@ import sys
 import json
 import subprocess
 import requests
+import ast
 
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 GH_TOKEN = os.getenv('GH_TOKEN')
@@ -111,6 +112,15 @@ class EvolutionOrchestrator:
 
         clean_code = clean_code.replace("PART 1:", "").replace("PART 2:", "").strip()
 
+        # 🚨 DO OR DIE FIX: AI က ကုဒ်ကို တန်းလန်းကြီးဖြတ်ချခဲ့ရင် ဖမ်းမယ့်စနစ် (Mutation Guard)
+        try:
+            ast.parse(clean_code)
+            print("✅ [Guard] AI generated valid Python code. Proceeding to mutate...")
+        except SyntaxError as e:
+            print(f"❌ [Guard] AI generated BROKEN code. Mutation REJECTED! Error: {e}")
+            print("⚠️ System will keep the previous stable version to prevent a total crash.")
+            return
+
         with open(self.target_file, 'w', encoding='utf-8') as f:
             f.write(clean_code)
             
@@ -139,7 +149,7 @@ class EvolutionOrchestrator:
                 parts = raw_output.split('[SPLIT_HERE]')
                 self.update_requirements(parts[0])
                 self.execute_and_commit(parts[1])
-                print('✅ [Meta Manager] Evolution cycle successfully committed.')
+                print('✅ [Meta Manager] Evolution cycle completed.')
             else:
                 print('❌ [Error] AI output structure verification failed. No [SPLIT_HERE] found.')
         except Exception as e:
