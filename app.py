@@ -6,6 +6,7 @@ from brain import association_rule_mining, NeuralBrain, SovereignArchitect
 import os
 from PIL import Image
 import json
+import requests  # 👈 AI API ကို လှမ်းခေါ်ရန် အသစ်ထည့်ထားသည်
 
 st.set_page_config(
     page_title="Delta Brain Sync",
@@ -13,10 +14,30 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
 st.markdown(
-    "\n    <style>\n    .main {\n        background-color: #0e1117;\n        color: #ffffff;\n    }\n    .stSidebar {\n        background-color: #161b22;\n    }\n    h1, h2, h3 {\n        color: #58a6ff;\n    }\n    .stButton>button {\n        width: 100%;\n        background-color: #238636;\n        color: white;\n    }\n    </style>\n    ",
+    """
+    <style>
+    .main {
+        background-color: #0e1117;
+        color: #ffffff;
+    }
+    .stSidebar {
+        background-color: #161b22;
+    }
+    h1, h2, h3 {
+        color: #58a6ff;
+    }
+    .stButton>button {
+        width: 100%;
+        background-color: #238636;
+        color: white;
+    }
+    </style>
+    """,
     unsafe_allow_html=True,
 )
+
 with st.sidebar:
     if os.path.exists("logo.png"):
         logo = Image.open("logo.png")
@@ -33,12 +54,17 @@ with st.sidebar:
     st.markdown("---")
     st.subheader("💎 Premium Access / Support the Creator")
     st.markdown(
-        "\n        To unlock advanced automated analytics, send $10 (USDT) to this TRC-20 Wallet Address: \n        `[YOUR_FUTURE_CRYPTO_ADDRESS_HERE]`\n        "
+        """
+        To unlock advanced automated analytics, send $10 (USDT) to this TRC-20 Wallet Address: 
+        `[YOUR_FUTURE_CRYPTO_ADDRESS_HERE]`
+        """
     )
+
 st.title("🐺 Delta Brain Sync: Swarm Intelligence Dashboard")
 st.write(
     "Welcome to the next generation of association rule mining and neural evolution."
 )
+
 tab1, tab2, tab3 = st.tabs(
     ["📊 Association Mining", "🧠 Neural Evolution", "⚙️ System Health"]
 )
@@ -97,6 +123,40 @@ def initialize_boot_sequence():
         st.error(f"Evolution Error: {e}")
 
 
+# 👈 အသစ်ထည့်ထားသော UI Report Generator Logic
+def generate_ui_report(raw_data, api_key, provider):
+    """
+    Generate readable markdown report using AI.
+    """
+    if provider != "Groq":
+        return f"⚠️ Report generation is currently optimized for Groq. You selected {provider}."
+        
+    prompt = f"Transform this raw mining output into a professional executive cyber security summary report using Markdown (bold, bullet points, emojis). Extract the timeline, threat IPs, and system statuses. Do NOT output raw JSON:\n{json.dumps(raw_data)}"
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [
+            {"role": "system", "content": "You are an expert Cyber Security Analyst AI."},
+            {"role": "user", "content": prompt}
+        ]
+    }
+    
+    try:
+        response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
+        response_data = response.json()
+        if 'error' in response_data:
+            return f"❌ API Error: {response_data['error']['message']}"
+        return response_data['choices'][0]['message']['content']
+    except Exception as e:
+        return f"❌ Failed to generate report: {e}"
+
+
+# 👈 Tab 1 ကို AI Report ပြသနိုင်ရန် အဆင့်မြှင့်ထားသည်
 with tab1:
     st.header("Association Rule Mining")
     st.write("Process your data through our hardened association engine.")
@@ -106,6 +166,7 @@ with tab1:
         height=200,
     )
     min_support = st.slider("Minimum Support", 1, 10, 2)
+    
     if st.button("Run Mining Engine"):
         if not user_api_key:
             st.error("Please enter your API Key in the sidebar first.")
@@ -114,14 +175,26 @@ with tab1:
             if not transactions:
                 st.error("Please provide valid transaction data.")
             else:
-                with st.spinner("Processing..."):
+                with st.spinner("Processing Data..."):
                     results = run_association_mining(transactions, min_support)
+                    
                     if results:
                         st.success("Mining Complete!")
-                        st.write("### Discovered Rules:")
-                        st.write(results)
+                        
+                        # 1. Raw Data ကို Expander ဖြင့် ဖွက်ပြထားမည်
+                        with st.expander("View Raw Discovered Rules (JSON)"):
+                            st.write(results)
+                            
+                        st.markdown("---")
+                        
+                        # 2. AI ဖြင့် ဖတ်ရလွယ်သော Report ကို ထုတ်ပေးမည်
+                        with st.spinner("🧠 AI is drafting the Intelligence Report..."):
+                            report = generate_ui_report(results, user_api_key, api_provider)
+                            st.subheader("🛰️ Cyber Intelligence Report")
+                            st.markdown(report)
                     else:
                         st.info("No rules found with the current minimum support.")
+
 with tab2:
     st.header("Neural Evolution")
     st.write("Monitor and trigger Sovereign Architect evolution cycles.")
@@ -130,6 +203,7 @@ with tab2:
             st.error("Please enter your API Key in the sidebar first.")
         else:
             initialize_boot_sequence()
+
 with tab3:
     st.header("System Health")
     col1, col2 = st.columns(2)
@@ -143,5 +217,6 @@ with tab3:
             st.markdown(f.read())
     else:
         st.info("No logs found yet. Run an evolution cycle to generate logs.")
+
 st.markdown("---")
 st.markdown("2026 Delta Brain Sync | Powered by Sovereign Omni-Sync Architect")
