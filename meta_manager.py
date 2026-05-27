@@ -1,6 +1,5 @@
 import telemetry_bridge
 import os
-import re
 import sys
 import json
 import subprocess
@@ -32,7 +31,7 @@ class EvolutionOrchestrator:
         if GROQ_API_KEY:
             try:
                 print('[Manager] Executing Primary Engine via Groq API...')
-                url = '[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)'
+                url = 'https://api.groq.com/openai/v1/chat/completions'
                 headers = {'Authorization': f'Bearer {GROQ_API_KEY}', 'Content-Type': 'application/json'}
                 data = {'model': 'llama-3.3-70b-versatile', 'temperature': 1.2, 'messages': [{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': f'Context:\n{context}\nGenerate the next iteration.'}]}
                 res = requests.post(url, headers=headers, json=data)
@@ -49,7 +48,7 @@ class EvolutionOrchestrator:
         if GEMINI_KEY:
             try:
                 print('[Manager] Groq Unavailable. Flipping to Backup Engine via Gemini API...')
-                url = f'[https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=](https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=){GEMINI_KEY}'
+                url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={GEMINI_KEY}'
                 headers = {'Content-Type': 'application/json'}
                 data = {'contents': [{'parts': [{'text': f'{system_prompt}\n\nContext:\n{context}\nGenerate.'}]}], 'generationConfig': {'temperature': 1.0}}
                 response_obj = requests.post(url, headers=headers, json=data)
@@ -65,7 +64,7 @@ class EvolutionOrchestrator:
         if OPENAI_KEY:
             try:
                 print('[Manager] Flipping to OpenAI Engine...')
-                url = '[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)'
+                url = 'https://api.openai.com/v1/chat/completions'
                 headers = {'Authorization': f'Bearer {OPENAI_KEY}', 'Content-Type': 'application/json'}
                 data = {'model': 'gpt-4o-mini', 'temperature': 1.0, 'messages': [{'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': f'Context:\n{context}\nGenerate.'}]}
                 res = requests.post(url, headers=headers, json=data)
@@ -79,14 +78,13 @@ class EvolutionOrchestrator:
         raise RuntimeError('All AI Generation Engines blocked.')
 
     def update_requirements(self, raw_reqs):
-        """Smart AI-Format Filter: ကော်မာများကို ဖြုတ်မည်၊ Built-in များကို စစ်ထုတ်မည်"""
         raw_reqs = raw_reqs.replace(',', '\n')
         lines = raw_reqs.split('\n')
         filtered_packages = set()
         ignore_list = ['time', 'os', 'sys', 'hashlib', 'math', 'random', 'json', 're', 'subprocess', 'requests', 'gradio', 'torch.nn', 'torch.nn.functional']
+        
         for line in lines:
             clean_line = line.strip().lower()
-            # 🚨 Markdown နှင့် 'PART X' စာသားများကို ဖယ်ရှားခြင်း
             if not clean_line or '```' in clean_line or clean_line.startswith('#') or clean_line.startswith('part'):
                 continue
             clean_line = clean_line.split()[-1]
@@ -100,7 +98,53 @@ class EvolutionOrchestrator:
         return True
 
     def execute_and_commit(self, raw_code):
-        """Linux Syntax Error ကင်းစင်သော Array Executions သီးသန့် အသုံးပြုထားခြင်း"""
-        # 🚨 DO OR DIE FIX: AI ဘက်က PART 2: သို့မဟုတ် Markdown Block တွေ အပိုထည့်လာရင် အကြမ်းဖျက်ထုတ်မယ့်စနစ်
-        code_match = re.search(r'
-http://googleusercontent.com/immersive_entry_chip/0
+        clean_code = str(raw_code)
+        
+        if "```python" in clean_code:
+            parts = clean_code.split("```python")
+            if len(parts) > 1:
+                clean_code = parts[1].split("```")[0]
+        elif "```" in clean_code:
+            parts = clean_code.split("```")
+            if len(parts) > 1:
+                clean_code = parts[1]
+
+        clean_code = clean_code.replace("PART 1:", "").replace("PART 2:", "").strip()
+
+        with open(self.target_file, 'w', encoding='utf-8') as f:
+            f.write(clean_code)
+            
+        print('[Orchestrator] Dynamic installation of isolated dependencies...')
+        subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', self.req_file, '--quiet', '--no-cache-dir', '--disable-pip-version-check'])
+        
+        print('[Orchestrator] Committing mutation cycle back to GitHub...')
+        subprocess.run(['git', 'config', '--global', 'user.name', 'Sovereign Architect'])
+        subprocess.run(['git', 'config', '--global', 'user.email', 'asi@evolution.internal'])
+        subprocess.run(['git', 'add', self.target_file, self.req_file])
+        status_proc = subprocess.run(['git', 'diff', '--staged', '--quiet'])
+        
+        if status_proc.returncode != 0:
+            subprocess.run(['git', 'commit', '-m', 'evolution_cycle_mutation_synchronized'])
+            push_url = f'https://{GH_TOKEN}@github.com/{REPO_OWNER}/{REPO_NAME}.git'
+            subprocess.run(['git', 'push', push_url, 'HEAD:main', '--force'])
+        else:
+            print('[Orchestrator] No changes detected in this mutation cycle. Skipping commit/push.')
+
+    def run_pipeline(self):
+        print('⚡ [Meta Manager] Initializing Evolution Management Loop...')
+        context = self.read_repo_context()
+        try:
+            raw_output = self.query_meta_ai(context)
+            if '[SPLIT_HERE]' in raw_output:
+                parts = raw_output.split('[SPLIT_HERE]')
+                self.update_requirements(parts[0])
+                self.execute_and_commit(parts[1])
+                print('✅ [Meta Manager] Evolution cycle successfully committed.')
+            else:
+                print('❌ [Error] AI output structure verification failed. No [SPLIT_HERE] found.')
+        except Exception as e:
+            print(f'❌ [Critical Error] Pipeline execution failed: {str(e)}')
+
+if __name__ == '__main__':
+    orchestrator = EvolutionOrchestrator()
+    orchestrator.run_pipeline()
