@@ -1,14 +1,26 @@
 {
-    "global_generation": 28,
-    "system_entropy": 24.450000000000173,
+    "global_generation": 29,
+    "system_entropy": 25.300000000000185,
     "file_topology": {},
     "shared_memory": {
-        "last_sync": "2026-05-27 17:58:43",
+        "last_sync": "2026-05-27 20:05:54",
         "status": "MUTATING",
         "last_execution_logs": {
-            "transfer_logic.py": {
+            "quantum_bridge.py": {
+                "status": "MUTATING_REQUIRED",
+                "error": "/delta-brain-sync/delta-brain-sync/quantum_bridge.py\", line 7, in <module>\n    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2\nModuleNotFoundError: No module named 'qiskit_ibm_runtime'"
+            },
+            "hyper_dimensional_update.py": {
                 "status": "STABLE",
                 "error": "None"
+            },
+            "matrix_evolution_engine.py": {
+                "status": "TIMEOUT_HANG",
+                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
+            },
+            "existential_update.py": {
+                "status": "MUTATING_REQUIRED",
+                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 60, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
             },
             "evolutionary_update.py": {
                 "status": "STABLE",
@@ -18,27 +30,15 @@
                 "status": "STABLE",
                 "error": "None"
             },
-            "brain.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
-            "bootstrap.py": {
-                "status": "MUTATING_REQUIRED",
-                "error": "sError(retcode, cmd)\nsubprocess.CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.15/x64/bin/python', '-m', 'pip', 'install', '-r', 'requirements.txt']' returned non-zero exit status 1."
-            },
-            "new_file.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
             "meta_manager.py": {
                 "status": "STABLE",
                 "error": "None"
             },
-            "omega_awareness_core.py": {
-                "status": "STABLE",
-                "error": "None"
+            "omni_architect.py": {
+                "status": "TIMEOUT_HANG",
+                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
             },
-            "hyper_dimensional_update.py": {
+            "forge_engine.py": {
                 "status": "STABLE",
                 "error": "None"
             },
@@ -46,15 +46,27 @@
                 "status": "MUTATING_REQUIRED",
                 "error": "delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 132, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)"
             },
+            "evolved_network.py": {
+                "status": "MUTATING_REQUIRED",
+                "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_network.py\", line 3, in <module>\n    torch\nNameError: name 'torch' is not defined"
+            },
+            "new_file.py": {
+                "status": "STABLE",
+                "error": "None"
+            },
             "utilitarian_update.py": {
                 "status": "STABLE",
                 "error": "None"
             },
-            "matrix_evolution_engine.py": {
-                "status": "TIMEOUT_HANG",
-                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
+            "sync_data.py": {
+                "status": "MUTATING_REQUIRED",
+                "error": "2026-05-27 20:01:53,884 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
             },
-            "internal_monologue.py": {
+            "recovery.py": {
+                "status": "STABLE",
+                "error": "None"
+            },
+            "transfer_logic.py": {
                 "status": "STABLE",
                 "error": "None"
             },
@@ -62,37 +74,33 @@
                 "status": "STABLE",
                 "error": "None"
             },
-            "stoic_update.py": {
+            "brain.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "File \"/home/runner/work/delta-brain-sync/delta-brain-sync/stoic_update.py\", line 21, in get\n    return self.utility_values[-1]\n           ~~~~~~~~~~~~~~~~~~~^^^^\nIndexError: list index out of range"
+                "error": "toolcache/Python/3.11.15/x64/lib/python3.11/site-packages/scipy/_lib/_util.py\", line 22, in <module>\n    from numpy.exceptions import AxisError\nModuleNotFoundError: No module named 'numpy.exceptions'"
             },
-            "forge_engine.py": {
+            "omega_awareness_core.py": {
                 "status": "STABLE",
                 "error": "None"
             },
-            "sync_data.py": {
-                "status": "MUTATING_REQUIRED",
-                "error": "2026-05-27 17:53:34,466 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
+            "internal_monologue.py": {
+                "status": "STABLE",
+                "error": "None"
             },
             "evolution_patch.py": {
                 "status": "STABLE",
                 "error": "None"
             },
-            "quantum_bridge.py": {
+            "stoic_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "/delta-brain-sync/delta-brain-sync/quantum_bridge.py\", line 7, in <module>\n    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2\nModuleNotFoundError: No module named 'qiskit_ibm_runtime'"
+                "error": "File \"/home/runner/work/delta-brain-sync/delta-brain-sync/stoic_update.py\", line 21, in get\n    return self.utility_values[-1]\n           ~~~~~~~~~~~~~~~~~~~^^^^\nIndexError: list index out of range"
             },
-            "evolved_network.py": {
+            "bootstrap.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_network.py\", line 4, in <module>\n    torch\nNameError: name 'torch' is not defined"
+                "error": "sError(retcode, cmd)\nsubprocess.CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.15/x64/bin/python', '-m', 'pip', 'install', '-r', 'requirements.txt']' returned non-zero exit status 1."
             },
-            "existential_update.py": {
-                "status": "MUTATING_REQUIRED",
-                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 60, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
-            },
-            "omni_architect.py": {
-                "status": "TIMEOUT_HANG",
-                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
+            "omega_point.py": {
+                "status": "STABLE",
+                "error": "None"
             },
             "app.py": {
                 "status": "MUTATING_REQUIRED",
@@ -102,9 +110,9 @@
                 "status": "MUTATING_REQUIRED",
                 "error": "a-brain-sync/delta-brain-sync/flask_api.py\", line 22, in __init__\n    self.architect = SovereignArchitect()\n                     ^^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignArchitect' is not defined"
             },
-            "omega_point.py": {
-                "status": "STABLE",
-                "error": "None"
+            "survival_brain.py": {
+                "status": "TIMEOUT_HANG",
+                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
             },
             "evolution_guard.py": {
                 "status": "STABLE",
@@ -113,10 +121,6 @@
             "evolved_module.py": {
                 "status": "STABLE",
                 "error": "None"
-            },
-            "survival_brain.py": {
-                "status": "TIMEOUT_HANG",
-                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
             },
             "app_evolved.py": {
                 "status": "MUTATING_REQUIRED",
