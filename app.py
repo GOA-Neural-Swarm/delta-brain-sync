@@ -8,12 +8,12 @@ import time
 import requests
 import re
 from brain import (
-    association_rule_mining, 
-    NeuralBrain, 
-    SovereignArchitect, 
-    hyperdimensional_logic_integration, 
-    utilitarian_optimization, 
-    existential_evolving_process
+    association_rule_mining,
+    NeuralBrain,
+    SovereignArchitect,
+    hyperdimensional_logic_integration,
+    utilitarian_optimization,
+    existential_evolving_process,
 )
 
 # --- Configuration ---
@@ -21,11 +21,12 @@ st.set_page_config(
     page_title="Delta Brain Sync",
     page_icon="🐺",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 # Dark Theme CSS
-st.markdown("""
+st.markdown(
+    """
     <style>
     .main { background-color: #0e1117; color: #ffffff; }
     .stSidebar { background-color: #161b22; }
@@ -33,7 +34,9 @@ st.markdown("""
     .stButton>button { width: 100%; background-color: #238636; color: white; }
     .stChatMessage { background-color: #1c2128; border-radius: 10px; margin-bottom: 10px; }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
 
 # --- Session State Initialization ---
 if "messages" not in st.session_state:
@@ -43,24 +46,24 @@ if "generated_files" not in st.session_state:
 
 # --- Sidebar ---
 with st.sidebar:
-    if os.path.exists('logo.png'):
-        logo = Image.open('logo.png')
+    if os.path.exists("logo.png"):
+        logo = Image.open("logo.png")
         st.image(logo, use_container_width=True)
-    
+
     st.title("Delta Brain Sync")
     st.markdown("---")
-    
+
     st.subheader("🔑 Bring Your Own Key")
     api_provider = st.selectbox("Select AI Provider", ["Groq", "Gemini", "OpenAI"])
     user_api_key = st.text_input(f"Enter your {api_provider} API Key", type="password")
-    
+
     if user_api_key:
         st.success(f"{api_provider} API Key Active")
     else:
         st.warning("API Key required to unlock processing power.")
-    
+
     st.markdown("---")
-    
+
     # Generated Files Download Section
     if st.session_state.generated_files:
         st.subheader("📁 Generated Files")
@@ -72,7 +75,7 @@ with st.sidebar:
                         data=f,
                         file_name=filename,
                         mime="text/plain",
-                        key=f"dl_{filename}"
+                        key=f"dl_{filename}",
                     )
         st.markdown("---")
 
@@ -89,106 +92,107 @@ MANUS_TOOLS = [
     {
         "name": "search_web",
         "description": "Search the web for information using Wikipedia API.",
-        "parameters": {
-            "query": "The search query string."
-        }
+        "parameters": {"query": "The search query string."},
     },
     {
         "name": "fetch_url_content",
         "description": "Fetch and extract text content from a specific URL.",
-        "parameters": {
-            "url": "The URL to fetch content from."
-        }
+        "parameters": {"url": "The URL to fetch content from."},
     },
     {
         "name": "create_and_save_file",
         "description": "Save data or reports to a file in the virtual filesystem.",
         "parameters": {
             "filename": "The name of the file (e.g., 'data.csv').",
-            "content": "The string content to save."
-        }
+            "content": "The string content to save.",
+        },
     },
     {
         "name": "read_local_file",
         "description": "Read content from a previously saved file.",
-        "parameters": {
-            "filename": "The name of the file to read."
-        }
+        "parameters": {"filename": "The name of the file to read."},
     },
     {
         "name": "association_rule_mining",
         "description": "Find frequent itemsets and rules in transaction data.",
         "parameters": {
             "transactions": "List of lists representing transactions.",
-            "min_support": "Minimum occurrence count (integer)."
-        }
+            "min_support": "Minimum occurrence count (integer).",
+        },
     },
     {
         "name": "hyperdimensional_logic_integration",
         "description": "Perform PCA and neural projection on high-dimensional data.",
-        "parameters": {
-            "phenomena_data": "2D list of numerical data."
-        }
+        "parameters": {"phenomena_data": "2D list of numerical data."},
     },
     {
         "name": "utilitarian_optimization",
         "description": "Find the optimal phenomenon based on neural utility scores.",
-        "parameters": {
-            "phenomena_data": "2D list of numerical data."
-        }
-    }
+        "parameters": {"phenomena_data": "2D list of numerical data."},
+    },
 ]
+
 
 def execute_tool(tool_name, args):
     """Router to execute tools, including new Web and File I/O capabilities."""
     brain = NeuralBrain()
     try:
         if tool_name == "search_web":
-            query = args.get('query', '')
+            query = args.get("query", "")
             url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={query}&format=json&origin=*"
             resp = requests.get(url).json()
-            results = [f"{item['title']}: {item['snippet']}" for item in resp.get('query', {}).get('search', [])]
+            results = [
+                f"{item['title']}: {item['snippet']}"
+                for item in resp.get("query", {}).get("search", [])
+            ]
             return json.dumps(results[:5])
-            
+
         elif tool_name == "fetch_url_content":
-            url = args.get('url', '')
+            url = args.get("url", "")
             resp = requests.get(url, timeout=10)
             # Basic HTML stripping using regex for Stlite environment
-            text = re.sub('<[^<]+?>', '', resp.text)
-            return text[:2000] # Limit output size
-            
+            text = re.sub("<[^<]+?>", "", resp.text)
+            return text[:2000]  # Limit output size
+
         elif tool_name == "create_and_save_file":
-            filename = args.get('filename', 'output.txt')
-            content = args.get('content', '')
+            filename = args.get("filename", "output.txt")
+            content = args.get("content", "")
             with open(filename, "w") as f:
                 f.write(content)
             if filename not in st.session_state.generated_files:
                 st.session_state.generated_files.append(filename)
             return f"Successfully saved to {filename}"
-            
+
         elif tool_name == "read_local_file":
-            filename = args.get('filename', '')
+            filename = args.get("filename", "")
             if os.path.exists(filename):
                 with open(filename, "r") as f:
                     return f.read()
             return f"Error: File {filename} not found."
-            
+
         elif tool_name == "association_rule_mining":
-            res = association_rule_mining(args['transactions'], args.get('min_support', 2))
+            res = association_rule_mining(
+                args["transactions"], args.get("min_support", 2)
+            )
             return json.dumps(res)
-            
+
         elif tool_name == "hyperdimensional_logic_integration":
-            res = hyperdimensional_logic_integration(brain, args['phenomena_data'], return_output=True)
+            res = hyperdimensional_logic_integration(
+                brain, args["phenomena_data"], return_output=True
+            )
             return json.dumps(res)
-            
+
         elif tool_name == "utilitarian_optimization":
-            res = utilitarian_optimization(brain, args['phenomena_data'], return_output=True)
+            res = utilitarian_optimization(
+                brain, args["phenomena_data"], return_output=True
+            )
             return json.dumps(res)
-            
+
         else:
             return f"Error: Tool {tool_name} not found."
     except Exception as e:
         return f"Execution Error: {str(e)}"
+
 
 def call_groq(messages, api_key):
     """Groq API call."""
@@ -197,10 +201,11 @@ def call_groq(messages, api_key):
     payload = {
         "model": "llama-3.3-70b-versatile",
         "messages": messages,
-        "temperature": 0.2
+        "temperature": 0.2,
     }
     response = requests.post(url, headers=headers, json=payload)
     return response.json()
+
 
 def run_agentic_loop(chat_history, api_key):
     """Upgraded ReAct loop with multi-step tool use and real-time status updates."""
@@ -215,30 +220,34 @@ Keep thinking and acting until you have the final answer.
 Once finished, start your response with 'FINAL REPORT:'."""
 
     messages = [{"role": "system", "content": system_prompt}] + chat_history
-    
+
     max_steps = 10
     for i in range(max_steps):
         response = call_groq(messages, api_key)
-        if 'choices' not in response:
+        if "choices" not in response:
             return f"API Error: {response}"
-            
-        ai_msg = response['choices'][0]['message']['content']
-        
+
+        ai_msg = response["choices"][0]["message"]["content"]
+
         try:
             if '{"tool_use":' in ai_msg:
-                start = ai_msg.find('{')
-                end = ai_msg.rfind('}') + 1
+                start = ai_msg.find("{")
+                end = ai_msg.rfind("}") + 1
                 tool_json = json.loads(ai_msg[start:end])
-                
-                tool_name = tool_json['tool_use']['name']
-                tool_args = tool_json['tool_use']['args']
-                
-                with st.status(f"🤖 Agent Action: {tool_name}", expanded=False) as status:
+
+                tool_name = tool_json["tool_use"]["name"]
+                tool_args = tool_json["tool_use"]["args"]
+
+                with st.status(
+                    f"🤖 Agent Action: {tool_name}", expanded=False
+                ) as status:
                     st.write(f"Parameters: {tool_args}")
                     result = execute_tool(tool_name, tool_args)
                     st.write(f"Result: {result[:500]}...")
-                    status.update(label=f"✅ Tool Complete: {tool_name}", state="complete")
-                
+                    status.update(
+                        label=f"✅ Tool Complete: {tool_name}", state="complete"
+                    )
+
                 messages.append({"role": "assistant", "content": ai_msg})
                 messages.append({"role": "user", "content": f"Tool Result: {result}"})
                 continue
@@ -248,17 +257,22 @@ Once finished, start your response with 'FINAL REPORT:'."""
             continue
 
         return ai_msg
-            
+
     return "Agent loop timed out."
+
 
 # --- Main UI ---
 st.title("🐺 Delta Brain Sync: Autonomous Manus Agent")
 
-tab1, tab2, tab3 = st.tabs(["🤖 Agentic Chat", "🧠 Neural Evolution", "⚙️ System Health"])
+tab1, tab2, tab3 = st.tabs(
+    ["🤖 Agentic Chat", "🧠 Neural Evolution", "⚙️ System Health"]
+)
 
 with tab1:
     st.header("Manus-Style Agentic Orchestrator")
-    st.write("Deploy the Swarm Node Agent for autonomous research, data creation, and ML analysis.")
+    st.write(
+        "Deploy the Swarm Node Agent for autonomous research, data creation, and ML analysis."
+    )
 
     # Display Chat History
     for message in st.session_state.messages:
@@ -279,8 +293,10 @@ with tab1:
             with st.chat_message("assistant"):
                 response = run_agentic_loop(st.session_state.messages, user_api_key)
                 st.markdown(response)
-                st.session_state.messages.append({"role": "assistant", "content": response})
-            
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": response}
+                )
+
             # Force rerun to show download buttons in sidebar if files were created
             st.rerun()
 
@@ -294,7 +310,9 @@ with tab2:
                 architect = SovereignArchitect()
                 with st.spinner("Booting..."):
                     architect.boot_sequence()
-                    st.code("--- Sovereign Omni-Sync Architect Initialized ---\nGen Level: 19\nNeural Memory: Syncing...")
+                    st.code(
+                        "--- Sovereign Omni-Sync Architect Initialized ---\nGen Level: 19\nNeural Memory: Syncing..."
+                    )
                     st.success("Architect Ready.")
             except Exception as e:
                 st.error(f"Evolution Error: {e}")
@@ -306,10 +324,10 @@ with tab3:
         st.metric("Generation Level", "19", "+1")
     with col2:
         st.metric("Stability Rating", "100%", "Secure")
-    
+
     st.write("### Evolution Logs")
-    if os.path.exists('evolution_logs.md'):
-        with open('evolution_logs.md', 'r') as f:
+    if os.path.exists("evolution_logs.md"):
+        with open("evolution_logs.md", "r") as f:
             st.markdown(f.read())
     else:
         st.info("No logs found yet. Run an evolution cycle to generate logs.")
