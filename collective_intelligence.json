@@ -1,9 +1,9 @@
 {
-    "global_generation": 19,
-    "system_entropy": 17.20000000000007,
+    "global_generation": 20,
+    "system_entropy": 18.050000000000082,
     "file_topology": {},
     "shared_memory": {
-        "last_sync": "2026-05-28 18:05:12",
+        "last_sync": "2026-05-28 20:37:22",
         "status": "MUTATING",
         "last_execution_logs": {
             "transfer_logic.py": {
@@ -48,7 +48,7 @@
             },
             "ai_experiment.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 132, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)"
+                "error": "delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 114, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)"
             },
             "utilitarian_update.py": {
                 "status": "STABLE",
@@ -68,7 +68,7 @@
             },
             "stoic_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "File \"/home/runner/work/delta-brain-sync/delta-brain-sync/stoic_update.py\", line 21, in get\n    return self.utility_values[-1]\n           ~~~~~~~~~~~~~~~~~~~^^^^\nIndexError: list index out of range"
+                "error": "File \"/home/runner/work/delta-brain-sync/delta-brain-sync/stoic_update.py\", line 19, in get\n    return self.utility_values[-1]\n           ~~~~~~~~~~~~~~~~~~~^^^^\nIndexError: list index out of range"
             },
             "forge_engine.py": {
                 "status": "STABLE",
@@ -76,7 +76,7 @@
             },
             "sync_data.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "2026-05-28 18:02:35,244 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
+                "error": "2026-05-28 20:32:10,508 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
             },
             "evolution_patch.py": {
                 "status": "STABLE",
@@ -84,27 +84,27 @@
             },
             "quantum_bridge.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "ib._bootstrap_external>\", line 1130, in get_data\nFileNotFoundError: [Errno 2] No such file or directory: '/opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages/numpy/lib/histograms.py'"
+                "error": "/delta-brain-sync/delta-brain-sync/quantum_bridge.py\", line 7, in <module>\n    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2\nModuleNotFoundError: No module named 'qiskit_ibm_runtime'"
             },
             "evolved_network.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "oolcache/Python/3.11.15/x64/lib/python3.11/site-packages/numpy/_globals.py\", line 20, in <module>\n    from ._utils import set_module as _set_module\nModuleNotFoundError: No module named 'numpy._utils'"
+                "error": "Unknown error"
             },
             "existential_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 60, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
+                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 52, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
             },
             "omni_architect.py": {
-                "status": "MUTATING_REQUIRED",
-                "error": "oolcache/Python/3.11.15/x64/lib/python3.11/site-packages/numpy/_globals.py\", line 20, in <module>\n    from ._utils import set_module as _set_module\nModuleNotFoundError: No module named 'numpy._utils'"
+                "status": "TIMEOUT_HANG",
+                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
             },
             "flask_api.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "a-brain-sync/delta-brain-sync/flask_api.py\", line 22, in __init__\n    self.architect = SovereignArchitect()\n                     ^^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignArchitect' is not defined"
+                "error": "/delta-brain-sync/delta-brain-sync/flask_api.py\", line 21, in __init__\n    self.recovery = SovereignRecovery()\n                    ^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignRecovery' is not defined"
             },
             "omega_point.py": {
-                "status": "MUTATING_REQUIRED",
-                "error": "Unknown error"
+                "status": "STABLE",
+                "error": "None"
             },
             "evolution_guard.py": {
                 "status": "STABLE",
