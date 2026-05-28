@@ -19,7 +19,7 @@
     <script>
       stlite.mount(
         {
-          requirements: ["numpy", "pandas", "scikit-learn", "pillow"],
+          requirements: ["numpy", "pandas", "scikit-learn", "pillow", "requests"],
           entrypoint: "app.py",
           files: {
             "app.py": {
@@ -30,9 +30,6 @@
             },
             "logo.png": {
               url: "logo.png",
-            },
-            "telemetry_bridge.py": {
-                content: "def log(msg): pass"
             }
           },
         },
