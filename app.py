@@ -1,282 +1,237 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-from brain import (
-    association_rule_mining,
-    NeuralBrain,
-    SovereignArchitect,
-    hyperdimensional_logic_integration,
-    utilitarian_optimization,
-    existential_evolving_process,
-)
 import os
 from PIL import Image
 import json
-import requests
 import time
+import requests
+from brain import (
+    association_rule_mining, 
+    NeuralBrain, 
+    SovereignArchitect, 
+    hyperdimensional_logic_integration, 
+    utilitarian_optimization, 
+    existential_evolving_process
+)
 
+# --- Configuration ---
 st.set_page_config(
     page_title="Delta Brain Sync",
     page_icon="🐺",
     layout="wide",
-    initial_sidebar_state="expanded",
-)
-st.markdown(
-    "\n    <style>\n    .main {\n        background-color: #0e1117;\n        color: #ffffff;\n    }\n    .stSidebar {\n        background-color: #161b22;\n    }\n    h1, h2, h3 {\n        color: #58a6ff;\n    }\n    .stButton>button {\n        width: 100%;\n        background-color: #238636;\n        color: white;\n    }\n    </style>\n    ",
-    unsafe_allow_html=True,
+    initial_sidebar_state="expanded"
 )
 
+# Dark Theme CSS
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; color: #ffffff; }
+    .stSidebar { background-color: #161b22; }
+    h1, h2, h3 { color: #58a6ff; }
+    .stButton>button { width: 100%; background-color: #238636; color: white; }
+    .agent-thought { background-color: #1c2128; border-left: 4px solid #58a6ff; padding: 10px; margin: 10px 0; font-family: monospace; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- Sidebar ---
 with st.sidebar:
-    if os.path.exists("logo.png"):
-        logo = Image.open("logo.png")
-        st.image(logo, width="stretch")
-    st.title("Delta Brain Sync (Agentic)")
+    if os.path.exists('logo.png'):
+        logo = Image.open('logo.png')
+        st.image(logo, use_container_width=True)
+    
+    st.title("Delta Brain Sync")
     st.markdown("---")
+    
     st.subheader("🔑 Bring Your Own Key")
     api_provider = st.selectbox("Select AI Provider", ["Groq", "Gemini", "OpenAI"])
     user_api_key = st.text_input(f"Enter your {api_provider} API Key", type="password")
+    
     if user_api_key:
         st.success(f"{api_provider} API Key Active")
     else:
         st.warning("API Key required to unlock processing power.")
+    
     st.markdown("---")
+    
     st.subheader("💎 Premium Access / Support the Creator")
-    st.markdown(
-        "\n        To unlock advanced automated analytics, send $10 (USDT) to this TRC-20 Wallet Address: \n        `[YOUR_FUTURE_CRYPTO_ADDRESS_HERE]`\n        "
-    )
+    st.markdown("""
+    To unlock advanced automated analytics, send $10 (USDT) to this TRC-20 Wallet Address: 
+    
+    `[YOUR_FUTURE_CRYPTO_ADDRESS_HERE]`
+    """)
 
-st.title("🐺 Delta Brain Sync: Swarm Intelligence Dashboard")
-st.write(
-    "Welcome to the next generation of association rule mining and Agentic Neural Evolution."
-)
+# --- Agentic Core ---
 
-tab1, tab2, tab3 = st.tabs(
-    ["🤖 Agentic Data Miner", "🧠 Neural Evolution", "⚙️ System Health"]
-)
-
-
-# ----------------- UTILS & CORE TOOLS -----------------
-def parse_transactions(data_input):
-    try:
-        transactions = json.loads(data_input)
-    except:
-        transactions = [
-            line.split(",") for line in data_input.strip().split("\n") if line
-        ]
-    return transactions
-
-
-# 🛠️ Define Tools for Manus-style Agent
 MANUS_TOOLS = [
     {
-        "type": "function",
-        "function": {
-            "name": "run_association_mining",
-            "description": "Perform association rule mining on given transactions.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "transactions": {
-                        "type": "string",
-                        "description": "JSON string of transactions (e.g. '[[1, 2], [3, 4]]')",
-                    },
-                    "min_support": {
-                        "type": "integer",
-                        "description": "Minimum support value (e.g. 2)",
-                    },
-                },
-                "required": ["transactions", "min_support"],
-            },
-        },
+        "name": "association_rule_mining",
+        "description": "Find frequent itemsets and rules in transaction data.",
+        "parameters": {
+            "transactions": "List of lists representing transactions.",
+            "min_support": "Minimum occurrence count (integer)."
+        }
     },
     {
-        "type": "function",
-        "function": {
-            "name": "trigger_hyperdimensional_pca",
-            "description": "Run PCA and Neural Core classification on the data to find hyperdimensional logic.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "data": {
-                        "type": "string",
-                        "description": "JSON string of numerical data arrays (e.g. '[[1, 2, 3], [4, 5, 6]]')",
-                    }
-                },
-                "required": ["data"],
-            },
-        },
+        "name": "hyperdimensional_logic_integration",
+        "description": "Perform PCA and neural projection on high-dimensional data.",
+        "parameters": {
+            "phenomena_data": "2D list of numerical data."
+        }
     },
+    {
+        "name": "utilitarian_optimization",
+        "description": "Find the optimal phenomenon based on neural utility scores.",
+        "parameters": {
+            "phenomena_data": "2D list of numerical data."
+        }
+    }
 ]
 
-
-# Tool Execution Mapping
-def execute_tool(tool_name, tool_args):
+def execute_tool(tool_name, args):
+    """Router to execute brain.py functions from LLM tool calls."""
+    brain = NeuralBrain()
     try:
-        if tool_name == "run_association_mining":
-            trans = json.loads(tool_args["transactions"])
-            min_sup = tool_args["min_support"]
-            rules = association_rule_mining(trans, min_sup)
-            return json.dumps({"status": "success", "rules": rules})
-
-        elif tool_name == "trigger_hyperdimensional_pca":
-            data = json.loads(tool_args["data"])
-            brain = NeuralBrain()
-            result = hyperdimensional_logic_integration(
-                brain, data, return_output=True
-            )  # Modified in brain.py to return string
-            return json.dumps({"status": "success", "pca_neural_output": result})
-
+        if tool_name == "association_rule_mining":
+            res = association_rule_mining(args['transactions'], args.get('min_support', 2))
+            return json.dumps(res)
+        elif tool_name == "hyperdimensional_logic_integration":
+            res = hyperdimensional_logic_integration(brain, args['phenomena_data'], return_output=True)
+            return json.dumps(res)
+        elif tool_name == "utilitarian_optimization":
+            res = utilitarian_optimization(brain, args['phenomena_data'], return_output=True)
+            return json.dumps(res)
         else:
-            return json.dumps({"error": f"Tool '{tool_name}' not found."})
+            return f"Error: Tool {tool_name} not found."
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        return f"Execution Error: {str(e)}"
 
+def call_groq(messages, api_key):
+    """Simplified Groq API call for Stlite environment."""
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": messages,
+        "temperature": 0.2
+    }
+    response = requests.post(url, headers=headers, json=payload)
+    return response.json()
 
-# 🤖 Agentic ReAct Loop (Production Grade)
-def run_agentic_loop(prompt, transactions_raw, api_key):
-    st.markdown("### 🧠 Agentic Thought Process")
-    log_container = st.container()
+def run_agentic_loop(user_prompt, data_context, api_key):
+    """ReAct framework loop for autonomous reasoning and tool use."""
+    system_prompt = f"""You are a 'Swarm Node Agent' for Delta Brain Sync. 
+Your goal is to provide a 'Cyber Intelligence Report' by analyzing data step-by-step.
+You have access to these tools: {json.dumps(MANUS_TOOLS)}
+
+If you need to use a tool, respond with ONLY a JSON object: 
+{{"tool_use": {{"name": "tool_name", "args": {{"arg1": "val1"}}}}}}
+
+Once you have the final answer, start your response with 'FINAL REPORT:'."""
 
     messages = [
-        {
-            "role": "system",
-            "content": "You are an autonomous AI Agent managing the Delta Brain Sync system. You have access to data mining tools and neural classifiers. Analyze the user's request, use the provided tools step-by-step to process the data, and provide a final cyber intelligence report. Data context is provided by the user.",
-        },
-        {
-            "role": "user",
-            "content": f"User Request: {prompt}\n\nAvailable Data Context: {transactions_raw}",
-        },
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": f"Analyze this data: {data_context}. Task: {user_prompt}"}
     ]
-
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    
     max_steps = 5
+    for i in range(max_steps):
+        with st.spinner(f"Agent Thinking (Step {i+1})..."):
+            response = call_groq(messages, api_key)
+            
+            if 'choices' not in response:
+                st.error(f"API Error: {response}")
+                break
+                
+            ai_msg = response['choices'][0]['message']['content']
+            
+            # Check for tool use
+            try:
+                if '{"tool_use":' in ai_msg:
+                    start = ai_msg.find('{')
+                    end = ai_msg.rfind('}') + 1
+                    tool_json = json.loads(ai_msg[start:end])
+                    
+                    tool_name = tool_json['tool_use']['name']
+                    tool_args = tool_json['tool_use']['args']
+                    
+                    st.info(f"🛠️ **Agent Action:** Using `{tool_name}`")
+                    result = execute_tool(tool_name, tool_args)
+                    
+                    messages.append({"role": "assistant", "content": ai_msg})
+                    messages.append({"role": "user", "content": f"Tool Result: {result}"})
+                    continue
+            except:
+                pass
 
-    for step in range(max_steps):
-        payload = {
-            "model": "llama-3.3-70b-versatile",  # Using larger model for agentic reasoning
-            "messages": messages,
-            "tools": MANUS_TOOLS,
-            "tool_choice": "auto",
-            "temperature": 0.2,
-        }
+            if "FINAL REPORT:" in ai_msg:
+                return ai_msg
+            
+            return ai_msg
+            
+    return "Agent loop timed out."
 
-        try:
-            response = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers=headers,
-                json=payload,
-            ).json()
+# --- Main UI ---
+st.title("🐺 Delta Brain Sync: Agentic Swarm Intelligence")
+st.write("Upgraded to Agentic Orchestrator v2.0 (Manus-Style Tool Integration)")
 
-            if "error" in response:
-                log_container.error(f"❌ API Error: {response['error']['message']}")
-                return None
+tab1, tab2, tab3 = st.tabs(["🤖 Agentic Data Miner", "🧠 Neural Evolution", "⚙️ System Health"])
 
-            message = response["choices"][0]["message"]
-            messages.append(message)
-
-            # Action: Tool Calling
-            if message.get("tool_calls"):
-                for tool_call in message["tool_calls"]:
-                    tool_name = tool_call["function"]["name"]
-                    args_str = tool_call["function"]["arguments"]
-
-                    log_container.info(
-                        f"🛠️ **Agent Action:** Calling `{tool_name}` with args: `{args_str}`"
-                    )
-
-                    # Execute
-                    tool_result = execute_tool(tool_name, json.loads(args_str))
-                    log_container.success(f"✅ **Tool Output:** `{tool_result}`")
-
-                    messages.append(
-                        {
-                            "role": "tool",
-                            "tool_call_id": tool_call["id"],
-                            "name": tool_name,
-                            "content": tool_result,
-                        }
-                    )
-            else:
-                # Observation / Final Answer
-                st.markdown("---")
-                st.subheader("🛰️ Final Agentic Intelligence Report")
-                st.markdown(message["content"])
-                return message["content"]
-
-        except Exception as e:
-            log_container.error(f"❌ Execution Error: {str(e)}")
-            return None
-
-    log_container.warning("⚠️ Agent reached maximum steps without concluding.")
-    return None
-
-
-def initialize_boot_sequence():
-    try:
-        architect = SovereignArchitect()
-        architect.boot_sequence()
-        st.code(
-            "--- Sovereign Omni-Sync Architect Initialized ---\nGen Level: 31\nNeural Memory: Syncing..."
-        )
-        st.success("Architect Ready & Evolved.")
-    except Exception as e:
-        st.error(f"Evolution Error: {e}")
-
-
-# ----------------- TABS -----------------
 with tab1:
-    st.header("Agentic Association & Neural Mining")
-    st.write(
-        "Instruct the Agent to autonomously mine, classify, and analyze your data."
-    )
-
-    data_input = st.text_area(
-        "Enter your data (JSON format or comma-separated lists)",
-        placeholder="[[1, 2, 3], [4, 5, 6], [7, 8, 9]]",
-        height=150,
-    )
-    user_prompt = st.text_input(
-        "Agent Instruction",
-        value="Extract association rules with minimum support 2, then run a hyperdimensional PCA analysis on the data to classify the phenomena. Give me a final executive summary.",
-    )
-
-    if st.button("Execute Agentic Swarm"):
+    st.header("Agentic Data Mining")
+    st.write("Instruct the Swarm Node Agent to process complex phenomena.")
+    
+    data_input = st.text_area("Data Context (JSON or CSV)", 
+                             placeholder="[[1, 2], [1, 2], [3, 4]]",
+                             height=150)
+    
+    user_goal = st.text_input("Agent Mission", placeholder="Find patterns and optimize for utility...")
+    
+    if st.button("Deploy Agent"):
         if not user_api_key:
-            st.error("Please enter your Groq API Key in the sidebar first.")
+            st.error("Please enter your API Key in the sidebar.")
+        elif not data_input or not user_goal:
+            st.error("Please provide both data and a mission.")
         else:
-            transactions = parse_transactions(data_input)
-            if not transactions:
-                st.error("Please provide valid transaction data.")
-            else:
-                with st.spinner("Agent is reasoning and executing..."):
-                    run_agentic_loop(
-                        user_prompt, json.dumps(transactions), user_api_key
-                    )
+            report = run_agentic_loop(user_goal, data_input, user_api_key)
+            st.success("Analysis Complete")
+            st.markdown("### 📋 Cyber Intelligence Report")
+            st.write(report)
 
 with tab2:
     st.header("Neural Evolution")
-    st.write("Monitor and trigger Sovereign Architect evolution cycles.")
+    st.write("Trigger and monitor Sovereign Architect evolution cycles.")
+    
     if st.button("Initialize Boot Sequence"):
         if not user_api_key:
-            st.error("Please enter your API Key in the sidebar first.")
+            st.error("Please enter your API Key in the sidebar.")
         else:
-            initialize_boot_sequence()
+            try:
+                architect = SovereignArchitect()
+                with st.spinner("Booting..."):
+                    architect.boot_sequence()
+                    st.code("--- Sovereign Omni-Sync Architect Initialized ---\nGen Level: 19\nNeural Memory: Syncing...")
+                    st.success("Architect Ready.")
+            except Exception as e:
+                st.error(f"Evolution Error: {e}")
 
 with tab3:
     st.header("System Health")
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Generation Level", "31", "+1")  # Updated to Gen 31 based on brain.py
+        st.metric("Generation Level", "19", "+1")
     with col2:
         st.metric("Stability Rating", "100%", "Secure")
+    
     st.write("### Evolution Logs")
-    if os.path.exists("evolution_logs.md"):
-        with open("evolution_logs.md", "r") as f:
+    if os.path.exists('evolution_logs.md'):
+        with open('evolution_logs.md', 'r') as f:
             st.markdown(f.read())
     else:
         st.info("No logs found yet. Run an evolution cycle to generate logs.")
 
 st.markdown("---")
-st.markdown(
-    "2026 Delta Brain Sync | Powered by Sovereign Omni-Sync Architect (Agentic Core)"
-)
+st.markdown("© 2026 Delta Brain Sync | Powered by Sovereign Omni-Sync Architect")
