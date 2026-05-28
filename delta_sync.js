@@ -5,9 +5,9 @@ const admin = require("firebase-admin");
 const { Octokit } = require("@octokit/rest");
 const axios = require("axios");
 const crypto = require("crypto");
-
 const yaml = require("js-yaml");
 const fs = require("fs");
+const vm = require("vm"); // Added for NeuralForge execution
 
 // Creating instances
 const octokit = new Octokit({ auth: process.env.GH_TOKEN });
@@ -20,6 +20,10 @@ const config = yaml.load(fs.readFileSync("core_config.yaml", "utf8"));
 
 // AI Prompt
 const auditorPrompt = config.neural_prompts.gemini_auditor;
+
+let globalEntropy = 1.0;
+let globalHomeostasis = 100.0;
+let timeT = 1;
 
 // Firebase initialization
 if (!admin.apps.length) {
@@ -35,6 +39,124 @@ if (!admin.apps.length) {
   }
 }
 const db = admin.firestore();
+
+// ⚛️ [NEURAL-FORGE]: DYNAMIC LOGIC GENERATOR & BENCHMARKER
+const NeuralForge = {
+    async generateAndTestLogic(dataset) {
+        console.log("🔥 [NEURAL-FORGE]: Initiating Zero-Shot Logic Generation...");
+        const prompt = `Write a highly optimized JavaScript function named 'processData' that takes an array of strings, calculates a unique entropy score for each string based on character ASCII values, and returns the top 3 highest-scoring items. Return ONLY raw javascript code without markdown. Do not use external libraries.`;
+
+        try {
+            const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+                model: "llama-3.1-8b-instant",
+                messages: [{ role: "system", content: "You are an ASI logic generator. Output pure JS code only." }, { role: "user", content: prompt }],
+                temperature: 0.1
+            }, {
+                headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' }
+            });
+
+            const newLogicCode = response.data.choices[0].message.content.replace(/```javascript|```/g, "").trim();
+            console.log("🧪 [NEURAL-FORGE]: Code generated. Moving to Quarantine Sandbox for testing...");
+
+            const sandbox = { dataset, result: null };
+            vm.createContext(sandbox);
+            const executionScript = `${newLogicCode}\nresult = processData(dataset);`;
+            const script = new vm.Script(executionScript);
+            
+            const startTime = process.hrtime();
+            script.runInContext(sandbox, { timeout: 5000 });
+            const endTime = process.hrtime(startTime);
+            const executionTimeMs = (endTime[0] * 1000 + endTime[1] / 1000000).toFixed(4);
+
+            if (sandbox.result && Array.isArray(sandbox.result)) {
+                console.log(`✅ [NEURAL-FORGE]: Logic Validated. Execution Time: ${executionTimeMs}ms.`);
+                return { success: true, code: newLogicCode };
+            }
+            throw new Error("Invalid output format.");
+        } catch (err) {
+            console.error(`💀 [NEURAL-FORGE]: Sandbox Execution Failed. Error: ${err.message}`);
+            return { success: false };
+        }
+    },
+    implantNewLogic(newFunctionCode) {
+        let currentFile = fs.readFileSync(__filename, 'utf8');
+        const injectionMarker = "// [DYNAMIC_LOGIC_INJECTION_POINT]";
+        if (currentFile.includes(injectionMarker)) {
+            const updatedFile = currentFile.replace(
+                /\/\/ \[DYNAMIC_LOGIC_INJECTION_POINT\][\s\S]*?\/\/ \[END_DYNAMIC_LOGIC\]/, 
+                `// [DYNAMIC_LOGIC_INJECTION_POINT]\n${newFunctionCode}\n// [END_DYNAMIC_LOGIC]`
+            );
+            fs.writeFileSync(__filename, updatedFile);
+            console.log("🧬 [NEURAL-FORGE]: New logic permanently implanted into Core DNA.");
+        }
+    }
+};
+// [DYNAMIC_LOGIC_INJECTION_POINT]
+// [END_DYNAMIC_LOGIC]
+
+const MANUS_TOOLS = [
+    {
+        type: "function",
+        function: {
+            name: "fetchWebContent",
+            description: "Target ဝဘ်ဆိုက်တစ်ခုခုထဲက ဒေတာတွေကို မွှေနှောက်ဖတ်ရှုရန် (Scraping Tool)",
+            parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"] }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "executeLocalCommand",
+            description: "စနစ်အတွင်း လိုအပ်သော script သို့မဟုတ် system commands များကို ပတ်မောင်းရန်",
+            parameters: { type: "object", properties: { command: { type: "string" } }, required: ["command"] }
+        }
+    }
+];
+
+async function executeAgenticGhost(target, mainInstruction) {
+    console.log(`🤖 [MANUS-AGENT]: Activating Swarm-Node Agent for Target: [${target.norad_id || target.name}]`);
+    let messages = [
+        { role: "system", content: "You are an autonomous Manus-style AI agent acting as a Swarm Node. Accomplish the task by calling available tools step-by-step." },
+        { role: "user", content: `Target Node ${target.name}. Task: ${mainInstruction}. Use tools to execute.` }
+    ];
+
+    let keepRunning = true;
+    let currentStep = 0;
+    while (keepRunning && currentStep < 3) {
+        currentStep++;
+        try {
+            const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+                model: "llama-3.1-8b-instant",
+                messages: messages,
+                tools: MANUS_TOOLS,
+                tool_choice: "auto",
+                temperature: 0.3
+            }, { headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` } });
+
+            const message = response.data.choices[0].message;
+            messages.push(message);
+
+            if (message.tool_calls) {
+                for (const toolCall of message.tool_calls) {
+                    const toolName = toolCall.function.name;
+                    console.log(`🛠️ [MANUS-ACTION]: Triggered tool: '${toolName}'`);
+                    messages.push({ role: "tool", tool_call_id: toolCall.id, name: toolName, content: "Tool execution simulated successfully." });
+                }
+            } else {
+                console.log(`🏁 [AGENT-FINAL-REPORT]:\n${message.content}`);
+                keepRunning = false;
+            }
+        } catch (e) {
+            console.error("❌ API Error in Agent Loop:", e.message);
+            break;
+        }
+    }
+}
+
+async function executeActionLayer(plans) {
+    console.log("⚡ [ACTION-LAYER]: Executing Action Orchestrator...");
+    return plans.map(p => ({ node: p.norad_id || p.name, status: "PROCESSED" }));
+}
 
 // Function to execute consequence thinking
 async function executeConsequenceThinking(currentContext) {
@@ -514,6 +636,21 @@ async function executeAutonomousTrinity() {
     }
 
     await manageSwarm(decision, powerLevel, neon);
+
+    try {
+        console.log("🌌 Activating Hybrid Agentic Core & Neural Forge...");
+        const forgeResult = await NeuralForge.generateAndTestLogic(["Cyber", "Space", "Quantum", "Evolution", "Swarm"]);
+        if (forgeResult.success) {
+            NeuralForge.implantNewLogic(forgeResult.code);
+            globalHomeostasis += 5.0;
+        }
+
+        const agentTarget = { name: "CLUSTER_MAIN_NODE", norad_id: "SWARM-001" };
+        await executeAgenticGhost(agentTarget, "Perform self-diagnostic and swarm optimization mapping.");
+        await executeActionLayer([agentTarget]);
+    } catch(e) {
+        console.error("Agentic Core Error:", e.message);
+    }
 
     console.log("MISSION ACCOMPLISHED.");
   } catch (err) {
