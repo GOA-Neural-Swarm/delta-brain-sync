@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_22 Linked
 import telemetry_bridge
 import os
 import time
@@ -9,8 +8,9 @@ GITHUB_TOKEN = os.getenv('GH_TOKEN')
 SOURCE_ENTITY = 'GOA-neurons'
 TARGET_ORG = 'GOA-Neural-Swarm'
 BATCH_SIZE = 15
-headers = {'Authorization': f'token {GITHUB_TOKEN}', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'Swarm-Node-Transfer'}
+MAX_RETRIES = 3
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+headers = {'Authorization': f'token {GITHUB_TOKEN}', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'Swarm-Node-Transfer'}
 
 def get_repositories() -> List[str]:
     """
@@ -70,13 +70,13 @@ def process_repositories_in_batches(repositories: List[str], batch_size: int) ->
             time.sleep(1)
     return failed_transfers
 
-def retry_failed_transfers(failed_transfers: List[str], max_retries: int=3) -> None:
+def retry_failed_transfers(failed_transfers: List[str], max_retries: int=MAX_RETRIES) -> None:
     """
     Retry failed repository transfers
 
     Args:
         failed_transfers (List[str]): A list of repository names that failed transfer
-        max_retries (int): The maximum number of retries. Defaults to 3.
+        max_retries (int): The maximum number of retries. Defaults to MAX_RETRIES.
     """
     for _ in range(max_retries):
         new_failed_transfers = []
