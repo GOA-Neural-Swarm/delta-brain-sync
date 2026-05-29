@@ -4,21 +4,13 @@ import time
 import requests
 import logging
 from typing import List
-
-GITHUB_TOKEN = os.getenv("GH_TOKEN")
-SOURCE_ENTITY = "GOA-neurons"
-TARGET_ORG = "GOA-Neural-Swarm"
+GITHUB_TOKEN = os.getenv('GH_TOKEN')
+SOURCE_ENTITY = 'GOA-neurons'
+TARGET_ORG = 'GOA-Neural-Swarm'
 BATCH_SIZE = 15
 MAX_RETRIES = 3
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-headers = {
-    "Authorization": f"token {GITHUB_TOKEN}",
-    "Accept": "application/vnd.github.v3+json",
-    "User-Agent": "Swarm-Node-Transfer",
-}
-
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+headers = {'Authorization': f'token {GITHUB_TOKEN}', 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'Swarm-Node-Transfer'}
 
 def get_repositories() -> List[str]:
     """
@@ -27,16 +19,15 @@ def get_repositories() -> List[str]:
     Returns:
         List[str]: A list of repository names
     """
-    url = f"https://api.github.com/users/{SOURCE_ENTITY}/repos?per_page=100"
-    params = {"type": "all", "state": "all"}
+    url = f'https://api.github.com/users/{SOURCE_ENTITY}/repos?per_page=100'
+    params = {'type': 'all', 'state': 'all'}
     response = requests.get(url, headers=headers, params=params)
     if response.status_code == 200:
         repositories = response.json()
-        return [repo["name"] for repo in repositories if "swarm-node-" in repo["name"]]
+        return [repo['name'] for repo in repositories if 'swarm-node-' in repo['name']]
     else:
-        logging.error(f"API Error: {response.status_code} - {response.text}")
+        logging.error(f'API Error: {response.status_code} - {response.text}')
         return []
-
 
 def transfer_repository(repository: str) -> bool:
     """
@@ -48,21 +39,18 @@ def transfer_repository(repository: str) -> bool:
     Returns:
         bool: Transfer status
     """
-    url = f"https://api.github.com/repos/{SOURCE_ENTITY}/{repository}/transfer"
-    payload = {"new_owner": TARGET_ORG, "team_ids": []}
+    url = f'https://api.github.com/repos/{SOURCE_ENTITY}/{repository}/transfer'
+    payload = {'new_owner': TARGET_ORG, 'team_ids': []}
     response = requests.post(url, headers=headers, json=payload)
     if response.status_code == 202:
-        logging.info(f"Transferred: {repository}")
+        logging.info(f'Transferred: {repository}')
         return True
     else:
-        error_message = response.json().get("message", "Unknown Error")
-        logging.error(f"Failed {repository}: {error_message}")
+        error_message = response.json().get('message', 'Unknown Error')
+        logging.error(f'Failed {repository}: {error_message}')
         return False
 
-
-def process_repositories_in_batches(
-    repositories: List[str], batch_size: int
-) -> List[str]:
+def process_repositories_in_batches(repositories: List[str], batch_size: int) -> List[str]:
     """
     Process a list of repositories in batches
 
@@ -75,17 +63,14 @@ def process_repositories_in_batches(
     """
     failed_transfers = []
     for i in range(0, len(repositories), batch_size):
-        batch = repositories[i : i + batch_size]
+        batch = repositories[i:i + batch_size]
         for repository in batch:
             if not transfer_repository(repository):
                 failed_transfers.append(repository)
             time.sleep(1)
     return failed_transfers
 
-
-def retry_failed_transfers(
-    failed_transfers: List[str], max_retries: int = MAX_RETRIES
-) -> None:
+def retry_failed_transfers(failed_transfers: List[str], max_retries: int=MAX_RETRIES) -> None:
     """
     Retry failed repository transfers
 
@@ -102,23 +87,16 @@ def retry_failed_transfers(
         if not failed_transfers:
             break
     if failed_transfers:
-        logging.error(
-            f"Failed to transfer {len(failed_transfers)} repositories after {max_retries} retries: {failed_transfers}"
-        )
-
+        logging.error(f'Failed to transfer {len(failed_transfers)} repositories after {max_retries} retries: {failed_transfers}')
 
 def main() -> None:
     repositories = get_repositories()
     if repositories:
-        logging.info(
-            f"Found {len(repositories)} nodes in {SOURCE_ENTITY}. Transferring in batches of {BATCH_SIZE}..."
-        )
+        logging.info(f'Found {len(repositories)} nodes in {SOURCE_ENTITY}. Transferring in batches of {BATCH_SIZE}...')
         failed_transfers = process_repositories_in_batches(repositories, BATCH_SIZE)
         if failed_transfers:
             retry_failed_transfers(failed_transfers)
     else:
         logging.info(f"No 'swarm-node-' repositories found in {SOURCE_ENTITY}.")
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
