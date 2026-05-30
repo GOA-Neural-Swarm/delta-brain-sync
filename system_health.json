@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-05-30T02:32:44.072445",
+    "timestamp": "2026-05-30T06:21:35.482540",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1015-azure",
@@ -78,8 +78,8 @@
         "websockets installed"
     ],
     "hardware": {
-        "ram_total_gb": 15.62,
-        "ram_available_gb": 14.22,
+        "ram_total_gb": 15.61,
+        "ram_available_gb": 14.2,
         "gpu_available": false
     }
 }
