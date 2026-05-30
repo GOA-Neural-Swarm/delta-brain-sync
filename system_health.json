@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-05-30T16:03:31.182659",
+    "timestamp": "2026-05-30T19:05:40.954629",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1015-azure",
@@ -79,7 +79,7 @@
     ],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.22,
+        "ram_available_gb": 14.27,
         "gpu_available": false
     }
 }
