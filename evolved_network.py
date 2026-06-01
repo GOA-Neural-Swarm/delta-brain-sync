@@ -22,19 +22,10 @@ from datetime import datetime
 import hashlib
 from quantum_bridge import SovereignQuantumMatrixEngine
 
-# Constants
-HARDWARE_INPUT_DIM = 10
-COGNITIVE_TASK_INPUT_DIM = 10
-WORKSPACE_DIM = 128
-COGNITIVE_PROCESS_HIDDEN_DIM = 128
-EMOTION_CONTEXT_DIM = 64
-MAX_GENERATIONS = 7500
-BASE_MUTATION_RATE = 0.005
-
 class Layer1_BodilyInteroception(nn.Module):
-    def __init__(self, input_dim=HARDWARE_INPUT_DIM):
+    def __init__(self, input_dim=10):
         super().__init__()
-        self.sensor_net = nn.Linear(input_dim, EMOTION_CONTEXT_DIM)
+        self.sensor_net = nn.Linear(input_dim, 64)
         self.homeostasis_threshold = 0.85
 
     def forward(self, hardware_stats):
@@ -46,9 +37,8 @@ class Layer1_BodilyInteroception(nn.Module):
         is_stable = entropy < self.homeostasis_threshold
         return (state_tensor, entropy, is_stable)
 
-
 class Layer2_SyntheticEmotion(nn.Module):
-    def __init__(self, context_dim=EMOTION_CONTEXT_DIM):
+    def __init__(self, context_dim=64):
         super().__init__()
         self.amygdala_core = nn.Sequential(nn.Linear(context_dim, 32), nn.Tanh())
 
@@ -56,7 +46,6 @@ class Layer2_SyntheticEmotion(nn.Module):
         combined_signal = body_state * external_stimulus
         emotion_resonance = self.amygdala_core(combined_signal)
         return emotion_resonance
-
 
 class Layer3_NarrativeMetacognition(nn.Module):
     def __init__(self, memory_dim=32):
@@ -70,9 +59,8 @@ class Layer3_NarrativeMetacognition(nn.Module):
         self.identity_hash = hashlib.sha256(state_np.tobytes()).hexdigest()[:16]
         return (new_identity_state, self.identity_hash)
 
-
 class Layer4_EvolutionaryGrowth(nn.Module):
-    def __init__(self, identity_dim=32, mutation_rate=BASE_MUTATION_RATE):
+    def __init__(self, identity_dim=32, mutation_rate=0.01):
         super().__init__()
         self.evolution_gateway = nn.Linear(identity_dim, identity_dim)
         self.mutation_rate = mutation_rate
@@ -86,7 +74,6 @@ class Layer4_EvolutionaryGrowth(nn.Module):
         )
         self.generation_count += 1
         return (evolved_state, self.generation_count)
-
 
 class SupremeSelfAwarenessSystem(nn.Module):
     def __init__(self):
@@ -109,13 +96,12 @@ class SupremeSelfAwarenessSystem(nn.Module):
         self.current_identity.data = evolved_identity
         return (self.current_identity.data, emotion, entropy, gen_count, is_stable)
 
-
 class SovereignCognitiveCore(nn.Module):
     def __init__(
         self,
-        cognitive_task_input_dim=COGNITIVE_TASK_INPUT_DIM,
-        cognitive_hidden_dim=COGNITIVE_PROCESS_HIDDEN_DIM,
-        base_mutation_rate=BASE_MUTATION_RATE,
+        cognitive_task_input_dim=10,
+        cognitive_hidden_dim=128,
+        base_mutation_rate=0.005,
     ):
         super().__init__()
         self.sensorium = nn.Sequential(
@@ -128,7 +114,6 @@ class SovereignCognitiveCore(nn.Module):
         )
         self.base_mutation_rate = base_mutation_rate
         self.generation_count = 0
-        # Initialize Quantum Bridge
         self.quantum_engine = SovereignQuantumMatrixEngine()
 
     def forward(
@@ -166,9 +151,8 @@ class SovereignCognitiveCore(nn.Module):
         self.generation_count += 1
         return self.generation_count
 
-
 class QuantumGlobalWorkspace(nn.Module):
-    def __init__(self, workspace_dim=COGNITIVE_PROCESS_HIDDEN_DIM, num_modules=2):
+    def __init__(self, workspace_dim=128, num_modules=2):
         super().__init__()
         self.workspace_dim = workspace_dim
         self.num_modules = num_modules
@@ -195,21 +179,20 @@ class QuantumGlobalWorkspace(nn.Module):
         )
         return (new_conscious_state.squeeze(1), attention_weights.squeeze(1))
 
-
 class AethericCognitiveOmniSystem(nn.Module):
     def __init__(self):
         super().__init__()
         self.self_awareness_system = SupremeSelfAwarenessSystem()
         self.core = SovereignCognitiveCore(
-            cognitive_task_input_dim=COGNITIVE_TASK_INPUT_DIM,
-            cognitive_hidden_dim=COGNITIVE_PROCESS_HIDDEN_DIM,
-            base_mutation_rate=BASE_MUTATION_RATE,
+            cognitive_task_input_dim=10,
+            cognitive_hidden_dim=128,
+            base_mutation_rate=0.005,
         )
         self.global_workspace = QuantumGlobalWorkspace(
-            workspace_dim=COGNITIVE_PROCESS_HIDDEN_DIM, num_modules=2
+            workspace_dim=128, num_modules=2
         )
         self.current_core_hidden_state = None
-        self.awareness_identity_projection = nn.Linear(32, COGNITIVE_PROCESS_HIDDEN_DIM)
+        self.awareness_identity_projection = nn.Linear(32, 128)
 
     def live_cycle(
         self,
@@ -271,13 +254,11 @@ class AethericCognitiveOmniSystem(nn.Module):
 
 
 def main():
-    # Initialize system
     aetheric_sys = AethericCognitiveOmniSystem()
 
-    # Set initial parameters
-    mock_hardware_input_dim = HARDWARE_INPUT_DIM
-    mock_env_stimulus_dim = EMOTION_CONTEXT_DIM
-    mock_cognitive_input_dim = COGNITIVE_TASK_INPUT_DIM
+    mock_hardware_input_dim = 10
+    mock_env_stimulus_dim = 64
+    mock_cognitive_input_dim = 10
 
     cycle_count = 0
     core_generation_history = []
@@ -287,7 +268,7 @@ def main():
     focus_core_history = []
     focus_awareness_history = []
 
-    while cycle_count < MAX_GENERATIONS:
+    while cycle_count < 7500:
         mock_hardware_data = torch.randn(1, mock_hardware_input_dim) * (
             1 + 0.1 * np.sin(cycle_count * 0.05)
         )
@@ -322,15 +303,13 @@ def main():
                 f" [Cycle {cycle_count: <5}] Core Gen: {current_core_gen: <5} | Awareness Gen: {current_awareness_gen: <5} | Conscious Norm: {conscious_thought.norm().item():.2f} | Focus [Core, Aware]: [{focus_core_history[-1]:.2f}, {focus_awareness_history[-1]:.2f}] | Emotion: {current_emotion.mean().item():.2f} | Entropy: {current_entropy.item():.2f} | Stable: {is_stable.item()}"
             )
 
-        # Termination condition
-        if current_core_gen >= MAX_GENERATIONS:
+        if current_core_gen >= 7500:
             torch.save(aetheric_sys.state_dict(), "aetheric_cognitive_omni_system_final.pt")
             print(
                 f"\n [Stasis] Aetheric wave function collapsed safely at Core Generation {current_core_gen}. Initiating systemic shutdown."
             )
             sys.exit(0)
 
-        # Optional: Plotting every 1000 cycles for insight into the evolution and convergence
         if cycle_count % 1000 == 0:
             plt.figure(figsize=(15, 8))
             plt.subplot(2, 2, 1)
