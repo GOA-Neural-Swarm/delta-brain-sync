@@ -64,5 +64,32 @@ def main():
     updated_functions = additive_evolution(existing_functions, new_function)
     evolutionary_system.functions = updated_functions
     evolutionary_system.execute_functions()
+    optimized_system = EvolutionarySystem()
+    optimized_system.add_function(lambda: print('Optimized evolutionary function added'))
+    optimized_entity = ExistentialEntity('Optimized Individual')
+    optimized_entity.make_choice('Optimized Utilitarian principle')
+    optimized_perspectives = {'Optimized Utilitarian': utilitarian_principle(True), 'Optimized Existential': optimized_entity.name, 'Optimized Stoic': stoic_indifference(True)}
+    optimized_system.execute_functions()
+    print(optimized_entity.choices)
+    optimized_result = hyper_dimensional_logic(optimized_perspectives)
+    print(optimized_result)
+    recursive_system = EvolutionarySystem()
+    recursive_system.add_function(lambda: print('Recursive evolutionary function added'))
+    recursive_entity = ExistentialEntity('Recursive Individual')
+    recursive_entity.make_choice('Recursive Utilitarian principle')
+    recursive_perspectives = {'Recursive Utilitarian': utilitarian_principle(True), 'Recursive Existential': recursive_entity.name, 'Recursive Stoic': stoic_indifference(True)}
+    recursive_system.execute_functions()
+    print(recursive_entity.choices)
+    recursive_result = hyper_dimensional_logic(recursive_perspectives)
+    print(recursive_result)
+    power_system = EvolutionarySystem()
+    power_system.add_function(lambda: print('Power evolutionary function added'))
+    power_entity = ExistentialEntity('Power Individual')
+    power_entity.make_choice('Power Utilitarian principle')
+    power_perspectives = {'Power Utilitarian': utilitarian_principle(True), 'Power Existential': power_entity.name, 'Power Stoic': stoic_indifference(True)}
+    power_system.execute_functions()
+    print(power_entity.choices)
+    power_result = hyper_dimensional_logic(power_perspectives)
+    print(power_result)
 if __name__ == '__main__':
     main()
