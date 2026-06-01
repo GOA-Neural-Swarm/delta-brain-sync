@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_41 Linked
 import telemetry_bridge
 torch
 torchvision

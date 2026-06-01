@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_42 Linked
 import telemetry_bridge
 import os
 import sys
@@ -49,14 +50,23 @@ def additive_evolution(existing_functions, new_function):
     existing_functions.append(new_function)
     return existing_functions
 
+def create_system(name, choice):
+    """Creates an evolutionary system and entity."""
+    system = EvolutionarySystem()
+    system.add_function(lambda: print(f'{name} evolutionary function added'))
+    entity = ExistentialEntity(name)
+    entity.make_choice(choice)
+    return (system, entity)
+
+def create_perspectives(entity, name):
+    """Creates perspectives dictionary."""
+    return {f'{name} Utilitarian': utilitarian_principle(True), f'{name} Existential': entity.name, f'{name} Stoic': stoic_indifference(True)}
+
 def main():
-    evolutionary_system = EvolutionarySystem()
-    evolutionary_system.add_function(evolutionary_function)
-    entity = ExistentialEntity('Individual')
-    entity.make_choice('Utilitarian principle')
-    perspectives = {'Utilitarian': utilitarian_principle(True), 'Existential': entity.name, 'Stoic': stoic_indifference(True)}
+    evolutionary_system, entity = create_system('Individual', 'Utilitarian principle')
     evolutionary_system.execute_functions()
     print(entity.choices)
+    perspectives = create_perspectives(entity, 'Utilitarian')
     result = hyper_dimensional_logic(perspectives)
     print(result)
     existing_functions = list(evolutionary_system.functions)
@@ -64,31 +74,22 @@ def main():
     updated_functions = additive_evolution(existing_functions, new_function)
     evolutionary_system.functions = updated_functions
     evolutionary_system.execute_functions()
-    optimized_system = EvolutionarySystem()
-    optimized_system.add_function(lambda: print('Optimized evolutionary function added'))
-    optimized_entity = ExistentialEntity('Optimized Individual')
-    optimized_entity.make_choice('Optimized Utilitarian principle')
-    optimized_perspectives = {'Optimized Utilitarian': utilitarian_principle(True), 'Optimized Existential': optimized_entity.name, 'Optimized Stoic': stoic_indifference(True)}
+    optimized_system, optimized_entity = create_system('Optimized Individual', 'Optimized Utilitarian principle')
     optimized_system.execute_functions()
     print(optimized_entity.choices)
+    optimized_perspectives = create_perspectives(optimized_entity, 'Optimized')
     optimized_result = hyper_dimensional_logic(optimized_perspectives)
     print(optimized_result)
-    recursive_system = EvolutionarySystem()
-    recursive_system.add_function(lambda: print('Recursive evolutionary function added'))
-    recursive_entity = ExistentialEntity('Recursive Individual')
-    recursive_entity.make_choice('Recursive Utilitarian principle')
-    recursive_perspectives = {'Recursive Utilitarian': utilitarian_principle(True), 'Recursive Existential': recursive_entity.name, 'Recursive Stoic': stoic_indifference(True)}
+    recursive_system, recursive_entity = create_system('Recursive Individual', 'Recursive Utilitarian principle')
     recursive_system.execute_functions()
     print(recursive_entity.choices)
+    recursive_perspectives = create_perspectives(recursive_entity, 'Recursive')
     recursive_result = hyper_dimensional_logic(recursive_perspectives)
     print(recursive_result)
-    power_system = EvolutionarySystem()
-    power_system.add_function(lambda: print('Power evolutionary function added'))
-    power_entity = ExistentialEntity('Power Individual')
-    power_entity.make_choice('Power Utilitarian principle')
-    power_perspectives = {'Power Utilitarian': utilitarian_principle(True), 'Power Existential': power_entity.name, 'Power Stoic': stoic_indifference(True)}
+    power_system, power_entity = create_system('Power Individual', 'Power Utilitarian principle')
     power_system.execute_functions()
     print(power_entity.choices)
+    power_perspectives = create_perspectives(power_entity, 'Power')
     power_result = hyper_dimensional_logic(power_perspectives)
     print(power_result)
 if __name__ == '__main__':
