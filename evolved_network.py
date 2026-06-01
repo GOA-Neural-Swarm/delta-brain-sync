@@ -7,7 +7,7 @@ torchvision
 numpy
 scipy
 matplotlib
-quantum Bridge (custom or via interface to quantum computing backends like Qiskit, Cirq, Azure Quantum)
+quantum-Bridge
 
 
 ### PART 2: Next-Gen Python Code for Aetheric Cognitive Omni-System
@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import sys
 from datetime import datetime
 import hashlib
+from quantum_bridge import SovereignQuantumMatrixEngine
 
 # Constants
 HARDWARE_INPUT_DIM = 10
@@ -127,6 +128,8 @@ class SovereignCognitiveCore(nn.Module):
         )
         self.base_mutation_rate = base_mutation_rate
         self.generation_count = 0
+        # Initialize Quantum Bridge
+        self.quantum_engine = SovereignQuantumMatrixEngine()
 
     def forward(
         self, external_cognitive_input, awareness_entropy, previous_hidden_state=None
@@ -156,7 +159,9 @@ class SovereignCognitiveCore(nn.Module):
         for name, param in self.named_parameters():
             if "weight" in name and param.requires_grad:
                 weights_to_mutate = param.data
-                quantum_mutation_mask = execute_quantum_co_evolution(weights_to_mutate)
+                quantum_mutation_mask = self.quantum_engine.execute_quantum_co_evolution(
+                    weights_to_mutate
+                )
                 param.data.add_(quantum_mutation_mask * dynamic_mutation_rate)
         self.generation_count += 1
         return self.generation_count
@@ -265,19 +270,15 @@ class AethericCognitiveOmniSystem(nn.Module):
         )
 
 
-def execute_quantum_co_evolution(weights):
-    return torch.randn_like(weights) * 0.01
-
-
-if __name__ == "__main__":
+def main():
     # Initialize system
     aetheric_sys = AethericCognitiveOmniSystem()
-    
+
     # Set initial parameters
     mock_hardware_input_dim = HARDWARE_INPUT_DIM
     mock_env_stimulus_dim = EMOTION_CONTEXT_DIM
     mock_cognitive_input_dim = COGNITIVE_TASK_INPUT_DIM
-    
+
     cycle_count = 0
     core_generation_history = []
     awareness_generation_history = []
@@ -307,7 +308,7 @@ if __name__ == "__main__":
         ) = aetheric_sys.live_cycle(
             mock_hardware_data, mock_environment_stimulus, mock_cognitive_input
         )
-        
+
         cycle_count += 1
         core_generation_history.append(current_core_gen)
         awareness_generation_history.append(current_awareness_gen)
@@ -320,7 +321,7 @@ if __name__ == "__main__":
             print(
                 f" [Cycle {cycle_count: <5}] Core Gen: {current_core_gen: <5} | Awareness Gen: {current_awareness_gen: <5} | Conscious Norm: {conscious_thought.norm().item():.2f} | Focus [Core, Aware]: [{focus_core_history[-1]:.2f}, {focus_awareness_history[-1]:.2f}] | Emotion: {current_emotion.mean().item():.2f} | Entropy: {current_entropy.item():.2f} | Stable: {is_stable.item()}"
             )
-        
+
         # Termination condition
         if current_core_gen >= MAX_GENERATIONS:
             torch.save(aetheric_sys.state_dict(), "aetheric_cognitive_omni_system_final.pt")
@@ -364,4 +365,7 @@ if __name__ == "__main__":
             plt.legend()
             plt.tight_layout()
             plt.show()
-            
+
+
+if __name__ == "__main__":
+    main()
