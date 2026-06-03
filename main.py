@@ -74,7 +74,7 @@ class CognitiveAgent(nn.Module):
         """Process multiple input modalities and integrate information."""
         module_outputs = []
         salience_scores = []
-        for i, (module, input_data) in enumerate(zip(self.modules, inputs)):
+        for i, (module, input_data) in enumerate(zip(self.my_modules, inputs)):
             output, salience = module(input_data)
             module_outputs.append(output)
             salience_scores.append(salience)
