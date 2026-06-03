@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 // Merged HDC and Philosophy Engine
 class OmniHDC {
@@ -10,7 +10,7 @@ class OmniHDC {
   // Generate hash-based vector
   gen(text) {
     let v = new Uint8Array(this.d);
-    let h = crypto.createHash('sha256').update(text).digest();
+    let h = crypto.createHash("sha256").update(text).digest();
     for (let i = 0; i < this.d; i++) v[i] = h[i % h.length] % 2;
     return v;
   }
@@ -34,5 +34,5 @@ class OmniHDC {
 module.exports = new OmniHDC();
 
 // Example usage:
-const omniHDC = require('./omniHDC');
+const omniHDC = require("./omniHDC");
 omniHDC.recursiveGenAndAudit("Example Text");
