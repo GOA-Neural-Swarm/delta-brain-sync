@@ -55,7 +55,7 @@ class CognitiveAgent(nn.Module):
 
     def __init__(self, workspace_dim=512):
         super().__init__()
-        self.modules = nn.ModuleList(
+        self.my_modules = nn.ModuleList(
             [
                 UnconsciousModule(input_dim=1024, workspace_dim=workspace_dim),
                 UnconsciousModule(input_dim=256, workspace_dim=workspace_dim),
