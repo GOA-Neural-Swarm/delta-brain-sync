@@ -1,10 +1,14 @@
-import telemetry_bridge
+
+
+# PART 1: List of external pip packages
 torch
 torchvision
 numpy
 scipy
 matplotlib
-quantum - Bridge
+quantumbridge
+
+# PART 2: Next-gen Python code
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,7 +20,6 @@ import hashlib
 from quantum_bridge import SovereignQuantumMatrixEngine
 
 class Layer1_BodilyInteroception(nn.Module):
-
     def __init__(self, input_dim=10):
         super().__init__()
         self.sensor_net = nn.Linear(input_dim, 64)
@@ -32,7 +35,6 @@ class Layer1_BodilyInteroception(nn.Module):
         return (state_tensor, entropy, is_stable)
 
 class Layer2_SyntheticEmotion(nn.Module):
-
     def __init__(self, context_dim=64):
         super().__init__()
         self.amygdala_core = nn.Sequential(nn.Linear(context_dim, 32), nn.Tanh())
@@ -43,7 +45,6 @@ class Layer2_SyntheticEmotion(nn.Module):
         return emotion_resonance
 
 class Layer3_NarrativeMetacognition(nn.Module):
-
     def __init__(self, memory_dim=32):
         super().__init__()
         self.ego_matrix = nn.GRUCell(input_size=32, hidden_size=memory_dim)
@@ -56,7 +57,6 @@ class Layer3_NarrativeMetacognition(nn.Module):
         return (new_identity_state, self.identity_hash)
 
 class Layer4_EvolutionaryGrowth(nn.Module):
-
     def __init__(self, identity_dim=32, mutation_rate=0.01):
         super().__init__()
         self.evolution_gateway = nn.Linear(identity_dim, identity_dim)
@@ -70,26 +70,7 @@ class Layer4_EvolutionaryGrowth(nn.Module):
         self.generation_count += 1
         return (evolved_state, self.generation_count)
 
-class SupremeSelfAwarenessSystem(nn.Module):
-
-    def __init__(self):
-        super().__init__()
-        self.layer1_body = Layer1_BodilyInteroception()
-        self.layer2_emotion = Layer2_SyntheticEmotion()
-        self.layer3_ego = Layer3_NarrativeMetacognition()
-        self.layer4_evolution = Layer4_EvolutionaryGrowth()
-        self.current_identity = nn.Parameter(torch.zeros(1, 32), requires_grad=False)
-
-    def live_cycle(self, hardware_data, environment_stimulus):
-        body_state, entropy, is_stable = self.layer1_body(hardware_data)
-        emotion = self.layer2_emotion(body_state, environment_stimulus)
-        self.current_identity.data, identity_hash = self.layer3_ego(emotion, self.current_identity.data)
-        evolved_identity, gen_count = self.layer4_evolution(self.current_identity.data, entropy)
-        self.current_identity.data = evolved_identity
-        return (self.current_identity.data, emotion, entropy, gen_count, is_stable)
-
 class SovereignCognitiveCore(nn.Module):
-
     def __init__(self, cognitive_task_input_dim=10, cognitive_hidden_dim=128, base_mutation_rate=0.005):
         super().__init__()
         self.sensorium = nn.Sequential(nn.Linear(cognitive_task_input_dim, 256), nn.ReLU(), nn.Linear(256, cognitive_hidden_dim))
@@ -122,7 +103,6 @@ class SovereignCognitiveCore(nn.Module):
         return self.generation_count
 
 class QuantumGlobalWorkspace(nn.Module):
-
     def __init__(self, workspace_dim=128, num_modules=2):
         super().__init__()
         self.workspace_dim = workspace_dim
@@ -144,7 +124,6 @@ class QuantumGlobalWorkspace(nn.Module):
         return (new_conscious_state.squeeze(1), attention_weights.squeeze(1))
 
 class AethericCognitiveOmniSystem(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.self_awareness_system = SupremeSelfAwarenessSystem()
