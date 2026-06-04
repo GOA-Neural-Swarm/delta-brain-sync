@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_58 Linked
 import telemetry_bridge
 import os
 import time
@@ -19,8 +20,8 @@ def get_repositories() -> List[str]:
     Returns:
         List[str]: A list of repository names
     """
-    url = f'https://api.github.com/users/{SOURCE_ENTITY}/repos?per_page=100'
-    params = {'type': 'all', 'state': 'all'}
+    url = f'https://api.github.com/users/{SOURCE_ENTITY}/repos'
+    params = {'per_page': 100, 'type': 'all', 'state': 'all'}
     try:
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
