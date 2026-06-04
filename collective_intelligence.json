@@ -1,9 +1,9 @@
 {
-    "global_generation": 56,
-    "system_entropy": 51.04999999999972,
+    "global_generation": 57,
+    "system_entropy": 51.94999999999969,
     "file_topology": {},
     "shared_memory": {
-        "last_sync": "2026-06-04 11:54:35",
+        "last_sync": "2026-06-04 14:50:52",
         "status": "MUTATING",
         "last_execution_logs": {
             "transfer_logic.py": {
@@ -23,8 +23,8 @@
                 "error": "ise NotFittedError(msg % {\"name\": type(estimator).__name__})\nsklearn.exceptions.NotFittedError: This SVC instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator."
             },
             "bootstrap.py": {
-                "status": "STABLE",
-                "error": "None"
+                "status": "MUTATING_REQUIRED",
+                "error": "sError(retcode, cmd)\nsubprocess.CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.15/x64/bin/python', '-m', 'pip', 'install', '-r', 'requirements.txt']' returned non-zero exit status 1."
             },
             "new_file.py": {
                 "status": "STABLE",
@@ -44,9 +44,13 @@
             },
             "ai_experiment.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 132, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)"
+                "error": "delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 114, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)"
             },
             "utilitarian_update.py": {
+                "status": "STABLE",
+                "error": "None"
+            },
+            "recovery.py": {
                 "status": "STABLE",
                 "error": "None"
             },
@@ -64,7 +68,7 @@
             },
             "stoic_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "File \"/home/runner/work/delta-brain-sync/delta-brain-sync/stoic_update.py\", line 21, in get\n    return self.utility_values[-1]\n           ~~~~~~~~~~~~~~~~~~~^^^^\nIndexError: list index out of range"
+                "error": "File \"/home/runner/work/delta-brain-sync/delta-brain-sync/stoic_update.py\", line 19, in get\n    return self.utility_values[-1]\n           ~~~~~~~~~~~~~~~~~~~^^^^\nIndexError: list index out of range"
             },
             "forge_engine.py": {
                 "status": "STABLE",
@@ -72,7 +76,7 @@
             },
             "sync_data.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "2026-06-04 11:49:25,509 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
+                "error": "2026-06-04 14:45:44,025 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
             },
             "evolution_patch.py": {
                 "status": "STABLE",
@@ -82,9 +86,13 @@
                 "status": "MUTATING_REQUIRED",
                 "error": "/delta-brain-sync/delta-brain-sync/quantum_bridge.py\", line 7, in <module>\n    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2\nModuleNotFoundError: No module named 'qiskit_ibm_runtime'"
             },
+            "evolved_network.py": {
+                "status": "MUTATING_REQUIRED",
+                "error": "^\nSyntaxError: unterminated string literal (detected at line 230)"
+            },
             "existential_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 60, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
+                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 52, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
             },
             "omni_architect.py": {
                 "status": "TIMEOUT_HANG",
@@ -92,15 +100,11 @@
             },
             "flask_api.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "a-brain-sync/delta-brain-sync/flask_api.py\", line 22, in __init__\n    self.architect = SovereignArchitect()\n                     ^^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignArchitect' is not defined"
+                "error": "a-brain-sync/delta-brain-sync/flask_api.py\", line 20, in __init__\n    self.architect = SovereignArchitect()\n                     ^^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignArchitect' is not defined"
             },
             "omega_point.py": {
                 "status": "STABLE",
                 "error": "None"
-            },
-            "evolved_network.py": {
-                "status": "MUTATING_REQUIRED",
-                "error": "^\nSyntaxError: unterminated string literal (detected at line 230)"
             },
             "evolution_guard.py": {
                 "status": "STABLE",
@@ -108,7 +112,7 @@
             },
             "app.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "ecent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/app.py\", line 12, in <module>\n    feature / meta - evolution - logic\n    ^^^^^^^\nNameError: name 'feature' is not defined"
+                "error": "ecent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/app.py\", line 11, in <module>\n    feature / meta - evolution - logic\n    ^^^^^^^\nNameError: name 'feature' is not defined"
             },
             "evolved_module.py": {
                 "status": "STABLE",
