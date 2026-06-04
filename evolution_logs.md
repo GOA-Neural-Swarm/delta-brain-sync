@@ -1,3 +1,7 @@
+---
+title: Evolution Logs
+render_with_liquid: false
+---
 
 ## 🧬 Generation 4614 Evolution
 **Timestamp:** 2026-02-19T14:28:09.738180+00:00
