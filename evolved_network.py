@@ -1,3 +1,5 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_64 Linked
+import telemetry_bridge
 torch
 numpy
 matplotlib
@@ -12,14 +14,8 @@ class AethericCognitiveOmniSystemV2(nn.Module):
     def __init__(self):
         super().__init__()
         self.self_awareness_system = SupremeSelfAwarenessSystemV2()
-        self.cognitive_core = SovereignCognitiveCoreV2(
-            cognitive_task_input_dim=10,
-            cognitive_hidden_dim=128,
-            base_mutation_rate=0.005,
-        )
-        self.global_workspace = QuantumGlobalWorkspaceV2(
-            workspace_dim=128, num_modules=2
-        )
+        self.cognitive_core = SovereignCognitiveCoreV2(cognitive_task_input_dim=10, cognitive_hidden_dim=128, base_mutation_rate=0.005)
+        self.global_workspace = QuantumGlobalWorkspaceV2(workspace_dim=128, num_modules=2)
         self.current_core_hidden_state = None
         self.awareness_identity_projection = nn.Linear(32, 128)
 
@@ -139,7 +135,5 @@ def main():
             plt.legend()
             plt.tight_layout()
             plt.show()
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
