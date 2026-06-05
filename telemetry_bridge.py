@@ -87,7 +87,7 @@ MATRIX_STATE = {
             },
             "evolved_network.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_network.py\", line 3, in <module>\n    torch\nNameError: name 'torch' is not defined"
+                "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_network.py\", line 1, in <module>\n    torch\nNameError: name 'torch' is not defined",
             },
             "existential_update.py": {
                 "status": "MUTATING_REQUIRED",
