@@ -1,7 +1,0 @@
-quantumbridge
-torch
-scipy
-torchvision
-packages**
-numpy
-matplotlib
