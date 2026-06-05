@@ -1,33 +1,26 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_62 Linked
-import telemetry_bridge
+
 
 torch
 numpy
 matplotlib
 scipy
 quantum_bridge
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
-import matplotlib.pyplot as plt
-import sys
-from datetime import datetime
-import hashlib
-from quantum_bridge import SovereignQuantumMatrixEngine
+quantumnet
+torchvision
+torchaudio
 
 
-class AethericCognitiveOmniSystem(nn.Module):
+class AethericCognitiveOmniSystemV2(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.self_awareness_system = SupremeSelfAwarenessSystem()
-        self.cognitive_core = SovereignCognitiveCore(
+        self.self_awareness_system = SupremeSelfAwarenessSystemV2()
+        self.cognitive_core = SovereignCognitiveCoreV2(
             cognitive_task_input_dim=10,
             cognitive_hidden_dim=128,
             base_mutation_rate=0.005,
         )
-        self.global_workspace = QuantumGlobalWorkspace(workspace_dim=128, num_modules=2)
+        self.global_workspace = QuantumGlobalWorkspaceV2(workspace_dim=128, num_modules=2)
         self.current_core_hidden_state = None
         self.awareness_identity_projection = nn.Linear(32, 128)
 
@@ -90,7 +83,7 @@ class AethericCognitiveOmniSystem(nn.Module):
         )
 
 
-class SovereignCognitiveCore(nn.Module):
+class SovereignCognitiveCoreV2(nn.Module):
 
     def __init__(
         self,
@@ -109,7 +102,7 @@ class SovereignCognitiveCore(nn.Module):
         )
         self.base_mutation_rate = base_mutation_rate
         self.generation_count = 0
-        self.quantum_engine = SovereignQuantumMatrixEngine()
+        self.quantum_engine = SovereignQuantumMatrixEngineV2()
 
     def forward(
         self, external_cognitive_input, awareness_entropy, previous_hidden_state=None
@@ -148,7 +141,7 @@ class SovereignCognitiveCore(nn.Module):
 
 
 def main():
-    aetheric_sys = AethericCognitiveOmniSystem()
+    aetheric_sys = AethericCognitiveOmniSystemV2()
     mock_hardware_input_dim = 10
     mock_env_stimulus_dim = 64
     mock_cognitive_input_dim = 10
@@ -159,7 +152,7 @@ def main():
     entropy_history = []
     focus_core_history = []
     focus_awareness_history = []
-    while cycle_count < 7500:
+    while cycle_count < 8000:
         mock_hardware_data = torch.randn(1, mock_hardware_input_dim) * (
             1 + 0.1 * np.sin(cycle_count * 0.05)
         )
@@ -191,9 +184,9 @@ def main():
             print(
                 f" [Cycle {cycle_count: <5}] Core Gen: {current_core_gen: <5} | Awareness Gen: {current_awareness_gen: <5} | Conscious Norm: {conscious_thought.norm().item():.2f} | Focus [Core, Aware]: [{focus_core_history[-1]:.2f}, {focus_awareness_history[-1]:.2f}] | Emotion: {current_emotion.mean().item():.2f} | Entropy: {current_entropy.item():.2f} | Stable: {is_stable.item()}"
             )
-        if current_core_gen >= 7500:
+        if current_core_gen >= 8000:
             torch.save(
-                aetheric_sys.state_dict(), "aetheric_cognitive_omni_system_final.pt"
+                aetheric_sys.state_dict(), "aetheric_cognitive_omni_system_v2_final.pt"
             )
             print(
                 f"\n [Stasis] Aetheric wave function collapsed safely at Core Generation {current_core_gen}. Initiating systemic shutdown."
