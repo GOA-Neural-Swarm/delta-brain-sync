@@ -1,14 +1,8 @@
 [
     {
-        "timestamp": 1780679570.8837183,
+        "timestamp": 1780697680.4739172,
         "file": "./transfer_logic.py",
         "status": "TRANSCENDED",
-        "asi_score": 100.31385801537569
-    },
-    {
-        "timestamp": 1780679584.0606875,
-        "file": "./evolutionary_update.py",
-        "status": "TRANSCENDED",
-        "asi_score": 99.9433427478914
+        "asi_score": 101.26736531775107
     }
 ]
