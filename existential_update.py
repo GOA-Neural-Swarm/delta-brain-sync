@@ -1,15 +1,13 @@
 import telemetry_bridge
 import os
 
-
 class StoicModule:
 
     def __init__(self):
         pass
 
     def stoic_principle(self):
-        print("Stoic principle applied")
-
+        print('Stoic principle applied')
 
 class EvolutionaryModule(StoicModule):
 
@@ -17,8 +15,7 @@ class EvolutionaryModule(StoicModule):
         super().__init__()
 
     def evolutionary_principle(self):
-        print("Evolutionary principle added")
-
+        print('Evolutionary principle added')
 
 class ExistentialModule(EvolutionaryModule):
 
@@ -26,8 +23,7 @@ class ExistentialModule(EvolutionaryModule):
         super().__init__()
 
     def existential_principle(self):
-        print("Existential principle applied")
-
+        print('Existential principle applied')
 
 class UtilitarianModule(ExistentialModule):
 
@@ -35,8 +31,7 @@ class UtilitarianModule(ExistentialModule):
         super().__init__()
 
     def utilitarian_principle(self):
-        print("Utilitarian principle applied")
-
+        print('Utilitarian principle applied')
 
 class HyperDimensionalModule(UtilitarianModule):
 
@@ -44,8 +39,7 @@ class HyperDimensionalModule(UtilitarianModule):
         super().__init__()
 
     def hyper_dimensional_logic(self):
-        print("Hyper-dimensional logic applied")
-
+        print('Hyper-dimensional logic applied')
 
 def main():
     module = HyperDimensionalModule()
@@ -54,9 +48,7 @@ def main():
     module.existential_principle()
     module.utilitarian_principle()
     module.hyper_dimensional_logic()
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     telemetry_bridge.init()
     main()
     telemetry_bridge.disconnect()

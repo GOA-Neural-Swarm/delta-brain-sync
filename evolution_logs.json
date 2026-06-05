@@ -1,20 +1,14 @@
 [
     {
-        "timestamp": 1780671043.4378316,
+        "timestamp": 1780679570.8837183,
         "file": "./transfer_logic.py",
         "status": "TRANSCENDED",
-        "asi_score": 101.91876399154778
+        "asi_score": 100.31385801537569
     },
     {
-        "timestamp": 1780671050.6634824,
-        "file": "./omega_hdc.js",
+        "timestamp": 1780679584.0606875,
+        "file": "./evolutionary_update.py",
         "status": "TRANSCENDED",
-        "asi_score": 333.8832483072548
-    },
-    {
-        "timestamp": 1780671078.998546,
-        "file": "./swarm_sync.js",
-        "status": "TRANSCENDED",
-        "asi_score": 120.26031431231328
+        "asi_score": 99.9433427478914
     }
 ]
