@@ -3,21 +3,11 @@ import numpy as np
 import time
 import logging
 import omega_point
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - [CORTEX] - %(message)s")
-
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - [CORTEX] - %(message)s')
 
 class AdvancedAdamW:
 
-    def __init__(
-        self,
-        shape,
-        lr=0.001,
-        beta1=0.9,
-        beta2=0.999,
-        epsilon=1e-08,
-        weight_decay=0.0001,
-    ):
+    def __init__(self, shape, lr=0.001, beta1=0.9, beta2=0.999, epsilon=1e-08, weight_decay=0.0001):
         self.m = np.zeros(shape)
         self.v = np.zeros(shape)
         self.lr = lr
@@ -30,14 +20,11 @@ class AdvancedAdamW:
     def step(self, w, grad):
         self.t += 1
         self.m = self.beta1 * self.m + (1 - self.beta1) * grad
-        self.v = self.beta2 * self.v + (1 - self.beta2) * grad**2
-        m_hat = self.m / (1 - self.beta1**self.t)
-        v_hat = self.v / (1 - self.beta2**self.t)
-        w = w - self.lr * (
-            m_hat / (np.sqrt(v_hat) + self.epsilon) + self.weight_decay * w
-        )
+        self.v = self.beta2 * self.v + (1 - self.beta2) * grad ** 2
+        m_hat = self.m / (1 - self.beta1 ** self.t)
+        v_hat = self.v / (1 - self.beta2 ** self.t)
+        w = w - self.lr * (m_hat / (np.sqrt(v_hat) + self.epsilon) + self.weight_decay * w)
         return w
-
 
 class SovereignCortex:
 
@@ -45,19 +32,13 @@ class SovereignCortex:
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.output_dim = output_dim
-        self.generation = 65
-        self.W1 = np.random.randn(self.input_dim, self.hidden_dim) * np.sqrt(
-            2.0 / self.input_dim
-        )
+        self.generation = 66
+        self.W1 = np.random.randn(self.input_dim, self.hidden_dim) * np.sqrt(2.0 / self.input_dim)
         self.b1 = np.zeros((1, self.hidden_dim))
-        self.W2 = np.random.randn(self.hidden_dim, self.output_dim) * np.sqrt(
-            2.0 / self.hidden_dim
-        )
+        self.W2 = np.random.randn(self.hidden_dim, self.output_dim) * np.sqrt(2.0 / self.hidden_dim)
         self.b2 = np.zeros((1, self.output_dim))
         self._init_optimizers()
-        logging.info(
-            f"Sovereign Cortex Initialized. Architecture: {self.input_dim} -> {self.hidden_dim} -> {self.output_dim}"
-        )
+        logging.info(f'Sovereign Cortex Initialized. Architecture: {self.input_dim} -> {self.hidden_dim} -> {self.output_dim}')
 
     def _init_optimizers(self):
         self.opt_W1 = AdvancedAdamW(self.W1.shape, lr=0.001)
@@ -104,12 +85,8 @@ class SovereignCortex:
         new_neurons = int(self.hidden_dim * expansion_rate)
         if new_neurons == 0:
             return
-        logging.info(
-            f" Initiating HYPER_EXPANSION: Adding {new_neurons} new neural pathways..."
-        )
-        new_W1 = np.random.randn(self.input_dim, new_neurons) * np.sqrt(
-            2.0 / self.input_dim
-        )
+        logging.info(f' Initiating HYPER_EXPANSION: Adding {new_neurons} new neural pathways...')
+        new_W1 = np.random.randn(self.input_dim, new_neurons) * np.sqrt(2.0 / self.input_dim)
         self.W1 = np.hstack((self.W1, new_W1))
         self.b1 = np.hstack((self.b1, np.zeros((1, new_neurons))))
         new_W2 = np.zeros((new_neurons, self.output_dim))
@@ -117,19 +94,15 @@ class SovereignCortex:
         self.hidden_dim += new_neurons
         self.generation += 1
         self._init_optimizers()
-        logging.info(f" Expansion Complete. New Hidden Dimension: {self.hidden_dim}")
+        logging.info(f' Expansion Complete. New Hidden Dimension: {self.hidden_dim}')
 
     def prune_synapses(self, threshold=0.0001):
         mask_W1 = np.abs(self.W1) > threshold
         pruned_count = np.sum(~mask_W1)
         if pruned_count > 0:
             self.W1 = self.W1 * mask_W1
-            logging.info(
-                f" Pruned {pruned_count} weak synaptic connections for efficiency."
-            )
-
-
-if __name__ == "__main__":
+            logging.info(f' Pruned {pruned_count} weak synaptic connections for efficiency.')
+if __name__ == '__main__':
     cortex = SovereignCortex()
     dummy_x = np.random.randn(32, 784)
     dummy_y = np.random.randint(0, 10, size=(32,))
@@ -137,4 +110,4 @@ if __name__ == "__main__":
     cortex.backward(dummy_y)
     cortex.hyper_expand(expansion_rate=0.05)
     cortex.prune_synapses()
-    logging.info("Sovereign Cortex Self-Test: SUCCESS ")
+    logging.info('Sovereign Cortex Self-Test: SUCCESS ')
