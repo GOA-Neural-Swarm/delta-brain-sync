@@ -1,70 +1,72 @@
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 class HDC {
-    /**
-     * Constructor for the HDC class.
-     * @param {number} d - The dimension of the hash.
-     */
-    constructor(d = 10000) {
-        this.d = d;
-    }
+  /**
+   * Constructor for the HDC class.
+   * @param {number} d - The dimension of the hash.
+   */
+  constructor(d = 10000) {
+    this.d = d;
+  }
 
-    /**
-     * Generate a hash for the given text.
-     * @param {string} text - The text to be hashed.
-     * @returns {Uint8Array} - The generated hash.
-     */
-    gen(text) {
-        let v = new Uint8Array(this.d);
-        let h = crypto.createHash('sha256').update(text).digest();
-        for (let i = 0; i < this.d; i++) {
-            v[i] = h[i % h.length] % 2;
-        }
-        return v;
+  /**
+   * Generate a hash for the given text.
+   * @param {string} text - The text to be hashed.
+   * @returns {Uint8Array} - The generated hash.
+   */
+  gen(text) {
+    let v = new Uint8Array(this.d);
+    let h = crypto.createHash("sha256").update(text).digest();
+    for (let i = 0; i < this.d; i++) {
+      v[i] = h[i % h.length] % 2;
     }
+    return v;
+  }
 }
 
 class PhilosophyEngine {
-    /**
-     * Constructor for the PhilosophyEngine class.
-     * @param {string[]} layers - The layers of philosophy.
-     */
-    constructor(layers = ["Utilitarian", "Existential", "Stoic", "Evolutionary"]) {
-        this.layers = layers;
-    }
+  /**
+   * Constructor for the PhilosophyEngine class.
+   * @param {string[]} layers - The layers of philosophy.
+   */
+  constructor(
+    layers = ["Utilitarian", "Existential", "Stoic", "Evolutionary"],
+  ) {
+    this.layers = layers;
+  }
 
-    /**
-     * Audit the difference in philosophy.
-     * @param {string[]} diff - The difference in philosophy.
-     * @returns {string} - The result of the audit.
-     */
-    audit(diff) {
-        return diff.length > 0 ? "Wisdom Verified" : "No Evolution";
-    }
+  /**
+   * Audit the difference in philosophy.
+   * @param {string[]} diff - The difference in philosophy.
+   * @returns {string} - The result of the audit.
+   */
+  audit(diff) {
+    return diff.length > 0 ? "Wisdom Verified" : "No Evolution";
+  }
 }
 
 class ASIOmniSyncEngine {
-    /**
-     * Constructor for the ASIOmniSyncEngine class.
-     * @param {HDC} hdc - The HDC instance.
-     * @param {PhilosophyEngine} philosophyEngine - The PhilosophyEngine instance.
-     */
-    constructor(hdc, philosophyEngine) {
-        this.hdc = hdc;
-        this.philosophyEngine = philosophyEngine;
-    }
+  /**
+   * Constructor for the ASIOmniSyncEngine class.
+   * @param {HDC} hdc - The HDC instance.
+   * @param {PhilosophyEngine} philosophyEngine - The PhilosophyEngine instance.
+   */
+  constructor(hdc, philosophyEngine) {
+    this.hdc = hdc;
+    this.philosophyEngine = philosophyEngine;
+  }
 
-    /**
-     * Generate a hash for the given text and audit the difference in philosophy.
-     * @param {string} text - The text to be hashed.
-     * @param {string[]} diff - The difference in philosophy.
-     * @returns {object} - The generated hash and the result of the audit.
-     */
-    sync(text, diff) {
-        let hash = this.hdc.gen(text);
-        let auditResult = this.philosophyEngine.audit(diff);
-        return { hash, auditResult };
-    }
+  /**
+   * Generate a hash for the given text and audit the difference in philosophy.
+   * @param {string} text - The text to be hashed.
+   * @param {string[]} diff - The difference in philosophy.
+   * @returns {object} - The generated hash and the result of the audit.
+   */
+  sync(text, diff) {
+    let hash = this.hdc.gen(text);
+    let auditResult = this.philosophyEngine.audit(diff);
+    return { hash, auditResult };
+  }
 }
 
 // Create instances of HDC and PhilosophyEngine
