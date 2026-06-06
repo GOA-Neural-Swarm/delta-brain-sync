@@ -1,14 +1,8 @@
 [
     {
-        "timestamp": 1780751937.2988896,
-        "file": "./transfer_logic.py",
-        "status": "TRANSCENDED",
-        "asi_score": 98.88942537448348
-    },
-    {
-        "timestamp": 1780751944.182501,
+        "timestamp": 1780761965.319204,
         "file": "./omega_hdc.js",
         "status": "TRANSCENDED",
-        "asi_score": 297.8426392159357
+        "asi_score": 301.90355291636604
     }
 ]
