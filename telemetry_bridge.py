@@ -9,128 +9,85 @@ MATRIX_STATE = {
         "last_sync": "2026-06-07 19:18:40",
         "status": "MUTATING",
         "last_execution_logs": {
-            "transfer_logic.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
-            "evolutionary_update.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
-            "main.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
+            "transfer_logic.py": {"status": "STABLE", "error": "None"},
+            "evolutionary_update.py": {"status": "STABLE", "error": "None"},
+            "main.py": {"status": "STABLE", "error": "None"},
             "brain.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "ise NotFittedError(msg % {\"name\": type(estimator).__name__})\nsklearn.exceptions.NotFittedError: This SVC instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator."
+                "error": "ise NotFittedError(msg % {\"name\": type(estimator).__name__})\nsklearn.exceptions.NotFittedError: This SVC instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.",
             },
-            "bootstrap.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
-            "new_file.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
-            "meta_manager.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
-            "omega_awareness_core.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
+            "bootstrap.py": {"status": "STABLE", "error": "None"},
+            "new_file.py": {"status": "STABLE", "error": "None"},
+            "meta_manager.py": {"status": "STABLE", "error": "None"},
+            "omega_awareness_core.py": {"status": "STABLE", "error": "None"},
             "hyper_dimensional_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "l_logic.get_existing_logic()))\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRecursionError: maximum recursion depth exceeded while getting the repr of an object"
+                "error": "l_logic.get_existing_logic()))\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRecursionError: maximum recursion depth exceeded while getting the repr of an object",
             },
             "ai_experiment.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 132, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)"
+                "error": 'delta-brain-sync/delta-brain-sync/ai_experiment.py", line 132, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)',
             },
-            "utilitarian_update.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
+            "utilitarian_update.py": {"status": "STABLE", "error": "None"},
             "matrix_evolution_engine.py": {
                 "status": "TIMEOUT_HANG",
-                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
+                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected).",
             },
-            "internal_monologue.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
-            "debug_env.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
+            "internal_monologue.py": {"status": "STABLE", "error": "None"},
+            "debug_env.py": {"status": "STABLE", "error": "None"},
             "stoic_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "File \"/home/runner/work/delta-brain-sync/delta-brain-sync/stoic_update.py\", line 21, in get\n    return self.utility_values[-1]\n           ~~~~~~~~~~~~~~~~~~~^^^^\nIndexError: list index out of range"
+                "error": 'File "/home/runner/work/delta-brain-sync/delta-brain-sync/stoic_update.py", line 21, in get\n    return self.utility_values[-1]\n           ~~~~~~~~~~~~~~~~~~~^^^^\nIndexError: list index out of range',
             },
-            "forge_engine.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
+            "forge_engine.py": {"status": "STABLE", "error": "None"},
             "sync_data.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "2026-06-07 19:13:32,218 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
+                "error": "2026-06-07 19:13:32,218 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets.",
             },
-            "evolution_patch.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
+            "evolution_patch.py": {"status": "STABLE", "error": "None"},
             "quantum_bridge.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "/delta-brain-sync/delta-brain-sync/quantum_bridge.py\", line 7, in <module>\n    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2\nModuleNotFoundError: No module named 'qiskit_ibm_runtime'"
+                "error": "/delta-brain-sync/delta-brain-sync/quantum_bridge.py\", line 7, in <module>\n    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2\nModuleNotFoundError: No module named 'qiskit_ibm_runtime'",
             },
             "existential_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 60, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
+                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 60, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'",
             },
             "omni_architect.py": {
                 "status": "TIMEOUT_HANG",
-                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
+                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected).",
             },
             "flask_api.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "a-brain-sync/delta-brain-sync/flask_api.py\", line 22, in __init__\n    self.architect = SovereignArchitect()\n                     ^^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignArchitect' is not defined"
+                "error": "a-brain-sync/delta-brain-sync/flask_api.py\", line 22, in __init__\n    self.architect = SovereignArchitect()\n                     ^^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignArchitect' is not defined",
             },
-            "omega_point.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
+            "omega_point.py": {"status": "STABLE", "error": "None"},
             "evolved_network.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_network.py\", line 3, in <module>\n    torchaudio\nNameError: name 'torchaudio' is not defined"
+                "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_network.py\", line 3, in <module>\n    torchaudio\nNameError: name 'torchaudio' is not defined",
             },
-            "evolution_guard.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
+            "evolution_guard.py": {"status": "STABLE", "error": "None"},
             "app.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "ecent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/app.py\", line 12, in <module>\n    feature / meta - evolution - logic\n    ^^^^^^^\nNameError: name 'feature' is not defined"
+                "error": "ecent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/app.py\", line 12, in <module>\n    feature / meta - evolution - logic\n    ^^^^^^^\nNameError: name 'feature' is not defined",
             },
-            "evolved_module.py": {
-                "status": "STABLE",
-                "error": "None"
-            },
+            "evolved_module.py": {"status": "STABLE", "error": "None"},
             "survival_brain.py": {
                 "status": "TIMEOUT_HANG",
-                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
+                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected).",
             },
             "app_evolved.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "_module import EvolvingClassifier, EvolvingRegressor\nImportError: cannot import name 'EvolvingClassifier' from 'evolved_module' (/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_module.py)"
-            }
-        }
-    }
+                "error": "_module import EvolvingClassifier, EvolvingRegressor\nImportError: cannot import name 'EvolvingClassifier' from 'evolved_module' (/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_module.py)",
+            },
+        },
+    },
 }
+
 
 def get_shared_value(key, default=None):
     return MATRIX_STATE.get("shared_memory", {}).get(key, default)
+
 
 def get_generation():
     return MATRIX_STATE.get("global_generation", 1)
