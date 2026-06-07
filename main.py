@@ -1,25 +1,20 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_77 Linked
 import telemetry_bridge
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class UnconsciousModule(nn.Module):
 
     def __init__(self, input_dim, workspace_dim):
         super().__init__()
-        self.encoder = nn.Sequential(
-            nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, workspace_dim)
-        )
+        self.encoder = nn.Sequential(nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, workspace_dim))
         self.salience_scorer = nn.Linear(workspace_dim, 1)
 
     def forward(self, x):
         encoded_data = self.encoder(x)
         salience = self.salience_scorer(encoded_data)
         return (encoded_data, salience)
-
 
 class GlobalWorkspace(nn.Module):
 
@@ -35,42 +30,31 @@ class GlobalWorkspace(nn.Module):
         Q = self.query(self.current_workspace_state).unsqueeze(1)
         K = self.key(module_outputs)
         V = self.value(module_outputs)
-        attention_scores = (
-            torch.matmul(Q, K.transpose(-2, -1)) / self.workspace_dim**0.5
-        )
+        attention_scores = torch.matmul(Q, K.transpose(-2, -1)) / self.workspace_dim ** 0.5
         attention_scores = attention_scores + salience_scores.transpose(-2, -1)
         attention_weights = F.softmax(attention_scores, dim=-1)
         new_conscious_state = torch.matmul(attention_weights, V)
-        updated_state = (
-            0.9 * self.current_workspace_state.data
-            + 0.1 * new_conscious_state.squeeze(1)
-        )
+        updated_state = 0.9 * self.current_workspace_state.data + 0.1 * new_conscious_state.squeeze(1)
         self.current_workspace_state.data.copy_(updated_state)
         return (new_conscious_state, attention_weights)
-
 
 class Gemini(nn.Module):
 
     def __init__(self, input_dim, workspace_dim):
         super().__init__()
-        self.encoder = nn.Sequential(
-            nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, workspace_dim)
-        )
+        self.encoder = nn.Sequential(nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, workspace_dim))
         self.salience_scorer = nn.Linear(workspace_dim, 1)
 
     def forward(self, x):
         encoded_data = self.encoder(x)
         salience = self.salience_scorer(encoded_data)
         return (encoded_data, salience)
-
 
 class Groq(nn.Module):
 
     def __init__(self, input_dim, workspace_dim):
         super().__init__()
-        self.encoder = nn.Sequential(
-            nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, workspace_dim)
-        )
+        self.encoder = nn.Sequential(nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, workspace_dim))
         self.salience_scorer = nn.Linear(workspace_dim, 1)
 
     def forward(self, x):
@@ -78,20 +62,13 @@ class Groq(nn.Module):
         salience = self.salience_scorer(encoded_data)
         return (encoded_data, salience)
 
-
 class CognitiveAgent(nn.Module):
 
     def __init__(self, workspace_dim=512):
         super().__init__()
-        self.my_modules = nn.ModuleList(
-            [
-                UnconsciousModule(input_dim=784, workspace_dim=workspace_dim),
-                Gemini(input_dim=784, workspace_dim=workspace_dim),
-                Groq(input_dim=784, workspace_dim=workspace_dim),
-            ]
-        )
+        self.my_modules = nn.ModuleList([UnconsciousModule(input_dim=784, workspace_dim=workspace_dim), Gemini(input_dim=784, workspace_dim=workspace_dim), Groq(input_dim=784, workspace_dim=workspace_dim)])
         self.workspace = GlobalWorkspace(workspace_dim=workspace_dim, num_modules=3)
-        self.max_utility = float("-inf")
+        self.max_utility = float('-inf')
         self.exists = False
         self.expected_outcome = None
         self.iterations = 1
@@ -121,17 +98,12 @@ class CognitiveAgent(nn.Module):
         loss.backward()
         self.optimizer.step()
         return loss.item()
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     agent = CognitiveAgent()
     inputs = [torch.randn(1, 784), torch.randn(1, 784), torch.randn(1, 784)]
     targets = torch.randn(1, 512)
     for i in range(100):
         loss = agent.train(inputs, targets)
-        print(f"Loss at iteration {i + 1}: {loss}")
+        print(f'Loss at iteration {i + 1}: {loss}')
     conscious_thought, focus = agent(*inputs)
-    print(
-        "The AI's 'Conscious' Spotlight is focused on module weights:",
-        focus.detach().numpy(),
-    )
+    print("The AI's 'Conscious' Spotlight is focused on module weights:", focus.detach().numpy())
