@@ -1,9 +1,9 @@
 {
-    "global_generation": 83,
-    "system_entropy": 74.29999999999872,
+    "global_generation": 84,
+    "system_entropy": 75.14999999999867,
     "file_topology": {},
     "shared_memory": {
-        "last_sync": "2026-06-08 07:34:06",
+        "last_sync": "2026-06-08 13:09:01",
         "status": "MUTATING",
         "last_execution_logs": {
             "transfer_logic.py": {
@@ -44,7 +44,7 @@
             },
             "ai_experiment.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 132, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)"
+                "error": "delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 114, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)"
             },
             "utilitarian_update.py": {
                 "status": "STABLE",
@@ -64,7 +64,7 @@
             },
             "stoic_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "File \"/home/runner/work/delta-brain-sync/delta-brain-sync/stoic_update.py\", line 21, in get\n    return self.utility_values[-1]\n           ~~~~~~~~~~~~~~~~~~~^^^^\nIndexError: list index out of range"
+                "error": "File \"/home/runner/work/delta-brain-sync/delta-brain-sync/stoic_update.py\", line 19, in get\n    return self.utility_values[-1]\n           ~~~~~~~~~~~~~~~~~~~^^^^\nIndexError: list index out of range"
             },
             "forge_engine.py": {
                 "status": "STABLE",
@@ -72,7 +72,7 @@
             },
             "sync_data.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "2026-06-08 07:28:57,413 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
+                "error": "2026-06-08 13:03:51,992 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
             },
             "evolution_patch.py": {
                 "status": "STABLE",
@@ -88,7 +88,7 @@
             },
             "existential_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 60, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
+                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 52, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
             },
             "omni_architect.py": {
                 "status": "TIMEOUT_HANG",
@@ -96,7 +96,7 @@
             },
             "flask_api.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "a-brain-sync/delta-brain-sync/flask_api.py\", line 22, in __init__\n    self.architect = SovereignArchitect()\n                     ^^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignArchitect' is not defined"
+                "error": "a-brain-sync/delta-brain-sync/flask_api.py\", line 20, in __init__\n    self.architect = SovereignArchitect()\n                     ^^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignArchitect' is not defined"
             },
             "omega_point.py": {
                 "status": "STABLE",
@@ -108,7 +108,7 @@
             },
             "app.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "ecent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/app.py\", line 12, in <module>\n    feature / meta - evolution - logic\n    ^^^^^^^\nNameError: name 'feature' is not defined"
+                "error": "ecent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/app.py\", line 11, in <module>\n    feature / meta - evolution - logic\n    ^^^^^^^\nNameError: name 'feature' is not defined"
             },
             "evolved_module.py": {
                 "status": "STABLE",
