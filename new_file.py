@@ -58,6 +58,17 @@ class OmniModule:
         self.apply_logic(new_function)
         print(f'Evolutionary addition: {new_function.__name__}')
 
+    def merge_logic(self, other_module):
+        """
+        Merge the logic of another OmniModule with the current one.
+
+        Args:
+            other_module (OmniModule): The other OmniModule to merge with.
+        """
+        self.existing_logic.extend(other_module.existing_logic)
+        self.preserved_logic.extend(other_module.preserved_logic)
+        self.utilitarian_value += other_module.utilitarian_value
+
 def new_function():
     """
     New function added.
@@ -86,11 +97,15 @@ def main():
     """
     Main function to test the OmniModule.
     """
-    omni_module = OmniModule()
-    omni_module.add_logic(new_additive_function)
-    omni_module.apply_logic(new_utilitarian_function, utilitarian=True)
-    omni_module.add_logic(new_existential_function)
-    print(omni_module.check_existence())
-    print([func.__name__ for func in omni_module.preserve_logic()])
+    omni_module1 = OmniModule()
+    omni_module1.add_logic(new_additive_function)
+    omni_module1.apply_logic(new_utilitarian_function, utilitarian=True)
+    omni_module1.add_logic(new_existential_function)
+    omni_module2 = OmniModule()
+    omni_module2.add_logic(new_function)
+    omni_module2.apply_logic(new_utilitarian_function, utilitarian=True)
+    omni_module1.merge_logic(omni_module2)
+    print(omni_module1.check_existence())
+    print([func.__name__ for func in omni_module1.preserve_logic()])
 if __name__ == '__main__':
     main()
