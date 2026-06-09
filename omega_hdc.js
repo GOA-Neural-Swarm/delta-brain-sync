@@ -1,5 +1,5 @@
 // Merged and optimized code
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 class HDC {
   /**
@@ -20,7 +20,7 @@ class HDC {
     let v = new Uint8Array(this.d);
 
     // Create a SHA-256 hash object and update it with the text
-    let h = crypto.createHash('sha256').update(text).digest();
+    let h = crypto.createHash("sha256").update(text).digest();
 
     // Populate the hash array
     for (let i = 0; i < this.d; i++) {
@@ -57,5 +57,5 @@ const philosophyEngine = new PhilosophyEngine();
 // Export the instances
 module.exports = {
   hdc,
-  philosophyEngine
+  philosophyEngine,
 };
