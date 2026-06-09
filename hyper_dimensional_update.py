@@ -1,5 +1,6 @@
 import telemetry_bridge
 import os
+import sys
 
 class HyperDimensionalLogic:
     """
@@ -11,17 +12,22 @@ class HyperDimensionalLogic:
     existential_perspective (str): The existential perspective.
     stoic_approach (str): The stoic approach.
     evolutionary_paradigm (str): The evolutionary paradigm.
+    max_recursion_depth (int): The maximum recursion depth.
     """
 
-    def __init__(self):
+    def __init__(self, max_recursion_depth=10):
         """
         Initializes the HyperDimensionalLogic class.
+
+        Args:
+        max_recursion_depth (int): The maximum recursion depth.
         """
         self.existing_logic = []
         self.utilitarian_principle = 'maximize overall well-being'
         self.existential_perspective = 'individual freedom and choice'
         self.stoic_approach = "endure and accept the things outside of one's control"
         self.evolutionary_paradigm = 'additive and adaptive growth'
+        self.max_recursion_depth = max_recursion_depth
 
     def preserve_existing_logic(self, logic):
         """
@@ -57,23 +63,27 @@ class HyperDimensionalLogic:
         """
         return self.existing_logic
 
-def hyper_dimensional_function():
+def hyper_dimensional_function(hyper_dimensional_logic, recursion_depth=0):
     """
     A hyper-dimensional function.
+
+    Args:
+    hyper_dimensional_logic (HyperDimensionalLogic): The hyper-dimensional logic instance.
+    recursion_depth (int): The current recursion depth.
     """
     print('Hyper-dimensional function added')
-    hyper_dimensional_logic = HyperDimensionalLogic()
     hyper_dimensional_logic.preserve_existing_logic(hyper_dimensional_function.__name__)
     hyper_dimensional_logic.apply_principles()
     hyper_dimensional_logic.evolve()
     print('Existing Logic: {}'.format(hyper_dimensional_logic.get_existing_logic()))
-    if len(hyper_dimensional_logic.existing_logic) < 10:
-        hyper_dimensional_function()
+    if recursion_depth < hyper_dimensional_logic.max_recursion_depth:
+        hyper_dimensional_function(hyper_dimensional_logic, recursion_depth + 1)
 
 def main():
     """
     The main function.
     """
-    hyper_dimensional_function()
+    hyper_dimensional_logic = HyperDimensionalLogic()
+    hyper_dimensional_function(hyper_dimensional_logic)
 if __name__ == '__main__':
     main()
