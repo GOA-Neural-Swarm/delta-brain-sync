@@ -63,27 +63,26 @@ class HyperDimensionalLogic:
         """
         return self.existing_logic
 
-def hyper_dimensional_function(hyper_dimensional_logic, recursion_depth=0):
-    """
-    A hyper-dimensional function.
+    def recursive_hyper_dimensional_function(self, recursion_depth=0):
+        """
+        A recursive hyper-dimensional function.
 
-    Args:
-    hyper_dimensional_logic (HyperDimensionalLogic): The hyper-dimensional logic instance.
-    recursion_depth (int): The current recursion depth.
-    """
-    print('Hyper-dimensional function added')
-    hyper_dimensional_logic.preserve_existing_logic(hyper_dimensional_function.__name__)
-    hyper_dimensional_logic.apply_principles()
-    hyper_dimensional_logic.evolve()
-    print('Existing Logic: {}'.format(hyper_dimensional_logic.get_existing_logic()))
-    if recursion_depth < hyper_dimensional_logic.max_recursion_depth:
-        hyper_dimensional_function(hyper_dimensional_logic, recursion_depth + 1)
+        Args:
+        recursion_depth (int): The current recursion depth.
+        """
+        print('Hyper-dimensional function added')
+        self.preserve_existing_logic(self.recursive_hyper_dimensional_function.__name__)
+        self.apply_principles()
+        self.evolve()
+        print('Existing Logic: {}'.format(self.get_existing_logic()))
+        if recursion_depth < self.max_recursion_depth:
+            self.recursive_hyper_dimensional_function(recursion_depth + 1)
 
 def main():
     """
     The main function.
     """
     hyper_dimensional_logic = HyperDimensionalLogic()
-    hyper_dimensional_function(hyper_dimensional_logic)
+    hyper_dimensional_logic.recursive_hyper_dimensional_function()
 if __name__ == '__main__':
     main()
