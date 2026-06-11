@@ -20,7 +20,7 @@ module.exports = {
     // Recursive case: analyze diff and return "Wisdom Verified" if depth is within limits
     if (depth < maxDepth) {
       const subDiff = diff.slice(1); // Slice diff to simulate recursive analysis
-      const result = audit(subDiff, depth + 1, maxDepth);
+      const result = module.exports.audit(subDiff, depth + 1, maxDepth);
       return result === "Wisdom Verified"
         ? "Wisdom Verified"
         : "Evolution in Progress";
