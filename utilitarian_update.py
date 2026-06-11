@@ -2,6 +2,7 @@ import telemetry_bridge
 import os
 import sys
 
+
 class HyperDimensionalLogic:
 
     def __init__(self):
@@ -12,6 +13,7 @@ class HyperDimensionalLogic:
 
     def get_dimensions(self):
         return self.dimensions
+
 
 class Utilitarian:
 
@@ -24,6 +26,7 @@ class Utilitarian:
     def get_goals(self):
         return self.goals
 
+
 class Existential:
 
     def __init__(self):
@@ -35,6 +38,7 @@ class Existential:
     def get_purpose(self):
         return self.purpose
 
+
 class Stoic:
 
     def __init__(self):
@@ -42,6 +46,7 @@ class Stoic:
 
     def accept(self):
         return self.acceptance
+
 
 class Evolutionary:
 
@@ -59,6 +64,7 @@ class Evolutionary:
 
     def evolve_additive(self, addition):
         self.population = [individual + addition for individual in self.population]
+
 
 class PhilosophyFramework:
 
@@ -85,25 +91,27 @@ class PhilosophyFramework:
         self.evolutionary.evolve_additive(addition)
 
     def print_philosophy(self):
-        print('Hyper-Dimensional Logic:')
+        print("Hyper-Dimensional Logic:")
         print(self.hdl.get_dimensions())
-        print('\nUtilitarian:')
+        print("\nUtilitarian:")
         print(self.utilitarian.get_goals())
-        print('\nExistential:')
+        print("\nExistential:")
         print(self.existential.get_purpose())
-        print('\nStoic:')
+        print("\nStoic:")
         print(self.stoic.accept())
-        print('\nEvolutionary:')
+        print("\nEvolutionary:")
         print(self.evolutionary.get_population())
 
+
 def utilitarian_function():
-    print('Utilitarian function added')
+    print("Utilitarian function added")
+
 
 def main():
     philosophy = PhilosophyFramework()
-    philosophy.hdl.add_dimension('Utilitarian')
-    philosophy.add_utilitarian_goal('Maximize happiness')
-    philosophy.set_existential_purpose('Find meaning')
+    philosophy.hdl.add_dimension("Utilitarian")
+    philosophy.add_utilitarian_goal("Maximize happiness")
+    philosophy.set_existential_purpose("Find meaning")
     philosophy.add_evolutionary_individual(10)
     philosophy.add_evolutionary_individual(20)
     philosophy.print_philosophy()
@@ -114,5 +122,7 @@ def main():
     philosophy.evolve_evolutionary()
     philosophy.print_philosophy()
     utilitarian_function()
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     main()
