@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-06-11T20:02:45.140227",
+    "timestamp": "2026-06-11T22:31:46.756314",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1018-azure",
@@ -129,7 +129,6 @@
         "fastapi": "0.136.3",
         "tokenizers": "0.21.4",
         "psycopg2-binary": "2.9.12",
-        "kagglesdk": "0.1.28",
         "google-genai": "2.8.0",
         "google-auth-httplib2": "0.4.0",
         "SQLAlchemy": "2.0.50",
@@ -137,6 +136,7 @@
         "GitPython": "3.1.50",
         "torchvision": "0.27.0+cpu",
         "sympy": "1.14.0",
+        "kagglesdk": "0.1.29",
         "requests": "2.34.2",
         "jsonschema": "4.26.0",
         "websockets": "15.0.1",
@@ -169,7 +169,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.59,
+        "ram_available_gb": 14.56,
         "gpu_available": false
     }
 }
