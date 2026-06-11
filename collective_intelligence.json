@@ -1,9 +1,9 @@
 {
-    "global_generation": 100,
-    "system_entropy": 88.24999999999793,
+    "global_generation": 101,
+    "system_entropy": 88.99999999999788,
     "file_topology": {},
     "shared_memory": {
-        "last_sync": "2026-06-10 22:57:38",
+        "last_sync": "2026-06-11 03:01:37",
         "status": "MUTATING",
         "last_execution_logs": {
             "transfer_logic.py": {
@@ -44,7 +44,7 @@
             },
             "ai_experiment.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 114, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)"
+                "error": "delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 132, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)"
             },
             "utilitarian_update.py": {
                 "status": "STABLE",
@@ -72,7 +72,7 @@
             },
             "sync_data.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "2026-06-10 22:52:29,243 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
+                "error": "2026-06-11 02:56:28,896 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
             },
             "evolution_patch.py": {
                 "status": "STABLE",
@@ -82,13 +82,9 @@
                 "status": "MUTATING_REQUIRED",
                 "error": "/delta-brain-sync/delta-brain-sync/quantum_bridge.py\", line 7, in <module>\n    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2\nModuleNotFoundError: No module named 'qiskit_ibm_runtime'"
             },
-            "evolved_network.py": {
-                "status": "MUTATING_REQUIRED",
-                "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_network.py\", line 4, in <module>\n    torch\nNameError: name 'torch' is not defined"
-            },
             "existential_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 52, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
+                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 60, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
             },
             "omni_architect.py": {
                 "status": "TIMEOUT_HANG",
@@ -96,11 +92,15 @@
             },
             "flask_api.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "a-brain-sync/delta-brain-sync/flask_api.py\", line 20, in __init__\n    self.architect = SovereignArchitect()\n                     ^^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignArchitect' is not defined"
+                "error": "a-brain-sync/delta-brain-sync/flask_api.py\", line 22, in __init__\n    self.architect = SovereignArchitect()\n                     ^^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignArchitect' is not defined"
             },
             "omega_point.py": {
                 "status": "STABLE",
                 "error": "None"
+            },
+            "evolved_network.py": {
+                "status": "MUTATING_REQUIRED",
+                "error": "Traceback (most recent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_network.py\", line 4, in <module>\n    torch\nNameError: name 'torch' is not defined"
             },
             "evolution_guard.py": {
                 "status": "STABLE",
@@ -108,7 +108,7 @@
             },
             "app.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "ecent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/app.py\", line 11, in <module>\n    feature / meta - evolution - logic\n    ^^^^^^^\nNameError: name 'feature' is not defined"
+                "error": "ecent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/app.py\", line 12, in <module>\n    feature / meta - evolution - logic\n    ^^^^^^^\nNameError: name 'feature' is not defined"
             },
             "evolved_module.py": {
                 "status": "STABLE",
