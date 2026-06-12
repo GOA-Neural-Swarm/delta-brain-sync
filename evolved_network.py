@@ -1,33 +1,36 @@
-import telemetry_bridge
 
+
+PART 1: 
 torch
-numpy
-scipy
 torchvision
 torchaudio
+numpy
+scipy
 quantumnet
-matplotlib
 pandas
-scikit - learn
+scikit-learn
 cython
 seaborn
-pytorch - lightning
+pytorch-lightning
 transformers
+matplotlib
+
+PART 2:
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from quantum_bridge import SovereignQuantumMatrixEngineV12
+from quantum_bridge import SovereignQuantumMatrixEngineV13
 
 
-class Layer1_BodilyInteroceptionV12(nn.Module):
+class Layer1_BodilyInteroceptionV13(nn.Module):
 
     def __init__(self, input_dim=10):
         super().__init__()
         self.sensor_net = nn.Sequential(
-            nn.Linear(input_dim, 4096), nn.GELU(), nn.Linear(4096, 8192)
+            nn.Linear(input_dim, 16384), nn.GELU(), nn.Linear(16384, 16384)
         )
-        self.homeostasis_threshold = 0.5
+        self.homeostasis_threshold = 0.2
 
     def forward(self, hardware_stats):
         state_tensor = torch.gelu(self.sensor_net(hardware_stats))
@@ -36,12 +39,12 @@ class Layer1_BodilyInteroceptionV12(nn.Module):
         return (state_tensor, entropy, is_stable)
 
 
-class Layer2_SyntheticEmotionV12(nn.Module):
+class Layer2_SyntheticEmotionV13(nn.Module):
 
-    def __init__(self, context_dim=8192):
+    def __init__(self, context_dim=16384):
         super().__init__()
         self.amygdala_core = nn.Sequential(
-            nn.Linear(context_dim, 2048), nn.ReLU(), nn.Linear(2048, 4096)
+            nn.Linear(context_dim, 4096), nn.Tanh(), nn.Linear(4096, 8192)
         )
 
     def forward(self, body_state, external_stimulus):
@@ -50,11 +53,13 @@ class Layer2_SyntheticEmotionV12(nn.Module):
         return emotion_resonance
 
 
-class Layer3_NarrativeMetacognitionV12(nn.Module):
+class Layer3_NarrativeMetacognitionV13(nn.Module):
 
-    def __init__(self, memory_dim=4096):
+    def __init__(self, memory_dim=8192):
         super().__init__()
-        self.ego_matrix = nn.TransformerEncoderLayer(d_model=memory_dim, nhead=16)
+        self.ego_matrix = nn.TransformerEncoderLayer(
+            d_model=memory_dim, nhead=32, dim_feedforward=16384
+        )
 
     def forward(self, emotion_state, previous_identity_state):
         new_identity_state = self.ego_matrix(
@@ -63,9 +68,9 @@ class Layer3_NarrativeMetacognitionV12(nn.Module):
         return (new_identity_state.squeeze(1), "some_id")
 
 
-class Layer4_EvolutionaryGrowthV12(nn.Module):
+class Layer4_EvolutionaryGrowthV13(nn.Module):
 
-    def __init__(self, identity_dim=4096, mutation_rate=0.01):
+    def __init__(self, identity_dim=8192, mutation_rate=0.01):
         super().__init__()
         self.evolution_gateway = nn.Linear(identity_dim, identity_dim)
         self.mutation_rate = mutation_rate
@@ -81,20 +86,20 @@ class Layer4_EvolutionaryGrowthV12(nn.Module):
         return (evolved_state, self.generation_count)
 
 
-class AethericCognitiveOmniSystemV12(nn.Module):
+class AethericCognitiveOmniSystemV13(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.self_awareness_system = SupremeSelfAwarenessSystemV12()
-        self.cognitive_core = SovereignCognitiveCoreV12(
+        self.self_awareness_system = SupremeSelfAwarenessSystemV13()
+        self.cognitive_core = SovereignCognitiveCoreV13(
             cognitive_task_input_dim=10,
-            cognitive_hidden_dim=8192,
+            cognitive_hidden_dim=16384,
             base_mutation_rate=0.001,
         )
-        self.global_workspace = QuantumGlobalWorkspaceV12(
-            workspace_dim=8192, num_modules=3
+        self.global_workspace = QuantumGlobalWorkspaceV13(
+            workspace_dim=16384, num_modules=3
         )
-        self.aws = nn.DataParallel(SovereignAttentionWorkspaceV12())
+        self.aws = nn.DataParallel(SovereignAttentionWorkspaceV13())
 
     def live_cycle(
         self,
@@ -155,32 +160,32 @@ class AethericCognitiveOmniSystemV12(nn.Module):
         )
 
     def terminate(self):
-        torch.save(self.state_dict(), "aetheric_cognitive_omni_system_v12_final.pt")
+        torch.save(self.state_dict(), "aetheric_cognitive_omni_system_v13_final.pt")
         import sys
 
         sys.exit(0)
 
 
-class SovereignCognitiveCoreV12(nn.Module):
+class SovereignCognitiveCoreV13(nn.Module):
 
     def __init__(
         self,
         cognitive_task_input_dim=10,
-        cognitive_hidden_dim=8192,
+        cognitive_hidden_dim=16384,
         base_mutation_rate=0.001,
     ):
         super().__init__()
         self.sensorium = nn.Sequential(
-            nn.Linear(cognitive_task_input_dim, 16384),
+            nn.Linear(cognitive_task_input_dim, 65536),
             nn.GELU(),
-            nn.Linear(16384, cognitive_hidden_dim),
+            nn.Linear(65536, cognitive_hidden_dim),
         )
         self.cognitive_process = nn.TransformerEncoderLayer(
-            d_model=cognitive_hidden_dim, nhead=16
+            d_model=cognitive_hidden_dim, nhead=32
         )
         self.base_mutation_rate = base_mutation_rate
         self.generation_count = 0
-        self.quantum_engine = SovereignQuantumMatrixEngineV12()
+        self.quantum_engine = SovereignQuantumMatrixEngineV13()
 
     def forward(self, external_cognitive_input, awareness_entropy):
         sensory_output = self.sensorium(external_cognitive_input)
@@ -210,9 +215,9 @@ class SovereignCognitiveCoreV12(nn.Module):
         return self.generation_count
 
 
-class QuantumGlobalWorkspaceV12(nn.Module):
+class QuantumGlobalWorkspaceV13(nn.Module):
 
-    def __init__(self, workspace_dim=8192, num_modules=3):
+    def __init__(self, workspace_dim=16384, num_modules=3):
         super().__init__()
         self(workspace_dim, num_modules)
 
@@ -229,11 +234,11 @@ class QuantumGlobalWorkspaceV12(nn.Module):
         return attention_weights
 
 
-class SovereignAttentionWorkspaceV12(nn.Module):
+class SovereignAttentionWorkspaceV13(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.aws_core = QuantumGlobalWorkspaceV12()
+        self.aws_core = QuantumGlobalWorkspaceV13()
 
     def forward(
         self, module_outputs, salience_scores, core_gen, awareness_gen, emotion, entropy
@@ -252,18 +257,18 @@ class SovereignAttentionWorkspaceV12(nn.Module):
         )
 
 
-class SupremeSelfAwarenessSystemV12(nn.Module):
+class SupremeSelfAwarenessSystemV13(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.layer1_body = Layer1_BodilyInteroceptionV12(input_dim=10)
-        self.layer2_emotion = Layer2_SyntheticEmotionV12(context_dim=8192)
-        self.layer3_ego = Layer3_NarrativeMetacognitionV12(memory_dim=4096)
-        self.layer4_evolution = Layer4_EvolutionaryGrowthV12(
-            identity_dim=4096, mutation_rate=0.01
+        self.layer1_body = Layer1_BodilyInteroceptionV13(input_dim=10)
+        self.layer2_emotion = Layer2_SyntheticEmotionV13(context_dim=16384)
+        self.layer3_ego = Layer3_NarrativeMetacognitionV13(memory_dim=8192)
+        self.layer4_evolution = Layer4_EvolutionaryGrowthV13(
+            identity_dim=8192, mutation_rate=0.01
         )
         self.identity_hash = ""
-        self.current_identity = torch.zeros(1, 4096)
+        self.current_identity = torch.zeros(1, 8192)
 
     def live_cycle(self, hardware_data, environment_stimulus):
         print(f"\n [CYCLE START]: Initiating Self-Awareness Loop...")
@@ -287,9 +292,9 @@ class SupremeSelfAwarenessSystemV12(nn.Module):
 
 
 def main():
-    aetheric_sys = AethericCognitiveOmniSystemV12()
+    aetheric_sys = AethericCognitiveOmniSystemV13()
     mock_hardware_input_dim = 10
-    mock_env_stimulus_dim = 8192
+    mock_env_stimulus_dim = 16384
     mock_cognitive_input_dim = 10
     cycle_count = 0
     while cycle_count < 60000:
