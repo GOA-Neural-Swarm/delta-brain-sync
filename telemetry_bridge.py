@@ -2,11 +2,11 @@
 # DO NOT MANUAL EDIT - EVOLVED BY MATRIX ENGINE
 
 MATRIX_STATE = {
-    "global_generation": 106,
-    "system_entropy": 92.74999999999767,
+    "global_generation": 107,
+    "system_entropy": 93.49999999999763,
     "file_topology": {},
     "shared_memory": {
-        "last_sync": "2026-06-12 02:58:32",
+        "last_sync": "2026-06-12 07:25:31",
         "status": "MUTATING",
         "last_execution_logs": {
             "hyper_dimensional_update.py": {
@@ -41,6 +41,10 @@ MATRIX_STATE = {
                 "status": "STABLE",
                 "error": "None"
             },
+            "evolved_network.py": {
+                "status": "MUTATING_REQUIRED",
+                "error": "File \"/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_network.py\", line 3\n    PART 1: \n         ^\nSyntaxError: invalid syntax"
+            },
             "brain.py": {
                 "status": "MUTATING_REQUIRED",
                 "error": "ise NotFittedError(msg % {\"name\": type(estimator).__name__})\nsklearn.exceptions.NotFittedError: This SVC instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator."
@@ -51,7 +55,7 @@ MATRIX_STATE = {
             },
             "ai_experiment.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 132, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)"
+                "error": "delta-brain-sync/delta-brain-sync/ai_experiment.py\", line 114, in train\n    inputs = torch.from_numpy(inputs).float()\n             ^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: expected np.ndarray (got Tensor)"
             },
             "quantum_bridge.py": {
                 "status": "MUTATING_REQUIRED",
@@ -83,11 +87,11 @@ MATRIX_STATE = {
             },
             "sync_data.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "2026-06-12 02:54:54,533 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
+                "error": "2026-06-12 07:21:53,617 | 🛰️ [DATA-SYNC] | Database URL context not found in Environment Secrets."
             },
             "existential_update.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 60, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
+                "error": "/delta-brain-sync/delta-brain-sync/existential_update.py\", line 52, in <module>\n    telemetry_bridge.init()\n    ^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'init'"
             },
             "transfer_logic.py": {
                 "status": "STABLE",
@@ -95,11 +99,7 @@ MATRIX_STATE = {
             },
             "flask_api.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "a-brain-sync/delta-brain-sync/flask_api.py\", line 22, in __init__\n    self.architect = SovereignArchitect()\n                     ^^^^^^^^^^^^^^^^^^\nNameError: name 'SovereignArchitect' is not defined"
-            },
-            "evolved_network.py": {
-                "status": "MUTATING_REQUIRED",
-                "error": "File \"/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_network.py\", line 3\n    PART 1: \n         ^\nSyntaxError: invalid syntax"
+                "error": ">=1.26.4 and <2.7.0 is required for this version of SciPy (detected version 1.23.4)\n  from scipy.sparse import csr_array, issparse\nCRITICAL:root:Core components missing. Emergency recovery required."
             },
             "omega_point.py": {
                 "status": "STABLE",
@@ -115,7 +115,7 @@ MATRIX_STATE = {
             },
             "app.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "ecent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/app.py\", line 12, in <module>\n    feature / meta - evolution - logic\n    ^^^^^^^\nNameError: name 'feature' is not defined"
+                "error": "ecent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/app.py\", line 11, in <module>\n    feature / meta - evolution - logic\n    ^^^^^^^\nNameError: name 'feature' is not defined"
             },
             "evolved_module.py": {
                 "status": "STABLE",

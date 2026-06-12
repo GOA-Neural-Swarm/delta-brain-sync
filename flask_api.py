@@ -12,6 +12,7 @@ try:
 except ImportError:
     logging.critical('Core components missing. Emergency recovery required.')
     print('Core components missing. Emergency recovery required.')
+    sys.exit(1)
 app = Flask(__name__)
 
 class ASI_State:
@@ -82,7 +83,7 @@ def manual_recovery():
 
 @app.route('/healthcheck', methods=['GET'])
 def healthcheck():
-    if state.status == 'FAULTY' or state.status == 'CRITICAL_FAULT':
+    if state.status in ['FAULTY', 'CRITICAL_FAULT']:
         return (jsonify({'error': 'System is not healthy.'}), 503)
     return jsonify({'message': 'System is healthy.'})
 
