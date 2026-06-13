@@ -41,7 +41,7 @@ class OMEGA_ASI:
 class NeuralBrain:
 
     def __init__(self, generation=1):
-        self.gen = 113
+        self.gen = 114
         self.error_rate = 0.0
         self.memory_buffer = []
         self.association_rules = {}
@@ -109,7 +109,7 @@ class SovereignArchitect:
 
     def __init__(self):
         self.version = '1.1.0'
-        self.gen = 113
+        self.gen = 114
         self.brain = NeuralBrain(generation=self.gen)
         self.sync_manager = SyncManager()
 
