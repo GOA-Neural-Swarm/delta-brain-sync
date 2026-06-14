@@ -44,7 +44,7 @@ class HyperDimensionalLogic:
         """
         Applies the utilitarian principle, existential perspective, stoic approach, and evolutionary paradigm.
         """
-        print(f'Applying utilitarian principle: {self.utilitarian_pradigm}')
+        print(f'Applying utilitarian principle: {self.utilitarian_principle}')
         print(f'Applying existential perspective: {self.existential_perspective}')
         print(f'Applying stoic approach: {self.stoic_approach}')
         print(f'Applying evolutionary paradigm: {self.evolutionary_paradigm}')
