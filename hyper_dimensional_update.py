@@ -13,6 +13,7 @@ class HyperDimensionalLogic:
     stoic_approach (str): The stoic approach.
     evolutionary_paradigm (str): The evolutionary paradigm.
     max_recursion_depth (int): The maximum recursion depth.
+    recursion_depth (int): The current recursion depth.
     """
 
     def __init__(self, max_recursion_depth=10):
@@ -28,6 +29,7 @@ class HyperDimensionalLogic:
         self.stoic_approach = "endure and accept the things outside of one's control"
         self.evolutionary_paradigm = 'additive and adaptive growth'
         self.max_recursion_depth = max_recursion_depth
+        self.recursion_depth = 0
 
     def preserve_existing_logic(self, logic):
         """
@@ -42,7 +44,7 @@ class HyperDimensionalLogic:
         """
         Applies the utilitarian principle, existential perspective, stoic approach, and evolutionary paradigm.
         """
-        print(f'Applying utilitarian principle: {self.utilitarian_principle}')
+        print(f'Applying utilitarian principle: {self.utilitarian_pradigm}')
         print(f'Applying existential perspective: {self.existential_perspective}')
         print(f'Applying stoic approach: {self.stoic_approach}')
         print(f'Applying evolutionary paradigm: {self.evolutionary_paradigm}')
@@ -63,21 +65,19 @@ class HyperDimensionalLogic:
         """
         return self.existing_logic
 
-    def recursive_hyper_dimensional_function(self, recursion_depth=0):
+    def recursive_hyper_dimensional_function(self):
         """
         A recursive hyper-dimensional function.
-
-        Args:
-        recursion_depth (int): The current recursion depth.
         """
-        if recursion_depth >= self.max_recursion_depth:
+        if self.recursion_depth >= self.max_recursion_depth:
             return
         print('Hyper-dimensional function added')
         self.preserve_existing_logic(self.recursive_hyper_dimensional_function.__name__)
         self.apply_principles()
         self.evolve()
         print(f'Existing Logic: {self.get_existing_logic()}')
-        self.recursive_hyper_dimensional_function(recursion_depth + 1)
+        self.recursion_depth += 1
+        self.recursive_hyper_dimensional_function()
 
 def main():
     """
