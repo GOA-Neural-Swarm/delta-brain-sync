@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-06-15T23:03:26.725912",
+    "timestamp": "2026-06-16T03:03:56.712288",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1018-azure",
@@ -24,7 +24,6 @@
         "cuda-bindings": "13.3.1",
         "fonttools": "4.63.0",
         "scipy": "1.17.1",
-        "fsspec": "2026.4.0",
         "itsdangerous": "2.2.0",
         "backoff": "2.2.1",
         "urllib3": "2.7.0",
@@ -72,6 +71,7 @@
         "python-dateutil": "2.9.0.post0",
         "filelock": "3.29.4",
         "typing_extensions": "4.15.0",
+        "fsspec": "2026.6.0",
         "MarkupSafe": "3.0.3"
     },
     "conflicts": [
@@ -79,7 +79,7 @@
         "websockets installed"
     ],
     "hardware": {
-        "ram_total_gb": 15.62,
+        "ram_total_gb": 15.61,
         "ram_available_gb": 14.35,
         "gpu_available": false
     }
