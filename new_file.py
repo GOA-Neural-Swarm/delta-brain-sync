@@ -69,6 +69,13 @@ class OmniModule:
         self.preserved_logic.extend(other_module.preserved_logic)
         self.utilitarian_value += other_module.utilitarian_value
 
+    def execute_logic(self):
+        """
+        Execute all the preserved logic.
+        """
+        for func in self.preserved_logic:
+            func()
+
 def new_function():
     """
     New function added.
@@ -107,5 +114,6 @@ def main():
     omni_module1.merge_logic(omni_module2)
     print(omni_module1.check_existence())
     print([func.__name__ for func in omni_module1.preserve_logic()])
+    omni_module1.execute_logic()
 if __name__ == '__main__':
     main()
