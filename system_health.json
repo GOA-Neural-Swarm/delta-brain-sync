@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-06-17T08:31:16.462708",
+    "timestamp": "2026-06-17T12:51:31.116774",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1018-azure",
@@ -45,7 +45,6 @@
         "numpy": "2.4.6",
         "nvidia-nvjitlink": "13.0.88",
         "kiwisolver": "1.5.0",
-        "certifi": "2026.5.20",
         "packaging": "26.2",
         "nvidia-nccl-cu13": "2.29.7",
         "six": "1.17.0",
@@ -58,6 +57,7 @@
         "pyparsing": "3.3.2",
         "psycopg2-binary": "2.9.12",
         "blinker": "1.9.0",
+        "certifi": "2026.6.17",
         "qiskit": "2.4.2",
         "nvidia-nvshmem-cu13": "3.4.5",
         "sympy": "1.14.0",
@@ -80,7 +80,7 @@
     ],
     "hardware": {
         "ram_total_gb": 15.62,
-        "ram_available_gb": 14.34,
+        "ram_available_gb": 14.37,
         "gpu_available": false
     }
 }
