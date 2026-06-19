@@ -85,6 +85,5 @@ def main():
     """
     hyper_dimensional_logic = HyperDimensionalLogic()
     hyper_dimensional_logic.recursive_hyper_dimensional_function()
-
 if __name__ == '__main__':
     main()
