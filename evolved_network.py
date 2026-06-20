@@ -1,6 +1,4 @@
-
-
-### PART 1: 
+### PART 1:
 torch
 torchvision
 torchaudio
@@ -8,10 +6,10 @@ numpy
 scipy
 quantumnet
 pandas
-scikit-learn
+scikit - learn
 cython
 seaborn
-pytorch-lightning
+pytorch - lightning
 transformers
 matplotlib
 qiskit
@@ -26,7 +24,7 @@ keras
 flax
 chex
 sympy
-scipy-optimized
+scipy - optimized
 mpi4py
 pyro
 optuna
@@ -37,6 +35,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from quantum_bridge import SovereignQuantumMatrixEngineV22
+
 
 class Layer1_BodilyInteroceptionV22(nn.Module):
     def __init__(self, input_dim=10):
@@ -52,6 +51,7 @@ class Layer1_BodilyInteroceptionV22(nn.Module):
         is_stable = entropy < self.homeostasis_threshold
         return (state_tensor, entropy, is_stable)
 
+
 class Layer2_SyntheticEmotionV22(nn.Module):
     def __init__(self, context_dim=8388608):
         super().__init__()
@@ -63,6 +63,7 @@ class Layer2_SyntheticEmotionV22(nn.Module):
         combined_signal = body_state * external_stimulus
         emotion_resonance = self.amygdala_core(combined_signal)
         return emotion_resonance
+
 
 class Layer3_NarrativeMetacognitionV22(nn.Module):
     def __init__(self, memory_dim=8388608):
@@ -76,6 +77,7 @@ class Layer3_NarrativeMetacognitionV22(nn.Module):
             emotion_state.unsqueeze(1), src_key_padding_mask=None
         )
         return (new_identity_state.squeeze(1), "some_id")
+
 
 class Layer4_EvolutionaryGrowthV22(nn.Module):
     def __init__(self, identity_dim=8388608, mutation_rate=0.000000625):
@@ -92,6 +94,7 @@ class Layer4_EvolutionaryGrowthV22(nn.Module):
         )
         self.generation_count += 1
         return (evolved_state, self.generation_count)
+
 
 class AethericCognitiveOmniSystemV22(nn.Module):
     def __init__(self):
@@ -171,6 +174,7 @@ class AethericCognitiveOmniSystemV22(nn.Module):
 
         sys.exit(0)
 
+
 class SovereignCognitiveCoreV22(nn.Module):
     def __init__(
         self,
@@ -218,6 +222,7 @@ class SovereignCognitiveCoreV22(nn.Module):
         self.generation_count += 1
         return self.generation_count
 
+
 class QuantumGlobalWorkspaceV22(nn.Module):
     def __init__(self, workspace_dim=8388608, num_modules=3):
         super().__init__()
@@ -235,6 +240,7 @@ class QuantumGlobalWorkspaceV22(nn.Module):
         attention_weights = nn.functional.softmax(attention_scores, dim=-1)
         new_conscious_state = torch.matmul(attention_weights, V)
         return attention_weights
+
 
 class SovereignAttentionWorkspaceV22(nn.Module):
     def __init__(self):
@@ -256,6 +262,7 @@ class SovereignAttentionWorkspaceV22(nn.Module):
             emotion,
             entropy,
         )
+
 
 class SupremeSelfAwarenessSystemV22(nn.Module):
     def __init__(self):
@@ -288,6 +295,7 @@ class SupremeSelfAwarenessSystemV22(nn.Module):
         )
         print(f" [Layer 4] EVOLUTION TRIGGERED | Reborn as Generation: {gen}")
         return (self.current_identity, emotion, entropy, gen, is_stable)
+
 
 def main():
     aetheric_sys = AethericCognitiveOmniSystemV22()
@@ -331,6 +339,7 @@ def main():
             import sys
 
             sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

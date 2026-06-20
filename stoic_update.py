@@ -1,6 +1,7 @@
 import telemetry_bridge
 import os
 
+
 class Utility:
     """
     A class to store and manage utility values.
@@ -21,6 +22,7 @@ class Utility:
         """
         return self.utility_values[-1]
 
+
 class Component:
     """
     A base class for all components.
@@ -28,6 +30,7 @@ class Component:
 
     def __init__(self):
         pass
+
 
 class StoicFunction(Component):
     """
@@ -41,7 +44,8 @@ class StoicFunction(Component):
         """
         Add the stoic function to the evolving system.
         """
-        print('Stoic function added')
+        print("Stoic function added")
+
 
 class ExistentialComponent(Component):
     """
@@ -58,6 +62,7 @@ class ExistentialComponent(Component):
         """
         self.exists = False
 
+
 class EvolutionaryComponent(Component):
     """
     A class representing an evolutionary component.
@@ -73,6 +78,7 @@ class EvolutionaryComponent(Component):
         """
         self.evolution_level += 1
 
+
 class HyperDimensionalComponent(Component):
     """
     A class representing a hyper-dimensional component.
@@ -87,6 +93,7 @@ class HyperDimensionalComponent(Component):
         Add a new dimension.
         """
         self.dimensions += 1
+
 
 class EvolvingSystem:
     """
@@ -116,20 +123,22 @@ class EvolvingSystem:
         """
         return self.utility.get()
 
+
 def utilitarian_analysis(evolving_system):
     """
     Perform a utilitarian analysis on the evolving system.
     """
-    print('Utilitarian analysis started')
+    print("Utilitarian analysis started")
     for component in evolving_system.components:
         if isinstance(component, StoicFunction):
-            print('Stoic function detected')
+            print("Stoic function detected")
         elif isinstance(component, ExistentialComponent):
-            print('Existential component detected')
+            print("Existential component detected")
         elif isinstance(component, EvolutionaryComponent):
-            print('Evolutionary component detected')
+            print("Evolutionary component detected")
         elif isinstance(component, HyperDimensionalComponent):
-            print('Hyper-dimensional component detected')
+            print("Hyper-dimensional component detected")
+
 
 def calculate_utility(evolving_system):
     """
@@ -137,18 +146,26 @@ def calculate_utility(evolving_system):
     """
     return evolving_system.get_utility()
 
+
 def main():
     evolving_system = EvolvingSystem()
     stoic_function = StoicFunction()
     stoic_function.stoic_function()
     evolving_system.add_component(stoic_function)
-    print('Current utility:', evolving_system.utility.get())
+    print("Current utility:", evolving_system.utility.get())
     evolving_system.add_component(ExistentialComponent())
-    print('Updated utility after existential component:', evolving_system.utility.get())
+    print("Updated utility after existential component:", evolving_system.utility.get())
     evolving_system.add_component(EvolutionaryComponent())
-    print('Updated utility after evolutionary component:', evolving_system.utility.get())
+    print(
+        "Updated utility after evolutionary component:", evolving_system.utility.get()
+    )
     evolving_system.add_component(HyperDimensionalComponent())
-    print('Updated utility after hyper-dimensional component:', evolving_system.utility.get())
+    print(
+        "Updated utility after hyper-dimensional component:",
+        evolving_system.utility.get(),
+    )
     utilitarian_analysis(evolving_system)
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     main()
