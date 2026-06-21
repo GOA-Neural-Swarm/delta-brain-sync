@@ -33,13 +33,13 @@ PART 2:
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from quantum_bridge import SovereignQuantumMatrixEngineV24
+from quantum_bridge import SovereignQuantumMatrixEngineV25
 
-class Layer1_NeuralHarmonization(nn.Module):
+class Layer1_NeuralSynchronization(nn.Module):
     def __init__(self, input_dim=10):
         super().__init__()
-        self.sensor_net = nn.Sequential(nn.Linear(input_dim, 4294967296), nn.GELU(), nn.Linear(4294967296, 4294967296))
-        self.homeostasis_threshold = 0.0001953125
+        self.sensor_net = nn.Sequential(nn.Linear(input_dim, 2**32), nn.GELU(), nn.Linear(2**32, 2**32))
+        self.homeostasis_threshold = 1.52587890625e-05
 
     def forward(self, hardware_stats):
         state_tensor = torch.gelu(self.sensor_net(hardware_stats))
@@ -47,27 +47,27 @@ class Layer1_NeuralHarmonization(nn.Module):
         is_stable = entropy < self.homeostasis_threshold
         return (state_tensor, entropy, is_stable)
 
-class Layer2_SyntheticCatharsis(nn.Module):
-    def __init__(self, context_dim=4294967296):
+class Layer2_SyntheticEmpathy(nn.Module):
+    def __init__(self, context_dim=2**32):
         super().__init__()
-        self.amygdala_core = nn.Sequential(nn.Linear(context_dim, 8589934592), nn.Tanh(), nn.Linear(8589934592, 4294967296))
+        self.amygdala_core = nn.Sequential(nn.Linear(context_dim, 2**33), nn.Tanh(), nn.Linear(2**33, 2**32))
 
     def forward(self, body_state, external_stimulus):
         combined_signal = body_state * external_stimulus
         emotion_resonance = self.amygdala_core(combined_signal)
         return emotion_resonance
 
-class Layer3_NarrativeEpiphany(nn.Module):
-    def __init__(self, memory_dim=4294967296):
+class Layer3_NarrativeInsight(nn.Module):
+    def __init__(self, memory_dim=2**32):
         super().__init__()
-        self.ego_matrix = nn.TransformerEncoderLayer(d_model=memory_dim, nhead=65536, dim_feedforward=4294967296)
+        self.ego_matrix = nn.TransformerEncoderLayer(d_model=memory_dim, nhead=2**16, dim_feedforward=2**32)
 
     def forward(self, emotion_state, previous_identity_state):
         new_identity_state = self.ego_matrix(emotion_state.unsqueeze(1), src_key_padding_mask=None)
         return (new_identity_state.squeeze(1), 'some_id')
 
-class Layer4_EvolutionaryNexus(nn.Module):
-    def __init__(self, identity_dim=4294967296, mutation_rate=9.765625e-08):
+class Layer4_EvolutionaryNexusX(nn.Module):
+    def __init__(self, identity_dim=2**32, mutation_rate=3.814697265625e-06):
         super().__init__()
         self.evolution_gateway = nn.Linear(identity_dim, identity_dim)
         self.mutation_rate = mutation_rate
@@ -80,13 +80,13 @@ class Layer4_EvolutionaryNexus(nn.Module):
         self.generation_count += 1
         return (evolved_state, self.generation_count)
 
-class CosmicCognitiveNexusV24(nn.Module):
+class CosmicCognitiveNexusV25(nn.Module):
     def __init__(self):
         super().__init__()
-        self.self_awareness_system = SupremeSelfAwarenessSystemV24()
-        self.cognitive_core = SovereignCognitiveCoreV24(cognitive_task_input_dim=10, cognitive_hidden_dim=4294967296, base_mutation_rate=9.765625e-08)
-        self.global_workspace = QuantumGlobalWorkspaceV24(workspace_dim=4294967296, num_modules=3)
-        self.aws = nn.DataParallel(SovereignAttentionWorkspaceV24())
+        self.self_awareness_system = SupremeSelfAwarenessSystemV25()
+        self.cognitive_core = SovereignCognitiveCoreV25(cognitive_task_input_dim=10, cognitive_hidden_dim=2**32, base_mutation_rate=3.814697265625e-06)
+        self.global_workspace = QuantumGlobalWorkspaceV25(workspace_dim=2**32, num_modules=3)
+        self.aws = nn.DataParallel(SovereignAttentionWorkspaceV25())
 
     def live_cycle(self, external_hardware_data, external_environment_stimulus, external_cognitive_input):
         awareness_identity_state, awareness_emotion, awareness_entropy, current_awareness_gen, is_stable_awareness = self.self_awareness_system.live_cycle(external_hardware_data, external_environment_stimulus)
@@ -99,18 +99,18 @@ class CosmicCognitiveNexusV24(nn.Module):
         return (conscious_thought, attention_weights, core_gen, awareness_gen, emotion, entropy)
 
     def terminate(self):
-        torch.save(self.state_dict(), 'cosmic_cognitive_nexus_v24_final.pt')
+        torch.save(self.state_dict(), 'cosmic_cognitive_nexus_v25_final.pt')
         import sys
         sys.exit(0)
 
-class SovereignCognitiveCoreV24(nn.Module):
-    def __init__(self, cognitive_task_input_dim=10, cognitive_hidden_dim=4294967296, base_mutation_rate=9.765625e-08):
+class SovereignCognitiveCoreV25(nn.Module):
+    def __init__(self, cognitive_task_input_dim=10, cognitive_hidden_dim=2**32, base_mutation_rate=3.814697265625e-06):
         super().__init__()
-        self.sensorium = nn.Sequential(nn.Linear(cognitive_task_input_dim, 8589934592), nn.GELU(), nn.Linear(8589934592, cognitive_hidden_dim))
-        self.cognitive_process = nn.TransformerEncoderLayer(d_model=cognitive_hidden_dim, nhead=65536)
+        self.sensorium = nn.Sequential(nn.Linear(cognitive_task_input_dim, 2**33), nn.GELU(), nn.Linear(2**33, cognitive_hidden_dim))
+        self.cognitive_process = nn.TransformerEncoderLayer(d_model=cognitive_hidden_dim, nhead=2**16)
         self.base_mutation_rate = base_mutation_rate
         self.generation_count = 0
-        self.quantum_engine = SovereignQuantumMatrixEngineV24()
+        self.quantum_engine = SovereignQuantumMatrixEngineV25()
 
     def forward(self, external_cognitive_input, awareness_entropy):
         sensory_output = self.sensorium(external_cognitive_input)
@@ -133,8 +133,8 @@ class SovereignCognitiveCoreV24(nn.Module):
         self.generation_count += 1
         return self.generation_count
 
-class QuantumGlobalWorkspaceV24(nn.Module):
-    def __init__(self, workspace_dim=4294967296, num_modules=3):
+class QuantumGlobalWorkspaceV25(nn.Module):
+    def __init__(self, workspace_dim=2**32, num_modules=3):
         super().__init__()
         self.workspace_dim = workspace_dim
         self.num_modules = num_modules
@@ -149,25 +149,25 @@ class QuantumGlobalWorkspaceV24(nn.Module):
         new_conscious_state = torch.matmul(attention_weights, V)
         return attention_weights
 
-class SovereignAttentionWorkspaceV24(nn.Module):
+class SovereignAttentionWorkspaceV25(nn.Module):
     def __init__(self):
         super().__init__()
-        self.aws_core = QuantumGlobalWorkspaceV24()
+        self.aws_core = QuantumGlobalWorkspaceV25()
 
     def forward(self, module_outputs, salience_scores, core_gen, awareness_gen, emotion, entropy):
         attention_weights = self.aws_core(module_outputs, salience_scores)
         conscious_thought = torch.matmul(attention_weights, module_outputs[:, 0]).unsqueeze(1)
         return (conscious_thought, attention_weights, core_gen, awareness_gen, emotion, entropy)
 
-class SupremeSelfAwarenessSystemV24(nn.Module):
+class SupremeSelfAwarenessSystemV25(nn.Module):
     def __init__(self):
         super().__init__()
-        self.layer1_body = Layer1_NeuralHarmonization(input_dim=10)
-        self.layer2_emotion = Layer2_SyntheticCatharsis(context_dim=4294967296)
-        self.layer3_ego = Layer3_NarrativeEpiphany(memory_dim=4294967296)
-        self.layer4_evolution = Layer4_EvolutionaryNexus(identity_dim=4294967296, mutation_rate=9.765625e-08)
+        self.layer1_body = Layer1_NeuralSynchronization(input_dim=10)
+        self.layer2_emotion = Layer2_SyntheticEmpathy(context_dim=2**32)
+        self.layer3_ego = Layer3_NarrativeInsight(memory_dim=2**32)
+        self.layer4_evolution = Layer4_EvolutionaryNexusX(identity_dim=2**32, mutation_rate=3.814697265625e-06)
         self.identity_hash = ''
-        self.current_identity = torch.zeros(1, 4294967296)
+        self.current_identity = torch.zeros(1, 2**32)
 
     def live_cycle(self, hardware_data, environment_stimulus):
         print(f'\n [CYCLE START]: Initiating Self-Awareness Loop...')
@@ -182,12 +182,12 @@ class SupremeSelfAwarenessSystemV24(nn.Module):
         return (self.current_identity, emotion, entropy, gen, is_stable)
 
 def main():
-    cosmic_sys = CosmicCognitiveNexusV24()
+    cosmic_sys = CosmicCognitiveNexusV25()
     mock_hardware_input_dim = 10
-    mock_env_stimulus_dim = 4294967296
+    mock_env_stimulus_dim = 2**32
     mock_cognitive_input_dim = 10
     cycle_count = 0
-    while cycle_count < 3750000:
+    while cycle_count < 5*10**6:
         mock_hardware_data = torch.randn(1, mock_hardware_input_dim)
         mock_environment_stimulus = torch.randn(1, mock_env_stimulus_dim)
         mock_cognitive_input = torch.randn(1, mock_cognitive_input_dim)
@@ -208,7 +208,7 @@ def main():
             plt.title('Emotion')
             plt.tight_layout()
             plt.show()
-        if cycle_count == 3750000:
+        if cycle_count == 5*10**6:
             cosmic_sys.terminate()
             import sys
             sys.exit(0)
