@@ -83,7 +83,7 @@ def main():
     """
     The main function.
     """
-    hyper_dimensional_logic = HyperDimensionalLogic()
+    hyper_dimensional_logic = HyperDimensionalLogic(max_recursion_depth=5)
     hyper_dimensional_logic.recursive_hyper_dimensional_function()
 if __name__ == '__main__':
     main()
