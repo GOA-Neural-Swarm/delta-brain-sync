@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 class ASI_OMNI_SYNC_ENGINE {
   constructor() {
@@ -7,7 +7,7 @@ class ASI_OMNI_SYNC_ENGINE {
       layers: ["Utilitarian", "Existential", "Stoic", "Evolutionary"],
       audit: (diff) => {
         return diff.length > 0 ? "Wisdom Verified" : "No Evolution";
-      }
+      },
     };
   }
 
@@ -25,7 +25,7 @@ class ASI_OMNI_SYNC_ENGINE {
     return {
       hash,
       auditResult,
-      layers: this.omegaPhilosophy.layers
+      layers: this.omegaPhilosophy.layers,
     };
   }
 }
@@ -37,7 +37,7 @@ class HDC {
 
   gen(text) {
     let v = new Uint8Array(this.d);
-    let h = crypto.createHash('sha256').update(text).digest();
+    let h = crypto.createHash("sha256").update(text).digest();
     for (let i = 0; i < this.d; i++) {
       v[i] = h[i % h.length] % 2;
     }
