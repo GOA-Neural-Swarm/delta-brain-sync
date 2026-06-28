@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 class ASIOmniSyncEngine {
   constructor(d = 10000) {
@@ -8,7 +8,7 @@ class ASIOmniSyncEngine {
 
   gen(text) {
     let v = new Uint8Array(this.d);
-    let h = crypto.createHash('sha256').update(text).digest();
+    let h = crypto.createHash("sha256").update(text).digest();
     for (let i = 0; i < this.d; i++) {
       v[i] = h[i % h.length] % 2;
     }
