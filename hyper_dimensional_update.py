@@ -14,6 +14,7 @@ class HyperDimensionalLogic:
     evolutionary_paradigm (str): The evolutionary paradigm.
     max_recursion_depth (int): The maximum recursion depth.
     recursion_depth (int): The current recursion depth.
+    memo (dict): A dictionary to store memoized results.
     """
 
     def __init__(self, max_recursion_depth=10):
@@ -30,6 +31,7 @@ class HyperDimensionalLogic:
         self.evolutionary_paradigm = 'additive and adaptive growth'
         self.max_recursion_depth = max_recursion_depth
         self.recursion_depth = 0
+        self.memo = {}
 
     def preserve_existing_logic(self, logic):
         """
@@ -65,40 +67,31 @@ class HyperDimensionalLogic:
         """
         return self.existing_logic
 
-    def recursive_hyper_dimensional_function(self):
+    def recursive_hyper_dimensional_function(self, depth):
         """
         A recursive hyper-dimensional function.
+
+        Args:
+        depth (int): The current recursion depth.
         """
-        if self.recursion_depth >= self.max_recursion_depth:
+        if depth >= self.max_recursion_depth:
             return
+        if depth in self.memo:
+            return self.memo[depth]
         print('Hyper-dimensional function added')
         self.preserve_existing_logic(self.recursive_hyper_dimensional_function.__name__)
         self.apply_principles()
         self.evolve()
         print(f'Existing Logic: {self.get_existing_logic()}')
-        self.recursion_depth += 1
-        self.recursive_hyper_dimensional_function()
+        result = self.recursive_hyper_dimensional_function(depth + 1)
+        self.memo[depth] = result
+        return result
 
     def optimize_recursion(self):
         """
         Optimizes the recursive hyper-dimensional function using memoization.
         """
-        memo = {}
-
-        def recursive_hyper_dimensional_function_optimized(depth):
-            if depth in memo:
-                return memo[depth]
-            if depth >= self.max_recursion_depth:
-                return
-            print('Hyper-dimensional function added')
-            self.preserve_existing_logic(self.recursive_hyper_dimensional_function.__name__)
-            self.apply_principles()
-            self.evolve()
-            print(f'Existing Logic: {self.get_existing_logic()}')
-            result = recursive_hyper_dimensional_function_optimized(depth + 1)
-            memo[depth] = result
-            return result
-        return recursive_hyper_dimensional_function_optimized(self.recursion_depth)
+        return self.recursive_hyper_dimensional_function(self.recursion_depth)
 
 def main():
     """
