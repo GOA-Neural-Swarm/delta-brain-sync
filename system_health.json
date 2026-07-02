@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-07-02T19:18:11.985189",
+    "timestamp": "2026-07-02T22:05:54.000247",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1018-azure",
@@ -48,6 +48,7 @@
         "six": "1.17.0",
         "matplotlib": "3.11.0",
         "nvidia-cuda-nvrtc": "13.0.88",
+        "qiskit": "2.5.0",
         "nvidia-cufile": "1.15.1.6",
         "setuptools": "81.0.0",
         "networkx": "3.6.1",
@@ -57,7 +58,6 @@
         "psycopg2-binary": "2.9.12",
         "blinker": "1.9.0",
         "certifi": "2026.6.17",
-        "qiskit": "2.4.2",
         "nvidia-nvshmem-cu13": "3.4.5",
         "sympy": "1.14.0",
         "requests": "2.34.2",
@@ -80,7 +80,7 @@
     ],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.33,
+        "ram_available_gb": 14.31,
         "gpu_available": false
     }
 }
