@@ -1,23 +1,44 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_266 Linked
 import telemetry_bridge
 import numpy as np
 import time
 import sys
-try:
-    import omega_point
-except ImportError:
-    print("[WARNING] 'omega_point' module not found. Proceeding in strictly isolated mode.")
+import logging
+logging.basicConfig(filename='recovery_logs.md', level=logging.INFO, format='%(message)s')
 
 class SurvivalBrain:
+    """
+    A simple neural network brain for survival mode.
+    """
 
     def __init__(self, in_d=784, out_d=10):
+        """
+        Initialize the brain with input and output dimensions.
+
+        Args:
+        in_d (int): Input dimension.
+        out_d (int): Output dimension.
+        """
         self.w = np.random.randn(in_d, out_d).astype(np.float32) * np.sqrt(2.0 / (in_d + out_d))
         self.b = np.zeros(out_d, dtype=np.float32)
         self.is_active = False
 
     def forward(self, x):
+        """
+        Forward pass through the brain.
+
+        Args:
+        x (numpy.array): Input to the brain.
+
+        Returns:
+        numpy.array: Output of the brain.
+        """
         return np.dot(x, self.w) + self.b
 
     def run(self):
+        """
+        Engage the survival brain.
+        """
         self.is_active = True
         print('\n' + '=' * 50)
         print(' OMEGA-ASI CRITICAL FAULT DETECTED ')
@@ -28,17 +49,35 @@ class SurvivalBrain:
         return True
 
     def get_weights(self):
+        """
+        Get the weights of the brain.
+
+        Returns:
+        tuple: Weights and biases of the brain.
+        """
         return (self.w, self.b)
 
     def set_weights(self, w, b):
+        """
+        Set the weights of the brain.
+
+        Args:
+        w (numpy.array): Weights of the brain.
+        b (numpy.array): Biases of the brain.
+        """
         self.w = w
         self.b = b
 
 class SystemWatchdog:
+    """
+    A system watchdog that monitors the main brain and engages the survival brain in case of failure.
+    """
 
     def __init__(self):
+        """
+        Initialize the system watchdog.
+        """
         self.survival_core = SurvivalBrain()
-        self.log_file = 'recovery_logs.md'
         self.error_history = []
         self.recovery_attempts = 0
         self.evolution_index = 0
@@ -51,6 +90,9 @@ class SystemWatchdog:
         self.best_survival_core_utilitarian_score = float('-inf')
 
     def execute_main_brain(self):
+        """
+        Attempt to boot the main brain.
+        """
         try:
             print('[WATCHDOG] Attempting to boot Main OMEGA Core...')
             raise RuntimeError('Out of Memory / Core Logic Failure')
@@ -59,6 +101,12 @@ class SystemWatchdog:
             self.trigger_survival_mode(str(e))
 
     def trigger_survival_mode(self, error_msg):
+        """
+        Engage the survival brain and log the error.
+
+        Args:
+        error_msg (str): Error message.
+        """
         self.survival_core.run()
         self.log_recovery_state(error_msg)
         self.recovery_attempts += 1
@@ -68,16 +116,24 @@ class SystemWatchdog:
         self.update_stoic_resilience()
 
     def log_recovery_state(self, error_msg):
+        """
+        Log the recovery state.
+
+        Args:
+        error_msg (str): Error message.
+        """
         timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
         payload = f'- **[{timestamp}]** SYSTEM CRASH: `{error_msg}` -> **Survival Mode Activated**.\n'
         try:
-            with open(self.log_file, 'a') as f:
-                f.write(payload)
-            print(f'[LOG] Recovery state saved to {self.log_file}. Ready for GitHub push.')
+            logging.info(payload)
+            print(f'[LOG] Recovery state saved to recovery_logs.md. Ready for GitHub push.')
         except Exception as e:
             print(f'[LOG ERROR] Could not save recovery state: {e}')
 
     def assess_system_stability(self):
+        """
+        Assess the system stability.
+        """
         if self.recovery_attempts > 5:
             print('[WATCHDOG] System stability compromised. Initiating shutdown sequence.')
             sys.exit(1)
@@ -87,6 +143,9 @@ class SystemWatchdog:
             self.update_stoic_resilience()
 
     def evolve_system(self):
+        """
+        Evolve the system by applying mutations to the survival brain.
+        """
         if self.recovery_attempts > 0:
             mutation_rate = 0.01
             if self.evolution_index % 10 == 0:
@@ -107,10 +166,22 @@ class SystemWatchdog:
             self.update_utilitarian_score()
 
     def evaluate_utilitarian_score(self, survival_core):
+        """
+        Evaluate the utilitarian score of the survival brain.
+
+        Args:
+        survival_core (SurvivalBrain): Survival brain to evaluate.
+
+        Returns:
+        float: Utilitarian score.
+        """
         w, b = survival_core.get_weights()
         return -np.sum(np.abs(w)) - np.sum(np.abs(b))
 
     def update_utilitarian_score(self):
+        """
+        Update the utilitarian score.
+        """
         if self.best_survival_core:
             self.utilitarian_score = self.evaluate_utilitarian_score(self.survival_core)
         else:
@@ -118,14 +189,23 @@ class SystemWatchdog:
         print(f'[UTILITARIAN SCORE] Current score: {self.utilitarian_score}')
 
     def update_existential_risk(self):
+        """
+        Update the existential risk.
+        """
         self.existential_risk = self.recovery_attempts * 0.1
         print(f'[EXISTENTIAL RISK] Current risk: {self.existential_risk}')
 
     def update_stoic_resilience(self):
+        """
+        Update the stoic resilience.
+        """
         self.stoic_resilience = self.evolution_index * 0.01
         print(f'[STOIC RESILIENCE] Current resilience: {self.stoic_resilience}')
 
     def update_evolutionary_pressure(self):
+        """
+        Update the evolutionary pressure.
+        """
         self.evolutionary_pressure = self.recovery_attempts * 0.05
         print(f'[EVOLUTIONARY PRESSURE] Current pressure: {self.evolutionary_pressure}')
 if __name__ == '__main__':

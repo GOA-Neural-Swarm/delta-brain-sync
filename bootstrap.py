@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_266 Linked
 import telemetry_bridge
 import os
 import subprocess
@@ -28,30 +29,6 @@ class Infrastructure:
     def remove_file(self, filename):
         if os.path.exists(filename):
             os.remove(filename)
-
-    def apply_evolutionary_update(self, update):
-        self.update_infra(update)
-
-    def apply_existential_update(self, update):
-        self.update_infra(update)
-
-    def apply_stoic_update(self, update):
-        self.update_infra(update)
-
-    def apply_utilitarian_update(self, update):
-        self.update_infra(update)
-
-    def apply_hyper_dimensional_update(self, update):
-        self.update_infra(update)
-
-    def add_file(self, filename, content):
-        self.infra[filename] = content
-        self.create_file(filename, content)
-
-    def update_file(self, filename, content):
-        if filename in self.infra:
-            self.infra[filename] = content
-            self.create_file(filename, content)
 
     def preserve_infra(self):
         return self.infra.copy()
@@ -91,16 +68,13 @@ def main():
     for k, v in infra.infra.items():
         infra.create_file(k, v)
     infra.install_dependencies('requirements.txt')
-    evolutionary_update = {'evolutionary_update.py': ['import os', 'def evolutionary_function():', '  print("Evolutionary function added")']}
-    infra.apply_evolutionary_update(evolutionary_update)
-    existential_update = {'existential_update.py': ['import os', 'def existential_function():', '  print("Existential function added")']}
-    infra.apply_existential_update(existential_update)
-    stoic_update = {'stoic_update.py': ['import os', 'def stoic_function():', '  print("Stoic function added")']}
-    infra.apply_stoic_update(stoic_update)
-    utilitarian_update = {'utilitarian_update.py': ['import os', 'def utilitarian_function():', '  print("Utilitarian function added")']}
-    infra.apply_utilitarian_update(utilitarian_update)
-    hyper_dimensional_update = {'hyper_dimensional_update.py': ['import os', 'def hyper_dimensional_function():', '  print("Hyper-dimensional function added")']}
-    infra.apply_hyper_dimensional_update(hyper_dimensional_update)
+    updates = [{'evolutionary_update.py': ['import os', 'def evolutionary_function():', '  print("Evolutionary function added")']}, {'existential_update.py': ['import os', 'def existential_function():', '  print("Existential function added")']}, {'stoic_update.py': ['import os', 'def stoic_function():', '  print("Stoic function added")']}, {'utilitarian_update.py': ['import os', 'def utilitarian_function():', '  print("Utilitarian function added")']}, {'hyper_dimensional_update.py': ['import os', 'def hyper_dimensional_function():', '  print("Hyper-dimensional function added")']}]
+    for update in updates:
+        infra.apply_evolutionary_update(update)
+        infra.apply_existential_update(update)
+        infra.apply_stoic_update(update)
+        infra.apply_utilitarian_update(update)
+        infra.apply_hyper_dimensional_update(update)
     new_infra = {'new_file.py': ['import os', 'def new_function():', '  print("New function added")']}
     infra.update_infra(new_infra)
     new_dependencies = {'requirements.txt': ['numpy']}
