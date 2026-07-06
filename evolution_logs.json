@@ -1,14 +1,8 @@
 [
     {
-        "timestamp": 1783359597.7958684,
-        "file": "./bootstrap.py",
+        "timestamp": 1783367508.2701373,
+        "file": "./omega_hdc.js",
         "status": "TRANSCENDED",
-        "asi_score": 88.07985905498535
-    },
-    {
-        "timestamp": 1783359827.0888016,
-        "file": "./optimized_evolution.js",
-        "status": "TRANSCENDED",
-        "asi_score": 312.84152919988657
+        "asi_score": 89.46700496260533
     }
 ]
