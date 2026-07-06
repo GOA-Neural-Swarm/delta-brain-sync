@@ -77,12 +77,22 @@ class ASIOmniSyncEngine {
   // Recursive function to optimize configuration
   optimizeConfig() {
     // Check for invalid or missing configuration values
-    if (!this.instructionFile || !this.defaultCommand || !this.modes || !this.retryLimit || !this.timeoutMs || !this.firebaseServiceAccount || !this.neonDatabaseUrl) {
+    if (
+      !this.instructionFile ||
+      !this.defaultCommand ||
+      !this.modes ||
+      !this.retryLimit ||
+      !this.timeoutMs ||
+      !this.firebaseServiceAccount ||
+      !this.neonDatabaseUrl
+    ) {
       throw new Error("Invalid or missing configuration values");
     }
 
     // Optimize modes for better performance
-    this.modes = Object.fromEntries(Object.entries(this.modes).sort((a, b) => b[1] - a[1]));
+    this.modes = Object.fromEntries(
+      Object.entries(this.modes).sort((a, b) => b[1] - a[1]),
+    );
 
     // Set default command based on optimized modes
     this.defaultCommand = Object.keys(this.modes)[0];
