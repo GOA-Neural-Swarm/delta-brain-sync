@@ -63,7 +63,9 @@ class ASI_OMNI_SYNC_ENGINE {
    */
   sync(text, diff) {
     if (typeof text !== "string" || !Array.isArray(diff)) {
-      throw new Error("Invalid input parameters. Text should be a string and difference should be an array.");
+      throw new Error(
+        "Invalid input parameters. Text should be a string and difference should be an array.",
+      );
     }
     try {
       let hash = this.gen(text);
