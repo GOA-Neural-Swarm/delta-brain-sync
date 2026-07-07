@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-07-07T11:46:28.371082",
+    "timestamp": "2026-07-07T14:18:42.787551",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1018-azure",
@@ -9,12 +9,12 @@
     },
     "packages": {
         "nvidia-cudnn-cu13": "9.20.0.48",
-        "charset-normalizer": "3.4.8",
         "PyYAML": "6.0.3",
         "nvidia-cusparselt-cu13": "0.8.1",
         "nvidia-cusolver": "12.0.4.66",
         "wheel": "0.47.0",
         "cycler": "0.12.1",
+        "charset-normalizer": "3.4.7",
         "Jinja2": "3.1.6",
         "idna": "3.18",
         "nvidia-cuda-runtime": "13.0.96",
@@ -79,8 +79,8 @@
         "websockets installed"
     ],
     "hardware": {
-        "ram_total_gb": 15.61,
-        "ram_available_gb": 14.31,
+        "ram_total_gb": 15.62,
+        "ram_available_gb": 14.29,
         "gpu_available": false
     }
 }
