@@ -89,11 +89,18 @@ class HyperDimensionalLogic:
         """
         return self.recursive_hyper_dimensional_function(self.recursion_depth)
 
+    def merge_sync(self):
+        """
+        Merges and synchronizes the hyper-dimensional logic.
+        """
+        self.optimize_recursion()
+        print('Hyper-dimensional logic merged and synchronized')
+
 def main():
     """
     The main function.
     """
     hyper_dimensional_logic = HyperDimensionalLogic(max_recursion_depth=5)
-    hyper_dimensional_logic.optimize_recursion()
+    hyper_dimensional_logic.merge_sync()
 if __name__ == '__main__':
     main()
