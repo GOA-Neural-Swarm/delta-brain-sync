@@ -16,27 +16,7 @@ class HyperDimensionalModule(PhilosophicalModule):
 
     def __init__(self):
         super().__init__()
-        self.principles = {'Stoic': self.stoic_principle, 'Evolutionary': self.evolutionary_principle, 'Existential': self.existential_principle, 'Utilitarian': self.utilitarian_principle, 'Hyper-dimensional': self.hyper_dimensional_logic}
-
-    def stoic_principle(self):
-        """Apply stoic principle."""
-        self.apply_principle('Stoic')
-
-    def evolutionary_principle(self):
-        """Apply evolutionary principle."""
-        self.apply_principle('Evolutionary')
-
-    def existential_principle(self):
-        """Apply existential principle."""
-        self.apply_principle('Existential')
-
-    def utilitarian_principle(self):
-        """Apply utilitarian principle."""
-        self.apply_principle('Utilitarian')
-
-    def hyper_dimensional_logic(self):
-        """Apply hyper-dimensional logic."""
-        self.apply_principle('Hyper-dimensional')
+        self.principles = {'Stoic': lambda: self.apply_principle('Stoic'), 'Evolutionary': lambda: self.apply_principle('Evolutionary'), 'Existential': lambda: self.apply_principle('Existential'), 'Utilitarian': lambda: self.apply_principle('Utilitarian'), 'Hyper-dimensional': lambda: self.apply_principle('Hyper-dimensional')}
 
     def apply_all_principles(self):
         """Apply all philosophical principles."""
