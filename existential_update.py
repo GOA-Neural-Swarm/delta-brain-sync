@@ -16,13 +16,7 @@ class HyperDimensionalModule(PhilosophicalModule):
 
     def __init__(self):
         super().__init__()
-        self.principles = {
-            'Stoic': 'Stoic',
-            'Evolutionary': 'Evolutionary',
-            'Existential': 'Existential',
-            'Utilitarian': 'Utilitarian',
-            'Hyper-dimensional': 'Hyper-dimensional'
-        }
+        self.principles = {'Stoic': 'Stoic', 'Evolutionary': 'Evolutionary', 'Existential': 'Existential', 'Utilitarian': 'Utilitarian', 'Hyper-dimensional': 'Hyper-dimensional'}
 
     def apply_all_principles(self) -> None:
         """Apply all philosophical principles."""
@@ -32,7 +26,6 @@ class HyperDimensionalModule(PhilosophicalModule):
 def main() -> None:
     module = HyperDimensionalModule()
     module.apply_all_principles()
-
 if __name__ == '__main__':
     telemetry_bridge.init()
     main()
