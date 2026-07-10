@@ -24,9 +24,13 @@ class HyperDimensionalModule(PhilosophicalModule):
             self.apply_principle(principle)
 
 def main() -> None:
+    """Main function to initialize and run the HyperDimensionalModule."""
     module = HyperDimensionalModule()
     module.apply_all_principles()
 if __name__ == '__main__':
+    'Initialize telemetry bridge and run the main function.'
     telemetry_bridge.init()
-    main()
-    telemetry_bridge.disconnect()
+    try:
+        main()
+    finally:
+        telemetry_bridge.disconnect()
