@@ -1,10 +1,11 @@
 import telemetry_bridge
 import os
+from typing import Dict
 
 class PhilosophicalModule:
     """Base class for all philosophical modules."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def apply_principle(self, principle: str) -> None:
@@ -14,9 +15,9 @@ class PhilosophicalModule:
 class HyperDimensionalModule(PhilosophicalModule):
     """Hyper-dimensional module with multiple philosophical principles."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.principles = {'Stoic': 'Stoic', 'Evolutionary': 'Evolutionary', 'Existential': 'Existential', 'Utilitarian': 'Utilitarian', 'Hyper-dimensional': 'Hyper-dimensional'}
+        self.principles: Dict[str, str] = {'Stoic': 'Stoic', 'Evolutionary': 'Evolutionary', 'Existential': 'Existential', 'Utilitarian': 'Utilitarian', 'Hyper-dimensional': 'Hyper-dimensional'}
 
     def apply_all_principles(self) -> None:
         """Apply all philosophical principles."""
