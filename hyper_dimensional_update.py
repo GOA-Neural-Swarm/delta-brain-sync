@@ -96,11 +96,18 @@ class HyperDimensionalLogic:
         self.optimize_recursion()
         print('Hyper-dimensional logic merged and synchronized')
 
+    def sync_telemetry(self):
+        """
+        Synchronizes telemetry data.
+        """
+        telemetry_bridge.sync_telemetry()
+
 def main():
     """
     The main function.
     """
     hyper_dimensional_logic = HyperDimensionalLogic(max_recursion_depth=5)
     hyper_dimensional_logic.merge_sync()
+    hyper_dimensional_logic.sync_telemetry()
 if __name__ == '__main__':
     main()
