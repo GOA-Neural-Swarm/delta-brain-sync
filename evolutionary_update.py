@@ -76,7 +76,6 @@ def main():
         system, entity = create_system(name, choice)
         systems.append(system)
         entities.append(entity)
-    for system, entity, name in zip(systems, entities, names):
         system.execute_functions()
         print(entity.choices)
         perspectives = create_perspectives(entity, name)
