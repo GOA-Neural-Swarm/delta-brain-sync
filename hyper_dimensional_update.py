@@ -102,12 +102,25 @@ class HyperDimensionalLogic:
         """
         telemetry_bridge.sync_telemetry()
 
+    def recursive_merge_sync(self, depth):
+        """
+        Recursively merges and synchronizes the hyper-dimensional logic.
+
+        Args:
+        depth (int): The current recursion depth.
+        """
+        if depth >= self.max_recursion_depth:
+            return
+        print(f'Recursive merge sync at depth {depth}')
+        self.merge_sync()
+        self.recursive_merge_sync(depth + 1)
+
 def main():
     """
     The main function.
     """
     hyper_dimensional_logic = HyperDimensionalLogic(max_recursion_depth=5)
-    hyper_dimensional_logic.merge_sync()
+    hyper_dimensional_logic.recursive_merge_sync(0)
     hyper_dimensional_logic.sync_telemetry()
 if __name__ == '__main__':
     main()
