@@ -67,11 +67,8 @@ def create_perspectives(entity, name):
     """Creates perspectives dictionary."""
     return {f'{name} Utilitarian': utilitarian_principle(True), f'{name} Existential': entity.name, f'{name} Stoic': stoic_indifference(True)}
 
-def main():
-    systems = []
-    entities = []
-    names = ['Individual', 'Optimized Individual', 'Recursive Individual', 'Power Individual']
-    choices = ['Utilitarian principle', 'Optimized Utilitarian principle', 'Recursive Utilitarian principle', 'Power Utilitarian principle']
+def recursive_evolution(systems, entities, names, choices):
+    """Recursively evolves the systems and entities."""
     for name, choice in zip(names, choices):
         system, entity = create_system(name, choice)
         systems.append(system)
@@ -89,5 +86,12 @@ def main():
         print(f'System: {system}')
         print(f'Entity: {entity}')
         print('')
+
+def main():
+    systems = []
+    entities = []
+    names = ['Individual', 'Optimized Individual', 'Recursive Individual', 'Power Individual']
+    choices = ['Utilitarian principle', 'Optimized Utilitarian principle', 'Recursive Utilitarian principle', 'Power Utilitarian principle']
+    recursive_evolution(systems, entities, names, choices)
 if __name__ == '__main__':
     main()
