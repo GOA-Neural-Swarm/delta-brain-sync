@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_327 Linked
 import telemetry_bridge
 import os
 import sys
