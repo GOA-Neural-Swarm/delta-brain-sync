@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_331 Linked
 import telemetry_bridge
 import os
 import sys
@@ -6,13 +7,9 @@ import time
 import logging
 from flask import Flask, jsonify, request
 from datetime import datetime
-try:
-    from brain import SovereignArchitect
-    from recovery import SovereignRecovery
-except ImportError:
-    logging.critical('Core components missing. Emergency recovery required.')
-    print('Core components missing. Emergency recovery required.')
-    sys.exit(1)
+from brain import SovereignArchitect
+from recovery import SovereignRecovery
+from telemetry_bridge import TelemetryBridge
 app = Flask(__name__)
 
 class ASI_State:
@@ -20,6 +17,7 @@ class ASI_State:
     def __init__(self):
         self.architect = SovereignArchitect()
         self.recovery = SovereignRecovery()
+        self.telemetry_bridge = TelemetryBridge()
         self.is_training = False
         self.boot_time = datetime.now()
         self.last_evolution = None
@@ -96,5 +94,12 @@ def internal_error(error):
     state.status = 'FAULTY'
     return (jsonify({'error': 'Internal Core Collapse.'}), 500)
 if __name__ == '__main__':
+    try:
+        from brain import SovereignArchitect
+        from recovery import SovereignRecovery
+    except ImportError:
+        logging.critical('Core components missing. Emergency recovery required.')
+        print('Core components missing. Emergency recovery required.')
+        sys.exit(1)
     print('\n    --- SOVEREIGN API GATEWAY ONLINE ---\n    ')
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
