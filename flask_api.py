@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_338 Linked
 import telemetry_bridge
 import os
 import sys
@@ -31,7 +32,7 @@ def check_auth():
 
 @app.route('/', methods=['GET'])
 def index():
-    return jsonify({'system': 'OMEGA-ASI SOVEREIGN CORE', 'version': 'X10.2.1', 'uptime': str(datetime.now() - state.boot_time), 'endpoints': ['/status', '/evolve', '/train', '/logs', '/recover']})
+    return jsonify({'system': 'OMEGA-ASI SOVEREIGN CORE', 'version': 'X10.2.1', 'uptime': str(datetime.now() - state.boot_time), 'endpoints': ['/status', '/evolve', '/train', '/logs', '/recover', '/healthcheck', '/shutdown']})
 
 @app.route('/status', methods=['GET'])
 def get_status():
@@ -83,6 +84,14 @@ def healthcheck():
     if state.status in ['FAULTY', 'CRITICAL_FAULT']:
         return (jsonify({'error': 'System is not healthy.'}), 503)
     return jsonify({'message': 'System is healthy.'})
+
+@app.route('/shutdown', methods=['POST'])
+def shutdown():
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        raise RuntimeError('Not running with the Werkzeug Server')
+    func()
+    return jsonify({'message': 'Server shutting down...'})
 
 @app.errorhandler(404)
 def not_found(error):
