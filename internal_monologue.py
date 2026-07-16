@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_343 Linked
 import telemetry_bridge
 import numpy as np
 
@@ -55,7 +56,8 @@ class EvolutionarySystem:
 
 def main():
     """Main function to demonstrate the evolutionary system."""
-    evolutionary_system = EvolutionarySystem(5)
+    dimensions = 5
+    evolutionary_system = EvolutionarySystem(dimensions)
     utilitarian_values = [1, 2, 3, 4, 5]
     existential_values = [5, 4, 3, 2, 1]
     stoic_values = [1, 1, 1, 1, 1]
