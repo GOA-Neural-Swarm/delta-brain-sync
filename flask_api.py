@@ -35,6 +35,22 @@ class ASI_State:
             logging.info('Sync operation successful.')
         except Exception as e:
             logging.error(f'Sync error: {e}')
+
+    def evolve(self):
+        self.is_training = True
+        self.status = 'EVOLVING'
+        try:
+            logging.info('Neural Expansion Sequence Initiated...')
+            self.architect.execute_evolution_step()
+            self.last_evolution = datetime.now()
+            self.status = 'STABLE'
+            self.evolution_count += 1
+            logging.info('Evolution successful.')
+        except Exception as e:
+            self.status = 'CRITICAL_FAULT'
+            logging.error(f'Evolution Error: {e}')
+        finally:
+            self.is_training = False
 state = ASI_State()
 logging.basicConfig(filename='system_gate.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
@@ -49,27 +65,11 @@ def index():
 def get_status():
     return jsonify({'gen': state.architect.gen, 'neural_load': f'{state.neural_load}%', 'is_training': state.is_training, 'classifier_type': state.architect.brain.classifier_type, 'last_sync': time.strftime('%Y-%m-%d %H:%M:%S'), 'status': state.status, 'evolution_count': state.evolution_count, 'sync_count': state.sync_count})
 
-def background_evolution():
-    state.is_training = True
-    state.status = 'EVOLVING'
-    try:
-        logging.info('Neural Expansion Sequence Initiated...')
-        state.architect.execute_evolution_step()
-        state.last_evolution = datetime.now()
-        state.status = 'STABLE'
-        state.evolution_count += 1
-        logging.info('Evolution successful.')
-    except Exception as e:
-        state.status = 'CRITICAL_FAULT'
-        logging.error(f'Evolution Error: {e}')
-    finally:
-        state.is_training = False
-
 @app.route('/evolve', methods=['POST'])
 def trigger_evolution():
     if state.is_training:
         return (jsonify({'error': 'Evolution already in progress.'}), 409)
-    thread = threading.Thread(target=background_evolution)
+    thread = threading.Thread(target=state.evolve)
     thread.start()
     return jsonify({'message': 'Evolution signal dispatched to background thread.'})
 
