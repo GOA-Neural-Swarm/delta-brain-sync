@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_338 Linked
 import telemetry_bridge
 import os
 import sys
@@ -24,6 +23,18 @@ class ASI_State:
         self.neural_load = 0.0
         self.status = 'STABLE'
         self.evolution_count = 0
+        self.sync_count = 0
+
+    def sync(self):
+        self.sync_count += 1
+        logging.info(f'Sync operation {self.sync_count} initiated...')
+        try:
+            self.architect.sync()
+            self.recovery.sync()
+            self.telemetry_bridge.sync()
+            logging.info('Sync operation successful.')
+        except Exception as e:
+            logging.error(f'Sync error: {e}')
 state = ASI_State()
 logging.basicConfig(filename='system_gate.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
@@ -32,11 +43,11 @@ def check_auth():
 
 @app.route('/', methods=['GET'])
 def index():
-    return jsonify({'system': 'OMEGA-ASI SOVEREIGN CORE', 'version': 'X10.2.1', 'uptime': str(datetime.now() - state.boot_time), 'endpoints': ['/status', '/evolve', '/train', '/logs', '/recover', '/healthcheck', '/shutdown']})
+    return jsonify({'system': 'OMEGA-ASI SOVEREIGN CORE', 'version': 'X10.2.2', 'uptime': str(datetime.now() - state.boot_time), 'endpoints': ['/status', '/evolve', '/train', '/logs', '/recover', '/healthcheck', '/shutdown', '/sync']})
 
 @app.route('/status', methods=['GET'])
 def get_status():
-    return jsonify({'gen': state.architect.gen, 'neural_load': f'{state.neural_load}%', 'is_training': state.is_training, 'classifier_type': state.architect.brain.classifier_type, 'last_sync': time.strftime('%Y-%m-%d %H:%M:%S'), 'status': state.status, 'evolution_count': state.evolution_count})
+    return jsonify({'gen': state.architect.gen, 'neural_load': f'{state.neural_load}%', 'is_training': state.is_training, 'classifier_type': state.architect.brain.classifier_type, 'last_sync': time.strftime('%Y-%m-%d %H:%M:%S'), 'status': state.status, 'evolution_count': state.evolution_count, 'sync_count': state.sync_count})
 
 def background_evolution():
     state.is_training = True
@@ -92,6 +103,12 @@ def shutdown():
         raise RuntimeError('Not running with the Werkzeug Server')
     func()
     return jsonify({'message': 'Server shutting down...'})
+
+@app.route('/sync', methods=['POST'])
+def sync():
+    thread = threading.Thread(target=state.sync)
+    thread.start()
+    return jsonify({'message': 'Sync operation initiated.'})
 
 @app.errorhandler(404)
 def not_found(error):
