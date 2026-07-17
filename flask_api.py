@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_347 Linked
 import telemetry_bridge
 import logging
 import os
@@ -25,33 +24,36 @@ class ASI_State:
         self.status = 'STABLE'
         self.evolution_count = 0
         self.sync_count = 0
+        self.lock = threading.Lock()
 
     def sync(self):
-        self.sync_count += 1
-        logging.info(f'Sync operation {self.sync_count} initiated...')
-        try:
-            self.architect.sync()
-            self.recovery.sync()
-            self.telemetry_bridge.sync()
-            logging.info('Sync operation successful.')
-        except Exception as e:
-            logging.error(f'Sync error: {e}')
+        with self.lock:
+            self.sync_count += 1
+            logging.info(f'Sync operation {self.sync_count} initiated...')
+            try:
+                self.architect.sync()
+                self.recovery.sync()
+                self.telemetry_bridge.sync()
+                logging.info('Sync operation successful.')
+            except Exception as e:
+                logging.error(f'Sync error: {e}')
 
     def evolve(self):
-        self.is_training = True
-        self.status = 'EVOLVING'
-        try:
-            logging.info('Neural Expansion Sequence Initiated...')
-            self.architect.execute_evolution_step()
-            self.last_evolution = datetime.now()
-            self.status = 'STABLE'
-            self.evolution_count += 1
-            logging.info('Evolution successful.')
-        except Exception as e:
-            self.status = 'CRITICAL_FAULT'
-            logging.error(f'Evolution Error: {e}')
-        finally:
-            self.is_training = False
+        with self.lock:
+            self.is_training = True
+            self.status = 'EVOLVING'
+            try:
+                logging.info('Neural Expansion Sequence Initiated...')
+                self.architect.execute_evolution_step()
+                self.last_evolution = datetime.now()
+                self.status = 'STABLE'
+                self.evolution_count += 1
+                logging.info('Evolution successful.')
+            except Exception as e:
+                self.status = 'CRITICAL_FAULT'
+                logging.error(f'Evolution Error: {e}')
+            finally:
+                self.is_training = False
 state = ASI_State()
 
 def check_auth():
