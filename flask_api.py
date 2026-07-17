@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_349 Linked
 import telemetry_bridge
 import logging
 import os
@@ -54,6 +55,9 @@ class ASI_State:
                 logging.error(f'Evolution Error: {e}')
             finally:
                 self.is_training = False
+
+    def get_status(self):
+        return {'gen': self.architect.gen, 'neural_load': f'{self.neural_load}%', 'is_training': self.is_training, 'classifier_type': self.architect.brain.classifier_type, 'last_sync': time.strftime('%Y-%m-%d %H:%M:%S'), 'status': self.status, 'evolution_count': self.evolution_count, 'sync_count': self.sync_count}
 state = ASI_State()
 
 def check_auth():
@@ -65,7 +69,7 @@ def index():
 
 @app.route('/status', methods=['GET'])
 def get_status():
-    return jsonify({'gen': state.architect.gen, 'neural_load': f'{state.neural_load}%', 'is_training': state.is_training, 'classifier_type': state.architect.brain.classifier_type, 'last_sync': time.strftime('%Y-%m-%d %H:%M:%S'), 'status': state.status, 'evolution_count': state.evolution_count, 'sync_count': state.sync_count})
+    return jsonify(state.get_status())
 
 @app.route('/evolve', methods=['POST'])
 def trigger_evolution():
