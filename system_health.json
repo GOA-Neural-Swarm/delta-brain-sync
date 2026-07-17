@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-07-17T13:17:40.160125",
+    "timestamp": "2026-07-17T16:14:45.034562",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1020-azure",
@@ -34,7 +34,7 @@
         "PyYAML": "6.0.3",
         "sympy": "1.14.0",
         "psutil": "7.2.2",
-        "filelock": "3.30.2",
+        "filelock": "3.30.3",
         "nvidia-nvshmem-cu13": "3.4.5",
         "nvidia-cudnn-cu13": "9.20.0.48",
         "backoff": "2.2.1",
@@ -80,7 +80,7 @@
     ],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.31,
+        "ram_available_gb": 14.3,
         "gpu_available": false
     }
 }
