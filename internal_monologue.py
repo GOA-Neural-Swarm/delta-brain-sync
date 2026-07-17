@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_352 Linked
 import telemetry_bridge
 import numpy as np
 
@@ -17,7 +18,7 @@ class HyperDimensionalLogic:
 
     def calculate_additive_evolution(self) -> np.ndarray:
         """Calculate the additive evolution by summing all values."""
-        return np.sum([self.values['utilitarian'], self.values['existential'], self.values['stoic'], self.values['evolutionary']], axis=0)
+        return np.sum(list(self.values.values()), axis=0)
 
 class EvolutionarySystem:
     """Class representing an evolutionary system."""
