@@ -1,9 +1,10 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_347 Linked
 import telemetry_bridge
+import logging
 import os
 import sys
 import threading
 import time
-import logging
 from flask import Flask, jsonify, request
 from datetime import datetime
 from brain import SovereignArchitect
@@ -52,7 +53,6 @@ class ASI_State:
         finally:
             self.is_training = False
 state = ASI_State()
-logging.basicConfig(filename='system_gate.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
 def check_auth():
     return True
@@ -126,5 +126,6 @@ if __name__ == '__main__':
         logging.critical('Core components missing. Emergency recovery required.')
         print('Core components missing. Emergency recovery required.')
         sys.exit(1)
+    logging.basicConfig(filename='system_gate.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
     print('\n    --- SOVEREIGN API GATEWAY ONLINE ---\n    ')
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
