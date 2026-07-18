@@ -1,6 +1,5 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_352 Linked
-import telemetry_bridge
 import numpy as np
+import telemetry_bridge
 
 class HyperDimensionalLogic:
     """Class representing hyper-dimensional logic."""
@@ -20,6 +19,13 @@ class HyperDimensionalLogic:
         """Calculate the additive evolution by summing all values."""
         return np.sum(list(self.values.values()), axis=0)
 
+    def calculate_multiplicative_evolution(self) -> np.ndarray:
+        """Calculate the multiplicative evolution by multiplying all values."""
+        result = np.ones(self.dimensions)
+        for value_type in self.values:
+            result *= self.values[value_type]
+        return result
+
 class EvolutionarySystem:
     """Class representing an evolutionary system."""
 
@@ -27,7 +33,7 @@ class EvolutionarySystem:
         """Initialize the evolutionary system with the given dimensions."""
         self.dimensions = dimensions
         self.hyper_dimensional_logic = HyperDimensionalLogic(dimensions)
-        self.history = {'utilitarian': [], 'existential': [], 'stoic': [], 'evolutionary': [], 'additive_evolution': []}
+        self.history = {'utilitarian': [], 'existential': [], 'stoic': [], 'evolutionary': [], 'additive_evolution': [], 'multiplicative_evolution': []}
 
     def update_values(self, utilitarian_values: np.ndarray, existential_values: np.ndarray, stoic_values: np.ndarray, evolutionary_values: np.ndarray):
         """Update the values of the evolutionary system."""
@@ -44,6 +50,12 @@ class EvolutionarySystem:
         """Calculate the additive evolution and update the history."""
         result = self.hyper_dimensional_logic.calculate_additive_evolution()
         self.history['additive_evolution'].append(result.tolist())
+        return result
+
+    def calculate_multiplicative_evolution(self) -> np.ndarray:
+        """Calculate the multiplicative evolution and update the history."""
+        result = self.hyper_dimensional_logic.calculate_multiplicative_evolution()
+        self.history['multiplicative_evolution'].append(result.tolist())
         return result
 
     def print_history(self):
@@ -65,7 +77,9 @@ def main():
     for i in range(5):
         evolutionary_system.update_values(utilitarian_values, existential_values, stoic_values, evolutionary_values)
         additive_evolution = evolutionary_system.calculate_additive_evolution()
+        multiplicative_evolution = evolutionary_system.calculate_multiplicative_evolution()
         print(f'Iteration {i + 1} - Additive Evolution: {additive_evolution.tolist()}')
+        print(f'Iteration {i + 1} - Multiplicative Evolution: {multiplicative_evolution.tolist()}')
         utilitarian_values += 1
         existential_values -= 1
         stoic_values += 0.5
