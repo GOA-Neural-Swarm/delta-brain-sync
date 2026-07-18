@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-07-18T01:55:14.174448",
+    "timestamp": "2026-07-18T05:23:41.815748",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1020-azure",
@@ -51,7 +51,6 @@
         "python-dateutil": "2.9.0.post0",
         "charset-normalizer": "3.4.9",
         "nvidia-cublas": "13.1.1.3",
-        "matplotlib": "3.11.0",
         "qiskit": "2.5.0",
         "stevedore": "5.9.0",
         "MarkupSafe": "3.0.3",
@@ -72,6 +71,7 @@
         "nvidia-cuda-nvrtc": "13.0.88",
         "nvidia-cusolver": "12.0.4.66",
         "nvidia-curand": "10.4.0.35",
+        "matplotlib": "3.11.1",
         "nvidia-cusparselt-cu13": "0.8.1"
     },
     "conflicts": [
@@ -80,7 +80,7 @@
     ],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.32,
+        "ram_available_gb": 14.31,
         "gpu_available": false
     }
 }

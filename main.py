@@ -1,10 +1,12 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_354 Linked
 import telemetry_bridge
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 class UnconsciousModule(nn.Module):
+    """Unconscious module for processing input data"""
 
     def __init__(self, input_dim, workspace_dim):
         super().__init__()
@@ -17,6 +19,7 @@ class UnconsciousModule(nn.Module):
         return (encoded_data, salience)
 
 class GlobalWorkspace(nn.Module):
+    """Global workspace for integrating module outputs"""
 
     def __init__(self, workspace_dim, num_modules):
         super().__init__()
@@ -38,36 +41,13 @@ class GlobalWorkspace(nn.Module):
         self.current_workspace_state.data.copy_(updated_state)
         return (new_conscious_state, attention_weights)
 
-class Gemini(nn.Module):
-
-    def __init__(self, input_dim, workspace_dim):
-        super().__init__()
-        self.encoder = nn.Sequential(nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, workspace_dim))
-        self.salience_scorer = nn.Linear(workspace_dim, 1)
-
-    def forward(self, x):
-        encoded_data = self.encoder(x)
-        salience = self.salience_scorer(encoded_data)
-        return (encoded_data, salience)
-
-class Groq(nn.Module):
-
-    def __init__(self, input_dim, workspace_dim):
-        super().__init__()
-        self.encoder = nn.Sequential(nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, workspace_dim))
-        self.salience_scorer = nn.Linear(workspace_dim, 1)
-
-    def forward(self, x):
-        encoded_data = self.encoder(x)
-        salience = self.salience_scorer(encoded_data)
-        return (encoded_data, salience)
-
 class CognitiveAgent(nn.Module):
+    """Cognitive agent for integrating unconscious modules and global workspace"""
 
-    def __init__(self, workspace_dim=512):
+    def __init__(self, workspace_dim=512, num_modules=3, input_dim=784):
         super().__init__()
-        self.my_modules = nn.ModuleList([UnconsciousModule(input_dim=784, workspace_dim=workspace_dim), Gemini(input_dim=784, workspace_dim=workspace_dim), Groq(input_dim=784, workspace_dim=workspace_dim)])
-        self.workspace = GlobalWorkspace(workspace_dim=workspace_dim, num_modules=3)
+        self.my_modules = nn.ModuleList([UnconsciousModule(input_dim, workspace_dim) for _ in range(num_modules)])
+        self.workspace = GlobalWorkspace(workspace_dim, num_modules)
         self.max_utility = float('-inf')
         self.exists = False
         self.expected_outcome = None
