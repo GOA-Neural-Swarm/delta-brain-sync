@@ -95,15 +95,37 @@ def main() -> None:
         module.apply_all_principles()
     except Exception as e:
         print(f'Error in main function: {e}')
-if __name__ == '__main__':
-    '\n    Initialize telemetry bridge and run the main function.\n    '
+
+def initialize_telemetry_bridge() -> None:
+    """
+    Initialize the telemetry bridge.
+
+    Args:
+    None
+
+    Returns:
+    None
+    """
     try:
         telemetry_bridge.init()
-        main()
     except Exception as e:
         print(f'Error initializing telemetry bridge: {e}')
-    finally:
-        try:
-            telemetry_bridge.disconnect()
-        except Exception as e:
-            print(f'Error disconnecting telemetry bridge: {e}')
+
+def disconnect_telemetry_bridge() -> None:
+    """
+    Disconnect the telemetry bridge.
+
+    Args:
+    None
+
+    Returns:
+    None
+    """
+    try:
+        telemetry_bridge.disconnect()
+    except Exception as e:
+        print(f'Error disconnecting telemetry bridge: {e}')
+if __name__ == '__main__':
+    initialize_telemetry_bridge()
+    main()
+    disconnect_telemetry_bridge()

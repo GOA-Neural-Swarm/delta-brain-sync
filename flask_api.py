@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_360 Linked
 import telemetry_bridge
 import logging
 import os
@@ -10,7 +9,19 @@ from datetime import datetime
 from brain import SovereignArchitect
 from recovery import SovereignRecovery
 from telemetry_bridge import TelemetryBridge
+from flask_cors import CORS
+from flask_httpauth import HTTPTokenAuth
+from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
+CORS(app)
+auth = HTTPTokenAuth(scheme='Bearer')
+users = {'admin': generate_password_hash('password')}
+
+@auth.verify_token
+def verify_token(token):
+    for user, password in users.items():
+        if check_password_hash(password, token):
+            return user
 
 class ASI_State:
 
@@ -60,18 +71,18 @@ class ASI_State:
         return {'gen': self.architect.gen, 'neural_load': f'{self.neural_load}%', 'is_training': self.is_training, 'classifier_type': self.architect.brain.classifier_type, 'last_sync': time.strftime('%Y-%m-%d %H:%M:%S'), 'status': self.status, 'evolution_count': self.evolution_count, 'sync_count': self.sync_count}
 state = ASI_State()
 
-def check_auth():
-    return True
-
 @app.route('/', methods=['GET'])
+@auth.login_required
 def index():
     return jsonify({'system': 'OMEGA-ASI SOVEREIGN CORE', 'version': 'X10.2.2', 'uptime': str(datetime.now() - state.boot_time), 'endpoints': ['/status', '/evolve', '/train', '/logs', '/recover', '/healthcheck', '/shutdown', '/sync']})
 
 @app.route('/status', methods=['GET'])
+@auth.login_required
 def get_status():
     return jsonify(state.get_status())
 
 @app.route('/evolve', methods=['POST'])
+@auth.login_required
 def trigger_evolution():
     if state.is_training:
         return (jsonify({'error': 'Evolution already in progress.'}), 409)
@@ -80,6 +91,7 @@ def trigger_evolution():
     return jsonify({'message': 'Evolution signal dispatched to background thread.'})
 
 @app.route('/logs', methods=['GET'])
+@auth.login_required
 def get_logs():
     log_files = ['evolution_logs.md', 'sync_recovery.txt', 'system_gate.log']
     combined_logs = {}
@@ -90,6 +102,7 @@ def get_logs():
     return jsonify(combined_logs)
 
 @app.route('/recover', methods=['POST'])
+@auth.login_required
 def manual_recovery():
     state.status = 'RECOVERING'
     thread = threading.Thread(target=state.recovery.run)
@@ -97,12 +110,14 @@ def manual_recovery():
     return jsonify({'message': 'Sovereign Recovery Engine Engaged.'})
 
 @app.route('/healthcheck', methods=['GET'])
+@auth.login_required
 def healthcheck():
     if state.status in ['FAULTY', 'CRITICAL_FAULT']:
         return (jsonify({'error': 'System is not healthy.'}), 503)
     return jsonify({'message': 'System is healthy.'})
 
 @app.route('/shutdown', methods=['POST'])
+@auth.login_required
 def shutdown():
     func = request.environ.get('werkzeug.server.shutdown')
     if func is None:
@@ -111,10 +126,19 @@ def shutdown():
     return jsonify({'message': 'Server shutting down...'})
 
 @app.route('/sync', methods=['POST'])
+@auth.login_required
 def sync():
     thread = threading.Thread(target=state.sync)
     thread.start()
     return jsonify({'message': 'Sync operation initiated.'})
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.json.get('username')
+    password = request.json.get('password')
+    if username in users and check_password_hash(users[username], password):
+        return jsonify({'token': password})
+    return (jsonify({'error': 'Invalid credentials.'}), 401)
 
 @app.errorhandler(404)
 def not_found(error):
