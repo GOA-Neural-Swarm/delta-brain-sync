@@ -1,14 +1,14 @@
 [
     {
-        "timestamp": 1784448335.7335,
+        "timestamp": 1784456521.4207191,
         "file": "./flask_api.py",
         "status": "TRANSCENDED",
-        "asi_score": 117.55337171847621
+        "asi_score": 100.04585051199055
     },
     {
-        "timestamp": 1784448343.0936618,
-        "file": "./internal_monologue.py",
+        "timestamp": 1784456534.173362,
+        "file": "./main.py",
         "status": "TRANSCENDED",
-        "asi_score": 101.69156412528744
+        "asi_score": 104.35917512285064
     }
 ]

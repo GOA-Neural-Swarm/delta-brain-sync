@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_364 Linked
 import telemetry_bridge
 import torch
 import torch.nn as nn
@@ -7,12 +8,12 @@ import numpy as np
 class UnconsciousModule(nn.Module):
     """Unconscious module for processing input data"""
 
-    def __init__(self, input_dim, workspace_dim):
+    def __init__(self, input_dim: int, workspace_dim: int):
         super().__init__()
         self.encoder = nn.Sequential(nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, workspace_dim))
         self.salience_scorer = nn.Linear(workspace_dim, 1)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> tuple:
         encoded_data = self.encoder(x)
         salience = self.salience_scorer(encoded_data)
         return (encoded_data, salience)
@@ -20,7 +21,7 @@ class UnconsciousModule(nn.Module):
 class GlobalWorkspace(nn.Module):
     """Global workspace for integrating module outputs"""
 
-    def __init__(self, workspace_dim, num_modules):
+    def __init__(self, workspace_dim: int, num_modules: int):
         super().__init__()
         self.workspace_dim = workspace_dim
         self.current_workspace_state = nn.Parameter(torch.randn(1, workspace_dim))
@@ -28,7 +29,7 @@ class GlobalWorkspace(nn.Module):
         self.key = nn.Linear(workspace_dim, workspace_dim)
         self.value = nn.Linear(workspace_dim, workspace_dim)
 
-    def forward(self, module_outputs, salience_scores):
+    def forward(self, module_outputs: torch.Tensor, salience_scores: torch.Tensor) -> tuple:
         Q = self.query(self.current_workspace_state).unsqueeze(1)
         K = self.key(module_outputs)
         V = self.value(module_outputs)
@@ -43,7 +44,7 @@ class GlobalWorkspace(nn.Module):
 class CognitiveAgent(nn.Module):
     """Cognitive agent for integrating unconscious modules and global workspace"""
 
-    def __init__(self, workspace_dim=512, num_modules=3, input_dim=784):
+    def __init__(self, workspace_dim: int=512, num_modules: int=3, input_dim: int=784):
         super().__init__()
         self.my_modules = nn.ModuleList([UnconsciousModule(input_dim, workspace_dim) for _ in range(num_modules)])
         self.workspace = GlobalWorkspace(workspace_dim, num_modules)
@@ -55,7 +56,7 @@ class CognitiveAgent(nn.Module):
         self.existing_conditions = False
         self.optimizer = torch.optim.Adam(self.parameters(), lr=0.001)
 
-    def forward(self, *inputs):
+    def forward(self, *inputs: torch.Tensor) -> tuple:
         module_outputs = []
         salience_scores = []
         for i, (module, input_data) in enumerate(zip(self.my_modules, inputs)):
@@ -70,7 +71,7 @@ class CognitiveAgent(nn.Module):
             self.max_utility = utility
         return (conscious_thought, focus_weights)
 
-    def train(self, inputs, targets):
+    def train(self, inputs: list, targets: torch.Tensor) -> float:
         self.optimizer.zero_grad()
         outputs, _ = self(*inputs)
         loss = F.mse_loss(outputs, targets)
