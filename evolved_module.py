@@ -32,7 +32,7 @@ class SovereignCortex:
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.output_dim = output_dim
-        self.generation = 365
+        self.generation = 366
         self.W1 = np.random.randn(self.input_dim, self.hidden_dim) * np.sqrt(2.0 / self.input_dim)
         self.b1 = np.zeros((1, self.hidden_dim))
         self.W2 = np.random.randn(self.hidden_dim, self.output_dim) * np.sqrt(2.0 / self.hidden_dim)
