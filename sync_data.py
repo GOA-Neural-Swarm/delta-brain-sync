@@ -5,7 +5,8 @@ import json
 import os
 import sys
 import logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s | 🛰️ [DATA-SYNC] | %(message)s')
+from logging.handlers import RotatingFileHandler
+logging.basicConfig(level=logging.INFO, format='%(asctime)s | [DATA-SYNC] | %(message)s', handlers=[logging.StreamHandler(), RotatingFileHandler('sovereign_sync.log', maxBytes=1000000, backupCount=5)])
 logger = logging.getLogger('Sovereign-Sync')
 
 class NeonSovereignEngine:
@@ -41,13 +42,13 @@ class NeonSovereignEngine:
         cur = conn.cursor()
         try:
             if 'relation "intelligence_core" does not exist' in error_msg.lower():
-                logger.info('🛠️ Creating missing table: intelligence_core...')
-                cur.execute("\n                    CREATE TABLE IF NOT EXISTS intelligence_core (\n                        id SERIAL PRIMARY KEY,\n                        module_name TEXT UNIQUE,\n                        logic_data JSONB,\n                        logic_hash TEXT DEFAULT 'initial_sync',\n                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n                    );\n                    INSERT INTO intelligence_core (module_name, logic_data) \n                    VALUES ('Singularity Evolution Node', '{}') \n                    ON CONFLICT DO NOTHING;\n                ")
+                logger.info('Creating missing table: intelligence_core...')
+                cur.execute("\n                    CREATE TABLE IF NOT EXISTS intelligence_core (\n                        id SERIAL PRIMARY KEY,\n                        module_name TEXT UNIQUE,\n                        logic_data JSONB,\n                        logic_hash TEXT DEFAULT 'initial_sync',\n                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n                    );\n                    INSERT INTO intelligence_core (module_name, logic_data)\n                    VALUES ('Singularity Evolution Node', '{}')\n                    ON CONFLICT DO NOTHING;\n                ")
             elif 'column "logic_hash" does not exist' in error_msg.lower():
-                logger.info('🧬 Injecting missing column: logic_hash...')
+                logger.info('Injecting missing column: logic_hash...')
                 cur.execute("ALTER TABLE intelligence_core ADD COLUMN IF NOT EXISTS logic_hash TEXT DEFAULT 'stable_v1';")
             conn.commit()
-            logger.info('✅ Database Self-Healing Protocol: SUCCESS.')
+            logger.info('Database Self-Healing Protocol: SUCCESS.')
         except Exception as e:
             logger.error(f'Failed to auto-heal database: {e}')
         finally:
@@ -59,7 +60,7 @@ class NeonSovereignEngine:
         try:
             conn = self.connect()
             cur = conn.cursor()
-            query = "\n                SELECT logic_data, logic_hash \n                FROM intelligence_core \n                WHERE module_name = 'Singularity Evolution Node';\n            "
+            query = "\n                SELECT logic_data, logic_hash\n                FROM intelligence_core\n                WHERE module_name = 'Singularity Evolution Node';\n            "
             cur.execute(query)
             row = cur.fetchone()
             if row:
@@ -67,7 +68,7 @@ class NeonSovereignEngine:
                 payload = {'metadata': {'source': 'Neon-V4-Cloud', 'hash': logic_hash, 'status': 'HYPER_EXPANSION_READY'}, 'data': logic_data}
                 with open('ai_status.json', 'w') as f:
                     json.dump(payload, f, indent=4)
-                logger.info(f'✅ Neural Parity Achieved. Sync Hash: {logic_hash}')
+                logger.info(f'Neural Parity Achieved. Sync Hash: {logic_hash}')
             else:
                 logger.warning('Target Module not found. Initiating placeholder...')
                 cur.execute("INSERT INTO intelligence_core (module_name, logic_data) VALUES ('Singularity Evolution Node', '{}');")
