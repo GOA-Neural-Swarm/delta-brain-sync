@@ -1,20 +1,22 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_374 Linked
 import telemetry_bridge
 import logging
 import os
 import sys
 import threading
 import time
+from datetime import datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_httpauth import HTTPTokenAuth
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
 from brain import SovereignArchitect
 from recovery import SovereignRecovery
 from telemetry_bridge import TelemetryBridge
 app = Flask(__name__)
 CORS(app)
 auth = HTTPTokenAuth(scheme='Bearer')
+logging.basicConfig(filename='system_gate.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 users = {'admin': generate_password_hash('password')}
 
 class ASI_State:
@@ -156,6 +158,5 @@ if __name__ == '__main__':
         logging.critical('Core components missing. Emergency recovery required.')
         print('Core components missing. Emergency recovery required.')
         sys.exit(1)
-    logging.basicConfig(filename='system_gate.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
     print('\n    --- SOVEREIGN API GATEWAY ONLINE ---\n    ')
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
