@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_379 Linked
 import telemetry_bridge
 import logging
 import os
