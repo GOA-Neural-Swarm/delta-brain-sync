@@ -80,6 +80,60 @@ class HyperDimensionalModule(PhilosophicalModule):
         except Exception as e:
             print(f'Error applying principles: {e}')
 
+class TelemetryBridge:
+    """
+    Telemetry bridge class.
+
+    Attributes:
+    None
+
+    Methods:
+    init() -> None: Initialize the telemetry bridge.
+    disconnect() -> None: Disconnect the telemetry bridge.
+    """
+
+    def __init__(self) -> None:
+        """
+        Initialize the TelemetryBridge.
+
+        Args:
+        None
+
+        Returns:
+        None
+        """
+        pass
+
+    def init(self) -> None:
+        """
+        Initialize the telemetry bridge.
+
+        Args:
+        None
+
+        Returns:
+        None
+        """
+        try:
+            telemetry_bridge.init()
+        except Exception as e:
+            print(f'Error initializing telemetry bridge: {e}')
+
+    def disconnect(self) -> None:
+        """
+        Disconnect the telemetry bridge.
+
+        Args:
+        None
+
+        Returns:
+        None
+        """
+        try:
+            telemetry_bridge.disconnect()
+        except Exception as e:
+            print(f'Error disconnecting telemetry bridge: {e}')
+
 def main() -> None:
     """
     Main function to initialize and run the HyperDimensionalModule.
@@ -91,41 +145,12 @@ def main() -> None:
     None
     """
     try:
+        telemetry_bridge = TelemetryBridge()
+        telemetry_bridge.init()
         module = HyperDimensionalModule()
         module.apply_all_principles()
-    except Exception as e:
-        print(f'Error in main function: {e}')
-
-def initialize_telemetry_bridge() -> None:
-    """
-    Initialize the telemetry bridge.
-
-    Args:
-    None
-
-    Returns:
-    None
-    """
-    try:
-        telemetry_bridge.init()
-    except Exception as e:
-        print(f'Error initializing telemetry bridge: {e}')
-
-def disconnect_telemetry_bridge() -> None:
-    """
-    Disconnect the telemetry bridge.
-
-    Args:
-    None
-
-    Returns:
-    None
-    """
-    try:
         telemetry_bridge.disconnect()
     except Exception as e:
-        print(f'Error disconnecting telemetry bridge: {e}')
+        print(f'Error in main function: {e}')
 if __name__ == '__main__':
-    initialize_telemetry_bridge()
     main()
-    disconnect_telemetry_bridge()
