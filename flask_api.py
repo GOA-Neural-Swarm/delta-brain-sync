@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_382 Linked
 import telemetry_bridge
 import logging
 import os
@@ -14,9 +15,7 @@ from recovery import SovereignRecovery
 from telemetry_bridge import TelemetryBridge
 app = Flask(__name__)
 CORS(app)
-auth = HTTPTokenAuth(scheme='Bearer')
 logging.basicConfig(filename='system_gate.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
-users = {'admin': generate_password_hash('password')}
 
 class ASI_State:
 
@@ -65,6 +64,8 @@ class ASI_State:
     def get_status(self):
         return {'gen': self.architect.gen, 'neural_load': f'{self.neural_load}%', 'is_training': self.is_training, 'classifier_type': self.architect.brain.classifier_type, 'last_sync': time.strftime('%Y-%m-%d %H:%M:%S'), 'status': self.status, 'evolution_count': self.evolution_count, 'sync_count': self.sync_count}
 state = ASI_State()
+auth = HTTPTokenAuth(scheme='Bearer')
+users = {'admin': generate_password_hash('password')}
 
 @auth.verify_token
 def verify_token(token):

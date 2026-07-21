@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_381 Linked
 import telemetry_bridge
 import numpy as np
 
