@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-07-21T13:27:53.771461",
+    "timestamp": "2026-07-21T16:24:16.731700",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1020-azure",
@@ -29,7 +29,6 @@
         "urllib3": "2.7.0",
         "packaging": "26.2",
         "cuda-bindings": "13.3.1",
-        "cuda-pathfinder": "1.5.6",
         "pip": "26.1.2",
         "scipy": "1.17.1",
         "PyYAML": "6.0.3",
@@ -54,6 +53,7 @@
         "qiskit": "2.5.0",
         "stevedore": "5.9.0",
         "MarkupSafe": "3.0.3",
+        "cuda-pathfinder": "1.6.0",
         "psycopg2-binary": "2.9.12",
         "cycler": "0.12.1",
         "setuptools": "83.0.0",
@@ -80,7 +80,7 @@
     ],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.32,
+        "ram_available_gb": 14.3,
         "gpu_available": false
     }
 }
