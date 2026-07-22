@@ -145,11 +145,11 @@ def main() -> None:
     None
     """
     try:
-        telemetry_bridge = TelemetryBridge()
-        telemetry_bridge.init()
+        telemetry_bridge_instance = TelemetryBridge()
+        telemetry_bridge_instance.init()
         module = HyperDimensionalModule()
         module.apply_all_principles()
-        telemetry_bridge.disconnect()
+        telemetry_bridge_instance.disconnect()
     except Exception as e:
         print(f'Error in main function: {e}')
 if __name__ == '__main__':
