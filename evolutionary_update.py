@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_401 Linked
 import telemetry_bridge
 import os
 import sys
@@ -31,6 +32,10 @@ class EvolutionarySystem:
         for function in self.functions:
             function()
 
+    def update_functions(self, new_function):
+        """Adds a new function to the existing list of functions."""
+        self.functions.append(new_function)
+
     def __str__(self):
         return f'EvolutionarySystem(functions={self.functions})'
 
@@ -49,11 +54,6 @@ def hyper_dimensional_logic(perspectives):
 def evolutionary_function(name):
     """Prints a message indicating an evolutionary function has been added."""
     print(f'{name} evolutionary function added')
-
-def additive_evolution(existing_functions, new_function):
-    """Adds a new function to the existing list of functions and returns the updated list."""
-    existing_functions.append(new_function)
-    return existing_functions
 
 def create_system(name, choice):
     """Creates an evolutionary system and entity."""
@@ -78,10 +78,7 @@ def recursive_evolution(systems, entities, names, choices):
         perspectives = create_perspectives(entity, name)
         result = hyper_dimensional_logic(perspectives)
         print(result)
-        existing_functions = list(system.functions)
-        new_function = lambda: print(f'New {name} evolutionary function added')
-        updated_functions = additive_evolution(existing_functions, new_function)
-        system.functions = updated_functions
+        system.update_functions(lambda: print(f'New {name} evolutionary function added'))
         system.execute_functions()
         print(f'System: {system}')
         print(f'Entity: {entity}')

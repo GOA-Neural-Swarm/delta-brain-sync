@@ -40,6 +40,7 @@ class GlobalWorkspace(nn.Module):
         self.query = nn.Linear(workspace_dim, workspace_dim)
         self.key = nn.Linear(workspace_dim, workspace_dim)
         self.value = nn.Linear(workspace_dim, workspace_dim)
+        self.self_attention = nn.MultiHeadAttention(embed_dim=workspace_dim, num_heads=8)
 
     def forward(self, module_outputs: torch.Tensor, salience_scores: torch.Tensor) -> tuple:
         """
@@ -61,7 +62,8 @@ class GlobalWorkspace(nn.Module):
         new_conscious_state = torch.matmul(attention_weights, V)
         updated_state = 0.9 * self.current_workspace_state.data + 0.1 * new_conscious_state.squeeze(1)
         self.current_workspace_state.data.copy_(updated_state)
-        return (new_conscious_state, attention_weights)
+        conscious_state_attention = self.self_attention(updated_state.unsqueeze(0), updated_state.unsqueeze(0))
+        return (conscious_state_attention[0].squeeze(0), attention_weights)
 
 class CognitiveAgent(nn.Module):
     """
@@ -78,7 +80,7 @@ class CognitiveAgent(nn.Module):
         self.iterations = 1
         self.evolved = True
         self.existing_conditions = False
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=0.001)
+        self.optimizer = torch.optim.AdamW(self.parameters(), lr=0.001, weight_decay=0.01)
 
     def forward(self, *inputs: torch.Tensor) -> tuple:
         """
