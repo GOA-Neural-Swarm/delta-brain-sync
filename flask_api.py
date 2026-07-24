@@ -42,6 +42,7 @@ class ASI_State:
                 logging.info('Sync operation successful.')
             except Exception as e:
                 logging.error(f'Sync error: {e}')
+                self.status = 'FAULTY'
 
     def evolve(self):
         with self.lock:

@@ -1,8 +1,14 @@
 [
     {
-        "timestamp": 1784844125.8985457,
-        "file": "./omega_hdc.js",
+        "timestamp": 1784858470.3376834,
+        "file": "./flask_api.py",
         "status": "TRANSCENDED",
-        "asi_score": 136.9289338363846
+        "asi_score": 104.81519157259831
+    },
+    {
+        "timestamp": 1784858478.0224764,
+        "file": "./internal_monologue.py",
+        "status": "TRANSCENDED",
+        "asi_score": 102.55506605670593
     }
 ]
