@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_401 Linked
 import telemetry_bridge
 import os
 import sys
