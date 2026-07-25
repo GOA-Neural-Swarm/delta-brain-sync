@@ -29,17 +29,25 @@ class HyperDimensionalModule(PhilosophicalModule):
 class TelemetryBridge:
     """Telemetry bridge for connecting and disconnecting."""
 
+    def __init__(self) -> None:
+        """Initialize the telemetry bridge."""
+        self.initialized = False
+
     def init(self) -> None:
         """Initialize the telemetry bridge."""
         try:
-            telemetry_bridge.init()
+            if not self.initialized:
+                telemetry_bridge.init()
+                self.initialized = True
         except Exception as e:
             print(f'Error initializing telemetry bridge: {e}')
 
     def disconnect(self) -> None:
         """Disconnect the telemetry bridge."""
         try:
-            telemetry_bridge.disconnect()
+            if self.initialized:
+                telemetry_bridge.disconnect()
+                self.initialized = False
         except Exception as e:
             print(f'Error disconnecting telemetry bridge: {e}')
 
