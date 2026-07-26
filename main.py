@@ -7,6 +7,10 @@ import numpy as np
 class UnconsciousModule(nn.Module):
     """
     Unconscious module for processing input data.
+
+    Args:
+        input_dim (int): Input dimension.
+        workspace_dim (int): Workspace dimension.
     """
 
     def __init__(self, input_dim: int, workspace_dim: int):
@@ -19,10 +23,10 @@ class UnconsciousModule(nn.Module):
         Forward pass through the unconscious module.
 
         Args:
-        x (torch.Tensor): Input data.
+            x (torch.Tensor): Input data.
 
         Returns:
-        tuple: Encoded data and salience score.
+            tuple: Encoded data and salience score.
         """
         encoded_data = self.encoder(x)
         salience = self.salience_scorer(encoded_data)
@@ -31,6 +35,10 @@ class UnconsciousModule(nn.Module):
 class GlobalWorkspace(nn.Module):
     """
     Global workspace for integrating information from multiple modules.
+
+    Args:
+        workspace_dim (int): Workspace dimension.
+        num_modules (int): Number of modules.
     """
 
     def __init__(self, workspace_dim: int, num_modules: int):
@@ -47,11 +55,11 @@ class GlobalWorkspace(nn.Module):
         Forward pass through the global workspace.
 
         Args:
-        module_outputs (torch.Tensor): Outputs from multiple modules.
-        salience_scores (torch.Tensor): Salience scores from multiple modules.
+            module_outputs (torch.Tensor): Outputs from multiple modules.
+            salience_scores (torch.Tensor): Salience scores from multiple modules.
 
         Returns:
-        tuple: New conscious state and attention weights.
+            tuple: New conscious state and attention weights.
         """
         Q = self.query(self.current_workspace_state).unsqueeze(1)
         K = self.key(module_outputs)
@@ -68,6 +76,11 @@ class GlobalWorkspace(nn.Module):
 class CognitiveAgent(nn.Module):
     """
     Cognitive agent that integrates multiple unconscious modules and a global workspace.
+
+    Args:
+        workspace_dim (int, optional): Workspace dimension. Defaults to 512.
+        num_modules (int, optional): Number of modules. Defaults to 3.
+        input_dim (int, optional): Input dimension. Defaults to 784.
     """
 
     def __init__(self, workspace_dim: int=512, num_modules: int=3, input_dim: int=784):
@@ -87,10 +100,10 @@ class CognitiveAgent(nn.Module):
         Forward pass through the cognitive agent.
 
         Args:
-        *inputs (torch.Tensor): Input data for multiple modules.
+            *inputs (torch.Tensor): Input data for multiple modules.
 
         Returns:
-        tuple: Conscious thought and focus weights.
+            tuple: Conscious thought and focus weights.
         """
         module_outputs = []
         salience_scores = []
@@ -111,11 +124,11 @@ class CognitiveAgent(nn.Module):
         Train the cognitive agent.
 
         Args:
-        inputs (list): Input data for multiple modules.
-        targets (torch.Tensor): Target output.
+            inputs (list): Input data for multiple modules.
+            targets (torch.Tensor): Target output.
 
         Returns:
-        float: Loss value.
+            float: Loss value.
         """
         self.optimizer.zero_grad()
         outputs, _ = self(*inputs)
