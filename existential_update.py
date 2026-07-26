@@ -20,11 +20,8 @@ class HyperDimensionalModule(PhilosophicalModule):
 
     def apply_all_principles(self) -> None:
         """Apply all principles in the module."""
-        try:
-            for principle in self.principles.values():
-                self.apply_principle(principle)
-        except Exception as e:
-            print(f'Error applying principles: {e}')
+        for principle in self.principles.values():
+            self.apply_principle(principle)
 
 class TelemetryBridge:
     """Telemetry bridge for connecting and disconnecting."""
@@ -35,31 +32,31 @@ class TelemetryBridge:
 
     def init(self) -> None:
         """Initialize the telemetry bridge."""
-        try:
-            if not self.initialized:
+        if not self.initialized:
+            try:
                 telemetry_bridge.init()
                 self.initialized = True
-        except Exception as e:
-            print(f'Error initializing telemetry bridge: {e}')
+            except telemetry_bridge.InitError as e:
+                print(f'Error initializing telemetry bridge: {e}')
 
     def disconnect(self) -> None:
         """Disconnect the telemetry bridge."""
-        try:
-            if self.initialized:
+        if self.initialized:
+            try:
                 telemetry_bridge.disconnect()
                 self.initialized = False
-        except Exception as e:
-            print(f'Error disconnecting telemetry bridge: {e}')
+            except telemetry_bridge.DisconnectError as e:
+                print(f'Error disconnecting telemetry bridge: {e}')
 
 def main() -> None:
     """Main function to execute the program."""
+    telemetry_bridge_instance = TelemetryBridge()
+    telemetry_bridge_instance.init()
+    module = HyperDimensionalModule()
+    module.apply_all_principles()
+    telemetry_bridge_instance.disconnect()
+if __name__ == '__main__':
     try:
-        telemetry_bridge_instance = TelemetryBridge()
-        telemetry_bridge_instance.init()
-        module = HyperDimensionalModule()
-        module.apply_all_principles()
-        telemetry_bridge_instance.disconnect()
+        main()
     except Exception as e:
         print(f'Error in main function: {e}')
-if __name__ == '__main__':
-    main()
