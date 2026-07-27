@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-07-27T17:24:03.780877",
+    "timestamp": "2026-07-27T19:03:40.103955",
     "system": {
         "os": "Linux",
         "os_release": "6.17.0-1020-azure",
@@ -55,7 +55,6 @@
         "httpx": "0.28.1",
         "pytokens": "0.4.1",
         "pydub": "0.25.1",
-        "fastapi": "0.140.6",
         "httplib2": "0.32.0",
         "orjson": "3.11.9",
         "six": "1.17.0",
@@ -139,6 +138,7 @@
         "grpcio": "1.83.0",
         "pyparsing": "3.3.2",
         "gradio_client": "1.8.0",
+        "fastapi": "0.140.7",
         "pycodestyle": "2.14.0",
         "networkx": "3.6.1",
         "diffusers": "0.32.2",
@@ -168,7 +168,7 @@
     "conflicts": [],
     "hardware": {
         "ram_total_gb": 15.61,
-        "ram_available_gb": 14.59,
+        "ram_available_gb": 14.54,
         "gpu_available": false
     }
 }
