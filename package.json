@@ -9,9 +9,9 @@
   "dependencies": {
     "@octokit/rest": "^20.1.2",
     "@supabase/supabase-js": "^2.110.8",
-    "axios": "^1.18.0",
+    "axios": "^1.18.1",
     "firebase-admin": "^12.7.0",
-    "js-yaml": "^4.2.0",
+    "js-yaml": "^4.3.0",
     "pg": "^8.22.0"
   }
 }
