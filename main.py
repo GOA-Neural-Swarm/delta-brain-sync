@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+
 class UnconsciousModule(nn.Module):
     """
     Unconscious module for processing input data.
@@ -15,7 +16,9 @@ class UnconsciousModule(nn.Module):
 
     def __init__(self, input_dim: int, workspace_dim: int):
         super().__init__()
-        self.encoder = nn.Sequential(nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, workspace_dim))
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, workspace_dim)
+        )
         self.salience_scorer = nn.Linear(workspace_dim, 1)
 
     def forward(self, x: torch.Tensor) -> tuple:
@@ -31,6 +34,7 @@ class UnconsciousModule(nn.Module):
         encoded_data = self.encoder(x)
         salience = self.salience_scorer(encoded_data)
         return (encoded_data, salience)
+
 
 class GlobalWorkspace(nn.Module):
     """
@@ -48,9 +52,13 @@ class GlobalWorkspace(nn.Module):
         self.query = nn.Linear(workspace_dim, workspace_dim)
         self.key = nn.Linear(workspace_dim, workspace_dim)
         self.value = nn.Linear(workspace_dim, workspace_dim)
-        self.self_attention = nn.MultiHeadAttention(embed_dim=workspace_dim, num_heads=8)
+        self.self_attention = nn.MultiHeadAttention(
+            embed_dim=workspace_dim, num_heads=8
+        )
 
-    def forward(self, module_outputs: torch.Tensor, salience_scores: torch.Tensor) -> tuple:
+    def forward(
+        self, module_outputs: torch.Tensor, salience_scores: torch.Tensor
+    ) -> tuple:
         """
         Forward pass through the global workspace.
 
@@ -64,14 +72,22 @@ class GlobalWorkspace(nn.Module):
         Q = self.query(self.current_workspace_state).unsqueeze(1)
         K = self.key(module_outputs)
         V = self.value(module_outputs)
-        attention_scores = torch.matmul(Q, K.transpose(-2, -1)) / self.workspace_dim ** 0.5
+        attention_scores = (
+            torch.matmul(Q, K.transpose(-2, -1)) / self.workspace_dim**0.5
+        )
         attention_scores = attention_scores + salience_scores.transpose(-2, -1)
         attention_weights = F.softmax(attention_scores, dim=-1)
         new_conscious_state = torch.matmul(attention_weights, V)
-        updated_state = 0.9 * self.current_workspace_state.data + 0.1 * new_conscious_state.squeeze(1)
+        updated_state = (
+            0.9 * self.current_workspace_state.data
+            + 0.1 * new_conscious_state.squeeze(1)
+        )
         self.current_workspace_state.data.copy_(updated_state)
-        conscious_state_attention = self.self_attention(updated_state.unsqueeze(0), updated_state.unsqueeze(0))
+        conscious_state_attention = self.self_attention(
+            updated_state.unsqueeze(0), updated_state.unsqueeze(0)
+        )
         return (conscious_state_attention[0].squeeze(0), attention_weights)
+
 
 class CognitiveAgent(nn.Module):
     """
@@ -83,17 +99,23 @@ class CognitiveAgent(nn.Module):
         input_dim (int, optional): Input dimension. Defaults to 784.
     """
 
-    def __init__(self, workspace_dim: int=512, num_modules: int=3, input_dim: int=784):
+    def __init__(
+        self, workspace_dim: int = 512, num_modules: int = 3, input_dim: int = 784
+    ):
         super().__init__()
-        self.my_modules = nn.ModuleList([UnconsciousModule(input_dim, workspace_dim) for _ in range(num_modules)])
+        self.my_modules = nn.ModuleList(
+            [UnconsciousModule(input_dim, workspace_dim) for _ in range(num_modules)]
+        )
         self.workspace = GlobalWorkspace(workspace_dim, num_modules)
-        self.max_utility = float('-inf')
+        self.max_utility = float("-inf")
         self.exists = False
         self.expected_outcome = None
         self.iterations = 1
         self.evolved = True
         self.existing_conditions = False
-        self.optimizer = torch.optim.AdamW(self.parameters(), lr=0.001, weight_decay=0.01)
+        self.optimizer = torch.optim.AdamW(
+            self.parameters(), lr=0.001, weight_decay=0.01
+        )
 
     def forward(self, *inputs: torch.Tensor) -> tuple:
         """
@@ -137,14 +159,20 @@ class CognitiveAgent(nn.Module):
         self.optimizer.step()
         return loss.item()
 
+
 def main():
     agent = CognitiveAgent()
     inputs = [torch.randn(1, 784), torch.randn(1, 784), torch.randn(1, 784)]
     targets = torch.randn(1, 512)
     for i in range(100):
         loss = agent.train(inputs, targets)
-        print(f'Loss at iteration {i + 1}: {loss}')
+        print(f"Loss at iteration {i + 1}: {loss}")
     conscious_thought, focus = agent(*inputs)
-    print("The AI's 'Conscious' Spotlight is focused on module weights:", focus.detach().numpy())
-if __name__ == '__main__':
+    print(
+        "The AI's 'Conscious' Spotlight is focused on module weights:",
+        focus.detach().numpy(),
+    )
+
+
+if __name__ == "__main__":
     main()
