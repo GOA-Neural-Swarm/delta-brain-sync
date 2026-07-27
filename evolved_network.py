@@ -1,15 +1,13 @@
-
-
-### PART 1: 
+### PART 1:
 torch
 numpy
 scipy
 quantumnet
 pandas
-scikit-learn
+scikit - learn
 cython
 seaborn
-pytorch-lightning
+pytorch - lightning
 transformers
 matplotlib
 qiskit
@@ -28,16 +26,16 @@ mpi4py
 pyro
 optuna
 ray
-pytorch-scatter
+pytorch - scatter
 dgl
 stargan
 graphviz
 plotly
-pytorch-metric-learning
+pytorch - metric - learning
 torchgeo
 torchaudio
 torchtts
-pytorch-ignite
+pytorch - ignite
 catalyst
 catboost
 
