@@ -2,7 +2,6 @@ import telemetry_bridge
 import os
 import inspect
 
-
 class OmniModule:
     """
     Merged and optimized module for evolutionary, utilitarian, and existential logic.
@@ -57,7 +56,7 @@ class OmniModule:
             new_function (function): The new function to be added.
         """
         self.apply_logic(new_function)
-        print(f"Evolutionary addition: {new_function.__name__}")
+        print(f'Evolutionary addition: {new_function.__name__}')
 
     def merge_logic(self, other_module):
         """
@@ -77,34 +76,29 @@ class OmniModule:
         for func in self.preserved_logic:
             func()
 
-
 def new_function():
     """
     New function added.
     """
-    print("New function added")
-
+    print('New function added')
 
 def new_additive_function():
     """
     New additive function.
     """
-    print("New additive function")
-
+    print('New additive function')
 
 def new_utilitarian_function():
     """
     New utilitarian function added.
     """
-    print("New utilitarian function added")
-
+    print('New utilitarian function added')
 
 def new_existential_function():
     """
     New existential function added.
     """
-    print("New existential function added")
-
+    print('New existential function added')
 
 def main():
     """
@@ -121,7 +115,5 @@ def main():
     print(omni_module1.check_existence())
     print([func.__name__ for func in omni_module1.preserve_logic()])
     omni_module1.execute_logic()
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -12,15 +12,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from brain import SovereignArchitect
 from recovery import SovereignRecovery
 from telemetry_bridge import TelemetryBridge
-
 app = Flask(__name__)
 CORS(app)
-logging.basicConfig(
-    filename="system_gate.log",
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s: %(message)s",
-)
-
+logging.basicConfig(filename='system_gate.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
 class ASI_State:
 
@@ -32,7 +26,7 @@ class ASI_State:
         self.boot_time = datetime.now()
         self.last_evolution = None
         self.neural_load = 0.0
-        self.status = "STABLE"
+        self.status = 'STABLE'
         self.evolution_count = 0
         self.sync_count = 0
         self.lock = threading.Lock()
@@ -40,50 +34,38 @@ class ASI_State:
     def sync(self):
         with self.lock:
             self.sync_count += 1
-            logging.info(f"Sync operation {self.sync_count} initiated...")
+            logging.info(f'Sync operation {self.sync_count} initiated...')
             try:
                 self.architect.sync()
                 self.recovery.sync()
                 self.telemetry_bridge.sync()
-                logging.info("Sync operation successful.")
+                logging.info('Sync operation successful.')
             except Exception as e:
-                logging.error(f"Sync error: {e}")
-                self.status = "FAULTY"
+                logging.error(f'Sync error: {e}')
+                self.status = 'FAULTY'
 
     def evolve(self):
         with self.lock:
             self.is_training = True
-            self.status = "EVOLVING"
+            self.status = 'EVOLVING'
             try:
-                logging.info("Neural Expansion Sequence Initiated...")
+                logging.info('Neural Expansion Sequence Initiated...')
                 self.architect.execute_evolution_step()
                 self.last_evolution = datetime.now()
-                self.status = "STABLE"
+                self.status = 'STABLE'
                 self.evolution_count += 1
-                logging.info("Evolution successful.")
+                logging.info('Evolution successful.')
             except Exception as e:
-                self.status = "CRITICAL_FAULT"
-                logging.error(f"Evolution Error: {e}")
+                self.status = 'CRITICAL_FAULT'
+                logging.error(f'Evolution Error: {e}')
             finally:
                 self.is_training = False
 
     def get_status(self):
-        return {
-            "gen": self.architect.gen,
-            "neural_load": f"{self.neural_load}%",
-            "is_training": self.is_training,
-            "classifier_type": self.architect.brain.classifier_type,
-            "last_sync": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "status": self.status,
-            "evolution_count": self.evolution_count,
-            "sync_count": self.sync_count,
-        }
-
-
+        return {'gen': self.architect.gen, 'neural_load': f'{self.neural_load}%', 'is_training': self.is_training, 'classifier_type': self.architect.brain.classifier_type, 'last_sync': time.strftime('%Y-%m-%d %H:%M:%S'), 'status': self.status, 'evolution_count': self.evolution_count, 'sync_count': self.sync_count}
 state = ASI_State()
-auth = HTTPTokenAuth(scheme="Bearer")
-users = {"admin": generate_password_hash("password")}
-
+auth = HTTPTokenAuth(scheme='Bearer')
+users = {'admin': generate_password_hash('password')}
 
 @auth.verify_token
 def verify_token(token):
@@ -91,119 +73,90 @@ def verify_token(token):
         if check_password_hash(password, token):
             return user
 
-
-@app.route("/", methods=["GET"])
+@app.route('/', methods=['GET'])
 @auth.login_required
 def index():
-    return jsonify(
-        {
-            "system": "OMEGA-ASI SOVEREIGN CORE",
-            "version": "X10.2.2",
-            "uptime": str(datetime.now() - state.boot_time),
-            "endpoints": [
-                "/status",
-                "/evolve",
-                "/train",
-                "/logs",
-                "/recover",
-                "/healthcheck",
-                "/shutdown",
-                "/sync",
-            ],
-        }
-    )
+    return jsonify({'system': 'OMEGA-ASI SOVEREIGN CORE', 'version': 'X10.2.2', 'uptime': str(datetime.now() - state.boot_time), 'endpoints': ['/status', '/evolve', '/train', '/logs', '/recover', '/healthcheck', '/shutdown', '/sync']})
 
-
-@app.route("/status", methods=["GET"])
+@app.route('/status', methods=['GET'])
 @auth.login_required
 def get_status():
     return jsonify(state.get_status())
 
-
-@app.route("/evolve", methods=["POST"])
+@app.route('/evolve', methods=['POST'])
 @auth.login_required
 def trigger_evolution():
     if state.is_training:
-        return (jsonify({"error": "Evolution already in progress."}), 409)
+        return (jsonify({'error': 'Evolution already in progress.'}), 409)
     thread = threading.Thread(target=state.evolve)
     thread.start()
-    return jsonify({"message": "Evolution signal dispatched to background thread."})
+    return jsonify({'message': 'Evolution signal dispatched to background thread.'})
 
-
-@app.route("/logs", methods=["GET"])
+@app.route('/logs', methods=['GET'])
 @auth.login_required
 def get_logs():
-    log_files = ["evolution_logs.md", "sync_recovery.txt", "system_gate.log"]
+    log_files = ['evolution_logs.md', 'sync_recovery.txt', 'system_gate.log']
     combined_logs = {}
     for log in log_files:
         if os.path.exists(log):
-            with open(log, "r") as f:
+            with open(log, 'r') as f:
                 combined_logs[log] = f.readlines()[-20:]
     return jsonify(combined_logs)
 
-
-@app.route("/recover", methods=["POST"])
+@app.route('/recover', methods=['POST'])
 @auth.login_required
 def manual_recovery():
-    state.status = "RECOVERING"
+    state.status = 'RECOVERING'
     thread = threading.Thread(target=state.recovery.run)
     thread.start()
-    return jsonify({"message": "Sovereign Recovery Engine Engaged."})
+    return jsonify({'message': 'Sovereign Recovery Engine Engaged.'})
 
-
-@app.route("/healthcheck", methods=["GET"])
+@app.route('/healthcheck', methods=['GET'])
 @auth.login_required
 def healthcheck():
-    if state.status in ["FAULTY", "CRITICAL_FAULT"]:
-        return (jsonify({"error": "System is not healthy."}), 503)
-    return jsonify({"message": "System is healthy."})
+    if state.status in ['FAULTY', 'CRITICAL_FAULT']:
+        return (jsonify({'error': 'System is not healthy.'}), 503)
+    return jsonify({'message': 'System is healthy.'})
 
-
-@app.route("/shutdown", methods=["POST"])
+@app.route('/shutdown', methods=['POST'])
 @auth.login_required
 def shutdown():
-    func = request.environ.get("werkzeug.server.shutdown")
+    func = request.environ.get('werkzeug.server.shutdown')
     if func is None:
-        raise RuntimeError("Not running with the Werkzeug Server")
+        raise RuntimeError('Not running with the Werkzeug Server')
     func()
-    return jsonify({"message": "Server shutting down..."})
+    return jsonify({'message': 'Server shutting down...'})
 
-
-@app.route("/sync", methods=["POST"])
+@app.route('/sync', methods=['POST'])
 @auth.login_required
 def sync():
     thread = threading.Thread(target=state.sync)
     thread.start()
-    return jsonify({"message": "Sync operation initiated."})
+    return jsonify({'message': 'Sync operation initiated.'})
 
-
-@app.route("/login", methods=["POST"])
+@app.route('/login', methods=['POST'])
 def login():
-    username = request.json.get("username")
-    password = request.json.get("password")
+    username = request.json.get('username')
+    password = request.json.get('password')
     if username in users and check_password_hash(users[username], password):
-        return jsonify({"token": password})
-    return (jsonify({"error": "Invalid credentials."}), 401)
-
+        return jsonify({'token': password})
+    return (jsonify({'error': 'Invalid credentials.'}), 401)
 
 @app.errorhandler(404)
 def not_found(error):
-    return (jsonify({"error": "Endpoint not found."}), 404)
-
+    return (jsonify({'error': 'Endpoint not found.'}), 404)
 
 @app.errorhandler(500)
 def internal_error(error):
-    state.status = "FAULTY"
-    return (jsonify({"error": "Internal Core Collapse."}), 500)
-
-
-if __name__ == "__main__":
+    state.status = 'FAULTY'
+    return (jsonify({'error': 'Internal Core Collapse.'}), 500)
+if __name__ == '__main__':
     try:
         from brain import SovereignArchitect
         from recovery import SovereignRecovery
     except ImportError:
-        logging.critical("Core components missing. Emergency recovery required.")
-        print("Core components missing. Emergency recovery required.")
+        logging.critical('Core components missing. Emergency recovery required.')
+        print('Core components missing. Emergency recovery required.')
         sys.exit(1)
-    print("\n    --- SOVEREIGN API GATEWAY ONLINE ---\n    ")
-    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
+    print('\n    --- SOVEREIGN API GATEWAY ONLINE ---\n    ')
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
