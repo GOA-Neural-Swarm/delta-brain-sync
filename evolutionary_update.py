@@ -2,7 +2,6 @@ import telemetry_bridge
 import os
 import sys
 
-
 class ExistentialEntity:
     """Represents an entity with a name and choices."""
 
@@ -15,8 +14,7 @@ class ExistentialEntity:
         self.choices.append(choice)
 
     def __str__(self):
-        return f"ExistentialEntity(name={self.name}, choices={self.choices})"
-
+        return f'ExistentialEntity(name={self.name}, choices={self.choices})'
 
 class EvolutionarySystem:
     """Represents a system with a list of functions."""
@@ -38,28 +36,23 @@ class EvolutionarySystem:
         self.functions.append(new_function)
 
     def __str__(self):
-        return f"EvolutionarySystem(functions={self.functions})"
-
+        return f'EvolutionarySystem(functions={self.functions})'
 
 def utilitarian_principle(functionality):
     """Returns True if the functionality is truthy, False otherwise."""
     return bool(functionality)
 
-
 def stoic_indifference(event):
     """Returns 'Acknowledged' if the event is truthy, 'Ignored' otherwise."""
-    return "Acknowledged" if event else "Ignored"
-
+    return 'Acknowledged' if event else 'Ignored'
 
 def hyper_dimensional_logic(perspectives):
     """Returns the perspectives dictionary."""
     return perspectives
 
-
 def evolutionary_function(name):
     """Prints a message indicating an evolutionary function has been added."""
-    print(f"{name} evolutionary function added")
-
+    print(f'{name} evolutionary function added')
 
 def create_system(name, choice):
     """Creates an evolutionary system and entity."""
@@ -69,15 +62,9 @@ def create_system(name, choice):
     entity.make_choice(choice)
     return (system, entity)
 
-
 def create_perspectives(entity, name):
     """Creates perspectives dictionary."""
-    return {
-        f"{name} Utilitarian": utilitarian_principle(True),
-        f"{name} Existential": entity.name,
-        f"{name} Stoic": stoic_indifference(True),
-    }
-
+    return {f'{name} Utilitarian': utilitarian_principle(True), f'{name} Existential': entity.name, f'{name} Stoic': stoic_indifference(True)}
 
 def recursive_evolution(systems, entities, names, choices):
     """Recursively evolves the systems and entities."""
@@ -90,32 +77,17 @@ def recursive_evolution(systems, entities, names, choices):
         perspectives = create_perspectives(entity, name)
         result = hyper_dimensional_logic(perspectives)
         print(result)
-        system.update_functions(
-            lambda: print(f"New {name} evolutionary function added")
-        )
+        system.update_functions(lambda: print(f'New {name} evolutionary function added'))
         system.execute_functions()
-        print(f"System: {system}")
-        print(f"Entity: {entity}")
-        print("")
-
+        print(f'System: {system}')
+        print(f'Entity: {entity}')
+        print('')
 
 def main():
     systems = []
     entities = []
-    names = [
-        "Individual",
-        "Optimized Individual",
-        "Recursive Individual",
-        "Power Individual",
-    ]
-    choices = [
-        "Utilitarian principle",
-        "Optimized Utilitarian principle",
-        "Recursive Utilitarian principle",
-        "Power Utilitarian principle",
-    ]
+    names = ['Individual', 'Optimized Individual', 'Recursive Individual', 'Power Individual']
+    choices = ['Utilitarian principle', 'Optimized Utilitarian principle', 'Recursive Utilitarian principle', 'Power Utilitarian principle']
     recursive_evolution(systems, entities, names, choices)
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

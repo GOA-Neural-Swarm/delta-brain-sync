@@ -7,10 +7,8 @@ import json
 import re
 import sys
 import omega_point
-
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
 class Guard:
     """Main class for the guard system."""
@@ -26,9 +24,7 @@ class Guard:
         self.iterations = 0
         self.evolved = False
 
-    def get_ai_correction(
-        self, error_log, original_code, apply_hyper_dimensional_logic=True
-    ):
+    def get_ai_correction(self, error_log, original_code, apply_hyper_dimensional_logic=True):
         """
         Retrieve AI correction for the given error log and original code.
 
@@ -40,61 +36,44 @@ class Guard:
         Returns:
         str: The corrected code.
         """
-        print(" [GUARD]: AI is analyzing the error...")
-        prompt = f"Fix this Python error:\n{error_log}\n\nCode:\n{original_code}\n\nReturn ONLY the clean code."
-        print("[GUARD-GEMINI]: Requesting correction...")
-        gemini_url = f"https://api.ai21.com/studio/v1/assistants/gemini/complete"
-        gemini_payload = {"prompt": prompt, "maxTokens": 2048, "temperature": 0.2}
-        headers = {
-            "Authorization": f"Bearer {GEMINI_API_KEY}",
-            "Content-Type": "application/json",
-        }
+        print(' [GUARD]: AI is analyzing the error...')
+        prompt = f'Fix this Python error:\n{error_log}\n\nCode:\n{original_code}\n\nReturn ONLY the clean code.'
+        print('[GUARD-GEMINI]: Requesting correction...')
+        gemini_url = f'https://api.ai21.com/studio/v1/assistants/gemini/complete'
+        gemini_payload = {'prompt': prompt, 'maxTokens': 2048, 'temperature': 0.2}
+        headers = {'Authorization': f'Bearer {GEMINI_API_KEY}', 'Content-Type': 'application/json'}
         try:
-            res = requests.post(
-                gemini_url, headers=headers, json=gemini_payload, timeout=30
-            )
+            res = requests.post(gemini_url, headers=headers, json=gemini_payload, timeout=30)
             data = res.json()
-            if res.status_code == 200 and "completions" in data:
-                content = data["completions"][0]["text"]
-                return re.sub("```python\\n|```", "", content).strip()
+            if res.status_code == 200 and 'completions' in data:
+                content = data['completions'][0]['text']
+                return re.sub('```python\\n|```', '', content).strip()
             else:
-                print(f"[GEMINI-FAIL]: Status {res.status_code}. Switching to Groq...")
+                print(f'[GEMINI-FAIL]: Status {res.status_code}. Switching to Groq...')
         except Exception as e:
-            print(f"[GEMINI-ERROR]: {e}. Switching to Groq...")
-        print("[GUARD-GROQ]: Requesting fallback correction...")
-        groq_url = "https://api.groq.com/openai/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json",
-        }
-        groq_payload = {
-            "model": "llama-3.3-70b-versatile",
-            "messages": [{"role": "user", "content": prompt}],
-        }
+            print(f'[GEMINI-ERROR]: {e}. Switching to Groq...')
+        print('[GUARD-GROQ]: Requesting fallback correction...')
+        groq_url = 'https://api.groq.com/openai/v1/chat/completions'
+        headers = {'Authorization': f'Bearer {GROQ_API_KEY}', 'Content-Type': 'application/json'}
+        groq_payload = {'model': 'llama-3.3-70b-versatile', 'messages': [{'role': 'user', 'content': prompt}]}
         try:
-            response = requests.post(
-                groq_url, headers=headers, json=groq_payload, timeout=30
-            )
+            response = requests.post(groq_url, headers=headers, json=groq_payload, timeout=30)
             data = response.json()
-            if "error" in data and "rate_limit_exceeded" in str(data):
-                print("[RATE-LIMIT]: Sleeping for 20 seconds...")
+            if 'error' in data and 'rate_limit_exceeded' in str(data):
+                print('[RATE-LIMIT]: Sleeping for 20 seconds...')
                 time.sleep(20)
-                return self.get_ai_correction(
-                    error_log, original_code, apply_hyper_dimensional_logic
-                )
-            if "choices" in data:
-                content = data["choices"][0]["message"]["content"]
-                corrected = re.sub("```python\\n|```", "", content).strip()
+                return self.get_ai_correction(error_log, original_code, apply_hyper_dimensional_logic)
+            if 'choices' in data:
+                content = data['choices'][0]['message']['content']
+                corrected = re.sub('```python\\n|```', '', content).strip()
                 if apply_hyper_dimensional_logic:
-                    corrected = self.apply_hyper_dimensional_logic(
-                        original_code, corrected
-                    )
+                    corrected = self.apply_hyper_dimensional_logic(original_code, corrected)
                 return corrected
             else:
-                print(f"[GUARD]: API Error Response: {data}")
+                print(f'[GUARD]: API Error Response: {data}')
                 return original_code
         except Exception as e:
-            print(f"[GUARD]: Request failed: {e}")
+            print(f'[GUARD]: Request failed: {e}')
             return original_code
 
     def apply_hyper_dimensional_logic(self, original_code, corrected_code):
@@ -124,9 +103,9 @@ class Guard:
         Returns:
         str: The code with utilitarian logic applied.
         """
-        code += "\n\n# Utilitarian logic\n"
-        code += "if utility > max_utility:\n"
-        code += "    max_utility = utility\n"
+        code += '\n\n# Utilitarian logic\n'
+        code += 'if utility > max_utility:\n'
+        code += '    max_utility = utility\n'
         return code
 
     def apply_existential_logic(self, code):
@@ -139,9 +118,9 @@ class Guard:
         Returns:
         str: The code with existential logic applied.
         """
-        code += "\n\n# Existential logic\n"
-        code += "if exists:\n"
-        code += "    # Code to handle existence\n"
+        code += '\n\n# Existential logic\n'
+        code += 'if exists:\n'
+        code += '    # Code to handle existence\n'
         return code
 
     def apply_stoic_logic(self, code):
@@ -154,9 +133,9 @@ class Guard:
         Returns:
         str: The code with stoic logic applied.
         """
-        code += "\n\n# Stoic logic\n"
-        code += "if outcome == expected_outcome:\n"
-        code += "    # Code to handle indifference\n"
+        code += '\n\n# Stoic logic\n'
+        code += 'if outcome == expected_outcome:\n'
+        code += '    # Code to handle indifference\n'
         return code
 
     def apply_evolutionary_logic(self, original_code, corrected_code):
@@ -172,60 +151,51 @@ class Guard:
         """
         self.iterations += 1
         self.evolved = True
-        corrected_code += "\n\n# Evolutionary logic\n"
-        corrected_code += f"self.iterations = {self.iterations}\n"
-        corrected_code += f"self.evolved = {self.evolved}\n"
-        corrected_code += "\n\n# Preserve existing logic\n"
-        corrected_code += "if existing_conditions:\n"
-        corrected_code += "    # Code to handle existing conditions\n"
+        corrected_code += '\n\n# Evolutionary logic\n'
+        corrected_code += f'self.iterations = {self.iterations}\n'
+        corrected_code += f'self.evolved = {self.evolved}\n'
+        corrected_code += '\n\n# Preserve existing logic\n'
+        corrected_code += 'if existing_conditions:\n'
+        corrected_code += '    # Code to handle existing conditions\n'
         return corrected_code
 
     def run_guard(self):
         """
         Run the guard process for the given target script.
         """
-        print(f"[GUARD]: Launching {self.target_script} in Observation Mode...")
-        process = subprocess.Popen(
-            ["python3", self.target_script],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
+        print(f'[GUARD]: Launching {self.target_script} in Observation Mode...')
+        process = subprocess.Popen(['python3', self.target_script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         start_time = time.time()
-        error_output = ""
+        error_output = ''
         while time.time() - start_time < 60:
             line = process.stderr.readline()
             if line:
-                print(f"[LOG]: {line.strip()}")
+                print(f'[LOG]: {line.strip()}')
                 error_output += line
-                if "Traceback" in line or "Error" in line:
-                    print("[GUARD]: Critical Error detected! Terminating and fixing...")
+                if 'Traceback' in line or 'Error' in line:
+                    print('[GUARD]: Critical Error detected! Terminating and fixing...')
                     process.terminate()
-                    with open(self.target_script, "r") as f:
+                    with open(self.target_script, 'r') as f:
                         original_code = f.read()
                     corrected = self.get_ai_correction(error_output, original_code)
-                    with open(self.target_script, "w") as f:
+                    with open(self.target_script, 'w') as f:
                         f.write(corrected)
-                    print("[GUARD]: System evolved. Restarting Guard Cycle...")
+                    print('[GUARD]: System evolved. Restarting Guard Cycle...')
                     return self.run_guard()
             if process.poll() is not None and process.poll() != 0:
                 remaining_error = process.stderr.read()
-                print(f"[GUARD]: Process died with error: {remaining_error}")
-                with open(self.target_script, "r") as f:
+                print(f'[GUARD]: Process died with error: {remaining_error}')
+                with open(self.target_script, 'r') as f:
                     original_code = f.read()
                 corrected_code = self.get_ai_correction(remaining_error, original_code)
-                with open(self.target_script, "w") as f:
+                with open(self.target_script, 'w') as f:
                     f.write(corrected_code)
-                print("[GUARD]: Correction applied. Rebooting system...")
+                print('[GUARD]: Correction applied. Rebooting system...')
                 return self.run_guard()
             time.sleep(1)
-        print(
-            "[GUARD]: System is stable and sovereign. Handing over to background process."
-        )
+        print('[GUARD]: System is stable and sovereign. Handing over to background process.')
         sys.exit(0)
-
-
-if __name__ == "__main__":
-    target = sys.argv[1] if len(sys.argv) > 1 else "main.py"
+if __name__ == '__main__':
+    target = sys.argv[1] if len(sys.argv) > 1 else 'main.py'
     guard = Guard(target)
     guard.run_guard()
