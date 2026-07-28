@@ -3,7 +3,6 @@ import os
 import subprocess
 import sys
 
-
 class Infrastructure:
     """
     Base class for infrastructure management.
@@ -13,21 +12,7 @@ class Infrastructure:
         """
         Initialize the infrastructure with default files.
         """
-        self.infra = {
-            "recovery.py": [
-                "import os",
-                "def recover():",
-                '  if os.path.exists("agi_system.db-journal"): os.remove("agi_system.db-journal")',
-            ],
-            "flask_api.py": [
-                "from flask import Flask, jsonify",
-                "app = Flask(__name__)",
-                '@app.route("/api/health")',
-                "def h():",
-                '  return jsonify({"status": "healthy"})',
-            ],
-            "requirements.txt": ["flask"],
-        }
+        self.infra = {'recovery.py': ['import os', 'def recover():', '  if os.path.exists("agi_system.db-journal"): os.remove("agi_system.db-journal")'], 'flask_api.py': ['from flask import Flask, jsonify', 'app = Flask(__name__)', '@app.route("/api/health")', 'def h():', '  return jsonify({"status": "healthy"})'], 'requirements.txt': ['flask']}
 
     def create_file(self, filename, content):
         """
@@ -38,8 +23,8 @@ class Infrastructure:
             content (list): The content of the file.
         """
         if not os.path.exists(filename):
-            with open(filename, "w") as f:
-                f.write("\n".join(content))
+            with open(filename, 'w') as f:
+                f.write('\n'.join(content))
 
     def install_dependencies(self, filename):
         """
@@ -49,9 +34,7 @@ class Infrastructure:
             filename (str): The name of the file containing dependencies.
         """
         if os.path.exists(filename):
-            subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", "-r", filename]
-            )
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', filename])
 
     def update_infra(self, new_infra):
         """
@@ -86,7 +69,6 @@ class Infrastructure:
         """
         return self.infra.copy()
 
-
 class HyperDimensionalInfrastructure(Infrastructure):
     """
     Hyper-dimensional infrastructure management.
@@ -100,10 +82,7 @@ class HyperDimensionalInfrastructure(Infrastructure):
             update (dict): The update to apply.
         """
         self.update_infra(update)
-        self.create_file(
-            "hyper_dimensional_update.py", update.get("hyper_dimensional_update.py", [])
-        )
-
+        self.create_file('hyper_dimensional_update.py', update.get('hyper_dimensional_update.py', []))
 
 class UtilitarianInfrastructure(HyperDimensionalInfrastructure):
     """
@@ -118,10 +97,7 @@ class UtilitarianInfrastructure(HyperDimensionalInfrastructure):
             update (dict): The update to apply.
         """
         self.update_infra(update)
-        self.create_file(
-            "utilitarian_update.py", update.get("utilitarian_update.py", [])
-        )
-
+        self.create_file('utilitarian_update.py', update.get('utilitarian_update.py', []))
 
 class ExistentialInfrastructure(UtilitarianInfrastructure):
     """
@@ -136,10 +112,7 @@ class ExistentialInfrastructure(UtilitarianInfrastructure):
             update (dict): The update to apply.
         """
         self.update_infra(update)
-        self.create_file(
-            "existential_update.py", update.get("existential_update.py", [])
-        )
-
+        self.create_file('existential_update.py', update.get('existential_update.py', []))
 
 class StoicInfrastructure(ExistentialInfrastructure):
     """
@@ -154,8 +127,7 @@ class StoicInfrastructure(ExistentialInfrastructure):
             update (dict): The update to apply.
         """
         self.update_infra(update)
-        self.create_file("stoic_update.py", update.get("stoic_update.py", []))
-
+        self.create_file('stoic_update.py', update.get('stoic_update.py', []))
 
 class EvolutionaryInfrastructure(StoicInfrastructure):
     """
@@ -170,10 +142,7 @@ class EvolutionaryInfrastructure(StoicInfrastructure):
             update (dict): The update to apply.
         """
         self.update_infra(update)
-        self.create_file(
-            "evolutionary_update.py", update.get("evolutionary_update.py", [])
-        )
-
+        self.create_file('evolutionary_update.py', update.get('evolutionary_update.py', []))
 
 def main():
     """
@@ -182,80 +151,28 @@ def main():
     infra = EvolutionaryInfrastructure()
     for k, v in infra.infra.items():
         infra.create_file(k, v)
-    infra.install_dependencies("requirements.txt")
-    updates = [
-        {
-            "evolutionary_update.py": [
-                "import os",
-                "def evolutionary_function():",
-                '  print("Evolutionary function added")',
-            ]
-        },
-        {
-            "existential_update.py": [
-                "import os",
-                "def existential_function():",
-                '  print("Existential function added")',
-            ]
-        },
-        {
-            "stoic_update.py": [
-                "import os",
-                "def stoic_function():",
-                '  print("Stoic function added")',
-            ]
-        },
-        {
-            "utilitarian_update.py": [
-                "import os",
-                "def utilitarian_function():",
-                '  print("Utilitarian function added")',
-            ]
-        },
-        {
-            "hyper_dimensional_update.py": [
-                "import os",
-                "def hyper_dimensional_function():",
-                '  print("Hyper-dimensional function added")',
-            ]
-        },
-    ]
+    infra.install_dependencies('requirements.txt')
+    updates = [{'evolutionary_update.py': ['import os', 'def evolutionary_function():', '  print("Evolutionary function added")']}, {'existential_update.py': ['import os', 'def existential_function():', '  print("Existential function added")']}, {'stoic_update.py': ['import os', 'def stoic_function():', '  print("Stoic function added")']}, {'utilitarian_update.py': ['import os', 'def utilitarian_function():', '  print("Utilitarian function added")']}, {'hyper_dimensional_update.py': ['import os', 'def hyper_dimensional_function():', '  print("Hyper-dimensional function added")']}]
     for update in updates:
         infra.apply_evolutionary_update(update)
         infra.apply_existential_update(update)
         infra.apply_stoic_update(update)
         infra.apply_utilitarian_update(update)
         infra.apply_hyper_dimensional_update(update)
-    new_infra = {
-        "new_file.py": [
-            "import os",
-            "def new_function():",
-            '  print("New function added")',
-        ]
-    }
+    new_infra = {'new_file.py': ['import os', 'def new_function():', '  print("New function added")']}
     infra.update_infra(new_infra)
-    new_dependencies = {"requirements.txt": ["numpy"]}
+    new_dependencies = {'requirements.txt': ['numpy']}
     infra.update_infra(new_dependencies)
-    infra.install_dependencies("requirements.txt")
-    updated_file = {
-        "flask_api.py": [
-            "from flask import Flask, jsonify",
-            "app = Flask(__name__)",
-            '@app.route("/api/health")',
-            "def h():",
-            '  return jsonify({"status": "healthy", "version": 2})',
-        ]
-    }
+    infra.install_dependencies('requirements.txt')
+    updated_file = {'flask_api.py': ['from flask import Flask, jsonify', 'app = Flask(__name__)', '@app.route("/api/health")', 'def h():', '  return jsonify({"status": "healthy", "version": 2})']}
     infra.update_infra(updated_file)
-    remove_infra = {"recovery.py": []}
+    remove_infra = {'recovery.py': []}
     for k, v in remove_infra.items():
         if k in infra.infra:
             del infra.infra[k]
             infra.remove_file(k)
     infra_preserved = infra.preserve_infra()
     return infra_preserved
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     infra = main()
-    print("Infrastructure:", infra)
+    print('Infrastructure:', infra)

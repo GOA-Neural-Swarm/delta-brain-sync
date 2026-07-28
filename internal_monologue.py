@@ -1,24 +1,18 @@
 import telemetry_bridge
 import numpy as np
 
-
 class HyperDimensionalLogic:
     """Class representing hyper-dimensional logic."""
 
     def __init__(self, dimensions: int):
         """Initialize the hyper-dimensional logic with the given dimensions."""
         self.dimensions = dimensions
-        self.values = {
-            "utilitarian": np.zeros(dimensions),
-            "existential": np.zeros(dimensions),
-            "stoic": np.zeros(dimensions),
-            "evolutionary": np.zeros(dimensions),
-        }
+        self.values = {'utilitarian': np.zeros(dimensions), 'existential': np.zeros(dimensions), 'stoic': np.zeros(dimensions), 'evolutionary': np.zeros(dimensions)}
 
     def update_values(self, value_type: str, new_values: np.ndarray):
         """Update the values of the given type."""
         if len(new_values) != self.dimensions:
-            raise ValueError("New values must match the number of dimensions")
+            raise ValueError('New values must match the number of dimensions')
         self.values[value_type] = new_values
 
     def calculate_additive_evolution(self) -> np.ndarray:
@@ -32,7 +26,6 @@ class HyperDimensionalLogic:
             result *= self.values[value_type]
         return result
 
-
 class EvolutionarySystem:
     """Class representing an evolutionary system."""
 
@@ -40,52 +33,38 @@ class EvolutionarySystem:
         """Initialize the evolutionary system with the given dimensions."""
         self.dimensions = dimensions
         self.hyper_dimensional_logic = HyperDimensionalLogic(dimensions)
-        self.history = {
-            "utilitarian": [],
-            "existential": [],
-            "stoic": [],
-            "evolutionary": [],
-            "additive_evolution": [],
-            "multiplicative_evolution": [],
-        }
+        self.history = {'utilitarian': [], 'existential': [], 'stoic': [], 'evolutionary': [], 'additive_evolution': [], 'multiplicative_evolution': []}
 
-    def update_values(
-        self,
-        utilitarian_values: np.ndarray,
-        existential_values: np.ndarray,
-        stoic_values: np.ndarray,
-        evolutionary_values: np.ndarray,
-    ):
+    def update_values(self, utilitarian_values: np.ndarray, existential_values: np.ndarray, stoic_values: np.ndarray, evolutionary_values: np.ndarray):
         """Update the values of the evolutionary system."""
-        self.hyper_dimensional_logic.update_values("utilitarian", utilitarian_values)
-        self.hyper_dimensional_logic.update_values("existential", existential_values)
-        self.hyper_dimensional_logic.update_values("stoic", stoic_values)
-        self.hyper_dimensional_logic.update_values("evolutionary", evolutionary_values)
-        self.history["utilitarian"].append(utilitarian_values.tolist())
-        self.history["existential"].append(existential_values.tolist())
-        self.history["stoic"].append(stoic_values.tolist())
-        self.history["evolutionary"].append(evolutionary_values.tolist())
+        self.hyper_dimensional_logic.update_values('utilitarian', utilitarian_values)
+        self.hyper_dimensional_logic.update_values('existential', existential_values)
+        self.hyper_dimensional_logic.update_values('stoic', stoic_values)
+        self.hyper_dimensional_logic.update_values('evolutionary', evolutionary_values)
+        self.history['utilitarian'].append(utilitarian_values.tolist())
+        self.history['existential'].append(existential_values.tolist())
+        self.history['stoic'].append(stoic_values.tolist())
+        self.history['evolutionary'].append(evolutionary_values.tolist())
 
     def calculate_additive_evolution(self) -> np.ndarray:
         """Calculate the additive evolution and update the history."""
         result = self.hyper_dimensional_logic.calculate_additive_evolution()
-        self.history["additive_evolution"].append(result.tolist())
+        self.history['additive_evolution'].append(result.tolist())
         return result
 
     def calculate_multiplicative_evolution(self) -> np.ndarray:
         """Calculate the multiplicative evolution and update the history."""
         result = self.hyper_dimensional_logic.calculate_multiplicative_evolution()
-        self.history["multiplicative_evolution"].append(result.tolist())
+        self.history['multiplicative_evolution'].append(result.tolist())
         return result
 
     def print_history(self):
         """Print the history of the evolutionary system."""
         for value_type, values in self.history.items():
-            print(f"{value_type.capitalize()} Values History:")
+            print(f'{value_type.capitalize()} Values History:')
             for i, value in enumerate(values):
-                print(f"Iteration {i + 1}: {value}")
+                print(f'Iteration {i + 1}: {value}')
             print()
-
 
 def main():
     """Main function to demonstrate the evolutionary system."""
@@ -97,23 +76,15 @@ def main():
     evolutionary_values = np.array([2, 2, 2, 2, 2])
     iterations = 5
     for i in range(iterations):
-        evolutionary_system.update_values(
-            utilitarian_values, existential_values, stoic_values, evolutionary_values
-        )
+        evolutionary_system.update_values(utilitarian_values, existential_values, stoic_values, evolutionary_values)
         additive_evolution = evolutionary_system.calculate_additive_evolution()
-        multiplicative_evolution = (
-            evolutionary_system.calculate_multiplicative_evolution()
-        )
-        print(f"Iteration {i + 1} - Additive Evolution: {additive_evolution.tolist()}")
-        print(
-            f"Iteration {i + 1} - Multiplicative Evolution: {multiplicative_evolution.tolist()}"
-        )
+        multiplicative_evolution = evolutionary_system.calculate_multiplicative_evolution()
+        print(f'Iteration {i + 1} - Additive Evolution: {additive_evolution.tolist()}')
+        print(f'Iteration {i + 1} - Multiplicative Evolution: {multiplicative_evolution.tolist()}')
         utilitarian_values += 1
         existential_values -= 1
         stoic_values += 0.5
         evolutionary_values += 1
     evolutionary_system.print_history()
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
