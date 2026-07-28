@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_434 Linked
 import telemetry_bridge
 import torch
 import torch.nn as nn
@@ -87,12 +88,6 @@ class CognitiveAgent(nn.Module):
         super().__init__()
         self.my_modules = nn.ModuleList([UnconsciousModule(input_dim, workspace_dim) for _ in range(num_modules)])
         self.workspace = GlobalWorkspace(workspace_dim, num_modules)
-        self.max_utility = float('-inf')
-        self.exists = False
-        self.expected_outcome = None
-        self.iterations = 1
-        self.evolved = True
-        self.existing_conditions = False
         self.optimizer = torch.optim.AdamW(self.parameters(), lr=0.001, weight_decay=0.01)
 
     def forward(self, *inputs: torch.Tensor) -> tuple:
@@ -114,9 +109,6 @@ class CognitiveAgent(nn.Module):
         all_outputs = torch.stack(module_outputs, dim=1)
         all_salience = torch.stack(salience_scores, dim=1)
         conscious_thought, focus_weights = self.workspace(all_outputs, all_salience)
-        utility = torch.sum(conscious_thought)
-        if utility > self.max_utility:
-            self.max_utility = utility
         return (conscious_thought, focus_weights)
 
     def train(self, inputs: list, targets: torch.Tensor) -> float:

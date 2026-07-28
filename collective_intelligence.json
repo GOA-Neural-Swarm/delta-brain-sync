@@ -1,9 +1,9 @@
 {
-    "global_generation": 433,
-    "system_entropy": 347.9500000000312,
+    "global_generation": 434,
+    "system_entropy": 349.05000000003145,
     "file_topology": {},
     "shared_memory": {
-        "last_sync": "2026-07-28 11:19:10",
+        "last_sync": "2026-07-28 13:52:31",
         "status": "MUTATING",
         "last_execution_logs": {
             "main.py": {
@@ -15,8 +15,8 @@
                 "error": "None"
             },
             "forge_engine.py": {
-                "status": "STABLE",
-                "error": "None"
+                "status": "MUTATING_REQUIRED",
+                "error": "ync/forge_engine.py\", line 78, in <module>\n    brain_instance = telemetry_bridge.Brain()\n                     ^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'Brain'"
             },
             "bootstrap.py": {
                 "status": "STABLE",
@@ -48,7 +48,7 @@
             },
             "sync_data.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "2026-07-28 11:11:55,202 | [DATA-SYNC] | Database URL context not found in Environment Secrets."
+                "error": "2026-07-28 13:47:57,910 | [DATA-SYNC] | Database URL context not found in Environment Secrets."
             },
             "omni_architect.py": {
                 "status": "TIMEOUT_HANG",
@@ -71,8 +71,8 @@
                 "error": "None"
             },
             "debug_env.py": {
-                "status": "STABLE",
-                "error": "None"
+                "status": "MUTATING_REQUIRED",
+                "error": "yForge\n    def __init__(self, brain_instance: telemetry_bridge.Brain):\n                                       ^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'Brain'"
             },
             "existential_update.py": {
                 "status": "STABLE",
@@ -99,8 +99,8 @@
                 "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
             },
             "omega_point.py": {
-                "status": "STABLE",
-                "error": "None"
+                "status": "MUTATING_REQUIRED",
+                "error": "yForge\n    def __init__(self, brain_instance: telemetry_bridge.Brain):\n                                       ^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'Brain'"
             },
             "flask_api.py": {
                 "status": "MUTATING_REQUIRED",
@@ -111,16 +111,16 @@
                 "error": "ecent call last):\n  File \"/home/runner/work/delta-brain-sync/delta-brain-sync/app.py\", line 11, in <module>\n    feature / meta - evolution - logic\n    ^^^^^^^\nNameError: name 'feature' is not defined"
             },
             "evolution_guard.py": {
-                "status": "TIMEOUT_HANG",
-                "error": "Script execution exceeded 90s time limit (Possible Infinite Loop detected)."
+                "status": "MUTATING_REQUIRED",
+                "error": "yForge\n    def __init__(self, brain_instance: telemetry_bridge.Brain):\n                                       ^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'Brain'"
             },
             "evolved_module.py": {
-                "status": "STABLE",
-                "error": "None"
+                "status": "MUTATING_REQUIRED",
+                "error": "yForge\n    def __init__(self, brain_instance: telemetry_bridge.Brain):\n                                       ^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'Brain'"
             },
             "app_evolved.py": {
                 "status": "MUTATING_REQUIRED",
-                "error": "_module import EvolvingClassifier, EvolvingRegressor\nImportError: cannot import name 'EvolvingClassifier' from 'evolved_module' (/home/runner/work/delta-brain-sync/delta-brain-sync/evolved_module.py)"
+                "error": "yForge\n    def __init__(self, brain_instance: telemetry_bridge.Brain):\n                                       ^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: module 'telemetry_bridge' has no attribute 'Brain'"
             }
         }
     }
