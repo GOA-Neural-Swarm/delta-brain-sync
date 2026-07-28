@@ -1,14 +1,8 @@
 [
     {
-        "timestamp": 1785246481.8015254,
-        "file": "./main.py",
+        "timestamp": 1785256273.1626673,
+        "file": "./omega_hdc.js",
         "status": "TRANSCENDED",
-        "asi_score": 94.58376870522748
-    },
-    {
-        "timestamp": 1785246499.8538961,
-        "file": "./forge_engine.py",
-        "status": "TRANSCENDED",
-        "asi_score": 108.20052155659215
+        "asi_score": 301.0152280443969
     }
 ]
