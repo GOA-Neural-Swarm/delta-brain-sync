@@ -5,6 +5,9 @@ import torch.nn.functional as F
 import numpy as np
 
 class UnconsciousModule(nn.Module):
+    """
+    Unconscious module for processing input data.
+    """
 
     def __init__(self, input_dim: int, workspace_dim: int):
         super().__init__()
@@ -12,11 +15,23 @@ class UnconsciousModule(nn.Module):
         self.salience_scorer = nn.Linear(workspace_dim, 1)
 
     def forward(self, x: torch.Tensor) -> tuple:
+        """
+        Forward pass through the unconscious module.
+
+        Args:
+        x (torch.Tensor): Input data.
+
+        Returns:
+        tuple: (encoded_data, salience)
+        """
         encoded_data = self.encoder(x)
         salience = self.salience_scorer(encoded_data)
         return (encoded_data, salience)
 
 class GlobalWorkspace(nn.Module):
+    """
+    Global workspace for integrating information from multiple modules.
+    """
 
     def __init__(self, workspace_dim: int, num_modules: int):
         super().__init__()
@@ -28,6 +43,16 @@ class GlobalWorkspace(nn.Module):
         self.self_attention = nn.MultiHeadAttention(embed_dim=workspace_dim, num_heads=8)
 
     def forward(self, module_outputs: torch.Tensor, salience_scores: torch.Tensor) -> tuple:
+        """
+        Forward pass through the global workspace.
+
+        Args:
+        module_outputs (torch.Tensor): Outputs from multiple modules.
+        salience_scores (torch.Tensor): Salience scores from multiple modules.
+
+        Returns:
+        tuple: (conscious_state, attention_weights)
+        """
         Q = self.query(self.current_workspace_state).unsqueeze(1)
         K = self.key(module_outputs)
         V = self.value(module_outputs)
@@ -41,6 +66,9 @@ class GlobalWorkspace(nn.Module):
         return (conscious_state_attention[0].squeeze(0), attention_weights)
 
 class CognitiveAgent(nn.Module):
+    """
+    Cognitive agent that integrates multiple modules and a global workspace.
+    """
 
     def __init__(self, workspace_dim: int=512, num_modules: int=3, input_dim: int=784):
         super().__init__()
@@ -49,6 +77,15 @@ class CognitiveAgent(nn.Module):
         self.optimizer = torch.optim.AdamW(self.parameters(), lr=0.001, weight_decay=0.01)
 
     def forward(self, *inputs: torch.Tensor) -> tuple:
+        """
+        Forward pass through the cognitive agent.
+
+        Args:
+        *inputs (torch.Tensor): Input data for multiple modules.
+
+        Returns:
+        tuple: (conscious_thought, focus_weights)
+        """
         module_outputs = []
         salience_scores = []
         for i, (module, input_data) in enumerate(zip(self.my_modules, inputs)):
@@ -61,6 +98,16 @@ class CognitiveAgent(nn.Module):
         return (conscious_thought, focus_weights)
 
     def train(self, inputs: list, targets: torch.Tensor) -> float:
+        """
+        Train the cognitive agent.
+
+        Args:
+        inputs (list): Input data for multiple modules.
+        targets (torch.Tensor): Target output.
+
+        Returns:
+        float: Loss value.
+        """
         self.optimizer.zero_grad()
         outputs, _ = self(*inputs)
         loss = F.mse_loss(outputs, targets)
