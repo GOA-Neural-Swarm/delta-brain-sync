@@ -1,14 +1,8 @@
 [
     {
-        "timestamp": 1785389654.9819188,
-        "file": "./main.py",
+        "timestamp": 1785399396.608636,
+        "file": "./existential_update.py",
         "status": "TRANSCENDED",
-        "asi_score": 110.2893235309109
-    },
-    {
-        "timestamp": 1785389668.7860444,
-        "file": "./evolutionary_update.py",
-        "status": "TRANSCENDED",
-        "asi_score": 99.99999997155051
+        "asi_score": 103.38294988570908
     }
 ]

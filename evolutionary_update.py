@@ -36,7 +36,7 @@ class EvolutionarySystem:
         self.functions.append(new_function)
 
     def __str__(self) -> str:
-        return f'EvolutionarySystem(functions={self.functions})'
+        return f'EvolutionarySystem(functions={len(self.functions)})'
 
 def utilitarian_principle(functionality: bool) -> bool:
     """Returns True if the functionality is truthy, False otherwise."""
