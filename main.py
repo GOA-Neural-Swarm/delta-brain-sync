@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_452 Linked
 import telemetry_bridge
 import torch
 import torch.nn as nn
@@ -61,13 +62,13 @@ class GlobalWorkspace(nn.Module):
         Returns:
             tuple: (conscious_state, attention_weights)
         """
-        Q = self.query(self.current_workspace_state).unsqueeze(1)
-        K = self.key(module_outputs)
-        V = self.value(module_outputs)
-        attention_scores = torch.matmul(Q, K.transpose(-2, -1)) / self.workspace_dim ** 0.5
+        q = self.query(self.current_workspace_state).unsqueeze(1)
+        k = self.key(module_outputs)
+        v = self.value(module_outputs)
+        attention_scores = torch.matmul(q, k.transpose(-2, -1)) / self.workspace_dim ** 0.5
         attention_scores = attention_scores + salience_scores.transpose(-2, -1)
         attention_weights = F.softmax(attention_scores, dim=-1)
-        new_conscious_state = torch.matmul(attention_weights, V)
+        new_conscious_state = torch.matmul(attention_weights, v)
         updated_state = 0.9 * self.current_workspace_state.data + 0.1 * new_conscious_state.squeeze(1)
         self.current_workspace_state.data.copy_(updated_state)
         conscious_state_attention = self.self_attention(updated_state.unsqueeze(0), updated_state.unsqueeze(0))
@@ -85,7 +86,7 @@ class CognitiveAgent(nn.Module):
 
     def __init__(self, workspace_dim: int=512, num_modules: int=3, input_dim: int=784):
         super().__init__()
-        self.my_modules = nn.ModuleList([UnconsciousModule(input_dim, workspace_dim) for _ in range(num_modules)])
+        self.modules = nn.ModuleList([UnconsciousModule(input_dim, workspace_dim) for _ in range(num_modules)])
         self.workspace = GlobalWorkspace(workspace_dim, num_modules)
         self.optimizer = torch.optim.AdamW(self.parameters(), lr=0.001, weight_decay=0.01)
 
@@ -101,13 +102,13 @@ class CognitiveAgent(nn.Module):
         """
         module_outputs = []
         salience_scores = []
-        for i, (module, input_data) in enumerate(zip(self.my_modules, inputs)):
+        for module, input_data in zip(self.modules, inputs):
             output, salience = module(input_data)
             module_outputs.append(output)
             salience_scores.append(salience)
-        all_outputs = torch.stack(module_outputs, dim=1)
-        all_salience = torch.stack(salience_scores, dim=1)
-        conscious_thought, focus_weights = self.workspace(all_outputs, all_salience)
+        module_outputs = torch.stack(module_outputs, dim=1)
+        salience_scores = torch.stack(salience_scores, dim=1)
+        conscious_thought, focus_weights = self.workspace(module_outputs, salience_scores)
         return (conscious_thought, focus_weights)
 
     def train(self, inputs: list, targets: torch.Tensor) -> float:
