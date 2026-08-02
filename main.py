@@ -1,8 +1,8 @@
-import telemetry_bridge
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import telemetry_bridge
 
 class UnconsciousModule(nn.Module):
     """
