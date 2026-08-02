@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_470 Linked
 import telemetry_bridge
 import torch
 import torch.nn as nn
@@ -15,8 +16,8 @@ class UnconsciousModule(nn.Module):
 
     def __init__(self, input_dim: int, workspace_dim: int):
         super().__init__()
-        self.encoder = nn.Sequential(nn.Linear(input_dim, 256), nn.ReLU(), nn.Linear(256, workspace_dim))
-        self.salience_scorer = nn.Linear(workspace_dim, 1)
+        self.encoder = nn.Sequential(nn.Linear(input_dim, 256, bias=False), nn.ReLU(), nn.Linear(256, workspace_dim, bias=False))
+        self.salience_scorer = nn.Linear(workspace_dim, 1, bias=False)
 
     def forward(self, x: torch.Tensor) -> tuple:
         """
@@ -45,10 +46,10 @@ class GlobalWorkspace(nn.Module):
         super().__init__()
         self.workspace_dim = workspace_dim
         self.current_workspace_state = nn.Parameter(torch.randn(1, workspace_dim))
-        self.query = nn.Linear(workspace_dim, workspace_dim)
-        self.key = nn.Linear(workspace_dim, workspace_dim)
-        self.value = nn.Linear(workspace_dim, workspace_dim)
-        self.self_attention = nn.MultiHeadAttention(embed_dim=workspace_dim, num_heads=8)
+        self.query = nn.Linear(workspace_dim, workspace_dim, bias=False)
+        self.key = nn.Linear(workspace_dim, workspace_dim, bias=False)
+        self.value = nn.Linear(workspace_dim, workspace_dim, bias=False)
+        self.self_attention = nn.MultiHeadAttention(embed_dim=workspace_dim, num_heads=8, bias=False)
 
     def forward(self, module_outputs: torch.Tensor, salience_scores: torch.Tensor) -> tuple:
         """
