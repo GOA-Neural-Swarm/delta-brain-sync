@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_476 Linked
 import telemetry_bridge
 import torch
 import torch.nn as nn
