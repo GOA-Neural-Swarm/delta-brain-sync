@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_478 Linked
 import telemetry_bridge
 import torch
 import torch.nn as nn
@@ -18,6 +17,7 @@ class UnconsciousModule(nn.Module):
         super().__init__()
         self.encoder = nn.Sequential(nn.Linear(input_dim, 256, bias=False), nn.ReLU(), nn.Linear(256, workspace_dim, bias=False))
         self.salience_scorer = nn.Linear(workspace_dim, 1, bias=False)
+        self.attention = nn.MultiHeadAttention(embed_dim=workspace_dim, num_heads=8, bias=False)
 
     def forward(self, x: torch.Tensor) -> tuple:
         """
@@ -31,7 +31,8 @@ class UnconsciousModule(nn.Module):
         """
         encoded_data = self.encoder(x)
         salience = self.salience_scorer(encoded_data)
-        return (encoded_data, salience)
+        attention_output = self.attention(encoded_data.unsqueeze(0), encoded_data.unsqueeze(0))
+        return (encoded_data, salience, attention_output[0].squeeze(0))
 
 class GlobalWorkspace(nn.Module):
     """
@@ -50,14 +51,16 @@ class GlobalWorkspace(nn.Module):
         self.key = nn.Linear(workspace_dim, workspace_dim, bias=False)
         self.value = nn.Linear(workspace_dim, workspace_dim, bias=False)
         self.self_attention = nn.MultiHeadAttention(embed_dim=workspace_dim, num_heads=8, bias=False)
+        self.gate = nn.Linear(workspace_dim * 2, workspace_dim, bias=False)
 
-    def forward(self, module_outputs: torch.Tensor, salience_scores: torch.Tensor) -> tuple:
+    def forward(self, module_outputs: torch.Tensor, salience_scores: torch.Tensor, attention_outputs: torch.Tensor) -> tuple:
         """
         Integrate information from multiple modules and return the conscious state and attention weights.
 
         Args:
             module_outputs (torch.Tensor): The outputs from multiple modules.
             salience_scores (torch.Tensor): The salience scores from multiple modules.
+            attention_outputs (torch.Tensor): The attention outputs from multiple modules.
 
         Returns:
             tuple: A tuple containing the conscious state and attention weights.
@@ -69,7 +72,9 @@ class GlobalWorkspace(nn.Module):
         attention_scores = attention_scores + salience_scores.transpose(-2, -1)
         attention_weights = F.softmax(attention_scores, dim=-1)
         new_conscious_state = torch.matmul(attention_weights, v)
-        updated_state = 0.9 * self.current_workspace_state.data + 0.1 * new_conscious_state.squeeze(1)
+        gate_input = torch.cat((self.current_workspace_state, new_conscious_state), dim=1)
+        gate_output = torch.sigmoid(self.gate(gate_input))
+        updated_state = gate_output * self.current_workspace_state + (1 - gate_output) * new_conscious_state
         self.current_workspace_state.data.copy_(updated_state)
         conscious_state_attention = self.self_attention(updated_state.unsqueeze(0), updated_state.unsqueeze(0))
         return (conscious_state_attention[0].squeeze(0), attention_weights)
@@ -102,13 +107,16 @@ class CognitiveAgent(nn.Module):
         """
         module_outputs = []
         salience_scores = []
+        attention_outputs = []
         for module, input_data in zip(self.modules, inputs):
-            output, salience = module(input_data)
+            output, salience, attention = module(input_data)
             module_outputs.append(output)
             salience_scores.append(salience)
+            attention_outputs.append(attention)
         module_outputs = torch.stack(module_outputs, dim=1)
         salience_scores = torch.stack(salience_scores, dim=1)
-        conscious_thought, focus_weights = self.workspace(module_outputs, salience_scores)
+        attention_outputs = torch.stack(attention_outputs, dim=1)
+        conscious_thought, focus_weights = self.workspace(module_outputs, salience_scores, attention_outputs)
         return (conscious_thought, focus_weights)
 
     def train(self, inputs: list, targets: torch.Tensor) -> float:
