@@ -1,3 +1,4 @@
+# 🧬 [QUANTUM_EVOLUTION]: Gen_483 Linked
 import telemetry_bridge
 import torch
 import torch.nn as nn
@@ -105,6 +106,8 @@ class CognitiveAgent(nn.Module):
         Returns:
             tuple: A tuple containing the conscious state and attention weights.
         """
+        if len(inputs) != len(self.modules):
+            raise ValueError('Number of inputs must match the number of modules')
         module_outputs = []
         salience_scores = []
         attention_outputs = []
@@ -131,11 +134,15 @@ class CognitiveAgent(nn.Module):
             float: The loss value.
         """
         self.optimizer.zero_grad()
-        outputs, _ = self(*inputs)
-        loss = F.mse_loss(outputs, targets)
-        loss.backward()
-        self.optimizer.step()
-        return loss.item()
+        try:
+            outputs, _ = self(*inputs)
+            loss = F.mse_loss(outputs, targets)
+            loss.backward()
+            self.optimizer.step()
+            return loss.item()
+        except Exception as e:
+            print(f'Error during training: {e}')
+            return None
 
 def main():
     agent = CognitiveAgent()
@@ -143,7 +150,8 @@ def main():
     targets = torch.randn(1, 512)
     for i in range(100):
         loss = agent.train(inputs, targets)
-        print(f'Loss at iteration {i + 1}: {loss}')
+        if loss is not None:
+            print(f'Loss at iteration {i + 1}: {loss}')
     conscious_thought, focus = agent(*inputs)
     print("The AI's 'Conscious' Spotlight is focused on module weights:", focus.detach().numpy())
 if __name__ == '__main__':
