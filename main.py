@@ -1,4 +1,4 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_485 Linked
+# 🧬 [QUANTUM_EVOLUTION]: Gen_486 Linked
 import telemetry_bridge
 import torch
 import torch.nn as nn
@@ -6,13 +6,6 @@ import torch.nn.functional as F
 import numpy as np
 
 class UnconsciousModule(nn.Module):
-    """
-    Unconscious module for processing input data.
-
-    Args:
-        input_dim (int): The dimension of the input data.
-        workspace_dim (int): The dimension of the workspace.
-    """
 
     def __init__(self, input_dim: int, workspace_dim: int):
         super().__init__()
@@ -21,28 +14,12 @@ class UnconsciousModule(nn.Module):
         self.attention = nn.MultiHeadAttention(embed_dim=workspace_dim, num_heads=8, bias=False)
 
     def forward(self, x: torch.Tensor) -> tuple:
-        """
-        Process the input data and return the encoded data and salience score.
-
-        Args:
-            x (torch.Tensor): The input data.
-
-        Returns:
-            tuple: A tuple containing the encoded data and salience score.
-        """
         encoded_data = self.encoder(x)
         salience = self.salience_scorer(encoded_data)
         attention_output = self.attention(encoded_data.unsqueeze(0), encoded_data.unsqueeze(0))
         return (encoded_data, salience, attention_output[0].squeeze(0))
 
 class GlobalWorkspace(nn.Module):
-    """
-    Global workspace for integrating information from multiple modules.
-
-    Args:
-        workspace_dim (int): The dimension of the workspace.
-        num_modules (int): The number of modules.
-    """
 
     def __init__(self, workspace_dim: int, num_modules: int):
         super().__init__()
@@ -55,17 +32,6 @@ class GlobalWorkspace(nn.Module):
         self.gate = nn.Linear(workspace_dim * 2, workspace_dim, bias=False)
 
     def forward(self, module_outputs: torch.Tensor, salience_scores: torch.Tensor, attention_outputs: torch.Tensor) -> tuple:
-        """
-        Integrate information from multiple modules and return the conscious state and attention weights.
-
-        Args:
-            module_outputs (torch.Tensor): The outputs from multiple modules.
-            salience_scores (torch.Tensor): The salience scores from multiple modules.
-            attention_outputs (torch.Tensor): The attention outputs from multiple modules.
-
-        Returns:
-            tuple: A tuple containing the conscious state and attention weights.
-        """
         q = self.query(self.current_workspace_state).unsqueeze(1)
         k = self.key(module_outputs)
         v = self.value(module_outputs)
@@ -81,14 +47,6 @@ class GlobalWorkspace(nn.Module):
         return (conscious_state_attention[0].squeeze(0), attention_weights)
 
 class CognitiveAgent(nn.Module):
-    """
-    Cognitive agent that integrates multiple modules and a global workspace.
-
-    Args:
-        workspace_dim (int): The dimension of the workspace. Defaults to 512.
-        num_modules (int): The number of modules. Defaults to 3.
-        input_dim (int): The dimension of the input data. Defaults to 784.
-    """
 
     def __init__(self, workspace_dim: int=512, num_modules: int=3, input_dim: int=784):
         super().__init__()
@@ -97,15 +55,6 @@ class CognitiveAgent(nn.Module):
         self.optimizer = torch.optim.AdamW(self.parameters(), lr=0.001, weight_decay=0.01)
 
     def forward(self, *inputs: torch.Tensor) -> tuple:
-        """
-        Process the input data and return the conscious state and attention weights.
-
-        Args:
-            *inputs (torch.Tensor): The input data.
-
-        Returns:
-            tuple: A tuple containing the conscious state and attention weights.
-        """
         if len(inputs) != len(self.modules):
             raise ValueError('Number of inputs must match the number of modules')
         module_outputs = []
@@ -123,16 +72,6 @@ class CognitiveAgent(nn.Module):
         return (conscious_thought, focus_weights)
 
     def train(self, inputs: list, targets: torch.Tensor) -> float:
-        """
-        Train the cognitive agent on the given inputs and targets.
-
-        Args:
-            inputs (list): The input data.
-            targets (torch.Tensor): The target data.
-
-        Returns:
-            float: The loss value.
-        """
         self.optimizer.zero_grad()
         try:
             outputs, _ = self(*inputs)
