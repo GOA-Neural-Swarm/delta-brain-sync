@@ -1,14 +1,14 @@
 [
     {
-        "timestamp": 1785928523.4462364,
+        "timestamp": 1785937878.1116793,
         "file": "./main.py",
         "status": "TRANSCENDED",
-        "asi_score": 102.62108260159144
+        "asi_score": 100.3253588324736
     },
     {
-        "timestamp": 1785928547.0072422,
-        "file": "./bootstrap.py",
+        "timestamp": 1785937916.5823886,
+        "file": "./stoic_update.py",
         "status": "TRANSCENDED",
-        "asi_score": 103.77031075819998
+        "asi_score": 94.6482411822492
     }
 ]
