@@ -1,6 +1,6 @@
-import telemetry_bridge
 import os
 import sys
+import telemetry_bridge
 
 class ExistentialEntity:
     """Represents an entity with a name and choices."""

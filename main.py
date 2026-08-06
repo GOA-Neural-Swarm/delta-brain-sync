@@ -1,8 +1,10 @@
-import telemetry_bridge
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+import telemetry_bridge
 
 class UnconsciousModule(nn.Module):
     """Unconscious module for processing input data."""
@@ -56,7 +58,7 @@ class CognitiveAgent(nn.Module):
         super().__init__()
         self.modules = nn.ModuleList([UnconsciousModule(input_dim, workspace_dim) for _ in range(num_modules)])
         self.workspace = GlobalWorkspace(workspace_dim, num_modules)
-        self.optimizer = torch.optim.AdamW(self.parameters(), lr=0.001, weight_decay=0.01)
+        self.optimizer = optim.AdamW(self.parameters(), lr=0.001, weight_decay=0.01)
 
     def forward(self, *inputs: torch.Tensor) -> tuple:
         """Forward pass through the cognitive agent."""
@@ -89,15 +91,34 @@ class CognitiveAgent(nn.Module):
             print(f'Error during training: {e}')
             return None
 
+class CustomDataset(Dataset):
+    """Custom dataset class for loading and preprocessing data."""
+
+    def __init__(self, inputs, targets):
+        self.inputs = inputs
+        self.targets = targets
+
+    def __len__(self):
+        return len(self.inputs)
+
+    def __getitem__(self, idx):
+        input_data = self.inputs[idx]
+        target = self.targets[idx]
+        return (input_data, target)
+
 def main():
     """Main function for testing the cognitive agent."""
     agent = CognitiveAgent()
     inputs = [torch.randn(1, 784), torch.randn(1, 784), torch.randn(1, 784)]
     targets = torch.randn(1, 512)
-    for i in range(100):
-        loss = agent.train(inputs, targets)
-        if loss is not None:
-            print(f'Loss at iteration {i + 1}: {loss}')
+    dataset = CustomDataset(inputs, [targets] * len(inputs))
+    data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
+    for epoch in range(100):
+        for batch in data_loader:
+            input_data, target = batch
+            loss = agent.train([input_data] * len(agent.modules), target)
+            if loss is not None:
+                print(f'Loss at epoch {epoch + 1}: {loss}')
     conscious_thought, focus = agent(*inputs)
     print("The AI's 'Conscious' Spotlight is focused on module weights:", focus.detach().numpy())
 if __name__ == '__main__':
