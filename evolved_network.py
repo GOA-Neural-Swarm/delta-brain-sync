@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_505 Linked
 import telemetry_bridge
 torch
 numpy
