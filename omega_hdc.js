@@ -1,70 +1,72 @@
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 class HDC {
-    /**
-     * Constructor for the HDC class.
-     * @param {number} d - The dimension of the hyperdimensional vector. Defaults to 10000.
-     */
-    constructor(d = 10000) {
-        this.d = d;
-    }
+  /**
+   * Constructor for the HDC class.
+   * @param {number} d - The dimension of the hyperdimensional vector. Defaults to 10000.
+   */
+  constructor(d = 10000) {
+    this.d = d;
+  }
 
-    /**
-     * Generates a hyperdimensional vector from a given text.
-     * @param {string} text - The text to generate the vector from.
-     * @returns {Uint8Array} - The generated hyperdimensional vector.
-     */
-    gen(text) {
-        let v = new Uint8Array(this.d);
-        let h = crypto.createHash('sha256').update(text).digest();
-        for (let i = 0; i < this.d; i++) {
-            v[i] = h[i % h.length] % 2;
-        }
-        return v;
+  /**
+   * Generates a hyperdimensional vector from a given text.
+   * @param {string} text - The text to generate the vector from.
+   * @returns {Uint8Array} - The generated hyperdimensional vector.
+   */
+  gen(text) {
+    let v = new Uint8Array(this.d);
+    let h = crypto.createHash("sha256").update(text).digest();
+    for (let i = 0; i < this.d; i++) {
+      v[i] = h[i % h.length] % 2;
     }
+    return v;
+  }
 }
 
 class PhilosophyEngine {
-    /**
-     * Constructor for the PhilosophyEngine class.
-     * @param {string[]} layers - The layers of philosophical thought. Defaults to ["Utilitarian", "Existential", "Stoic", "Evolutionary"].
-     */
-    constructor(layers = ["Utilitarian", "Existential", "Stoic", "Evolutionary"]) {
-        this.layers = layers;
-    }
+  /**
+   * Constructor for the PhilosophyEngine class.
+   * @param {string[]} layers - The layers of philosophical thought. Defaults to ["Utilitarian", "Existential", "Stoic", "Evolutionary"].
+   */
+  constructor(
+    layers = ["Utilitarian", "Existential", "Stoic", "Evolutionary"],
+  ) {
+    this.layers = layers;
+  }
 
-    /**
-     * Audits the difference between two philosophical states.
-     * @param {string[]} diff - The difference between the two states.
-     * @returns {string} - The result of the audit, either "Wisdom Verified" or "No Evolution".
-     */
-    audit(diff) {
-        return diff.length > 0 ? "Wisdom Verified" : "No Evolution";
-    }
+  /**
+   * Audits the difference between two philosophical states.
+   * @param {string[]} diff - The difference between the two states.
+   * @returns {string} - The result of the audit, either "Wisdom Verified" or "No Evolution".
+   */
+  audit(diff) {
+    return diff.length > 0 ? "Wisdom Verified" : "No Evolution";
+  }
 }
 
 class ASI_OMNI_SYNC_ENGINE {
-    /**
-     * Constructor for the ASI_OMNI_SYNC_ENGINE class.
-     * @param {HDC} hdc - The HDC instance.
-     * @param {PhilosophyEngine} philosophyEngine - The PhilosophyEngine instance.
-     */
-    constructor(hdc, philosophyEngine) {
-        this.hdc = hdc;
-        this.philosophyEngine = philosophyEngine;
-    }
+  /**
+   * Constructor for the ASI_OMNI_SYNC_ENGINE class.
+   * @param {HDC} hdc - The HDC instance.
+   * @param {PhilosophyEngine} philosophyEngine - The PhilosophyEngine instance.
+   */
+  constructor(hdc, philosophyEngine) {
+    this.hdc = hdc;
+    this.philosophyEngine = philosophyEngine;
+  }
 
-    /**
-     * Merges the HDC and PhilosophyEngine instances into a single, cohesive system.
-     * @param {string} text - The text to generate a hyperdimensional vector from.
-     * @param {string[]} diff - The difference between two philosophical states.
-     * @returns {object} - An object containing the generated hyperdimensional vector and the result of the philosophical audit.
-     */
-    mergeSync(text, diff) {
-        const vector = this.hdc.gen(text);
-        const auditResult = this.philosophyEngine.audit(diff);
-        return { vector, auditResult };
-    }
+  /**
+   * Merges the HDC and PhilosophyEngine instances into a single, cohesive system.
+   * @param {string} text - The text to generate a hyperdimensional vector from.
+   * @param {string[]} diff - The difference between two philosophical states.
+   * @returns {object} - An object containing the generated hyperdimensional vector and the result of the philosophical audit.
+   */
+  mergeSync(text, diff) {
+    const vector = this.hdc.gen(text);
+    const auditResult = this.philosophyEngine.audit(diff);
+    return { vector, auditResult };
+  }
 }
 
 // Create instances of HDC and PhilosophyEngine
