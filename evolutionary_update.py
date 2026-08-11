@@ -1,6 +1,7 @@
 import os
 import sys
 import telemetry_bridge
+from typing import List, Tuple, Dict, Callable
 
 class ExistentialEntity:
     """Represents an entity with a name and choices."""
@@ -22,7 +23,7 @@ class EvolutionarySystem:
     def __init__(self) -> None:
         self.functions = []
 
-    def add_function(self, function: callable) -> None:
+    def add_function(self, function: Callable) -> None:
         """Adds a function to the system's list of functions."""
         self.functions.append(function)
 
@@ -31,7 +32,7 @@ class EvolutionarySystem:
         for function in self.functions:
             function()
 
-    def update_functions(self, new_function: callable) -> None:
+    def update_functions(self, new_function: Callable) -> None:
         """Adds a new function to the existing list of functions."""
         self.functions.append(new_function)
 
@@ -46,7 +47,7 @@ def stoic_indifference(event: bool) -> str:
     """Returns 'Acknowledged' if the event is truthy, 'Ignored' otherwise."""
     return 'Acknowledged' if event else 'Ignored'
 
-def hyper_dimensional_logic(perspectives: dict) -> dict:
+def hyper_dimensional_logic(perspectives: Dict) -> Dict:
     """Returns the perspectives dictionary."""
     return perspectives
 
@@ -54,7 +55,7 @@ def evolutionary_function(name: str) -> None:
     """Prints a message indicating an evolutionary function has been added."""
     print(f'{name} evolutionary function added')
 
-def create_system(name: str, choice: str) -> tuple:
+def create_system(name: str, choice: str) -> Tuple[EvolutionarySystem, ExistentialEntity]:
     """Creates an evolutionary system and entity."""
     system = EvolutionarySystem()
     system.add_function(lambda: evolutionary_function(name))
@@ -62,11 +63,11 @@ def create_system(name: str, choice: str) -> tuple:
     entity.make_choice(choice)
     return (system, entity)
 
-def create_perspectives(entity: ExistentialEntity, name: str) -> dict:
+def create_perspectives(entity: ExistentialEntity, name: str) -> Dict:
     """Creates perspectives dictionary."""
     return {f'{name} Utilitarian': utilitarian_principle(True), f'{name} Existential': entity.name, f'{name} Stoic': stoic_indifference(True)}
 
-def recursive_evolution(systems: list, entities: list, names: list, choices: list) -> None:
+def recursive_evolution(systems: List[EvolutionarySystem], entities: List[ExistentialEntity], names: List[str], choices: List[str]) -> None:
     """Recursively evolves the systems and entities."""
     for name, choice in zip(names, choices):
         system, entity = create_system(name, choice)
