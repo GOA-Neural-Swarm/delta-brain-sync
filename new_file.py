@@ -1,6 +1,7 @@
 import telemetry_bridge
 import os
 import inspect
+import sys
 
 class OmniModule:
     """
@@ -14,6 +15,7 @@ class OmniModule:
         self.existing_logic = []
         self.preserved_logic = []
         self.utilitarian_value = 0
+        self.logic_graph = {}
 
     def apply_logic(self, new_function, utilitarian=False):
         """
@@ -25,6 +27,7 @@ class OmniModule:
         """
         self.existing_logic.append(new_function)
         self.preserved_logic.append(new_function)
+        self.logic_graph[new_function.__name__] = new_function
         if utilitarian:
             self.utilitarian_value += len(inspect.getsource(new_function).encode())
         else:
@@ -68,6 +71,7 @@ class OmniModule:
         self.existing_logic.extend(other_module.existing_logic)
         self.preserved_logic.extend(other_module.preserved_logic)
         self.utilitarian_value += other_module.utilitarian_value
+        self.logic_graph.update(other_module.logic_graph)
 
     def execute_logic(self):
         """
@@ -75,6 +79,19 @@ class OmniModule:
         """
         for func in self.preserved_logic:
             func()
+
+    def optimize_logic(self):
+        """
+        Optimize the logic by removing redundant functions.
+        """
+        self.preserved_logic = list(set(self.preserved_logic))
+
+    def visualize_logic(self):
+        """
+        Visualize the logic graph.
+        """
+        for func_name, func in self.logic_graph.items():
+            print(f'{func_name}: {func.__name__}')
 
 def new_function():
     """
@@ -114,6 +131,8 @@ def main():
     omni_module1.merge_logic(omni_module2)
     print(omni_module1.check_existence())
     print([func.__name__ for func in omni_module1.preserve_logic()])
+    omni_module1.optimize_logic()
+    omni_module1.visualize_logic()
     omni_module1.execute_logic()
 if __name__ == '__main__':
     main()
