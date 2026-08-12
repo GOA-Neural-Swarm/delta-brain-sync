@@ -1,4 +1,4 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_549 Linked
+# 🧬 [QUANTUM_EVOLUTION]: Gen_550 Linked
 import telemetry_bridge
 import torch
 import torch.nn as nn
@@ -10,6 +10,10 @@ from torch.utils.data import Dataset, DataLoader
 class UnconsciousModule(nn.Module):
     """
     Unconscious module for processing input data.
+
+    Args:
+        input_dim (int): Input dimension.
+        workspace_dim (int): Workspace dimension.
     """
 
     def __init__(self, input_dim: int, workspace_dim: int):
@@ -23,10 +27,10 @@ class UnconsciousModule(nn.Module):
         Forward pass through the unconscious module.
 
         Args:
-        x (torch.Tensor): Input data.
+            x (torch.Tensor): Input data.
 
         Returns:
-        tuple: Encoded data, salience score, and attention output.
+            tuple: Encoded data, salience score, and attention output.
         """
         encoded_data = self.encoder(x)
         salience = self.salience_scorer(encoded_data)
@@ -36,6 +40,10 @@ class UnconsciousModule(nn.Module):
 class GlobalWorkspace(nn.Module):
     """
     Global workspace for integrating module outputs.
+
+    Args:
+        workspace_dim (int): Workspace dimension.
+        num_modules (int): Number of modules.
     """
 
     def __init__(self, workspace_dim: int, num_modules: int):
@@ -53,12 +61,12 @@ class GlobalWorkspace(nn.Module):
         Forward pass through the global workspace.
 
         Args:
-        module_outputs (torch.Tensor): Outputs from the unconscious modules.
-        salience_scores (torch.Tensor): Salience scores from the unconscious modules.
-        attention_outputs (torch.Tensor): Attention outputs from the unconscious modules.
+            module_outputs (torch.Tensor): Outputs from the unconscious modules.
+            salience_scores (torch.Tensor): Salience scores from the unconscious modules.
+            attention_outputs (torch.Tensor): Attention outputs from the unconscious modules.
 
         Returns:
-        tuple: Conscious state attention and focus weights.
+            tuple: Conscious state attention and focus weights.
         """
         q = self.query(self.current_workspace_state).unsqueeze(1)
         k = self.key(module_outputs)
@@ -77,6 +85,11 @@ class GlobalWorkspace(nn.Module):
 class CognitiveAgent(nn.Module):
     """
     Cognitive agent for integrating unconscious modules and global workspace.
+
+    Args:
+        workspace_dim (int, optional): Workspace dimension. Defaults to 512.
+        num_modules (int, optional): Number of modules. Defaults to 3.
+        input_dim (int, optional): Input dimension. Defaults to 784.
     """
 
     def __init__(self, workspace_dim: int=512, num_modules: int=3, input_dim: int=784):
@@ -90,10 +103,10 @@ class CognitiveAgent(nn.Module):
         Forward pass through the cognitive agent.
 
         Args:
-        *inputs (torch.Tensor): Input data for each unconscious module.
+            *inputs (torch.Tensor): Input data for each unconscious module.
 
         Returns:
-        tuple: Conscious thought and focus weights.
+            tuple: Conscious thought and focus weights.
         """
         if len(inputs) != len(self.modules):
             raise ValueError('Number of inputs must match the number of modules')
@@ -116,11 +129,11 @@ class CognitiveAgent(nn.Module):
         Train the cognitive agent.
 
         Args:
-        inputs (list): Input data for each unconscious module.
-        targets (torch.Tensor): Target output.
+            inputs (list): Input data for each unconscious module.
+            targets (torch.Tensor): Target output.
 
         Returns:
-        float: Loss value.
+            float: Loss value.
         """
         self.optimizer.zero_grad()
         try:
@@ -136,6 +149,10 @@ class CognitiveAgent(nn.Module):
 class CustomDataset(Dataset):
     """
     Custom dataset class for loading and processing data.
+
+    Args:
+        inputs (list): Input data.
+        targets (list): Target data.
     """
 
     def __init__(self, inputs, targets):
