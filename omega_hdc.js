@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+const crypto = require("crypto");
 
 class ASI_OMNI_SYNC_ENGINE {
   constructor() {
@@ -8,7 +8,7 @@ class ASI_OMNI_SYNC_ENGINE {
 
   gen(text) {
     let v = new Uint8Array(this.d);
-    let h = crypto.createHash('sha256').update(text).digest();
+    let h = crypto.createHash("sha256").update(text).digest();
     for (let i = 0; i < this.d; i++) {
       v[i] = h[i % h.length] % 2;
     }
@@ -26,7 +26,7 @@ class ASI_OMNI_SYNC_ENGINE {
     return {
       hash,
       diff,
-      auditResult
+      auditResult,
     };
   }
 
@@ -45,8 +45,8 @@ class ASI_OMNI_SYNC_ENGINE {
   getPreviousHash() {
     // Example implementation, actual implementation may vary based on requirements
     // For demonstration purposes, assume previous hash is stored in a file
-    const fs = require('fs');
-    const previousHashFile = 'previous_hash.txt';
+    const fs = require("fs");
+    const previousHashFile = "previous_hash.txt";
     if (fs.existsSync(previousHashFile)) {
       return new Uint8Array(fs.readFileSync(previousHashFile));
     } else {
@@ -57,8 +57,8 @@ class ASI_OMNI_SYNC_ENGINE {
   saveHash(hash) {
     // Example implementation, actual implementation may vary based on requirements
     // For demonstration purposes, assume hash is stored in a file
-    const fs = require('fs');
-    const hashFile = 'previous_hash.txt';
+    const fs = require("fs");
+    const hashFile = "previous_hash.txt";
     fs.writeFileSync(hashFile, Buffer.from(hash));
   }
 }
