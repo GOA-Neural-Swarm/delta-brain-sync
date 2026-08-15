@@ -1,4 +1,3 @@
-# 🧬 [QUANTUM_EVOLUTION]: Gen_573 Linked
 import telemetry_bridge
 import os
 import time
