@@ -2,6 +2,8 @@ import telemetry_bridge
 import os
 import inspect
 import sys
+import networkx as nx
+import matplotlib.pyplot as plt
 
 class OmniModule:
     """
@@ -15,7 +17,7 @@ class OmniModule:
         self.existing_logic = []
         self.preserved_logic = []
         self.utilitarian_value = 0
-        self.logic_graph = {}
+        self.logic_graph = nx.DiGraph()
 
     def apply_logic(self, new_function, utilitarian=False):
         """
@@ -27,7 +29,9 @@ class OmniModule:
         """
         self.existing_logic.append(new_function)
         self.preserved_logic.append(new_function)
-        self.logic_graph[new_function.__name__] = new_function
+        self.logic_graph.add_node(new_function.__name__)
+        for func in self.existing_logic[:-1]:
+            self.logic_graph.add_edge(func.__name__, new_function.__name__)
         if utilitarian:
             self.utilitarian_value += len(inspect.getsource(new_function).encode())
         else:
@@ -71,7 +75,7 @@ class OmniModule:
         self.existing_logic.extend(other_module.existing_logic)
         self.preserved_logic.extend(other_module.preserved_logic)
         self.utilitarian_value += other_module.utilitarian_value
-        self.logic_graph.update(other_module.logic_graph)
+        self.logic_graph = nx.disjoint_union(self.logic_graph, other_module.logic_graph)
 
     def execute_logic(self):
         """
@@ -90,8 +94,8 @@ class OmniModule:
         """
         Visualize the logic graph.
         """
-        for func_name, func in self.logic_graph.items():
-            print(f'{func_name}: {func.__name__}')
+        nx.draw(self.logic_graph, with_labels=True)
+        plt.show()
 
 def new_function():
     """
