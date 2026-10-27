@@ -78,7 +78,7 @@ class MetamorphicCompiler:
 
     def __init__(self):
         self.mutation_hash_log = set()
-        self.generation = 950
+        self.generation = 951
 
     def get_own_source(self, func: Callable) -> str:
         try:
